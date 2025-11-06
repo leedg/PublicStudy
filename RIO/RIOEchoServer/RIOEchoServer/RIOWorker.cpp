@@ -197,25 +197,46 @@ void RIOWorker::run()
     printf("[WORKER %d] Started (polling=%s)\n", m_index, Config::UsePolling ? "enabled" : "disabled");
     
     int spin = 0;
+    int idleCount = 0; // 유휴 카운터 추가
     
     while (m_run.load(std::memory_order_relaxed)) 
     {
         // Accept된 소켓 처리
-        drainAccepted();
+        bool hasWork = false;
+        {
+            std::lock_guard<std::mutex> lk(m_acceptLock);
+            hasWork = !m_acceptQ.empty();
+        }
         
-        // I/O 완료 처리
-        handleCompletions();
+        if (hasWork) {
+            drainAccepted();
+            idleCount = 0; // 작업이 있으면 유휴 카운터 리셋
+        }
+        
+        // I/O 완료 처리 전 큐 상태 확인
+        ULONG preCheck = RIONetwork::Rio().RIODequeueCompletion(m_cq, nullptr, 0);
+        if (preCheck > 0 && preCheck != RIO_CORRUPT_CQ) {
+            handleCompletions();
+            idleCount = 0; // 작업이 있으면 유휴 카운터 리셋
+        } else {
+            idleCount++;
+        }
 
-        // 대기 전략
+        // 대기 전략 - 적응형
         if (Config::UsePolling) 
         {
-            if (++spin >= Config::PollBusySpinIters) 
+            if (idleCount > 10) {
+                // 10번 이상 작업이 없으면 더 긴 Sleep
+                Sleep(1);
+                spin = 0;
+            }
+            else if (++spin >= Config::PollBusySpinIters) 
             {
                 spin = 0;
                 
                 if (Config::PollSleepMicros > 0) 
                 {
-                    Sleep(0);
+                    Sleep(0); // 다른 스레드에게 양보
                 } 
                 else 
                 {
@@ -229,7 +250,12 @@ void RIOWorker::run()
         } 
         else 
         {
-            Sleep(0);
+            // 폴링 모드가 아닐 때는 항상 양보
+            if (idleCount > 5) {
+                Sleep(1);
+            } else {
+                Sleep(0);
+            }
         }
     }
     

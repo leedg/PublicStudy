@@ -200,8 +200,8 @@ void IOCPAcceptor::threadProc()
     
     while (m_run.load(std::memory_order_relaxed)) 
     {
-        // IOCP에서 완료 알림 대기 (타임아웃 1초)
-        BOOL ok = GetQueuedCompletionStatus(m_iocp, &bytes, &key, &ov, 1000);
+        // IOCP에서 완료 알림 대기 (타임아웃 5초로 증가 - CPU 사용량 감소)
+        BOOL ok = GetQueuedCompletionStatus(m_iocp, &bytes, &key, &ov, 5000);
         
         if (!ok) 
         {

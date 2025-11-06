@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package rio.echo;
+
+message EchoMessage {
+  string text = 1;
+}
