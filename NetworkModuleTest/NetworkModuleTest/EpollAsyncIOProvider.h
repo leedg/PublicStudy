@@ -1,5 +1,8 @@
 #pragma once
 
+// English: epoll-based AsyncIOProvider implementation for Linux
+// 한글: Linux용 epoll 기반 AsyncIOProvider 구현
+
 #include "AsyncIOProvider.h"
 
 #ifdef __linux__
@@ -8,159 +11,120 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <string>
 
 namespace Network::AsyncIO::Linux
 {
     // =============================================================================
-    // epoll-based AsyncIOProvider Implementation
+    // English: epoll-based AsyncIOProvider Implementation
+    // 한글: epoll 기반 AsyncIOProvider 구현
     // =============================================================================
 
     class EpollAsyncIOProvider : public AsyncIOProvider
     {
     public:
+        // English: Constructor
+        // 한글: 생성자
         EpollAsyncIOProvider();
+
+        // English: Destructor - releases epoll resources
+        // 한글: 소멸자 - epoll 리소스 해제
         virtual ~EpollAsyncIOProvider();
 
-        // Prevent copy
+        // English: Prevent copy (move-only semantics)
+        // 한글: 복사 방지 (move-only 의미론)
         EpollAsyncIOProvider(const EpollAsyncIOProvider&) = delete;
         EpollAsyncIOProvider& operator=(const EpollAsyncIOProvider&) = delete;
 
         // =====================================================================
-        // Initialization & Configuration
+        // English: Lifecycle Management
+        // 한글: 생명주기 관리
         // =====================================================================
 
-        bool Initialize(uint32_t maxConcurrentOps = 10000) override;
+        AsyncIOError Initialize(size_t queueDepth, size_t maxConcurrent) override;
         void Shutdown() override;
-        
-        PlatformInfo GetPlatformInfo() const override;
-        bool SupportsFeature(const char* featureName) const override;
+        bool IsInitialized() const override;
 
         // =====================================================================
-        // Socket Management
+        // English: Buffer Management
+        // 한글: 버퍼 관리
         // =====================================================================
 
-        bool RegisterSocket(SocketHandle socket) override;
-        bool UnregisterSocket(SocketHandle socket) override;
+        int64_t RegisterBuffer(const void* ptr, size_t size) override;
+        AsyncIOError UnregisterBuffer(int64_t bufferId) override;
 
         // =====================================================================
-        // Async I/O Operations
+        // English: Async I/O Requests
+        // 한글: 비동기 I/O 요청
         // =====================================================================
 
-        bool SendAsync(
+        AsyncIOError SendAsync(
             SocketHandle socket,
-            const void* data,
-            uint32_t size,
-            void* userData,
-            uint32_t flags,
-            CompletionCallback callback
+            const void* buffer,
+            size_t size,
+            RequestContext context,
+            uint32_t flags = 0
         ) override;
 
-        bool SendAsyncRegistered(
-            SocketHandle socket,
-            int64_t registeredBufferId,
-            uint32_t offset,
-            uint32_t length,
-            void* userData,
-            uint32_t flags,
-            CompletionCallback callback
-        ) override;
-
-        bool RecvAsync(
+        AsyncIOError RecvAsync(
             SocketHandle socket,
             void* buffer,
-            uint32_t size,
-            void* userData,
-            uint32_t flags,
-            CompletionCallback callback
+            size_t size,
+            RequestContext context,
+            uint32_t flags = 0
         ) override;
 
-        bool RecvAsyncRegistered(
-            SocketHandle socket,
-            int64_t registeredBufferId,
-            uint32_t offset,
-            uint32_t length,
-            void* userData,
-            uint32_t flags,
-            CompletionCallback callback
-        ) override;
+        AsyncIOError FlushRequests() override;
 
         // =====================================================================
-        // Buffer Management
+        // English: Completion Processing
+        // 한글: 완료 처리
         // =====================================================================
 
-        BufferRegistration RegisterBuffer(
-            const void* buffer,
-            uint32_t size,
-            BufferPolicy policy = BufferPolicy::Reuse
-        ) override;
-
-        bool UnregisterBuffer(int64_t bufferId) override;
-        uint32_t GetRegisteredBufferCount() const override;
-
-        // =====================================================================
-        // Completion Processing
-        // =====================================================================
-
-        uint32_t ProcessCompletions(
+        int ProcessCompletions(
             CompletionEntry* entries,
-            uint32_t maxCount,
-            uint32_t timeoutMs
+            size_t maxEntries,
+            int timeoutMs = 0
         ) override;
 
         // =====================================================================
-        // Statistics & Monitoring
+        // English: Information & Statistics
+        // 한글: 정보 및 통계
         // =====================================================================
 
-        uint32_t GetPendingOperationCount() const override;
-        bool GetStatistics(void* outStats) const override;
-        void ResetStatistics() override;
+        const ProviderInfo& GetInfo() const override;
+        ProviderStats GetStats() const override;
+        const char* GetLastError() const override;
 
     private:
         // =====================================================================
-        // Internal Data Structures
+        // English: Internal Data Structures
+        // 한글: 내부 데이터 구조
         // =====================================================================
 
+        // English: Pending operation tracking structure
+        // 한글: 대기 중인 작업 추적 구조체
         struct PendingOperation
         {
-            CompletionCallback callback;
-            void* userData;
-            AsyncIOType operationType;
-            std::unique_ptr<uint8_t[]> buffer;  // For dynamically allocated buffers
-            uint32_t bufferSize;
-        };
-
-        struct CompletionQueue
-        {
-            AsyncIOType operationType;
-            uint32_t bytesTransferred;
-            int32_t errorCode;
-            void* userData;
+            RequestContext mContext;              // English: User request context / 한글: 사용자 요청 컨텍스트
+            AsyncIOType mType;                   // English: Operation type / 한글: 작업 타입
+            std::unique_ptr<uint8_t[]> mBuffer;  // English: Dynamically allocated buffer / 한글: 동적 할당 버퍼
+            uint32_t mBufferSize;                // English: Buffer size / 한글: 버퍼 크기
         };
 
         // =====================================================================
-        // Member Variables
+        // English: Member Variables
+        // 한글: 멤버 변수
         // =====================================================================
 
-        int mEpollFd;
-        std::map<SocketHandle, PendingOperation> mPendingOps;
-        std::queue<CompletionQueue> mCompletionQueue;
-        std::mutex mMutex;
-        
-        uint32_t mMaxConcurrentOps;
-        uint64_t mTotalSendOps;
-        uint64_t mTotalRecvOps;
-        uint64_t mTotalBytesTransferred;
-        
-        bool mInitialized;
-
-        // =====================================================================
-        // Helper Methods
-        // =====================================================================
-
-        /**
-         * Handle epoll events and queue completions
-         */
-        bool ProcessEpollEvent(const struct epoll_event& event);
+        int mEpollFd;                            // English: epoll file descriptor / 한글: epoll 파일 디스크립터
+        std::map<SocketHandle, PendingOperation> mPendingOps;  // English: Pending operations / 한글: 대기 작업
+        mutable std::mutex mMutex;               // English: Thread safety mutex / 한글: 스레드 안전성 뮤텍스
+        ProviderInfo mInfo;                      // English: Provider info / 한글: 공급자 정보
+        ProviderStats mStats;                    // English: Statistics / 한글: 통계
+        std::string mLastError;                  // English: Last error message / 한글: 마지막 에러 메시지
+        size_t mMaxConcurrentOps;                // English: Max concurrent ops / 한글: 최대 동시 작업
+        bool mInitialized;                       // English: Initialization flag / 한글: 초기화 플래그
     };
 
 }  // namespace Network::AsyncIO::Linux

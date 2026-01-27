@@ -1,3 +1,6 @@
+// English: epoll-based AsyncIOProvider implementation
+// 한글: epoll 기반 AsyncIOProvider 구현
+
 #ifdef __linux__
 
 #include "EpollAsyncIOProvider.h"
@@ -10,42 +13,59 @@
 namespace Network::AsyncIO::Linux
 {
     // =============================================================================
-    // Constructor & Destructor
+    // English: Constructor & Destructor
+    // 한글: 생성자 및 소멸자
     // =============================================================================
 
     EpollAsyncIOProvider::EpollAsyncIOProvider()
         : mEpollFd(-1)
+        , mInfo{}
+        , mStats{}
         , mMaxConcurrentOps(0)
-        , mTotalSendOps(0)
-        , mTotalRecvOps(0)
-        , mTotalBytesTransferred(0)
         , mInitialized(false)
     {
     }
 
     EpollAsyncIOProvider::~EpollAsyncIOProvider()
     {
+        // English: Ensure resources are released
+        // 한글: 리소스 해제 보장
         Shutdown();
     }
 
     // =============================================================================
-    // Initialization & Configuration
+    // English: Lifecycle Management
+    // 한글: 생명주기 관리
     // =============================================================================
 
-    bool EpollAsyncIOProvider::Initialize(uint32_t maxConcurrentOps)
+    AsyncIOError EpollAsyncIOProvider::Initialize(size_t queueDepth, size_t maxConcurrent)
     {
         if (mInitialized)
-            return true;
+            return AsyncIOError::AlreadyInitialized;
 
-        // Create epoll file descriptor
+        // English: Create epoll file descriptor with close-on-exec
+        // 한글: close-on-exec로 epoll 파일 디스크립터 생성
         mEpollFd = epoll_create1(EPOLL_CLOEXEC);
         if (mEpollFd < 0)
-            return false;
+        {
+            mLastError = "epoll_create1 failed";
+            return AsyncIOError::OperationFailed;
+        }
 
-        mMaxConcurrentOps = maxConcurrentOps;
+        mMaxConcurrentOps = maxConcurrent;
+
+        // English: Initialize provider info
+        // 한글: 공급자 정보 초기화
+        mInfo.mPlatformType = PlatformType::Epoll;
+        mInfo.mName = "epoll";
+        mInfo.mMaxQueueDepth = queueDepth;
+        mInfo.mMaxConcurrentReq = maxConcurrent;
+        mInfo.mSupportsBufferReg = false;
+        mInfo.mSupportsBatching = false;
+        mInfo.mSupportsZeroCopy = false;
+
         mInitialized = true;
-
-        return true;
+        return AsyncIOError::Success;
     }
 
     void EpollAsyncIOProvider::Shutdown()
@@ -55,7 +75,8 @@ namespace Network::AsyncIO::Linux
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // Close epoll file descriptor
+        // English: Close epoll file descriptor
+        // 한글: epoll 파일 디스크립터 닫기
         if (mEpollFd >= 0)
         {
             close(mEpollFd);
@@ -63,230 +84,162 @@ namespace Network::AsyncIO::Linux
         }
 
         mPendingOps.clear();
-        while (!mCompletionQueue.empty())
-            mCompletionQueue.pop();
-
         mInitialized = false;
     }
 
-    PlatformInfo EpollAsyncIOProvider::GetPlatformInfo() const
+    bool EpollAsyncIOProvider::IsInitialized() const
     {
-        return Platform::GetDetailedPlatformInfo();
-    }
-
-    bool EpollAsyncIOProvider::SupportsFeature(const char* featureName) const
-    {
-        if (std::strcmp(featureName, "SendAsync") == 0) return true;
-        if (std::strcmp(featureName, "RecvAsync") == 0) return true;
-        if (std::strcmp(featureName, "BufferRegistration") == 0) return false;  // epoll doesn't support buffer registration
-        if (std::strcmp(featureName, "RegisteredI/O") == 0) return false;
-        return false;
+        return mInitialized;
     }
 
     // =============================================================================
-    // Socket Management
+    // English: Buffer Management
+    // 한글: 버퍼 관리
     // =============================================================================
 
-    bool EpollAsyncIOProvider::RegisterSocket(SocketHandle socket)
+    int64_t EpollAsyncIOProvider::RegisterBuffer(const void* ptr, size_t size)
     {
-        if (!mInitialized || socket < 0 || mEpollFd < 0)
-            return false;
-
-        std::lock_guard<std::mutex> lock(mMutex);
-
-        // Register socket with epoll
-        struct epoll_event event{};
-        event.events = EPOLLIN | EPOLLOUT | EPOLLET;  // Edge-triggered
-        event.data.fd = socket;
-
-        if (epoll_ctl(mEpollFd, EPOLL_CTL_ADD, socket, &event) < 0)
-            return false;
-
-        return true;
+        // English: epoll doesn't support pre-registered buffers (no-op)
+        // 한글: epoll은 사전 등록 버퍼를 지원하지 않음 (no-op)
+        return -1;
     }
 
-    bool EpollAsyncIOProvider::UnregisterSocket(SocketHandle socket)
+    AsyncIOError EpollAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
     {
-        if (!mInitialized || socket < 0 || mEpollFd < 0)
-            return false;
-
-        std::lock_guard<std::mutex> lock(mMutex);
-
-        // Remove socket from epoll
-        epoll_ctl(mEpollFd, EPOLL_CTL_DEL, socket, nullptr);
-
-        // Remove pending operations for this socket
-        auto it = mPendingOps.find(socket);
-        if (it != mPendingOps.end())
-            mPendingOps.erase(it);
-
-        return true;
+        // English: Not supported on epoll
+        // 한글: epoll에서 지원하지 않음
+        return AsyncIOError::PlatformNotSupported;
     }
 
     // =============================================================================
-    // Async I/O Operations
+    // English: Async I/O Operations
+    // 한글: 비동기 I/O 작업
     // =============================================================================
 
-    bool EpollAsyncIOProvider::SendAsync(
+    AsyncIOError EpollAsyncIOProvider::SendAsync(
         SocketHandle socket,
-        const void* data,
-        uint32_t size,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
+        const void* buffer,
+        size_t size,
+        RequestContext context,
+        uint32_t flags
     )
     {
-        if (!mInitialized || socket < 0 || !data || size == 0)
-            return false;
+        if (!mInitialized)
+            return AsyncIOError::NotInitialized;
+        if (socket < 0 || !buffer || size == 0)
+            return AsyncIOError::InvalidParameter;
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // Store pending operation
+        // English: Store pending operation with buffer copy
+        // 한글: 버퍼 복사와 함께 대기 작업 저장
         PendingOperation pending;
-        pending.callback = callback;
-        pending.userData = userData;
-        pending.operationType = AsyncIOType::Send;
-        
-        // Allocate and copy buffer
-        pending.buffer = std::make_unique<uint8_t[]>(size);
-        std::memcpy(pending.buffer.get(), data, size);
-        pending.bufferSize = size;
+        pending.mContext = context;
+        pending.mType = AsyncIOType::Send;
+        pending.mBuffer = std::make_unique<uint8_t[]>(size);
+        std::memcpy(pending.mBuffer.get(), buffer, size);
+        pending.mBufferSize = static_cast<uint32_t>(size);
 
         mPendingOps[socket] = std::move(pending);
-        mTotalSendOps++;
+        mStats.mTotalRequests++;
+        mStats.mPendingRequests++;
 
-        return true;
+        return AsyncIOError::Success;
     }
 
-    bool EpollAsyncIOProvider::SendAsyncRegistered(
-        SocketHandle socket,
-        int64_t registeredBufferId,
-        uint32_t offset,
-        uint32_t length,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
-    )
-    {
-        // epoll does not support buffer registration
-        return false;
-    }
-
-    bool EpollAsyncIOProvider::RecvAsync(
+    AsyncIOError EpollAsyncIOProvider::RecvAsync(
         SocketHandle socket,
         void* buffer,
-        uint32_t size,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
+        size_t size,
+        RequestContext context,
+        uint32_t flags
     )
     {
-        if (!mInitialized || socket < 0 || !buffer || size == 0)
-            return false;
+        if (!mInitialized)
+            return AsyncIOError::NotInitialized;
+        if (socket < 0 || !buffer || size == 0)
+            return AsyncIOError::InvalidParameter;
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // Store pending operation
+        // English: Store pending operation (caller manages buffer)
+        // 한글: 대기 작업 저장 (호출자가 버퍼 관리)
         PendingOperation pending;
-        pending.callback = callback;
-        pending.userData = userData;
-        pending.operationType = AsyncIOType::Recv;
-        
-        // Store buffer pointer (caller responsible for buffer lifetime)
-        pending.buffer.reset();
-        pending.bufferSize = size;
+        pending.mContext = context;
+        pending.mType = AsyncIOType::Recv;
+        pending.mBuffer.reset();
+        pending.mBufferSize = static_cast<uint32_t>(size);
 
         mPendingOps[socket] = std::move(pending);
-        mTotalRecvOps++;
+        mStats.mTotalRequests++;
+        mStats.mPendingRequests++;
 
-        return true;
+        return AsyncIOError::Success;
     }
 
-    bool EpollAsyncIOProvider::RecvAsyncRegistered(
-        SocketHandle socket,
-        int64_t registeredBufferId,
-        uint32_t offset,
-        uint32_t length,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
-    )
+    AsyncIOError EpollAsyncIOProvider::FlushRequests()
     {
-        // epoll does not support buffer registration
-        return false;
+        // English: epoll doesn't support batch processing (no-op)
+        // 한글: epoll은 배치 처리를 지원하지 않음 (no-op)
+        if (!mInitialized)
+            return AsyncIOError::NotInitialized;
+
+        return AsyncIOError::Success;
     }
 
     // =============================================================================
-    // Buffer Management
+    // English: Completion Processing
+    // 한글: 완료 처리
     // =============================================================================
 
-    BufferRegistration EpollAsyncIOProvider::RegisterBuffer(
-        const void* buffer,
-        uint32_t size,
-        BufferPolicy policy
-    )
-    {
-        // epoll doesn't support pre-registered buffers
-        return {-1, false, static_cast<int32_t>(AsyncIOError::PlatformNotSupported)};
-    }
-
-    bool EpollAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
-    {
-        return false;  // Not supported
-    }
-
-    uint32_t EpollAsyncIOProvider::GetRegisteredBufferCount() const
-    {
-        return 0;  // Not supported
-    }
-
-    // =============================================================================
-    // Completion Processing
-    // =============================================================================
-
-    uint32_t EpollAsyncIOProvider::ProcessCompletions(
+    int EpollAsyncIOProvider::ProcessCompletions(
         CompletionEntry* entries,
-        uint32_t maxCount,
-        uint32_t timeoutMs
+        size_t maxEntries,
+        int timeoutMs
     )
     {
-        if (!mInitialized || !entries || maxCount == 0 || mEpollFd < 0)
-            return 0;
+        if (!mInitialized)
+            return static_cast<int>(AsyncIOError::NotInitialized);
+        if (!entries || maxEntries == 0 || mEpollFd < 0)
+            return static_cast<int>(AsyncIOError::InvalidParameter);
 
-        // Poll for events
-        std::unique_ptr<struct epoll_event[]> events(new struct epoll_event[maxCount]);
-        int numEvents = epoll_wait(mEpollFd, events.get(), maxCount, timeoutMs);
+        // English: Poll for events
+        // 한글: 이벤트 폴링
+        std::unique_ptr<struct epoll_event[]> events(new struct epoll_event[maxEntries]);
+        int numEvents = epoll_wait(mEpollFd, events.get(), static_cast<int>(maxEntries), timeoutMs);
 
         if (numEvents < 0)
+        {
+            mLastError = "epoll_wait failed";
+            return static_cast<int>(AsyncIOError::OperationFailed);
+        }
+
+        if (numEvents == 0)
             return 0;
 
-        uint32_t processedCount = 0;
+        int processedCount = 0;
 
-        for (int i = 0; i < numEvents && processedCount < maxCount; ++i)
+        for (int i = 0; i < numEvents && processedCount < static_cast<int>(maxEntries); ++i)
         {
             SocketHandle socket = events[i].data.fd;
-            
+
+            std::lock_guard<std::mutex> lock(mMutex);
+            auto it = mPendingOps.find(socket);
+            if (it != mPendingOps.end())
             {
-                std::lock_guard<std::mutex> lock(mMutex);
+                // English: Fill completion entry
+                // 한글: 완료 항목 채우기
+                CompletionEntry& entry = entries[processedCount];
+                entry.mContext = it->second.mContext;
+                entry.mType = it->second.mType;
+                entry.mResult = static_cast<int32_t>(it->second.mBufferSize);
+                entry.mOsError = 0;
+                entry.mCompletionTime = 0;
 
-                auto it = mPendingOps.find(socket);
-                if (it != mPendingOps.end())
-                {
-                    CompletionEntry& entry = entries[processedCount];
-                    entry.operationType = it->second.operationType;
-                    entry.userData = it->second.userData;
-                    entry.bytesTransferred = it->second.bufferSize;
-                    entry.errorCode = 0;
-                    entry.internalHandle = socket;
-
-                    // Call user callback
-                    if (it->second.callback)
-                        it->second.callback(entry, it->second.userData);
-
-                    mTotalBytesTransferred += it->second.bufferSize;
-                    mPendingOps.erase(it);
-                    processedCount++;
-                }
+                mPendingOps.erase(it);
+                mStats.mPendingRequests--;
+                mStats.mTotalCompletions++;
+                processedCount++;
             }
         }
 
@@ -294,39 +247,28 @@ namespace Network::AsyncIO::Linux
     }
 
     // =============================================================================
-    // Statistics & Monitoring
+    // English: Information & Statistics
+    // 한글: 정보 및 통계
     // =============================================================================
 
-    uint32_t EpollAsyncIOProvider::GetPendingOperationCount() const
+    const ProviderInfo& EpollAsyncIOProvider::GetInfo() const
     {
-        std::lock_guard<std::mutex> lock(mMutex);
-        return static_cast<uint32_t>(mPendingOps.size());
+        return mInfo;
     }
 
-    bool EpollAsyncIOProvider::GetStatistics(void* outStats) const
+    ProviderStats EpollAsyncIOProvider::GetStats() const
     {
-        return false;  // Implement if needed
+        return mStats;
     }
 
-    void EpollAsyncIOProvider::ResetStatistics()
+    const char* EpollAsyncIOProvider::GetLastError() const
     {
-        mTotalSendOps = 0;
-        mTotalRecvOps = 0;
-        mTotalBytesTransferred = 0;
-    }
-
-    // =============================================================================
-    // Helper Methods
-    // =============================================================================
-
-    bool EpollAsyncIOProvider::ProcessEpollEvent(const struct epoll_event& event)
-    {
-        // Placeholder for event processing
-        return true;
+        return mLastError.c_str();
     }
 
     // =============================================================================
-    // Factory Function
+    // English: Factory Function
+    // 한글: 팩토리 함수
     // =============================================================================
 
     std::unique_ptr<AsyncIOProvider> CreateEpollProvider()

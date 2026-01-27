@@ -1,25 +1,25 @@
+// English: kqueue-based AsyncIOProvider implementation for macOS/BSD
+// 한글: macOS/BSD용 kqueue 기반 AsyncIOProvider 구현
+
 #ifdef __APPLE__
 
 #include "KqueueAsyncIOProvider.h"
 #include "PlatformDetect.h"
 #include <unistd.h>
-#include <fcntl.h>
 #include <cstring>
-#include <cstdlib>
 
 namespace Network::AsyncIO::BSD
 {
     // =============================================================================
-    // Constructor & Destructor
+    // English: Constructor & Destructor
+    // 한글: 생성자 및 소멸자
     // =============================================================================
 
     KqueueAsyncIOProvider::KqueueAsyncIOProvider()
         : mKqueueFd(-1)
-        , mNextBufferId(0)
+        , mInfo{}
+        , mStats{}
         , mMaxConcurrentOps(0)
-        , mTotalSendOps(0)
-        , mTotalRecvOps(0)
-        , mTotalBytesTransferred(0)
         , mInitialized(false)
     {
     }
@@ -30,23 +30,38 @@ namespace Network::AsyncIO::BSD
     }
 
     // =============================================================================
-    // Initialization & Configuration
+    // English: Lifecycle Management
+    // 한글: 생명주기 관리
     // =============================================================================
 
-    bool KqueueAsyncIOProvider::Initialize(uint32_t maxConcurrentOps)
+    AsyncIOError KqueueAsyncIOProvider::Initialize(size_t queueDepth, size_t maxConcurrent)
     {
         if (mInitialized)
-            return true;
+            return AsyncIOError::AlreadyInitialized;
 
-        // Create kqueue file descriptor
+        // English: Create kqueue file descriptor
+        // 한글: kqueue 파일 디스크립터 생성
         mKqueueFd = kqueue();
         if (mKqueueFd < 0)
-            return false;
+        {
+            mLastError = "kqueue() failed";
+            return AsyncIOError::OperationFailed;
+        }
 
-        mMaxConcurrentOps = maxConcurrentOps;
+        mMaxConcurrentOps = maxConcurrent;
+
+        // English: Initialize provider info
+        // 한글: 공급자 정보 초기화
+        mInfo.mPlatformType = PlatformType::Kqueue;
+        mInfo.mName = "kqueue";
+        mInfo.mMaxQueueDepth = queueDepth;
+        mInfo.mMaxConcurrentReq = maxConcurrent;
+        mInfo.mSupportsBufferReg = false;
+        mInfo.mSupportsBatching = false;
+        mInfo.mSupportsZeroCopy = false;
+
         mInitialized = true;
-
-        return true;
+        return AsyncIOError::Success;
     }
 
     void KqueueAsyncIOProvider::Shutdown()
@@ -56,7 +71,8 @@ namespace Network::AsyncIO::BSD
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // Close kqueue file descriptor
+        // English: Close kqueue file descriptor
+        // 한글: kqueue 파일 디스크립터 닫기
         if (mKqueueFd >= 0)
         {
             close(mKqueueFd);
@@ -65,295 +81,172 @@ namespace Network::AsyncIO::BSD
 
         mPendingOps.clear();
         mRegisteredSockets.clear();
-        mRegisteredBuffers.clear();
-
         mInitialized = false;
     }
 
-    PlatformInfo KqueueAsyncIOProvider::GetPlatformInfo() const
+    bool KqueueAsyncIOProvider::IsInitialized() const
     {
-        return Platform::GetDetailedPlatformInfo();
-    }
-
-    bool KqueueAsyncIOProvider::SupportsFeature(const char* featureName) const
-    {
-        if (std::strcmp(featureName, "SendAsync") == 0) return true;
-        if (std::strcmp(featureName, "RecvAsync") == 0) return true;
-        if (std::strcmp(featureName, "BufferRegistration") == 0) return false;  // kqueue doesn't support buffer registration
-        if (std::strcmp(featureName, "RegisteredI/O") == 0) return false;
-        if (std::strcmp(featureName, "EdgeTriggered") == 0) return true;
-        return false;
+        return mInitialized;
     }
 
     // =============================================================================
-    // Socket Management
+    // English: Buffer Management
+    // 한글: 버퍼 관리
     // =============================================================================
 
-    bool KqueueAsyncIOProvider::RegisterSocket(SocketHandle socket)
+    int64_t KqueueAsyncIOProvider::RegisterBuffer(const void* ptr, size_t size)
     {
-        if (!mInitialized || socket < 0 || mKqueueFd < 0)
-            return false;
-
-        std::lock_guard<std::mutex> lock(mMutex);
-
-        // Register socket events with kqueue
-        if (!RegisterSocketEvents(socket))
-            return false;
-
-        mRegisteredSockets[socket] = true;
-
-        return true;
+        // English: kqueue doesn't support pre-registered buffers (no-op)
+        // 한글: kqueue는 사전 등록 버퍼를 지원하지 않음 (no-op)
+        return -1;
     }
 
-    bool KqueueAsyncIOProvider::RegisterSocketEvents(SocketHandle socket)
+    AsyncIOError KqueueAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
     {
-        // Register for both read and write events
-        struct kevent events[2];
-        
-        // Read event
-        EV_SET(&events[0], socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, nullptr);
-        
-        // Write event
-        EV_SET(&events[1], socket, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, nullptr);
-
-        if (kevent(mKqueueFd, events, 2, nullptr, 0, nullptr) < 0)
-            return false;
-
-        return true;
-    }
-
-    bool KqueueAsyncIOProvider::UnregisterSocket(SocketHandle socket)
-    {
-        if (!mInitialized || socket < 0 || mKqueueFd < 0)
-            return false;
-
-        std::lock_guard<std::mutex> lock(mMutex);
-
-        // Unregister socket events from kqueue
-        if (!UnregisterSocketEvents(socket))
-            return false;
-
-        // Remove socket from registered list
-        auto it = mRegisteredSockets.find(socket);
-        if (it != mRegisteredSockets.end())
-            mRegisteredSockets.erase(it);
-
-        // Remove pending operations for this socket
-        auto op_it = mPendingOps.find(socket);
-        if (op_it != mPendingOps.end())
-            mPendingOps.erase(op_it);
-
-        return true;
-    }
-
-    bool KqueueAsyncIOProvider::UnregisterSocketEvents(SocketHandle socket)
-    {
-        // Disable and delete read and write events
-        struct kevent events[2];
-        
-        // Delete read event
-        EV_SET(&events[0], socket, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-        
-        // Delete write event
-        EV_SET(&events[1], socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-
-        // Ignore errors (socket might be already closed)
-        kevent(mKqueueFd, events, 2, nullptr, 0, nullptr);
-
-        return true;
+        return AsyncIOError::PlatformNotSupported;
     }
 
     // =============================================================================
-    // Async I/O Operations
+    // English: Async I/O Operations
+    // 한글: 비동기 I/O 작업
     // =============================================================================
 
-    bool KqueueAsyncIOProvider::SendAsync(
+    AsyncIOError KqueueAsyncIOProvider::SendAsync(
         SocketHandle socket,
-        const void* data,
-        uint32_t size,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
+        const void* buffer,
+        size_t size,
+        RequestContext context,
+        uint32_t flags
     )
     {
-        if (!mInitialized || socket < 0 || !data || size == 0)
-            return false;
+        if (!mInitialized)
+            return AsyncIOError::NotInitialized;
+        if (socket < 0 || !buffer || size == 0)
+            return AsyncIOError::InvalidParameter;
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // Store pending operation
+        // English: Store pending operation with buffer copy
+        // 한글: 버퍼 복사와 함께 대기 작업 저장
         PendingOperation pending;
-        pending.callback = callback;
-        pending.userData = userData;
-        pending.operationType = AsyncIOType::Send;
-        pending.socket = socket;
-        
-        // Allocate and copy buffer
-        pending.buffer = std::make_unique<uint8_t[]>(size);
-        std::memcpy(pending.buffer.get(), data, size);
-        pending.bufferSize = size;
+        pending.mContext = context;
+        pending.mType = AsyncIOType::Send;
+        pending.mSocket = socket;
+        pending.mBuffer = std::make_unique<uint8_t[]>(size);
+        std::memcpy(pending.mBuffer.get(), buffer, size);
+        pending.mBufferSize = static_cast<uint32_t>(size);
 
         mPendingOps[socket] = std::move(pending);
-        mTotalSendOps++;
+        mStats.mTotalRequests++;
+        mStats.mPendingRequests++;
 
-        return true;
+        return AsyncIOError::Success;
     }
 
-    bool KqueueAsyncIOProvider::SendAsyncRegistered(
-        SocketHandle socket,
-        int64_t registeredBufferId,
-        uint32_t offset,
-        uint32_t length,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
-    )
-    {
-        // kqueue does not support buffer registration
-        return false;
-    }
-
-    bool KqueueAsyncIOProvider::RecvAsync(
+    AsyncIOError KqueueAsyncIOProvider::RecvAsync(
         SocketHandle socket,
         void* buffer,
-        uint32_t size,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
+        size_t size,
+        RequestContext context,
+        uint32_t flags
     )
     {
-        if (!mInitialized || socket < 0 || !buffer || size == 0)
-            return false;
+        if (!mInitialized)
+            return AsyncIOError::NotInitialized;
+        if (socket < 0 || !buffer || size == 0)
+            return AsyncIOError::InvalidParameter;
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // Store pending operation
         PendingOperation pending;
-        pending.callback = callback;
-        pending.userData = userData;
-        pending.operationType = AsyncIOType::Recv;
-        pending.socket = socket;
-        pending.buffer = nullptr;  // Caller manages buffer
-        pending.bufferSize = size;
+        pending.mContext = context;
+        pending.mType = AsyncIOType::Recv;
+        pending.mSocket = socket;
+        pending.mBuffer = nullptr;
+        pending.mBufferSize = static_cast<uint32_t>(size);
 
         mPendingOps[socket] = std::move(pending);
-        mTotalRecvOps++;
+        mStats.mTotalRequests++;
+        mStats.mPendingRequests++;
 
-        return true;
+        return AsyncIOError::Success;
     }
 
-    bool KqueueAsyncIOProvider::RecvAsyncRegistered(
-        SocketHandle socket,
-        int64_t registeredBufferId,
-        uint32_t offset,
-        uint32_t length,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
-    )
+    AsyncIOError KqueueAsyncIOProvider::FlushRequests()
     {
-        // kqueue does not support buffer registration
-        return false;
+        // English: kqueue doesn't support batch processing (no-op)
+        // 한글: kqueue는 배치 처리를 지원하지 않음 (no-op)
+        if (!mInitialized)
+            return AsyncIOError::NotInitialized;
+
+        return AsyncIOError::Success;
     }
 
     // =============================================================================
-    // Buffer Management
+    // English: Completion Processing
+    // 한글: 완료 처리
     // =============================================================================
 
-    BufferRegistration KqueueAsyncIOProvider::RegisterBuffer(
-        const void* buffer,
-        uint32_t size,
-        BufferPolicy policy
-    )
-    {
-        // kqueue doesn't support pre-registered buffers
-        return {-1, false, static_cast<int32_t>(AsyncIOError::PlatformNotSupported)};
-    }
-
-    bool KqueueAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
-    {
-        return false;  // Not supported
-    }
-
-    uint32_t KqueueAsyncIOProvider::GetRegisteredBufferCount() const
-    {
-        return 0;  // Not supported
-    }
-
-    // =============================================================================
-    // Completion Processing
-    // =============================================================================
-
-    uint32_t KqueueAsyncIOProvider::ProcessCompletions(
+    int KqueueAsyncIOProvider::ProcessCompletions(
         CompletionEntry* entries,
-        uint32_t maxCount,
-        uint32_t timeoutMs
+        size_t maxEntries,
+        int timeoutMs
     )
     {
-        if (!mInitialized || !entries || maxCount == 0 || mKqueueFd < 0)
-            return 0;
+        if (!mInitialized)
+            return static_cast<int>(AsyncIOError::NotInitialized);
+        if (!entries || maxEntries == 0 || mKqueueFd < 0)
+            return static_cast<int>(AsyncIOError::InvalidParameter);
 
-        // Prepare timeout structure
+        // English: Prepare timeout structure
+        // 한글: 타임아웃 구조체 준비
         struct timespec ts;
         struct timespec* pts = nullptr;
-        
-        if (timeoutMs > 0)
+
+        if (timeoutMs >= 0)
         {
             ts.tv_sec = timeoutMs / 1000;
             ts.tv_nsec = (timeoutMs % 1000) * 1000000;
             pts = &ts;
         }
 
-        // Poll for events
-        std::unique_ptr<struct kevent[]> events(new struct kevent[maxCount]);
-        int numEvents = kevent(mKqueueFd, nullptr, 0, events.get(), maxCount, pts);
+        // English: Poll for events
+        // 한글: 이벤트 폴링
+        std::unique_ptr<struct kevent[]> events(new struct kevent[maxEntries]);
+        int numEvents = kevent(mKqueueFd, nullptr, 0, events.get(), static_cast<int>(maxEntries), pts);
 
         if (numEvents <= 0)
             return 0;
 
-        uint32_t processedCount = 0;
+        int processedCount = 0;
 
-        for (int i = 0; i < numEvents && processedCount < maxCount; ++i)
+        for (int i = 0; i < numEvents && processedCount < static_cast<int>(maxEntries); ++i)
         {
             struct kevent& event = events[i];
             SocketHandle socket = static_cast<SocketHandle>(event.ident);
 
+            std::lock_guard<std::mutex> lock(mMutex);
+            auto it = mPendingOps.find(socket);
+            if (it != mPendingOps.end())
             {
-                std::lock_guard<std::mutex> lock(mMutex);
-
-                auto it = mPendingOps.find(socket);
-                if (it != mPendingOps.end())
+                // English: Match event type with operation type
+                // 한글: 이벤트 타입과 작업 타입 매칭
+                if ((event.filter == EVFILT_READ && it->second.mType == AsyncIOType::Recv) ||
+                    (event.filter == EVFILT_WRITE && it->second.mType == AsyncIOType::Send))
                 {
-                    // Match event type with operation type
-                    if ((event.filter == EVFILT_READ && it->second.operationType == AsyncIOType::Recv) ||
-                        (event.filter == EVFILT_WRITE && it->second.operationType == AsyncIOType::Send))
-                    {
-                        CompletionEntry& entry = entries[processedCount];
-                        entry.operationType = it->second.operationType;
-                        entry.userData = it->second.userData;
-                        
-                        // Use data field to indicate bytes available
-                        entry.bytesTransferred = (event.data > 0) ? event.data : it->second.bufferSize;
-                        
-                        // Check for errors
-                        if (event.flags & EV_ERROR)
-                        {
-                            entry.errorCode = event.data;
-                        }
-                        else
-                        {
-                            entry.errorCode = 0;
-                        }
-                        entry.internalHandle = socket;
+                    CompletionEntry& entry = entries[processedCount];
+                    entry.mContext = it->second.mContext;
+                    entry.mType = it->second.mType;
+                    entry.mResult = (event.data > 0)
+                        ? static_cast<int32_t>(event.data)
+                        : static_cast<int32_t>(it->second.mBufferSize);
+                    entry.mOsError = (event.flags & EV_ERROR) ? static_cast<OSError>(event.data) : 0;
+                    entry.mCompletionTime = 0;
 
-                        // Call user callback
-                        if (it->second.callback)
-                            it->second.callback(entry, it->second.userData);
-
-                        mTotalBytesTransferred += entry.bytesTransferred;
-                        mPendingOps.erase(it);
-                        processedCount++;
-                    }
+                    mPendingOps.erase(it);
+                    mStats.mPendingRequests--;
+                    mStats.mTotalCompletions++;
+                    processedCount++;
                 }
             }
         }
@@ -362,40 +255,58 @@ namespace Network::AsyncIO::BSD
     }
 
     // =============================================================================
-    // Statistics & Monitoring
+    // English: Helper Methods
+    // 한글: 헬퍼 메서드
     // =============================================================================
 
-    uint32_t KqueueAsyncIOProvider::GetPendingOperationCount() const
+    bool KqueueAsyncIOProvider::RegisterSocketEvents(SocketHandle socket)
     {
-        std::lock_guard<std::mutex> lock(mMutex);
-        return static_cast<uint32_t>(mPendingOps.size());
+        // English: Register for both read and write events
+        // 한글: 읽기 및 쓰기 이벤트 등록
+        struct kevent events[2];
+        EV_SET(&events[0], socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, nullptr);
+        EV_SET(&events[1], socket, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, nullptr);
+
+        return kevent(mKqueueFd, events, 2, nullptr, 0, nullptr) >= 0;
     }
 
-    bool KqueueAsyncIOProvider::GetStatistics(void* outStats) const
+    bool KqueueAsyncIOProvider::UnregisterSocketEvents(SocketHandle socket)
     {
-        return false;  // Implement if needed
-    }
+        // English: Delete read and write events
+        // 한글: 읽기 및 쓰기 이벤트 삭제
+        struct kevent events[2];
+        EV_SET(&events[0], socket, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+        EV_SET(&events[1], socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
 
-    void KqueueAsyncIOProvider::ResetStatistics()
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-        mTotalSendOps = 0;
-        mTotalRecvOps = 0;
-        mTotalBytesTransferred = 0;
-    }
-
-    // =============================================================================
-    // Helper Methods
-    // =============================================================================
-
-    bool KqueueAsyncIOProvider::ProcessKqueueEvent(const struct kevent& event)
-    {
-        // Placeholder for event processing
+        // English: Ignore errors (socket might already be closed)
+        // 한글: 에러 무시 (소켓이 이미 닫혔을 수 있음)
+        kevent(mKqueueFd, events, 2, nullptr, 0, nullptr);
         return true;
     }
 
     // =============================================================================
-    // Factory Function
+    // English: Information & Statistics
+    // 한글: 정보 및 통계
+    // =============================================================================
+
+    const ProviderInfo& KqueueAsyncIOProvider::GetInfo() const
+    {
+        return mInfo;
+    }
+
+    ProviderStats KqueueAsyncIOProvider::GetStats() const
+    {
+        return mStats;
+    }
+
+    const char* KqueueAsyncIOProvider::GetLastError() const
+    {
+        return mLastError.c_str();
+    }
+
+    // =============================================================================
+    // English: Factory Function
+    // 한글: 팩토리 함수
     // =============================================================================
 
     std::unique_ptr<AsyncIOProvider> CreateKqueueProvider()

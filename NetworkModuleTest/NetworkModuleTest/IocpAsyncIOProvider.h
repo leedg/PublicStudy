@@ -1,166 +1,129 @@
 #pragma once
 
+// English: IOCP-based AsyncIOProvider implementation for Windows
+// 한글: Windows용 IOCP 기반 AsyncIOProvider 구현
+
 #include "AsyncIOProvider.h"
 
 #ifdef _WIN32
-#include <windows.h>
-#include <winsock2.h>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <string>
 
 namespace Network::AsyncIO::Windows
 {
     // =============================================================================
-    // IOCP-based AsyncIOProvider Implementation
+    // English: IOCP-based AsyncIOProvider Implementation
+    // 한글: IOCP 기반 AsyncIOProvider 구현
     // =============================================================================
 
     class IocpAsyncIOProvider : public AsyncIOProvider
     {
     public:
+        // English: Constructor
+        // 한글: 생성자
         IocpAsyncIOProvider();
+
+        // English: Destructor - releases IOCP resources
+        // 한글: 소멸자 - IOCP 리소스 해제
         virtual ~IocpAsyncIOProvider();
 
-        // Prevent copy
+        // English: Prevent copy (move-only semantics)
+        // 한글: 복사 방지 (move-only 의미론)
         IocpAsyncIOProvider(const IocpAsyncIOProvider&) = delete;
         IocpAsyncIOProvider& operator=(const IocpAsyncIOProvider&) = delete;
 
         // =====================================================================
-        // Initialization & Configuration
+        // English: Lifecycle Management
+        // 한글: 생명주기 관리
         // =====================================================================
 
-        bool Initialize(uint32_t maxConcurrentOps = 10000) override;
+        AsyncIOError Initialize(size_t queueDepth, size_t maxConcurrent) override;
         void Shutdown() override;
-        
-        PlatformInfo GetPlatformInfo() const override;
-        bool SupportsFeature(const char* featureName) const override;
+        bool IsInitialized() const override;
 
         // =====================================================================
-        // Socket Management
+        // English: Buffer Management
+        // 한글: 버퍼 관리
         // =====================================================================
 
-        bool RegisterSocket(SocketHandle socket) override;
-        bool UnregisterSocket(SocketHandle socket) override;
+        int64_t RegisterBuffer(const void* ptr, size_t size) override;
+        AsyncIOError UnregisterBuffer(int64_t bufferId) override;
 
         // =====================================================================
-        // Async I/O Operations
+        // English: Async I/O Requests
+        // 한글: 비동기 I/O 요청
         // =====================================================================
 
-        bool SendAsync(
+        AsyncIOError SendAsync(
             SocketHandle socket,
-            const void* data,
-            uint32_t size,
-            void* userData,
-            uint32_t flags,
-            CompletionCallback callback
+            const void* buffer,
+            size_t size,
+            RequestContext context,
+            uint32_t flags = 0
         ) override;
 
-        bool SendAsyncRegistered(
-            SocketHandle socket,
-            int64_t registeredBufferId,
-            uint32_t offset,
-            uint32_t length,
-            void* userData,
-            uint32_t flags,
-            CompletionCallback callback
-        ) override;
-
-        bool RecvAsync(
+        AsyncIOError RecvAsync(
             SocketHandle socket,
             void* buffer,
-            uint32_t size,
-            void* userData,
-            uint32_t flags,
-            CompletionCallback callback
+            size_t size,
+            RequestContext context,
+            uint32_t flags = 0
         ) override;
 
-        bool RecvAsyncRegistered(
-            SocketHandle socket,
-            int64_t registeredBufferId,
-            uint32_t offset,
-            uint32_t length,
-            void* userData,
-            uint32_t flags,
-            CompletionCallback callback
-        ) override;
+        AsyncIOError FlushRequests() override;
 
         // =====================================================================
-        // Buffer Management
+        // English: Completion Processing
+        // 한글: 완료 처리
         // =====================================================================
 
-        BufferRegistration RegisterBuffer(
-            const void* buffer,
-            uint32_t size,
-            BufferPolicy policy = BufferPolicy::Reuse
-        ) override;
-
-        bool UnregisterBuffer(int64_t bufferId) override;
-        uint32_t GetRegisteredBufferCount() const override;
-
-        // =====================================================================
-        // Completion Processing
-        // =====================================================================
-
-        uint32_t ProcessCompletions(
+        int ProcessCompletions(
             CompletionEntry* entries,
-            uint32_t maxCount,
-            uint32_t timeoutMs
+            size_t maxEntries,
+            int timeoutMs = 0
         ) override;
 
         // =====================================================================
-        // Statistics & Monitoring
+        // English: Information & Statistics
+        // 한글: 정보 및 통계
         // =====================================================================
 
-        uint32_t GetPendingOperationCount() const override;
-        bool GetStatistics(void* outStats) const override;
-        void ResetStatistics() override;
+        const ProviderInfo& GetInfo() const override;
+        ProviderStats GetStats() const override;
+        const char* GetLastError() const override;
 
     private:
         // =====================================================================
-        // Internal Data Structures
+        // English: Internal Data Structures
+        // 한글: 내부 데이터 구조
         // =====================================================================
 
+        // English: Pending operation tracking structure
+        // 한글: 대기 중인 작업 추적 구조체
         struct PendingOperation
         {
-            OVERLAPPED overlapped;
-            CompletionCallback callback;
-            void* userData;
-            WSABUF wsaBuffer;
-            std::unique_ptr<uint8_t[]> buffer;  // For dynamically allocated buffers
+            OVERLAPPED mOverlapped;              // English: IOCP overlapped structure / 한글: IOCP 오버랩 구조체
+            WSABUF mWsaBuffer;                   // English: WSA buffer / 한글: WSA 버퍼
+            std::unique_ptr<uint8_t[]> mBuffer;  // English: Dynamically allocated buffer / 한글: 동적 할당 버퍼
+            RequestContext mContext;              // English: User request context / 한글: 사용자 요청 컨텍스트
+            AsyncIOType mType;                   // English: Operation type / 한글: 작업 타입
         };
 
         // =====================================================================
-        // Member Variables
+        // English: Member Variables
+        // 한글: 멤버 변수
         // =====================================================================
 
-        HANDLE mCompletionPort;
-        std::map<SocketHandle, std::unique_ptr<PendingOperation>> mPendingOps;
-        mutable std::mutex mMutex;
-        
-        uint32_t mMaxConcurrentOps;
-        uint64_t mTotalSendOps;
-        uint64_t mTotalRecvOps;
-        uint64_t mTotalBytesTransferred;
-        
-        bool mInitialized;
-
-        // =====================================================================
-        // Helper Methods
-        // =====================================================================
-
-        /**
-         * Convert IOCP completion key to CompletionEntry
-         */
-        bool ConvertIOCPResult(
-            OVERLAPPED* overlapped,
-            DWORD bytesTransferred,
-            CompletionEntry& outEntry
-        );
-
-        /**
-         * Create a WSABUF structure for sending/receiving
-         */
-        WSABUF CreateWSABuffer(const void* data, uint32_t size);
+        HANDLE mCompletionPort;                  // English: IOCP completion port handle / 한글: IOCP 완료 포트 핸들
+        std::map<SocketHandle, std::unique_ptr<PendingOperation>> mPendingOps;  // English: Pending ops / 한글: 대기 작업
+        mutable std::mutex mMutex;               // English: Thread safety mutex / 한글: 스레드 안전성 뮤텍스
+        ProviderInfo mInfo;                      // English: Provider info cache / 한글: 공급자 정보 캐시
+        ProviderStats mStats;                    // English: Statistics / 한글: 통계
+        std::string mLastError;                  // English: Last error message / 한글: 마지막 에러 메시지
+        size_t mMaxConcurrentOps;                // English: Max concurrent ops / 한글: 최대 동시 작업 수
+        bool mInitialized;                       // English: Initialization flag / 한글: 초기화 플래그
     };
 
 }  // namespace Network::AsyncIO::Windows

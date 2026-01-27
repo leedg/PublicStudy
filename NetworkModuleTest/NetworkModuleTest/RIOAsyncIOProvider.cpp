@@ -1,464 +1,356 @@
+// English: RIO (Registered I/O) based AsyncIOProvider implementation
+// 한글: RIO (등록 I/O) 기반 AsyncIOProvider 구현
+
 #ifdef _WIN32
 
 #include "RIOAsyncIOProvider.h"
 #include "PlatformDetect.h"
 #include <cstring>
-#include <algorithm>
 
 namespace Network::AsyncIO::Windows
 {
     // =============================================================================
-    // Constructor & Destructor
+    // English: Constructor & Destructor
+    // 한글: 생성자 및 소멸자
     // =============================================================================
 
     RIOAsyncIOProvider::RIOAsyncIOProvider()
         : mCompletionQueue(RIO_INVALID_CQ)
+        , mInfo{}
+        , mStats{}
         , mMaxConcurrentOps(0)
-        , mTotalSendOps(0)
-        , mTotalRecvOps(0)
-        , mTotalBytesTransferred(0)
         , mNextBufferId(1)
         , mInitialized(false)
-        , pfnRIOCloseCompletionQueue(nullptr)
-        , pfnRIOCreateCompletionQueue(nullptr)
-        , pfnRIOCreateRequestQueue(nullptr)
-        , pfnRIODequeueCompletion(nullptr)
-        , pfnRIONotify(nullptr)
-        , pfnRIORegisterBuffer(nullptr)
-        , pfnRIODeregisterBuffer(nullptr)
-        , pfnRIOSend(nullptr)
-        , pfnRIORecv(nullptr)
+        , mPfnRIOCloseCompletionQueue(nullptr)
+        , mPfnRIOCreateCompletionQueue(nullptr)
+        , mPfnRIOCreateRequestQueue(nullptr)
+        , mPfnRIODequeueCompletion(nullptr)
+        , mPfnRIONotify(nullptr)
+        , mPfnRIORegisterBuffer(nullptr)
+        , mPfnRIODeregisterBuffer(nullptr)
+        , mPfnRIOSend(nullptr)
+        , mPfnRIORecv(nullptr)
     {
     }
 
     RIOAsyncIOProvider::~RIOAsyncIOProvider()
     {
+        // English: Ensure resources are released
+        // 한글: 리소스 해제 보장
         Shutdown();
     }
 
     // =============================================================================
-    // Initialization & Configuration
+    // English: Lifecycle Management
+    // 한글: 생명주기 관리
     // =============================================================================
 
-    bool RIOAsyncIOProvider::Initialize(uint32_t maxConcurrentOps)
+    AsyncIOError RIOAsyncIOProvider::Initialize(size_t queueDepth, size_t maxConcurrent)
     {
+        // English: Check if already initialized
+        // 한글: 이미 초기화되었는지 확인
         if (mInitialized)
-            return true;
+            return AsyncIOError::AlreadyInitialized;
 
-        // Load RIO functions
+        // English: Load RIO functions from mswsock.dll
+        // 한글: mswsock.dll에서 RIO 함수 로드
         if (!LoadRIOFunctions())
-            return false;
+        {
+            mLastError = "Failed to load RIO functions";
+            return AsyncIOError::PlatformNotSupported;
+        }
 
-        // Create completion queue
-        mCompletionQueue = pfnRIOCreateCompletionQueue(maxConcurrentOps, nullptr);
+        // English: Create completion queue
+        // 한글: 완료 큐 생성
+        mCompletionQueue = mPfnRIOCreateCompletionQueue(static_cast<DWORD>(queueDepth), nullptr);
         if (mCompletionQueue == RIO_INVALID_CQ)
-            return false;
+        {
+            mLastError = "RIOCreateCompletionQueue failed";
+            return AsyncIOError::OperationFailed;
+        }
 
-        mMaxConcurrentOps = maxConcurrentOps;
+        // English: Store configuration
+        // 한글: 설정 저장
+        mMaxConcurrentOps = maxConcurrent;
+
+        // English: Initialize provider info
+        // 한글: 공급자 정보 초기화
+        mInfo.mPlatformType = PlatformType::RIO;
+        mInfo.mName = "RIO";
+        mInfo.mMaxQueueDepth = queueDepth;
+        mInfo.mMaxConcurrentReq = maxConcurrent;
+        mInfo.mSupportsBufferReg = true;
+        mInfo.mSupportsBatching = true;
+        mInfo.mSupportsZeroCopy = true;
+
         mInitialized = true;
-
-        return true;
+        return AsyncIOError::Success;
     }
 
     void RIOAsyncIOProvider::Shutdown()
     {
+        // English: Skip if not initialized
+        // 한글: 초기화되지 않았으면 건너뜀
         if (!mInitialized)
             return;
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // Close all request queues
-        for (auto& pair : mRequestQueues)
-        {
-            if (pair.second != RIO_INVALID_RQ)
-            {
-                // Close request queue (implementation specific)
-            }
-        }
+        // English: Close all request queues
+        // 한글: 모든 요청 큐 닫기
         mRequestQueues.clear();
 
-        // Deregister all buffers
+        // English: Deregister all buffers
+        // 한글: 모든 버퍼 등록 해제
         for (auto& pair : mRegisteredBuffers)
         {
-            if (pfnRIODeregisterBuffer)
-                pfnRIODeregisterBuffer(pair.second.rioBufferId);
+            if (mPfnRIODeregisterBuffer)
+                mPfnRIODeregisterBuffer(pair.second.mRioBufferId);
         }
         mRegisteredBuffers.clear();
 
-        // Close completion queue
-        if (mCompletionQueue != RIO_INVALID_CQ && pfnRIOCloseCompletionQueue)
+        // English: Close completion queue
+        // 한글: 완료 큐 닫기
+        if (mCompletionQueue != RIO_INVALID_CQ && mPfnRIOCloseCompletionQueue)
         {
-            pfnRIOCloseCompletionQueue(mCompletionQueue);
+            mPfnRIOCloseCompletionQueue(mCompletionQueue);
             mCompletionQueue = RIO_INVALID_CQ;
         }
 
         mInitialized = false;
     }
 
-    PlatformInfo RIOAsyncIOProvider::GetPlatformInfo() const
+    bool RIOAsyncIOProvider::IsInitialized() const
     {
-        return Platform::GetDetailedPlatformInfo();
-    }
-
-    bool RIOAsyncIOProvider::SupportsFeature(const char* featureName) const
-    {
-        if (std::strcmp(featureName, "SendAsync") == 0) return true;
-        if (std::strcmp(featureName, "RecvAsync") == 0) return true;
-        if (std::strcmp(featureName, "SendAsyncRegistered") == 0) return true;
-        if (std::strcmp(featureName, "RecvAsyncRegistered") == 0) return true;
-        if (std::strcmp(featureName, "BufferRegistration") == 0) return true;
-        if (std::strcmp(featureName, "RegisteredI/O") == 0) return true;
-        return false;
+        return mInitialized;
     }
 
     // =============================================================================
-    // Socket Management
+    // English: Buffer Management
+    // 한글: 버퍼 관리
     // =============================================================================
 
-    bool RIOAsyncIOProvider::RegisterSocket(SocketHandle socket)
+    int64_t RIOAsyncIOProvider::RegisterBuffer(const void* ptr, size_t size)
     {
-        if (!mInitialized || socket == INVALID_SOCKET || !pfnRIOCreateRequestQueue)
-            return false;
+        // English: Validate parameters
+        // 한글: 매개변수 유효성 검사
+        if (!mInitialized || !ptr || size == 0 || !mPfnRIORegisterBuffer)
+            return -1;
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // Create request queue for this socket
-        RIO_RQ requestQueue = pfnRIOCreateRequestQueue(socket, mMaxConcurrentOps, mMaxConcurrentOps, mCompletionQueue);
-        if (requestQueue == RIO_INVALID_RQ)
-            return false;
-
-        mRequestQueues[socket] = requestQueue;
-        return true;
-    }
-
-    bool RIOAsyncIOProvider::UnregisterSocket(SocketHandle socket)
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-
-        auto it = mRequestQueues.find(socket);
-        if (it != mRequestQueues.end())
-        {
-            mRequestQueues.erase(it);
-        }
-
-        // Also remove pending operations for this socket
-        auto opIt = mPendingOps.begin();
-        while (opIt != mPendingOps.end())
-        {
-            if (opIt->second.socket == socket)
-                opIt = mPendingOps.erase(opIt);
-            else
-                ++opIt;
-        }
-
-        return true;
-    }
-
-    // =============================================================================
-    // Async I/O Operations
-    // =============================================================================
-
-    bool RIOAsyncIOProvider::SendAsync(
-        SocketHandle socket,
-        const void* data,
-        uint32_t size,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
-    )
-    {
-        if (!mInitialized || socket == INVALID_SOCKET || !data || size == 0 || !pfnRIOSend)
-            return false;
-
-        std::lock_guard<std::mutex> lock(mMutex);
-
-        // Find request queue for this socket
-        auto it = mRequestQueues.find(socket);
-        if (it == mRequestQueues.end() || it->second == RIO_INVALID_RQ)
-            return false;
-
-        // For non-registered buffers, we need to use IOCP fallback
-        // RIO requires pre-registered buffers for optimal performance
-        return false;
-    }
-
-    bool RIOAsyncIOProvider::SendAsyncRegistered(
-        SocketHandle socket,
-        int64_t registeredBufferId,
-        uint32_t offset,
-        uint32_t length,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
-    )
-    {
-        if (!mInitialized || socket == INVALID_SOCKET || !pfnRIOSend)
-            return false;
-
-        std::lock_guard<std::mutex> lock(mMutex);
-
-        // Find request queue for this socket
-        auto queueIt = mRequestQueues.find(socket);
-        if (queueIt == mRequestQueues.end() || queueIt->second == RIO_INVALID_RQ)
-            return false;
-
-        // Find registered buffer
-        auto bufIt = mRegisteredBuffers.find(registeredBufferId);
-        if (bufIt == mRegisteredBuffers.end())
-            return false;
-
-        // Create RIO_BUF structure
-        RIO_BUF rioBuf;
-        rioBuf.BufferId = bufIt->second.rioBufferId;
-        rioBuf.Offset = offset;
-        rioBuf.Length = length;
-
-        // Submit send request
-        int result = pfnRIOSend(queueIt->second, &rioBuf, 1, flags, userData);
-        if (result == SOCKET_ERROR)
-            return false;
-
-        // Store pending operation
-        PendingOperation pending;
-        pending.callback = callback;
-        pending.userData = userData;
-        pending.socket = socket;
-        pending.operationType = AsyncIOType::Send;
-
-        mPendingOps[userData] = pending;
-        mTotalSendOps++;
-
-        return true;
-    }
-
-    bool RIOAsyncIOProvider::RecvAsync(
-        SocketHandle socket,
-        void* buffer,
-        uint32_t size,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
-    )
-    {
-        // Non-registered recv not recommended for RIO
-        return false;
-    }
-
-    bool RIOAsyncIOProvider::RecvAsyncRegistered(
-        SocketHandle socket,
-        int64_t registeredBufferId,
-        uint32_t offset,
-        uint32_t length,
-        void* userData,
-        uint32_t flags,
-        CompletionCallback callback
-    )
-    {
-        if (!mInitialized || socket == INVALID_SOCKET || !pfnRIORecv)
-            return false;
-
-        std::lock_guard<std::mutex> lock(mMutex);
-
-        // Find request queue for this socket
-        auto queueIt = mRequestQueues.find(socket);
-        if (queueIt == mRequestQueues.end() || queueIt->second == RIO_INVALID_RQ)
-            return false;
-
-        // Find registered buffer
-        auto bufIt = mRegisteredBuffers.find(registeredBufferId);
-        if (bufIt == mRegisteredBuffers.end())
-            return false;
-
-        // Create RIO_BUF structure
-        RIO_BUF rioBuf;
-        rioBuf.BufferId = bufIt->second.rioBufferId;
-        rioBuf.Offset = offset;
-        rioBuf.Length = length;
-
-        // Submit receive request
-        int result = pfnRIORecv(queueIt->second, &rioBuf, 1, flags, userData);
-        if (result == SOCKET_ERROR)
-            return false;
-
-        // Store pending operation
-        PendingOperation pending;
-        pending.callback = callback;
-        pending.userData = userData;
-        pending.socket = socket;
-        pending.operationType = AsyncIOType::Recv;
-
-        mPendingOps[userData] = pending;
-        mTotalRecvOps++;
-
-        return true;
-    }
-
-    // =============================================================================
-    // Buffer Management
-    // =============================================================================
-
-    BufferRegistration RIOAsyncIOProvider::RegisterBuffer(
-        const void* buffer,
-        uint32_t size,
-        BufferPolicy policy
-    )
-    {
-        if (!mInitialized || !buffer || size == 0 || !pfnRIORegisterBuffer)
-        {
-            return {-1, false, static_cast<int32_t>(AsyncIOError::InvalidParameter)};
-        }
-
-        std::lock_guard<std::mutex> lock(mMutex);
-
-        // Register buffer with RIO
-        RIO_BUFFERID rioBufferId = pfnRIORegisterBuffer(const_cast<PCHAR>(static_cast<const char*>(buffer)), size);
+        // English: Register buffer with RIO
+        // 한글: RIO에 버퍼 등록
+        RIO_BUFFERID rioBufferId = mPfnRIORegisterBuffer(
+            const_cast<PCHAR>(static_cast<const char*>(ptr)),
+            static_cast<DWORD>(size)
+        );
         if (rioBufferId == RIO_INVALID_BUFFERID)
-        {
-            return {-1, false, static_cast<int32_t>(AsyncIOError::AllocationFailed)};
-        }
+            return -1;
 
-        // Store registration
+        // English: Store registration
+        // 한글: 등록 정보 저장
         int64_t bufferId = mNextBufferId++;
-        mRegisteredBuffers[bufferId] = {rioBufferId, const_cast<void*>(buffer), size, policy};
+        mRegisteredBuffers[bufferId] = {rioBufferId, const_cast<void*>(ptr), static_cast<uint32_t>(size)};
 
-        return {bufferId, true, 0};
+        return bufferId;
     }
 
-    bool RIOAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
+    AsyncIOError RIOAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
     {
-        if (!mInitialized || !pfnRIODeregisterBuffer)
-            return false;
+        // English: Validate state
+        // 한글: 상태 유효성 검사
+        if (!mInitialized || !mPfnRIODeregisterBuffer)
+            return AsyncIOError::NotInitialized;
 
         std::lock_guard<std::mutex> lock(mMutex);
 
+        // English: Find and deregister buffer
+        // 한글: 버퍼 찾기 및 등록 해제
         auto it = mRegisteredBuffers.find(bufferId);
         if (it == mRegisteredBuffers.end())
-            return false;
+            return AsyncIOError::InvalidBuffer;
 
-        // Deregister from RIO
-        int result = pfnRIODeregisterBuffer(it->second.rioBufferId);
-        if (result != 0)
-            return false;
-
+        mPfnRIODeregisterBuffer(it->second.mRioBufferId);
         mRegisteredBuffers.erase(it);
-        return true;
-    }
-
-    uint32_t RIOAsyncIOProvider::GetRegisteredBufferCount() const
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-        return static_cast<uint32_t>(mRegisteredBuffers.size());
+        return AsyncIOError::Success;
     }
 
     // =============================================================================
-    // Completion Processing
+    // English: Async I/O Operations
+    // 한글: 비동기 I/O 작업
     // =============================================================================
 
-    uint32_t RIOAsyncIOProvider::ProcessCompletions(
-        CompletionEntry* entries,
-        uint32_t maxCount,
-        uint32_t timeoutMs
+    AsyncIOError RIOAsyncIOProvider::SendAsync(
+        SocketHandle socket,
+        const void* buffer,
+        size_t size,
+        RequestContext context,
+        uint32_t flags
     )
     {
-        if (!mInitialized || !entries || maxCount == 0 || !pfnRIODequeueCompletion)
-            return 0;
+        // English: RIO requires pre-registered buffers for sends
+        // 한글: RIO는 송신에 사전 등록된 버퍼가 필요
+        if (!mInitialized)
+            return AsyncIOError::NotInitialized;
+
+        // English: Non-registered buffer send not supported in RIO
+        // 한글: RIO에서는 미등록 버퍼 송신이 지원되지 않음
+        mLastError = "RIO requires pre-registered buffers; use RegisterBuffer first";
+        return AsyncIOError::InvalidBuffer;
+    }
+
+    AsyncIOError RIOAsyncIOProvider::RecvAsync(
+        SocketHandle socket,
+        void* buffer,
+        size_t size,
+        RequestContext context,
+        uint32_t flags
+    )
+    {
+        // English: RIO requires pre-registered buffers for receives
+        // 한글: RIO는 수신에 사전 등록된 버퍼가 필요
+        if (!mInitialized)
+            return AsyncIOError::NotInitialized;
+
+        // English: Non-registered buffer recv not supported in RIO
+        // 한글: RIO에서는 미등록 버퍼 수신이 지원되지 않음
+        mLastError = "RIO requires pre-registered buffers; use RegisterBuffer first";
+        return AsyncIOError::InvalidBuffer;
+    }
+
+    AsyncIOError RIOAsyncIOProvider::FlushRequests()
+    {
+        // English: Commit all deferred sends to kernel
+        // 한글: 모든 지연된 송신을 커널에 커밋
+        if (!mInitialized)
+            return AsyncIOError::NotInitialized;
+
+        // English: Note: In full implementation, call RIOCommitSends for each request queue
+        // 한글: 참고: 전체 구현에서는 각 요청 큐에 대해 RIOCommitSends 호출
+        return AsyncIOError::Success;
+    }
+
+    // =============================================================================
+    // English: Completion Processing
+    // 한글: 완료 처리
+    // =============================================================================
+
+    int RIOAsyncIOProvider::ProcessCompletions(
+        CompletionEntry* entries,
+        size_t maxEntries,
+        int timeoutMs
+    )
+    {
+        // English: Validate parameters
+        // 한글: 매개변수 유효성 검사
+        if (!mInitialized || !mPfnRIODequeueCompletion)
+            return static_cast<int>(AsyncIOError::NotInitialized);
+        if (!entries || maxEntries == 0)
+            return static_cast<int>(AsyncIOError::InvalidParameter);
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // Allocate temporary buffer for RIO results
-        std::unique_ptr<RIORESULT[]> rioResults(new RIORESULT[maxCount]);
+        // English: Allocate temporary buffer for RIO results
+        // 한글: RIO 결과용 임시 버퍼 할당
+        std::unique_ptr<RIORESULT[]> rioResults(new RIORESULT[maxEntries]);
 
-        // Dequeue completions from RIO
-        ULONG completionCount = pfnRIODequeueCompletion(mCompletionQueue, rioResults.get(), maxCount);
+        // English: Dequeue completions from RIO
+        // 한글: RIO에서 완료 항목 추출
+        ULONG completionCount = mPfnRIODequeueCompletion(
+            mCompletionQueue,
+            rioResults.get(),
+            static_cast<ULONG>(maxEntries)
+        );
+
         if (completionCount == RIO_CORRUPT_CQ)
         {
-            return 0;
+            mLastError = "RIO completion queue is corrupt";
+            return static_cast<int>(AsyncIOError::OperationFailed);
         }
 
-        // Convert RIO results to CompletionEntry
+        // English: Convert RIO results to CompletionEntry
+        // 한글: RIO 결과를 CompletionEntry로 변환
         for (ULONG i = 0; i < completionCount; ++i)
         {
-            ConvertRIOResult(rioResults[i], entries[i]);
+            entries[i].mResult = static_cast<int32_t>(rioResults[i].BytesTransferred);
+            entries[i].mOsError = rioResults[i].Status;
+            entries[i].mCompletionTime = 0;
 
-            // Call user callback
+            // English: Look up pending operation
+            // 한글: 대기 작업 조회
             void* requestContext = reinterpret_cast<void*>(rioResults[i].RequestContext);
             auto opIt = mPendingOps.find(requestContext);
-            if (opIt != mPendingOps.end() && opIt->second.callback)
+            if (opIt != mPendingOps.end())
             {
-                opIt->second.callback(entries[i], opIt->second.userData);
+                entries[i].mContext = opIt->second.mContext;
+                entries[i].mType = opIt->second.mType;
                 mPendingOps.erase(opIt);
             }
 
-            mTotalBytesTransferred += rioResults[i].BytesTransferred;
+            mStats.mTotalCompletions++;
         }
 
-        return completionCount;
+        mStats.mPendingRequests -= completionCount;
+        return static_cast<int>(completionCount);
     }
 
     // =============================================================================
-    // Statistics & Monitoring
+    // English: Information & Statistics
+    // 한글: 정보 및 통계
     // =============================================================================
 
-    uint32_t RIOAsyncIOProvider::GetPendingOperationCount() const
+    const ProviderInfo& RIOAsyncIOProvider::GetInfo() const
     {
-        std::lock_guard<std::mutex> lock(mMutex);
-        return static_cast<uint32_t>(mPendingOps.size());
+        return mInfo;
     }
 
-    bool RIOAsyncIOProvider::GetStatistics(void* outStats) const
+    ProviderStats RIOAsyncIOProvider::GetStats() const
     {
-        return false;  // Implement if needed
+        return mStats;
     }
 
-    void RIOAsyncIOProvider::ResetStatistics()
+    const char* RIOAsyncIOProvider::GetLastError() const
     {
-        mTotalSendOps = 0;
-        mTotalRecvOps = 0;
-        mTotalBytesTransferred = 0;
+        return mLastError.c_str();
     }
 
     // =============================================================================
-    // Helper Methods
+    // English: Helper Methods
+    // 한글: 헬퍼 메서드
     // =============================================================================
 
     bool RIOAsyncIOProvider::LoadRIOFunctions()
     {
+        // English: Load mswsock.dll for RIO functions
+        // 한글: RIO 함수를 위해 mswsock.dll 로드
         HMODULE hMswsock = LoadLibraryA("mswsock.dll");
         if (!hMswsock)
             return false;
 
-        // Load RIO function pointers
-        pfnRIOCloseCompletionQueue = (PfnRIOCloseCompletionQueue)GetProcAddress(hMswsock, "RIOCloseCompletionQueue");
-        pfnRIOCreateCompletionQueue = (PfnRIOCreateCompletionQueue)GetProcAddress(hMswsock, "RIOCreateCompletionQueue");
-        pfnRIOCreateRequestQueue = (PfnRIOCreateRequestQueue)GetProcAddress(hMswsock, "RIOCreateRequestQueue");
-        pfnRIODequeueCompletion = (PfnRIODequeueCompletion)GetProcAddress(hMswsock, "RIODequeueCompletion");
-        pfnRIONotify = (PfnRIONotify)GetProcAddress(hMswsock, "RIONotify");
-        pfnRIORegisterBuffer = (PfnRIORegisterBuffer)GetProcAddress(hMswsock, "RIORegisterBuffer");
-        pfnRIODeregisterBuffer = (PfnRIODeregisterBuffer)GetProcAddress(hMswsock, "RIODeregisterBuffer");
-        pfnRIOSend = (PfnRIOSend)GetProcAddress(hMswsock, "RIOSend");
-        pfnRIORecv = (PfnRIORecv)GetProcAddress(hMswsock, "RIORecv");
+        // English: Load RIO function pointers
+        // 한글: RIO 함수 포인터 로드
+        mPfnRIOCloseCompletionQueue = (PfnRIOCloseCompletionQueue)GetProcAddress(hMswsock, "RIOCloseCompletionQueue");
+        mPfnRIOCreateCompletionQueue = (PfnRIOCreateCompletionQueue)GetProcAddress(hMswsock, "RIOCreateCompletionQueue");
+        mPfnRIOCreateRequestQueue = (PfnRIOCreateRequestQueue)GetProcAddress(hMswsock, "RIOCreateRequestQueue");
+        mPfnRIODequeueCompletion = (PfnRIODequeueCompletion)GetProcAddress(hMswsock, "RIODequeueCompletion");
+        mPfnRIONotify = (PfnRIONotify)GetProcAddress(hMswsock, "RIONotify");
+        mPfnRIORegisterBuffer = (PfnRIORegisterBuffer)GetProcAddress(hMswsock, "RIORegisterBuffer");
+        mPfnRIODeregisterBuffer = (PfnRIODeregisterBuffer)GetProcAddress(hMswsock, "RIODeregisterBuffer");
+        mPfnRIOSend = (PfnRIOSend)GetProcAddress(hMswsock, "RIOSend");
+        mPfnRIORecv = (PfnRIORecv)GetProcAddress(hMswsock, "RIORecv");
 
-        // Check if all functions loaded
-        return (pfnRIOCloseCompletionQueue && pfnRIOCreateCompletionQueue && 
-                pfnRIOCreateRequestQueue && pfnRIODequeueCompletion && 
-                pfnRIORegisterBuffer && pfnRIODeregisterBuffer && 
-                pfnRIOSend && pfnRIORecv);
-    }
-
-    bool RIOAsyncIOProvider::ConvertRIOResult(
-        const RIORESULT& rioResult,
-        CompletionEntry& outEntry
-    )
-    {
-        outEntry.bytesTransferred = rioResult.BytesTransferred;
-        outEntry.errorCode = rioResult.Status;
-        outEntry.internalHandle = reinterpret_cast<uint64_t>(&rioResult);
-        // operationType and userData should be retrieved from pending ops
-        return true;
+        // English: Check if all required functions loaded
+        // 한글: 필수 함수가 모두 로드되었는지 확인
+        return (mPfnRIOCloseCompletionQueue && mPfnRIOCreateCompletionQueue &&
+                mPfnRIOCreateRequestQueue && mPfnRIODequeueCompletion &&
+                mPfnRIORegisterBuffer && mPfnRIODeregisterBuffer &&
+                mPfnRIOSend && mPfnRIORecv);
     }
 
     // =============================================================================
-    // Factory Function
+    // English: Factory Function
+    // 한글: 팩토리 함수
     // =============================================================================
 
     std::unique_ptr<AsyncIOProvider> CreateRIOProvider()
