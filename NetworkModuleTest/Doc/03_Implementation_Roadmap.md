@@ -1126,3 +1126,335 @@ TEST(SendBufferTest, Concatenation)
    - Phase 2: Windows IOCP 구현
    - Phase 3+: 플랫폼 확장
 
+---
+
+## 플랫폼 감지 현대화 (Platform Detection Modernization)
+
+### 개요
+
+기존 플랫폼 감지 메커니즘을 현대식 API로 업그레이드하여 유지보수성 및 확장성을 향상시킵니다.
+
+### Windows 플랫폼 감지 개선
+
+#### ✅ Recommended: VersionHelpers.h (Windows 7+)
+
+```cpp
+#include <VersionHelpers.h>
+
+// 영문: Modern version checking
+// 한글: 현대식 버전 검사
+
+bool IsModernWindowsAvailable()
+{
+    return IsWindows8OrGreater();
+}
+
+bool SupportRIO()
+{
+    return IsWindows8OrGreater();
+}
+
+bool SupportSockaddr_Storage()
+{
+    return IsWindowsVista OrGreater();
+}
+```
+
+**장점**:
+- 간결하고 읽기 쉬운 API
+- Microsoft 공식 권장
+- Visual Studio에 기본 제공
+
+**단점**:
+- Windows 7 이상만 지원
+- 세부 버전 정보 미제공
+
+#### ✅ Alternative: RtlGetVersion (더 신뢰성 있음)
+
+```cpp
+#include <winternl.h>
+#pragma comment(lib, "ntdll.lib")
+
+typedef NTSTATUS(WINAPI *RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+
+struct WindowsVersionInfo
+{
+    DWORD major;
+    DWORD minor;
+    DWORD build;
+};
+
+bool GetWindowsVersion(WindowsVersionInfo& info)
+{
+    // 영문: Load ntdll dynamically
+    // 한글: ntdll 동적 로드
+    
+    HMODULE hModNtdll = GetModuleHandleW(L"ntdll.dll");
+    if (!hModNtdll)
+    {
+        LOG_ERROR("Failed to load ntdll.dll");
+        return false;
+    }
+    
+    // 영문: Get RtlGetVersion function
+    // 한글: RtlGetVersion 함수 획득
+    
+    RtlGetVersionPtr fxGetVersion = (RtlGetVersionPtr)GetProcAddress(
+        hModNtdll, "RtlGetVersion");
+    
+    if (!fxGetVersion)
+    {
+        LOG_ERROR("Failed to get RtlGetVersion");
+        return false;
+    }
+    
+    // 영문: Call and extract version info
+    // 한글: 호출 및 버전 정보 추출
+    
+    RTL_OSVERSIONINFOW rovi = { 0 };
+    rovi.dwOSVersionInfoSize = sizeof(rovi);
+    
+    NTSTATUS ntStatus = fxGetVersion(&rovi);
+    if (NT_SUCCESS(ntStatus))
+    {
+        info.major = rovi.dwMajorVersion;
+        info.minor = rovi.dwMinorVersion;
+        info.build = rovi.dwBuildNumber;
+        return true;
+    }
+    
+    return false;
+}
+```
+
+**장점**:
+- 세부 버전 정보 제공
+- 모든 Windows 버전에서 작동
+- 더 신뢰할 수 있음
+
+**단점**:
+- 내부 API 사용
+- 코드가 더 복잡
+
+### Linux 플랫폼 감지
+
+```cpp
+#include <sys/utsname.h>
+#include <sys/syscall.h>
+#include <linux/version.h>
+
+// 영문: Get kernel version
+// 한글: 커널 버전 획득
+
+struct KernelVersion
+{
+    int major;
+    int minor;
+    int patch;
+};
+
+bool GetKernelVersion(KernelVersion& version)
+{
+    struct utsname buf;
+    if (uname(&buf) != 0)
+    {
+        LOG_ERROR("uname failed");
+        return false;
+    }
+    
+    // Parse version string (e.g., "5.15.0-56-generic")
+    int parsed = sscanf(buf.release, "%d.%d.%d",
+        &version.major, &version.minor, &version.patch);
+    
+    return parsed == 3;
+}
+
+// 영문: Check io_uring support
+// 한글: io_uring 지원 확인
+
+bool SupportsIOUring()
+{
+    KernelVersion version;
+    if (!GetKernelVersion(version))
+        return false;
+    
+    // io_uring: Linux 5.1+ (kernel 5.1.0)
+    if (version.major > 5)
+        return true;
+    
+    if (version.major == 5 && version.minor >= 1)
+        return true;
+    
+    return false;
+}
+
+// 영문: Check epoll support (all modern Linux)
+// 한글: epoll 지원 (모든 현대식 Linux)
+
+bool SupportsEpoll()
+{
+    // epoll: Linux 2.5.45+ (always available on modern systems)
+    return true;
+}
+
+// 영문: Runtime check using syscall
+// 한글: 시스콜을 사용한 런타임 확인
+
+bool CheckIOUringAvailable()
+{
+    // Create io_uring and check if supported
+    struct io_uring ring;
+    int ret = io_uring_queue_init(16, &ring, 0);
+    
+    if (ret < 0)
+    {
+        // io_uring not available
+        return false;
+    }
+    
+    io_uring_queue_exit(&ring);
+    return true;
+}
+```
+
+### macOS 플랫폼 감지
+
+```cpp
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#include <AvailabilityMacros.h>
+
+// 영문: Get macOS version
+// 한글: macOS 버전 획득
+
+struct MacOSVersion
+{
+    int major;
+    int minor;
+    int patch;
+};
+
+bool GetMacOSVersion(MacOSVersion& version)
+{
+    int mib[2] = { CTL_KERN, KERN_OSRELEASE };
+    char release[256] = { 0 };
+    size_t len = sizeof(release);
+    
+    if (sysctl(mib, 2, release, &len, nullptr, 0) != 0)
+    {
+        LOG_ERROR("sysctl failed");
+        return false;
+    }
+    
+    // Parse kernel release to macOS version
+    // Kernel 20.x.x = macOS 11 (Big Sur)
+    // Kernel 21.x.x = macOS 12 (Monterey)
+    // etc.
+    
+    int kernel_major;
+    sscanf(release, "%d", &kernel_major);
+    version.major = kernel_major - 9;  // Approximate conversion
+    
+    return true;
+}
+
+// 영문: Check kqueue support (all macOS)
+// 한글: kqueue 지원 (모든 macOS)
+
+bool SupportsKqueue()
+{
+    // kqueue: macOS 10.0+ (always available)
+    return true;
+}
+
+// 영문: Check Mach ports (for event notification)
+// 한글: Mach 포트 확인 (이벤트 알림용)
+
+bool SupportsMachPorts()
+{
+    // macOS 10.0+
+    return true;
+}
+```
+
+### 통합 플랫폼 감지
+
+```cpp
+// 파일: PlatformDetect.h
+
+class PlatformDetector
+{
+public:
+    enum class Platform
+    {
+        Windows,
+        Linux,
+        macOS,
+        Unknown
+    };
+    
+    enum class IOProvider
+    {
+        IOCP,      // Windows fallback
+        RIO,       // Windows 8+
+        IOUring,   // Linux 5.1+
+        Epoll,     // Linux fallback
+        Kqueue,    // macOS
+        Unknown
+    };
+    
+    // 영문: Detect current platform
+    // 한글: 현재 플랫폼 감지
+    
+    static Platform DetectPlatform()
+    {
+#ifdef _WIN32
+        return Platform::Windows;
+#elif __linux__
+        return Platform::Linux;
+#elif __APPLE__
+        return Platform::macOS;
+#else
+        return Platform::Unknown;
+#endif
+    }
+    
+    // 영문: Detect best IO provider
+    // 한글: 최적 IO 제공자 감지
+    
+    static IOProvider DetectBestIOProvider()
+    {
+        Platform platform = DetectPlatform();
+        
+        switch (platform)
+        {
+            case Platform::Windows:
+                if (IsWindows8OrGreater())
+                    return IOProvider::RIO;
+                return IOProvider::IOCP;
+                
+            case Platform::Linux:
+                if (CheckIOUringAvailable())
+                    return IOProvider::IOUring;
+                return IOProvider::Epoll;
+                
+            case Platform::macOS:
+                return IOProvider::Kqueue;
+                
+            default:
+                return IOProvider::Unknown;
+        }
+    }
+};
+```
+
+### 구현 체크리스트
+
+- [ ] VersionHelpers.h 기반 Windows 감지
+- [ ] RtlGetVersion 대체 구현
+- [ ] Linux uname 기반 커널 버전 감지
+- [ ] io_uring 런타임 가용성 확인
+- [ ] macOS sysctl 버전 감지
+- [ ] 통합 PlatformDetector 클래스
+- [ ] 테스트 (모든 플랫폼 감지 경로)
+
