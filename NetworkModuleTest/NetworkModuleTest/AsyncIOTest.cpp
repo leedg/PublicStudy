@@ -65,7 +65,7 @@ void TestAsyncIOProviderCreation()
             std::cout << "[PASS] Provider initialized successfully" << std::endl;
             
             auto platformInfo = provider->GetPlatformInfo();
-            std::cout << "Platform: " << platformInfo.osName << std::endl;
+            std::cout << "Platform: " << platformInfo.platformName << std::endl;
             std::cout << "Version: " << (int)platformInfo.majorVersion << "." 
                       << (int)platformInfo.minorVersion << std::endl;
             

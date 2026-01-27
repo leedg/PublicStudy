@@ -366,22 +366,23 @@ namespace Network::AsyncIO::Windows
         std::lock_guard<std::mutex> lock(mMutex);
 
         // Allocate temporary buffer for RIO results
-        std::unique_ptr<RIO_RESULT[]> rioResults(new RIO_RESULT[maxCount]);
+        std::unique_ptr<RIORESULT[]> rioResults(new RIORESULT[maxCount]);
 
         // Dequeue completions from RIO
-        DWORD completionCount = pfnRIODequeueCompletion(mCompletionQueue, rioResults.get(), maxCount);
+        ULONG completionCount = pfnRIODequeueCompletion(mCompletionQueue, rioResults.get(), maxCount);
         if (completionCount == RIO_CORRUPT_CQ)
         {
             return 0;
         }
 
         // Convert RIO results to CompletionEntry
-        for (DWORD i = 0; i < completionCount; ++i)
+        for (ULONG i = 0; i < completionCount; ++i)
         {
             ConvertRIOResult(rioResults[i], entries[i]);
 
             // Call user callback
-            auto opIt = mPendingOps.find(rioResults[i].RequestContext);
+            void* requestContext = reinterpret_cast<void*>(rioResults[i].RequestContext);
+            auto opIt = mPendingOps.find(requestContext);
             if (opIt != mPendingOps.end() && opIt->second.callback)
             {
                 opIt->second.callback(entries[i], opIt->second.userData);
@@ -445,7 +446,7 @@ namespace Network::AsyncIO::Windows
     }
 
     bool RIOAsyncIOProvider::ConvertRIOResult(
-        const RIO_RESULT& rioResult,
+        const RIORESULT& rioResult,
         CompletionEntry& outEntry
     )
     {

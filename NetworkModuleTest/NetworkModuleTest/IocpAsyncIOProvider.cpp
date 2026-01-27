@@ -95,7 +95,7 @@ namespace Network::AsyncIO::Windows
 		HANDLE result = CreateIoCompletionPort(
 			reinterpret_cast<HANDLE>(socket),
 			mCompletionPort,
-			reinterpret_cast<ULONG_PTR>(socket),
+			static_cast<ULONG_PTR>(socket),
 			0
 		);
 

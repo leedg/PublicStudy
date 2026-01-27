@@ -123,8 +123,8 @@ namespace Network::AsyncIO::Windows
 
         typedef int (WSAAPI *PfnRIOCloseCompletionQueue)(_In_ RIO_CQ cq);
         typedef RIO_CQ (WSAAPI *PfnRIOCreateCompletionQueue)(_In_ DWORD cqSize, _In_opt_ PRIO_NOTIFICATION_COMPLETION notificationCompletion);
-        typedef int (WSAAPI *PfnRIOCreateRequestQueue)(_In_ SOCKET socket, _In_ DWORD maxOutstandingSend, _In_ DWORD maxOutstandingRecv, _In_ RIO_CQ cq);
-        typedef int (WSAAPI *PfnRIODequeueCompletion)(_In_ RIO_CQ cq, _Out_writes_to_(arraySize, return) PRIO_RESULT array, _In_ DWORD arraySize);
+        typedef RIO_RQ (WSAAPI *PfnRIOCreateRequestQueue)(_In_ SOCKET socket, _In_ DWORD maxOutstandingSend, _In_ DWORD maxOutstandingRecv, _In_ RIO_CQ cq);
+        typedef ULONG (WSAAPI *PfnRIODequeueCompletion)(_In_ RIO_CQ cq, _Out_writes_to_(arraySize, return) PRIORESULT array, _In_ ULONG arraySize);
         typedef void (WSAAPI *PfnRIONotify)(_In_ RIO_CQ cq);
         typedef RIO_BUFFERID (WSAAPI *PfnRIORegisterBuffer)(_In_ PCHAR dataBuffer, _In_ DWORD dataLength);
         typedef int (WSAAPI *PfnRIODeregisterBuffer)(_In_ RIO_BUFFERID bufferId);
@@ -193,7 +193,7 @@ namespace Network::AsyncIO::Windows
          * Convert RIO completion to CompletionEntry
          */
         bool ConvertRIOResult(
-            const RIO_RESULT& rioResult,
+            const RIORESULT& rioResult,
             CompletionEntry& outEntry
         );
     };
