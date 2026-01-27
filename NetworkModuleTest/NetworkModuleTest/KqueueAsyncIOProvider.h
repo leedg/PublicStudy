@@ -9,7 +9,7 @@
 #include <mutex>
 #include <queue>
 
-namespace RAON::Network::AsyncIO::BSD
+namespace Network::AsyncIO::BSD
 {
     // =============================================================================
     // kqueue-based AsyncIOProvider Implementation (macOS/BSD)
@@ -176,6 +176,6 @@ namespace RAON::Network::AsyncIO::BSD
         bool ProcessKqueueEvent(const struct kevent& event);
     };
 
-}  // namespace RAON::Network::AsyncIO::BSD
+}  // namespace Network::AsyncIO::BSD
 
 #endif  // __APPLE__

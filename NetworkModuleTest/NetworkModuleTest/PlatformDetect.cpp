@@ -11,7 +11,7 @@
     #include <sys/utsname.h>
 #endif
 
-namespace RAON::Network::AsyncIO::Platform
+namespace Network::AsyncIO::Platform
 {
     // =============================================================================
     // Platform Detection Implementation
@@ -222,4 +222,4 @@ namespace RAON::Network::AsyncIO::Platform
 #endif
     }
 
-}  // namespace RAON::Network::AsyncIO::Platform
+}  // namespace Network::AsyncIO::Platform

@@ -4,7 +4,7 @@
 #include <thread>
 #include <chrono>
 
-using namespace RAON::Network::AsyncIO;
+using namespace Network::AsyncIO;
 
 // =============================================================================
 // Test Fixtures

@@ -9,7 +9,7 @@
 #include <mutex>
 #include <queue>
 
-namespace RAON::Network::AsyncIO::Linux
+namespace Network::AsyncIO::Linux
 {
     // =============================================================================
     // io_uring-based AsyncIOProvider Implementation (Linux kernel 5.1+)
@@ -182,6 +182,6 @@ namespace RAON::Network::AsyncIO::Linux
         );
     };
 
-}  // namespace RAON::Network::AsyncIO::Linux
+}  // namespace Network::AsyncIO::Linux
 
 #endif  // __linux__

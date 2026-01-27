@@ -16,7 +16,7 @@
     using OSError = int;
 #endif
 
-namespace RAON::Network::AsyncIO
+namespace Network::AsyncIO
 {
     // =============================================================================
     // Type Definitions
@@ -43,14 +43,18 @@ namespace RAON::Network::AsyncIO
         Error,      // Error (internal use)
     };
 
-    // Platform types
+    // Platform types (backend implementations)
+    // Note: These represent AsyncIO BACKEND implementations, NOT OS platforms
+    // - On Windows: Default = IOCP, High-Performance = RIO
+    // - On Linux: Default = epoll, High-Performance = IOUring
+    // - On macOS: Always = Kqueue
     enum class PlatformType : uint8_t
     {
-        IOCP,       // Windows IOCP
-        RIO,        // Windows Registered I/O (Windows 8+)
-        Epoll,      // Linux epoll
-        IOUring,    // Linux io_uring (5.1+)
-        Kqueue,     // macOS kqueue
+        IOCP,       // Windows IOCP (stable baseline)
+        RIO,        // Windows Registered I/O (Windows 8+, high-perf)
+        Epoll,      // Linux epoll (stable baseline)
+        IOUring,    // Linux io_uring (kernel 5.1+, high-perf)
+        Kqueue,     // macOS kqueue (standard)
     };
 
     // Error codes
@@ -349,4 +353,4 @@ namespace RAON::Network::AsyncIO
      */
     PlatformInfo GetPlatformInfo();
 
-}  // namespace RAON::Network::AsyncIO
+}  // namespace Network::AsyncIO

@@ -10,7 +10,7 @@
 #include <memory>
 #include <mutex>
 
-namespace RAON::Network::AsyncIO::Windows
+namespace Network::AsyncIO::Windows
 {
     // =============================================================================
     // RIO (Registered I/O) based AsyncIOProvider Implementation
@@ -198,6 +198,6 @@ namespace RAON::Network::AsyncIO::Windows
         );
     };
 
-}  // namespace RAON::Network::AsyncIO::Windows
+}  // namespace Network::AsyncIO::Windows
 
 #endif  // _WIN32

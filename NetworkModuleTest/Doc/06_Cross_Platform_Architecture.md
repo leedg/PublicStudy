@@ -109,7 +109,7 @@ NetworkModule/
     using OSError = int;
 #endif
 
-namespace RAON::Network::AsyncIO
+namespace Network::AsyncIO
 {
     // ========================================
     // 타입 정의
@@ -136,14 +136,18 @@ namespace RAON::Network::AsyncIO
         Error,     // 에러 (내부 사용)
     };
     
-    // 플랫폼 타입
+    // 플랫폼 타입 (백엔드 구현 선택)
+    // ⚠️  이것은 OS 플랫폼이 아니라 AsyncIO 백엔드 구현입니다!
+    // - Windows: IOCP (기본) 또는 RIO (고성능)
+    // - Linux: Epoll (기본) 또는 IOUring (고성능)
+    // - macOS: Kqueue (유일한 선택)
     enum class PlatformType : uint8_t
     {
-        IOCP,      // Windows IOCP
-        RIO,       // Windows Registered I/O (8+)
-        Epoll,     // Linux epoll
-        IOUring,   // Linux io_uring (5.1+)
-        Kqueue,    // macOS kqueue (미래)
+        IOCP,      // Windows IOCP (안정성, 모든 Windows 버전)
+        RIO,       // Windows Registered I/O (고성능, Windows 8+)
+        Epoll,     // Linux epoll (안정성, 모든 Linux)
+        IOUring,   // Linux io_uring (고성능, kernel 5.1+)
+        Kqueue,    // macOS kqueue (표준)
     };
     
     // 에러 코드
@@ -415,7 +419,7 @@ namespace RAON::Network::AsyncIO
 #include <queue>
 #include <map>
 
-namespace RAON::Network::AsyncIO::Windows
+namespace Network::AsyncIO::Windows
 {
     // ========================================
     // RIO 함수 포인터
@@ -517,7 +521,7 @@ namespace RAON::Network::AsyncIO::Windows
 ### RIOAsyncIOProvider.cpp 주요 부분
 
 ```cpp
-namespace RAON::Network::AsyncIO::Windows
+namespace Network::AsyncIO::Windows
 {
     RIOFunctions RIOAsyncIOProvider::sRIOFuncs = {};
     bool RIOAsyncIOProvider::sRIOInitialized = false;
@@ -687,7 +691,7 @@ namespace RAON::Network::AsyncIO::Windows
 #include <map>
 #include <queue>
 
-namespace RAON::Network::AsyncIO::Linux
+namespace Network::AsyncIO::Linux
 {
     class IOUringAsyncIOProvider : public AsyncIOProvider
     {
@@ -755,7 +759,7 @@ namespace RAON::Network::AsyncIO::Linux
 ### IOUringAsyncIOProvider.cpp 주요 부분
 
 ```cpp
-namespace RAON::Network::AsyncIO::Linux
+namespace Network::AsyncIO::Linux
 {
     AsyncIOError IOUringAsyncIOProvider::Initialize(
         size_t queueDepth,
@@ -960,7 +964,7 @@ using CompletionCallback = std::function<void(
 // 영문: Adapter to convert new AsyncIOProvider callbacks to old IOCP style
 // 한글: 새로운 AsyncIOProvider 콜백을 기존 IOCP 스타일로 변환하는 어댑터
 
-namespace RAON::Network::AsyncIO::Compatibility
+namespace Network::AsyncIO::Compatibility
 {
     // 영文: Context wrapper for conversion between callback styles
     // 한글: 콜백 스타일 변환을 위한 컨텍스트 래퍼
@@ -1201,65 +1205,148 @@ auto session = std::make_unique<AsyncObjectSession>();
 
 ## 플랫폼 선택 전략
 
-### 런타임 감지 및 선택
+### 🔑 핵심 개념
 
-```cpp
-// File: AsyncIO/Platform/PlatformDetect.h
+**PlatformType은 OS가 아니라 AsyncIO 백엔드 구현을 나타냅니다:**
 
-#ifdef _WIN32
-    // Windows 버전 감지
-    DWORD major, minor;
-    GetOSVersion(major, minor);
-    
-    if (major > 6 || (major == 6 && minor >= 2))  // Windows 8+
-    {
-        provider = std::make_unique<RIOAsyncIOProvider>();
-    }
-    else
-    {
-        provider = std::make_unique<IocpAsyncIOProvider>();
-    }
-#else
-    // Linux 커널 버전 감지
-    struct utsname buf;
-    uname(&buf);
-    
-    // io_uring 지원 확인
-    if (io_uring_setup_probe() != nullptr)  // 또는 io_uring_queue_init 시도
-    {
-        provider = std::make_unique<IOUringAsyncIOProvider>();
-    }
-    else
-    {
-        provider = std::make_unique<EpollAsyncIOProvider>();
-    }
-#endif
+```
+CreateAsyncIOProvider()
+├─ Windows 플랫폼 감지
+│  └─ PlatformType::IOCP 반환 (= "Windows에서 기본 백엔드는 IOCP")
+│     ├─ preferHighPerformance=true && RIO 지원
+│     │  └─ RIO 시도 → (성공: RIO 반환, 실패: 다음)
+│     └─ IOCP 시도 → (성공: IOCP 반환, 실패: nullptr)
+│
+├─ Linux 플랫폼 감지
+│  └─ PlatformType::Epoll 반환 (= "Linux에서 기본 백엔드는 epoll")
+│     ├─ preferHighPerformance=true && io_uring 지원
+│     │  └─ io_uring 시도 → (성공: io_uring 반환, 실패: 다음)
+│     └─ epoll 시도 → (성공: epoll 반환, 실패: nullptr)
+│
+└─ macOS 플랫폼 감지
+   └─ PlatformType::Kqueue 반환 (= "macOS에서 유일한 선택은 kqueue")
+      └─ kqueue 시도 → (성공: kqueue 반환, 실패: nullptr)
 ```
 
-### 명시적 플랫폼 선택
+### 런타임 감지 및 자동 선택
 
 ```cpp
-std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider(
-    const char* platformHint)
+// File: AsyncIOProvider.cpp - CreateAsyncIOProvider()
+
+std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider(bool preferHighPerformance)
 {
-    std::string hint = platformHint ? platformHint : "";
+    PlatformType platform = GetCurrentPlatform();
+    // ↑ Windows 플랫폼: PlatformType::IOCP
+    // ↑ Linux 플랫폼: PlatformType::Epoll
+    // ↑ macOS 플랫폼: PlatformType::Kqueue
     
+    switch (platform)
+    {
     #ifdef _WIN32
-        if (hint == "RIO" || hint.empty())
+    case PlatformType::IOCP:  // Windows 플랫폼
+    {
+        // 폴백 체인: RIO (고성능) → IOCP (안정성) → nullptr (실패)
+        
+        if (preferHighPerformance && Platform::IsWindowsRIOSupported())
         {
-            auto provider = std::make_unique<RIOAsyncIOProvider>();
-            if (provider->Initialize(...) == AsyncIOError::Success)
-                return provider;
+            auto provider = CreateRIOProvider();
+            if (provider && provider->Initialize())
+                return provider;  // RIO 성공
+            // RIO 실패 → IOCP로 폴백
         }
-        return std::make_unique<IocpAsyncIOProvider>();
-    #else
-        if (hint == "io_uring" || hint.empty())
+        
+        auto provider = CreateIocpProvider();
+        if (provider && provider->Initialize())
+            return provider;  // IOCP 성공
+        
+        return nullptr;  // 모두 실패
+    }
+    #endif
+    
+    #ifdef __linux__
+    case PlatformType::Epoll:  // Linux 플랫폼
+    {
+        // 폴백 체인: io_uring (고성능) → epoll (안정성) → nullptr (실패)
+        
+        if (preferHighPerformance && Platform::IsLinuxIOUringSupported())
         {
-            auto provider = std::make_unique<IOUringAsyncIOProvider>();
-            if (provider->Initialize(...) == AsyncIOError::Success)
-                return provider;
+            auto provider = CreateIOUringProvider();
+            if (provider && provider->Initialize())
+                return provider;  // io_uring 성공
+            // io_uring 실패 → epoll로 폴백
         }
-        return std::make_unique<EpollAsyncIOProvider>();
+        
+        auto provider = CreateEpollProvider();
+        if (provider && provider->Initialize())
+            return provider;  // epoll 성공
+        
+        return nullptr;  // 모두 실패
+    }
+    #endif
+    
+    #ifdef __APPLE__
+    case PlatformType::Kqueue:  // macOS 플랫폼
+    {
+        // macOS는 kqueue만 사용 (preferHighPerformance 무시)
+        
+        auto provider = CreateKqueueProvider();
+        if (provider && provider->Initialize())
+            return provider;  // kqueue 성공
+        
+        return nullptr;  // 실패
+    }
+    #endif
+    }
+    
+    return nullptr;
+}
+```
+
+### 명시적 백엔드 선택
+
+```cpp
+// 테스트 또는 특정 백엔드만 사용하고 싶을 때
+
+std::unique_ptr<AsyncIOProvider> CreateAsyncIOProviderForPlatform(
+    PlatformType platformType)
+{
+    // 폴백 없이 정확히 요청한 백엔드만 시도
+    switch (platformType)
+    {
+    case PlatformType::IOCP:
+    {
+        auto provider = CreateIocpProvider();
+        if (provider && provider->Initialize())
+            return provider;
+        break;
+    }
+    
+    case PlatformType::RIO:
+    {
+        auto provider = CreateRIOProvider();
+        if (provider && provider->Initialize())
+            return provider;
+        break;
+    }
+    
+    // ... 다른 백엔드들 ...
+    }
+    
+    return nullptr;
+}
+```
+
+### 플랫폼 감지 (PlatformDetect.cpp)
+
+```cpp
+PlatformType DetectPlatform()
+{
+    #ifdef _WIN32
+        return PlatformType::IOCP;  // Windows: 기본 IOCP
+    #elif __APPLE__
+        return PlatformType::Kqueue;  // macOS: kqueue
+    #elif __linux__
+        return PlatformType::Epoll;  // Linux: 기본 epoll
     #endif
 }
 ```
@@ -2100,7 +2187,7 @@ for (int i = 0; i < count; i++)
 // 영문: Option B - Context structure with session info
 // 한글: 옵션 B - 세션 정보를 담는 컨텍스트 구조체
 
-namespace RAON::Network::AsyncIO
+namespace Network::AsyncIO
 {
     // 영문: Context wrapper for session tracking
     // 한글: 세션 추적을 위한 컨텍스트 래퍼
@@ -2257,7 +2344,7 @@ for (int i = 0; i < count; i++)
 // 영문: Recommended hybrid approach - combine speed with safety
 // 한글: 권장 하이브리드 접근 - 속도와 안전성 결합
 
-namespace RAON::Network::AsyncIO
+namespace Network::AsyncIO
 {
     // 영문: Session context for completion tracking
     // 한글: 완료 추적을 위한 세션 컨텍스트

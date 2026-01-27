@@ -9,7 +9,7 @@
 #include <sys/socket.h>
 #include <sys/mman.h>
 
-namespace RAON::Network::AsyncIO::Linux
+namespace Network::AsyncIO::Linux
 {
     // =============================================================================
     // Constructor & Destructor
@@ -527,6 +527,6 @@ namespace RAON::Network::AsyncIO::Linux
         return std::make_unique<IOUringAsyncIOProvider>();
     }
 
-}  // namespace RAON::Network::AsyncIO::Linux
+}  // namespace Network::AsyncIO::Linux
 
 #endif  // __linux__

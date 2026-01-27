@@ -7,7 +7,7 @@
 #include <cstring>
 #include <cstdlib>
 
-namespace RAON::Network::AsyncIO::BSD
+namespace Network::AsyncIO::BSD
 {
     // =============================================================================
     // Constructor & Destructor
@@ -403,6 +403,6 @@ namespace RAON::Network::AsyncIO::BSD
         return std::make_unique<KqueueAsyncIOProvider>();
     }
 
-}  // namespace RAON::Network::AsyncIO::BSD
+}  // namespace Network::AsyncIO::BSD
 
 #endif  // __APPLE__

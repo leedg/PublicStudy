@@ -9,7 +9,7 @@
 #include <mutex>
 #include <queue>
 
-namespace RAON::Network::AsyncIO::Linux
+namespace Network::AsyncIO::Linux
 {
     // =============================================================================
     // epoll-based AsyncIOProvider Implementation
@@ -163,6 +163,6 @@ namespace RAON::Network::AsyncIO::Linux
         bool ProcessEpollEvent(const struct epoll_event& event);
     };
 
-}  // namespace RAON::Network::AsyncIO::Linux
+}  // namespace Network::AsyncIO::Linux
 
 #endif  // __linux__
