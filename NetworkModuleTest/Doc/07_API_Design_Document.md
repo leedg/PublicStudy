@@ -1810,6 +1810,414 @@ validator.OnSocketClosed(socket);
 
 ---
 
+## ProcessCompletions() Error Handling Strategy
+
+### 개요 (Overview)
+
+ProcessCompletions() 메서드는 비동기 I/O 완료를 처리하는 핵심 메서드입니다. 안정성 있는 에러 처리와 예외 안전성이 필수적입니다.
+
+```
+┌─────────────────────────────────┐
+│ ProcessCompletions() Call       │
+└────────────┬────────────────────┘
+             │
+     ┌───────▼────────┐
+     │ 에러 분류        │
+     └───┬───┬───┬────┘
+         │   │   │
+    ┌────▼┐ │   └────────────────────┐
+    │API  │ │                        │
+    │Error│ │              ┌─────────▼──────┐
+    └─────┘ │              │Platform Error  │
+         ┌──▼──┐           └────────────────┘
+         │Buffer│
+         │Error │
+         └──────┘
+
+에러 타입:
+1. API 에러 (GetQueuedCompletionStatus 실패)
+2. 버퍼 에러 (메모리 할당 실패)
+3. 플랫폼 에러 (OS 레벨 실패)
+4. 타임아웃 (타임아웃 발생)
+```
+
+### 에러 분류 및 처리
+
+#### 1. API 에러 (OS 레벨 실패)
+
+```cpp
+// 영문: GQCS failure handling
+// 한글: GQCS 실패 처리
+
+void ProcessCompletions_WithErrorHandling(uint32_t timeoutMs)
+{
+    // 영문: Retrieve completions from kernel queue
+    // 한글: 커널 큐에서 완료 가져오기
+    
+    DWORD dwNumEntries = 0;
+    OVERLAPPED_ENTRY entries[MAX_COMPLETIONS];
+    
+    // 영문: Get completions with error handling
+    // 한글: 완료 가져오기 (에러 처리 포함)
+    
+    BOOL success = GetQueuedCompletionStatusEx(
+        mCompletionPort,
+        entries,
+        MAX_COMPLETIONS,
+        &dwNumEntries,
+        timeoutMs,
+        FALSE
+    );
+    
+    // 영문: CASE 1: GetQueuedCompletionStatusEx failed
+    // 한글: 경우 1: GetQueuedCompletionStatusEx 실패
+    
+    if (!success)
+    {
+        DWORD dwError = GetLastError();
+        
+        // 영문: CASE 1.1: Timeout occurred (expected in most cases)
+        // 한글: 경우 1.1: 타임아웃 발생 (대부분의 경우 정상)
+        
+        if (dwError == WAIT_TIMEOUT)
+        {
+            // LOG_DEBUG("ProcessCompletions: Timeout (no completions)");
+            return; // 정상 - 계속 실행
+        }
+        
+        // 영문: CASE 1.2: Completion port handle invalid
+        // 한글: 경우 1.2: 완료 포트 핸들 무효
+        
+        if (dwError == ERROR_INVALID_HANDLE)
+        {
+            LOG_ERROR("ProcessCompletions: Completion port closed (IOCP shutdown?)");
+            throw std::runtime_error("IOCP completion port is invalid");
+        }
+        
+        // 영문: CASE 1.3: Invalid buffer supplied
+        // 한글: 경우 1.3: 유효하지 않은 버퍼 공급됨
+        
+        if (dwError == ERROR_INVALID_PARAMETER)
+        {
+            LOG_ERROR("ProcessCompletions: Invalid parameter (buffer too small?)");
+            throw std::runtime_error("Invalid parameter passed to GetQueuedCompletionStatusEx");
+        }
+        
+        // 영문: CASE 1.4: Unexpected OS error
+        // 한글: 경우 1.4: 예상치 못한 OS 에러
+        
+        LOG_ERROR("ProcessCompletions: OS error %lu (%s)", 
+            dwError, GetErrorString(dwError).c_str());
+        throw std::runtime_error(
+            fmt::format("OS error in GetQueuedCompletionStatusEx: {}", dwError)
+        );
+    }
+    
+    // 영문: CASE 2: Successfully retrieved completions
+    // 한글: 경우 2: 완료 성공적으로 가져옴
+    
+    for (DWORD i = 0; i < dwNumEntries; i++)
+    {
+        try
+        {
+            ProcessSingleCompletion(entries[i]);
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("ProcessCompletions: Exception in single completion handler: %s",
+                e.what());
+            // 영문: Continue processing other completions
+            // 한글: 다른 완료 계속 처리
+        }
+    }
+}
+```
+
+#### 2. 세션/컨텍스트 에러
+
+```cpp
+// 영문: Session context error handling
+// 한글: 세션/컨텍스트 에러 처리
+
+void ProcessSingleCompletion(const OVERLAPPED_ENTRY& entry)
+{
+    // 영문: CASE 1: Null completion routine
+    // 한글: 경우 1: Null 완료 루틴
+    
+    if (!entry.lpCompletionKey)
+    {
+        LOG_WARNING("ProcessCompletions: Null completion key (abnormal completion?)");
+        return;
+    }
+    
+    // 영문: CASE 2: Null OVERLAPPED structure
+    // 한글: 경우 2: Null OVERLAPPED 구조체
+    
+    if (!entry.lpOverlapped)
+    {
+        LOG_ERROR("ProcessCompletions: Null OVERLAPPED structure (memory corruption?)");
+        // 해당 entry를 안전하게 무시하고 계속 진행
+        return;
+    }
+    
+    // 영문: CASE 3: Extract session context
+    // 한글: 경우 3: 세션 컨텍스트 추출
+    
+    SessionContext* ctx = static_cast<SessionContext*>(entry.lpCompletionKey);
+    
+    // 영문: CASE 3.1: Session was destroyed before completion arrived
+    // 한글: 경우 3.1: 완료 도착 전에 세션 파괴됨
+    
+    if (ctx->generation != GetSessionGeneration(ctx->sessionId))
+    {
+        LOG_DEBUG("ProcessCompletions: Stale completion (session recreated)");
+        delete ctx;
+        return;
+    }
+    
+    // 영문: CASE 3.2: Session pool lookup failed
+    // 한글: 경우 3.2: 세션 풀 조회 실패
+    
+    auto session = mSessionPool->GetSession(ctx->sessionId);
+    if (!session)
+    {
+        LOG_WARNING("ProcessCompletions: Session pool lookup failed (sessionId=%u)",
+            ctx->sessionId);
+        delete ctx;
+        return;
+    }
+    
+    // 영문: CASE 4: Operation succeeded
+    // 한글: 경우 4: 작업 성공
+    
+    uint32_t dwBytesTransferred = entry.dwNumberOfBytesTransferred;
+    
+    // 영문: CASE 5: Operation failed with error code
+    // 한글: 경우 5: 작업 실패 (에러 코드 포함)
+    
+    DWORD dwError = NO_ERROR;
+    BOOL opSuccess = GetOverlappedResult(
+        ctx->socket,
+        entry.lpOverlapped,
+        &dwBytesTransferred,
+        FALSE // bWait = FALSE (이미 완료됨)
+    );
+    
+    if (!opSuccess)
+    {
+        dwError = GetLastError();
+        
+        // 영문: Classify operation errors
+        // 한글: 작업 에러 분류
+        
+        if (dwError == WSAECONNRESET)
+        {
+            LOG_WARNING("ProcessCompletions: Connection reset by peer (sessionId=%u)",
+                ctx->sessionId);
+            session->OnConnectionReset();
+        }
+        else if (dwError == WSAECONNABORTED)
+        {
+            LOG_WARNING("ProcessCompletions: Connection aborted (sessionId=%u)",
+                ctx->sessionId);
+            session->OnConnectionAborted();
+        }
+        else if (dwError == WSAESHUTDOWN)
+        {
+            LOG_DEBUG("ProcessCompletions: Socket shutdown (sessionId=%u)",
+                ctx->sessionId);
+            session->OnShutdown();
+        }
+        else
+        {
+            LOG_ERROR("ProcessCompletions: Operation failed with error %lu (sessionId=%u)",
+                dwError, ctx->sessionId);
+            session->OnOperationFailed(dwError);
+        }
+        
+        delete ctx;
+        return;
+    }
+    
+    // 영문: CASE 6: Dispatch completion to session
+    // 한글: 경우 6: 완료를 세션에 전달
+    
+    try
+    {
+        session->OnCompletion(CompletionEntry{
+            .context = ctx,
+            .bytesTransferred = dwBytesTransferred,
+            .error = NO_ERROR
+        });
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("ProcessCompletions: Exception in session handler: %s", e.what());
+        // 세션 상태 비정상 - 종료 시작
+        session->Close();
+    }
+    
+    delete ctx;
+}
+```
+
+#### 3. 메모리/리소스 에러
+
+```cpp
+// 영문: Memory and resource error handling
+// 한글: 메모리 및 리소스 에러 처리
+
+class CompletionErrorHandler
+{
+private:
+    std::atomic<uint64_t> mErrorCount;
+    std::atomic<uint64_t> mTimeoutCount;
+    std::atomic<uint64_t> mContextErrors;
+    
+public:
+    // 영문: Track error statistics
+    // 한글: 에러 통계 추적
+    
+    void RecordError(ErrorType type, uint32_t errorCode)
+    {
+        mErrorCount++;
+        
+        switch (type)
+        {
+            case ErrorType::Timeout:
+                mTimeoutCount++;
+                break;
+            case ErrorType::ContextError:
+                mContextErrors++;
+                break;
+            default:
+                break;
+        }
+        
+        // 영문: Alert if error rate exceeds threshold
+        // 한글: 에러율이 임계값 초과 시 경고
+        
+        if (mErrorCount % 1000 == 0)
+        {
+            uint64_t errorRate = (mErrorCount * 100) / GetTotalCompletions();
+            if (errorRate > 5) // 5% 이상
+            {
+                LOG_WARNING("High error rate detected: %llu errors / %llu completions",
+                    (unsigned long long)mErrorCount,
+                    (unsigned long long)GetTotalCompletions());
+            }
+        }
+    }
+    
+    // 영문: Graceful degradation
+    // 한글: 우아한 성능 저하
+    
+    void HandleCriticalError(const std::string& reason)
+    {
+        LOG_CRITICAL("Critical error in ProcessCompletions: %s", reason.c_str());
+        
+        // 영문: 1. Stop accepting new operations
+        // 한글: 1. 새로운 작업 수용 중단
+        
+        PauseNewOperations();
+        
+        // 영문: 2. Drain existing completions
+        // 한글: 2. 기존 완료 처리
+        
+        DrainAllCompletions();
+        
+        // 영문: 3. Graceful shutdown
+        // 한글: 3. 정상 종료
+        
+        InitiateShutdown();
+    }
+};
+```
+
+#### 4. 복구 전략 (Recovery Strategy)
+
+```cpp
+// 영문: Recovery mechanism for transient errors
+// 한글: 일시적 에러에 대한 복구 메커니즘
+
+class ResilientProcessCompletions
+{
+private:
+    static constexpr uint32_t MAX_RETRIES = 3;
+    static constexpr uint32_t RETRY_BACKOFF_MS = 10;
+    
+public:
+    // 영문: Retry logic for transient failures
+    // 한글: 일시적 실패에 대한 재시도 로직
+    
+    bool ProcessWithRetry(
+        HANDLE completionPort,
+        uint32_t timeoutMs,
+        std::function<void(const OVERLAPPED_ENTRY&)> handler)
+    {
+        DWORD dwNumEntries = 0;
+        OVERLAPPED_ENTRY entries[MAX_COMPLETIONS];
+        
+        for (uint32_t attempt = 0; attempt < MAX_RETRIES; attempt++)
+        {
+            BOOL success = GetQueuedCompletionStatusEx(
+                completionPort,
+                entries,
+                MAX_COMPLETIONS,
+                &dwNumEntries,
+                timeoutMs,
+                FALSE
+            );
+            
+            if (success || GetLastError() == WAIT_TIMEOUT)
+            {
+                // 영문: Success or expected timeout
+                // 한글: 성공 또는 예상된 타임아웃
+                
+                for (DWORD i = 0; i < dwNumEntries; i++)
+                {
+                    handler(entries[i]);
+                }
+                return true;
+            }
+            
+            // 영문: Transient error - retry
+            // 한글: 일시적 에러 - 재시도
+            
+            if (attempt < MAX_RETRIES - 1)
+            {
+                LOG_WARNING("ProcessCompletions: Transient error, retrying (attempt %u/%u)",
+                    attempt + 1, MAX_RETRIES);
+                std::this_thread::sleep_for(
+                    std::chrono::milliseconds(RETRY_BACKOFF_MS << attempt)
+                );
+            }
+        }
+        
+        // 영문: All retries exhausted
+        // 한글: 모든 재시도 소진
+        
+        DWORD dwError = GetLastError();
+        LOG_ERROR("ProcessCompletions: Failed after %u retries, error: %lu",
+            MAX_RETRIES, dwError);
+        return false;
+    }
+};
+```
+
+### 구현 체크리스트
+
+- [ ] API 에러 분류 및 처리 (CASE 1.1 - 1.4)
+- [ ] 세션 컨텍스트 에러 처리 (CASE 3.1 - 3.2)
+- [ ] 작업 에러 핸들링 (CASE 5)
+- [ ] 메모리/리소스 추적 및 통계
+- [ ] 우아한 성능 저하 메커니즘
+- [ ] 복구 및 재시도 전략
+- [ ] 에러 로깅 및 모니터링
+- [ ] 단위 테스트 (모든 에러 경로)
+
+---
+
 **Next**: Implement platform-specific backends  
 **Estimated Effort**: 2-3 weeks per platform
 
