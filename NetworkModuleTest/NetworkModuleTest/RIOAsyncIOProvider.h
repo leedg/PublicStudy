@@ -159,7 +159,7 @@ namespace Network::AsyncIO::Windows
         std::map<SocketHandle, RIO_RQ> mRequestQueues;
         std::map<int64_t, RegisteredBuffer> mRegisteredBuffers;
         std::map<void*, PendingOperation> mPendingOps;
-        std::mutex mMutex;
+        mutable std::mutex mMutex;
 
         // RIO function pointers
         PfnRIOCloseCompletionQueue pfnRIOCloseCompletionQueue;

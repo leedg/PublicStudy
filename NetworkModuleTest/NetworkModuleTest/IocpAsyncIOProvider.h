@@ -135,7 +135,7 @@ namespace Network::AsyncIO::Windows
 
         HANDLE mCompletionPort;
         std::map<SocketHandle, std::unique_ptr<PendingOperation>> mPendingOps;
-        std::mutex mMutex;
+        mutable std::mutex mMutex;
         
         uint32_t mMaxConcurrentOps;
         uint64_t mTotalSendOps;
