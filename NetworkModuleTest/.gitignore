@@ -1,0 +1,37 @@
+# Visual Studio
+.vs/
+.vscode/
+*.sln.DotSettings
+*.user
+*.suo
+*.slo
+*.lo
+*.o
+*.a
+*.lib
+*.exe
+*.dll
+*.dylib
+*.so
+
+# Build directories
+x64/
+build/
+out/
+bin/
+obj/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Copy folder (backup)
+**/NetworkModuleTest - 복사본/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
