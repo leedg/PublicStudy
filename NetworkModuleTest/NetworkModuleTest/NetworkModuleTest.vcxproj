@@ -127,8 +127,28 @@
     </Link>
   </ItemDefinitionGroup>
 
-  <ItemGroup></ItemGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+   <ItemGroup>
+     <!-- Header Files -->
+     <ClInclude Include="AsyncIOProvider.h" />
+     <ClInclude Include="PlatformDetect.h" />
+     <ClInclude Include="EpollAsyncIOProvider.h" />
+     <ClInclude Include="IOUringAsyncIOProvider.h" />
+     <ClInclude Include="IocpAsyncIOProvider.h" />
+     <ClInclude Include="KqueueAsyncIOProvider.h" />
+     <ClInclude Include="RIOAsyncIOProvider.h" />
+   </ItemGroup>
+   <ItemGroup>
+     <!-- Source Files -->
+     <ClCompile Include="AsyncIOProvider.cpp" />
+     <ClCompile Include="PlatformDetect.cpp" />
+     <ClCompile Include="EpollAsyncIOProvider.cpp" />
+     <ClCompile Include="IOUringAsyncIOProvider.cpp" />
+     <ClCompile Include="IocpAsyncIOProvider.cpp" />
+     <ClCompile Include="KqueueAsyncIOProvider.cpp" />
+     <ClCompile Include="RIOAsyncIOProvider.cpp" />
+     <ClCompile Include="AsyncIOTest.cpp" />
+   </ItemGroup>
+   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>
