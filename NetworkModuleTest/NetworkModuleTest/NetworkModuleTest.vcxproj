@@ -138,16 +138,20 @@
    <ItemGroup>
      <Manifest Include="app.manifest" />
    </ItemGroup>
-   <ItemGroup>
-     <!-- Header Files -->
-     <ClInclude Include="AsyncIOProvider.h" />
-     <ClInclude Include="PlatformDetect.h" />
-     <ClInclude Include="EpollAsyncIOProvider.h" />
-     <ClInclude Include="IOUringAsyncIOProvider.h" />
-     <ClInclude Include="IocpAsyncIOProvider.h" />
-     <ClInclude Include="KqueueAsyncIOProvider.h" />
-     <ClInclude Include="RIOAsyncIOProvider.h" />
-   </ItemGroup>
+<ItemGroup>
+      <!-- Header Files -->
+      <ClInclude Include="AsyncIOProvider.h" />
+      <ClInclude Include="PlatformDetect.h" />
+      <ClInclude Include="EpollAsyncIOProvider.h" />
+      <ClInclude Include="IOUringAsyncIOProvider.h" />
+      <ClInclude Include="IocpAsyncIOProvider.h" />
+      <ClInclude Include="KqueueAsyncIOProvider.h" />
+      <ClInclude Include="RIOAsyncIOProvider.h" />
+    </ItemGroup>
+    <ItemGroup>
+      <!-- Documentation Files -->
+      <None Include="DocNetworkModuleTest\**\*" />
+    </ItemGroup>
    <ItemGroup>
      <!-- Source Files -->
      <ClCompile Include="AsyncIOProvider.cpp" />

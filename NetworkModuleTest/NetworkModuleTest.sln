@@ -1,11 +1,11 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36408.4
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NetworkModuleTest", "NetworkModuleTest\NetworkModuleTest.vcxproj", "{8EF4E27C-D4DF-45EF-A19D-F0236AAD9C70}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NetworkModuleTest", "NetworkModuleTest\Server\ServerEngine\ServerEngine.vcxproj", "{8EF4E27C-D4DF-45EF-A19D-F0236AAD9C70}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ServerEngine", "Server\ServerEngine\ServerEngine.vcxproj", "{6EA11C87-7C8E-4AB0-973A-792CDC33894D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ServerEngine", "NetworkModuleTest\Server\ServerEngine\ServerEngine.vcxproj", "{6EA11C87-7C8E-4AB0-973A-792CDC33894D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "1.Thirdparty", "1.Thirdparty", "{C8D5274F-AC00-46C7-1F8D-E88E81087A52}"
 EndProject
@@ -15,11 +15,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "3.Server", "3.Server", "{64
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "9.Test", "9.Test", "{4A9EEE95-0442-4177-93DE-EDC1F18DA2E0}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestServer", "Server\TestServer\TestServer.vcxproj", "{AAAC174E-3170-4321-B390-303B3AFC2F5C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestServer", "NetworkModuleTest\Server\TestServer\TestServer.vcxproj", "{AAAC174E-3170-4321-B390-303B3AFC2F5C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "8.Client", "8.Client", "{6EA6A936-3571-4B99-AF90-15628BF9337F}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestClient", "Client\TestClient\TestClient.vcxproj", "{B044DB16-ED2D-49C3-9038-BCEF9E57DFFF}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DBModuleTest", "DBModuleTest\DBModuleTest.vcxproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -61,6 +63,14 @@ Global
 		{B044DB16-ED2D-49C3-9038-BCEF9E57DFFF}.Release|x64.Build.0 = Release|x64
 		{B044DB16-ED2D-49C3-9038-BCEF9E57DFFF}.Release|x86.ActiveCfg = Release|Win32
 		{B044DB16-ED2D-49C3-9038-BCEF9E57DFFF}.Release|x86.Build.0 = Release|Win32
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x64.ActiveCfg = Debug|x64
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x64.Build.0 = Debug|x64
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x86.ActiveCfg = Debug|Win32
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|x86.Build.0 = Debug|Win32
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x64.ActiveCfg = Release|x64
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x64.Build.0 = Release|x64
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x86.ActiveCfg = Release|Win32
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -70,6 +80,7 @@ Global
 		{6EA11C87-7C8E-4AB0-973A-792CDC33894D} = {89246865-B165-45C2-BC71-2C0ED2FF2D28}
 		{AAAC174E-3170-4321-B390-303B3AFC2F5C} = {64F85B57-2547-4C77-B9B3-DE353693C7F1}
 		{B044DB16-ED2D-49C3-9038-BCEF9E57DFFF} = {6EA6A936-3571-4B99-AF90-15628BF9337F}
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890} = {4A9EEE95-0442-4177-93DE-EDC1F18DA2E0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F2FD9EF4-971C-4C61-8A7C-C9C95FEE95F1}
