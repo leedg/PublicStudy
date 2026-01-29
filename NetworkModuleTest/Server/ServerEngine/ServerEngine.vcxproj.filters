@@ -1,20 +1,99 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="소스 파일">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <ClCompile Include="Core\AsyncIOProvider.cpp">
+      <Filter>Network\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\AsyncIOTest.cpp">
+      <Filter>Test</Filter>
+    </ClCompile>
+    <ClCompile Include="Platforms\Windows\IocpAsyncIOProvider.cpp">
+      <Filter>Network\Core\Platforms\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Platforms\Windows\RIOAsyncIOProvider.cpp">
+      <Filter>Network\Core\Platforms\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Platforms\Linux\EpollAsyncIOProvider.cpp">
+      <Filter>Network\Core\Platforms\Linux</Filter>
+    </ClCompile>
+    <ClCompile Include="Platforms\Linux\IOUringAsyncIOProvider.cpp">
+      <Filter>Network\Core\Platforms\Linux</Filter>
+    </ClCompile>
+    <ClCompile Include="Platforms\macOS\KqueueAsyncIOProvider.cpp">
+      <Filter>Network\Core\Platforms\Mac</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\PlatformDetect.cpp">
+      <Filter>Network\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Protocols\PingPong.cpp">
+      <Filter>Test\Protocols</Filter>
+    </ClCompile>
+    <ClCompile Include="Protocols\MessageHandler.cpp">
+      <Filter>Test\Protocols</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Core\AsyncIOProvider.h">
+      <Filter>Network\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\NetworkUtils.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Platforms\Windows\IocpAsyncIOProvider.h">
+      <Filter>Network\Core\Platforms\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="Platforms\Windows\RIOAsyncIOProvider.h">
+      <Filter>Network\Core\Platforms\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="Platforms\Linux\EpollAsyncIOProvider.h">
+      <Filter>Network\Core\Platforms\Linux</Filter>
+    </ClInclude>
+    <ClInclude Include="Platforms\Linux\IOUringAsyncIOProvider.h">
+      <Filter>Network\Core\Platforms\Linux</Filter>
+    </ClInclude>
+    <ClInclude Include="Platforms\macOS\KqueueAsyncIOProvider.h">
+      <Filter>Network\Core\Platforms\Mac</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\PlatformDetect.h">
+      <Filter>Network\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\NetworkEngine.h">
+      <Filter>Network\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Protocols\PingPong.h">
+      <Filter>Test\Protocols</Filter>
+    </ClInclude>
+    <ClInclude Include="Protocols\MessageHandler.h">
+      <Filter>Test\Protocols</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Network">
+      <UniqueIdentifier>{eab93da5-b943-4ea6-a79b-c63d20b91bb1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="헤더 파일">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="Network\Core">
+      <UniqueIdentifier>{d089e4e6-ec5a-4a20-91e4-54fd3aeb6d24}</UniqueIdentifier>
     </Filter>
-    <Filter Include="리소스 파일">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Util">
+      <UniqueIdentifier>{845d2a08-709e-4dff-8fab-415ecaa62d25}</UniqueIdentifier>
     </Filter>
-    <Filter Include="NewFilter1">
-      <UniqueIdentifier>{f2938b5d-1542-4d7d-9006-2f2ce929046b}</UniqueIdentifier>
+    <Filter Include="Test">
+      <UniqueIdentifier>{6cdabb90-6d4b-4fbe-9966-b2bfecccc0ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Network\Core\Platforms">
+      <UniqueIdentifier>{5c69fd5a-5b34-44cf-aaab-ba12fe2c0fed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Network\Core\Platforms\Linux">
+      <UniqueIdentifier>{9375299c-e3be-4fa7-8420-92aadb995a80}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Network\Core\Platforms\Mac">
+      <UniqueIdentifier>{7ab8772b-5338-4fef-a6a2-ce9abb06bbcc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Network\Core\Platforms\Windows">
+      <UniqueIdentifier>{eeb718d6-46ec-4d0f-a8ba-fb5b43ff648a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Test\Protocols">
+      <UniqueIdentifier>{ebaaa4ad-76a0-430c-bcaf-7e0a20e8978c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

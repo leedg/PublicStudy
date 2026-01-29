@@ -1,0 +1,71 @@
+// English: Header file for PingPong handler
+// 한글: PingPong 핸들러 헤더 파일
+
+#pragma once
+
+#include <vector>
+#include <cstdint>
+#include <memory>
+#include <string>
+
+// Forward declarations for protobuf messages
+namespace ping {
+    class Ping;
+    class Pong;
+}
+
+namespace Network::Protocols
+{
+    // =============================================================================
+    // English: PingPong handler class
+    // 한글: PingPong 핸들러 클래스
+    // =============================================================================
+    
+    class PingPongHandler
+    {
+    public:
+        // English: Constructor and Destructor
+        // 한글: 생성자 및 소멸자
+        PingPongHandler();
+        ~PingPongHandler();
+        
+        // English: Serialization methods
+        // 한글: 직렬화 메소드
+        std::vector<uint8_t> CreatePing(
+            const std::string& message = "",
+            uint32_t sequence = 0
+        );
+        
+        std::vector<uint8_t> CreatePong(
+            const std::vector<uint8_t>& pingData,
+            const std::string& response = ""
+        );
+        
+        // English: Deserialization methods
+        // 한글: 역직렬화 메소드
+        bool ParsePing(const std::vector<uint8_t>& data);
+        bool ParsePong(const std::vector<uint8_t>& data);
+        
+        // English: Utility methods
+        // 한글: 유틸리티 메소드
+        uint64_t CalculateRTT(
+            uint64_t pingTimestamp, 
+            uint64_t pongTimestamp
+        ) const;
+        
+        uint64_t GetCurrentTimestamp() const;
+        
+        // English: Accessors
+        // 한글: 접근자
+        const ping::Ping* GetLastPing() const;
+        const ping::Pong* GetLastPong() const;
+        
+    private:
+        // English: Member variables
+        // 한글: 멤버 변수
+        uint32_t mNextSequence;
+        std::unique_ptr<ping::Ping> mLastPing;
+        std::unique_ptr<ping::Pong> mLastPong;
+    };
+    
+} // namespace Network::Protocols
