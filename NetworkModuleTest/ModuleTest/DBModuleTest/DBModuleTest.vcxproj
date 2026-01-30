@@ -137,10 +137,12 @@
   <ItemGroup>
     <ClInclude Include="IDatabase.h" />
     <ClInclude Include="ODBCDatabase.h" />
+    <ClInclude Include="OLEDBDatabase.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DatabaseFactory.cpp" />
     <ClCompile Include="ODBCDatabase.cpp" />
+    <ClCompile Include="OLEDBDatabase.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="odbc_sample.cpp" />

@@ -26,10 +26,9 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # =============================================================================
 # Subdirectories
-# =============================================================================
 
 # AsyncIO Library
-add_subdirectory(NetworkModuleTest)
+add_subdirectory(ModuleTest/MultiPlatformNetwork)
 
 # =============================================================================
 # Summary

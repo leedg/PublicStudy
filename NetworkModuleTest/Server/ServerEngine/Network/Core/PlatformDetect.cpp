@@ -1,4 +1,4 @@
-// English: Platform detection implementation
+﻿// English: Platform detection implementation
 // 한글: 플랫폼 감지 구현
 
 #include "PlatformDetect.h"

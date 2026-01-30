@@ -27,26 +27,26 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -76,12 +76,11 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatWarningAsError>false</TreatWarningAsError>
       <AdditionalOptions>/Zc:twoPhase- %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -91,12 +90,11 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatWarningAsError>false</TreatWarningAsError>
       <AdditionalOptions>/Zc:twoPhase- %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -104,11 +102,10 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -118,20 +115,26 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <TreatWarningAsError>false</TreatWarningAsError>
       <AdditionalOptions>/Zc:twoPhase- %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
   </ItemDefinitionGroup>
 <ItemGroup>
     <!-- Core Source Files -->
-    <ClInclude Include="Core\AsyncIOProvider.h" />
-    <ClInclude Include="Core\NetworkEngine.h" />
-    <ClInclude Include="Core\PlatformDetect.h" />
-    <ClCompile Include="Core\AsyncIOProvider.cpp" />
-    <ClCompile Include="Core\PlatformDetect.cpp" />
+    <ClInclude Include="Network\Core\AsyncIOProvider.h" />
+    <ClInclude Include="Network\Core\NetworkEngine.h" />
+    <ClInclude Include="Network\Core\PlatformDetect.h" />
+    <ClInclude Include="Network\Core\PacketDefine.h" />
+    <ClInclude Include="Network\Core\Session.h" />
+    <ClInclude Include="Network\Core\SessionManager.h" />
+    <ClInclude Include="Network\Core\IOCPNetworkEngine.h" />
+    <ClCompile Include="Network\Core\AsyncIOProvider.cpp" />
+    <ClCompile Include="Network\Core\PlatformDetect.cpp" />
+    <ClCompile Include="Network\Core\Session.cpp" />
+    <ClCompile Include="Network\Core\SessionManager.cpp" />
+    <ClCompile Include="Network\Core\IOCPNetworkEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
     <!-- Platform-specific Source Files -->
@@ -148,14 +151,17 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Protocol Source Files -->
-    <ClInclude Include="Protocols\MessageHandler.h" />
-    <ClInclude Include="Protocols\PingPong.h" />
-    <ClCompile Include="Protocols\MessageHandler.cpp" />
-    <ClCompile Include="Protocols\PingPong.cpp" />
+    <ClInclude Include="Tests\Protocols\MessageHandler.h" />
+    <ClInclude Include="Tests\Protocols\PingPong.h" />
+    <ClCompile Include="Tests\Protocols\MessageHandler.cpp" />
+    <ClCompile Include="Tests\Protocols\PingPong.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Test Source Files -->
-    <ClCompile Include="Tests\AsyncIOTest.cpp" />
+    <!-- Database Source Files -->
+    <ClInclude Include="Database\DBConnection.h" />
+    <ClInclude Include="Database\DBConnectionPool.h" />
+    <ClCompile Include="Database\DBConnection.cpp" />
+    <ClCompile Include="Database\DBConnectionPool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <!-- Utility Source Files -->

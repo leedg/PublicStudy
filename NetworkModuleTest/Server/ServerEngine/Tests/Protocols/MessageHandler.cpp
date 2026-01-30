@@ -1,8 +1,8 @@
-// English: Implementation of MessageHandler
+﻿// English: Implementation of MessageHandler
 // 한글: MessageHandler 구현
 
-#include "Protocols/MessageHandler.h"
-#include "ping.pb.h"
+#include "MessageHandler.h"
+// #include "ping.pb.h"  // TODO: Generate Protocol Buffer files
 #include <algorithm>
 
 namespace Network::Protocols

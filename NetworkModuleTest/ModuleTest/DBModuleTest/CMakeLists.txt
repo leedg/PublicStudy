@@ -7,18 +7,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Source files
 set(SOURCES
-    src/DatabaseFactory.cpp
-    src/odbc/ODBCDatabase.cpp
+    DatabaseFactory.cpp
+    ODBCDatabase.cpp
+    OLEDBDatabase.cpp
 )
 
 # Header files
 set(HEADERS
-    include/IDatabase.h
-    src/odbc/ODBCDatabase.h
+    IDatabase.h
+    ODBCDatabase.h
+    OLEDBDatabase.h
 )
 
 # Create library
@@ -45,14 +47,14 @@ else()
 endif()
 
 # Sample executables
-add_executable(odbc_sample samples/odbc_sample.cpp)
+add_executable(odbc_sample odbc_sample.cpp)
 target_link_libraries(odbc_sample DBModuleTest)
 
-add_executable(oledb_sample samples/oledb_sample.cpp)
+add_executable(oledb_sample oledb_sample.cpp)
 target_link_libraries(oledb_sample DBModuleTest)
 
 # Test executable
-add_executable(db_tests tests/test_database.cpp)
+add_executable(db_tests test_database.cpp)
 target_link_libraries(db_tests DBModuleTest)
 
 # Installation

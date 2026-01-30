@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // English: kqueue-based AsyncIOProvider implementation for macOS/BSD
 // 한글: macOS/BSD용 kqueue 기반 AsyncIOProvider 구현

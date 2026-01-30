@@ -1,10 +1,10 @@
-// English: RIO (Registered I/O) based AsyncIOProvider implementation
+﻿// English: RIO (Registered I/O) based AsyncIOProvider implementation
 // 한글: RIO (등록 I/O) 기반 AsyncIOProvider 구현
 
 #ifdef _WIN32
 
 #include "RIOAsyncIOProvider.h"
-#include "PlatformDetect.h"
+#include "Network/Core/PlatformDetect.h"
 #include <cstring>
 
 namespace Network::AsyncIO::Windows

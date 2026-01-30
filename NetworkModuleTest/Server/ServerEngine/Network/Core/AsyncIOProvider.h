@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // English: Unified async I/O provider interface for all platforms
 // 한글: 모든 플랫폼의 비동기 I/O를 통일하는 인터페이스
@@ -29,7 +29,7 @@
 
 namespace Network::AsyncIO
 {
-    // =============================================================================
+    // =============================================================================  
     // English: Type Definitions
     // 한글: 타입 정의
     // =============================================================================
@@ -42,10 +42,10 @@ namespace Network::AsyncIO
     // 한글: 완료 콜백 함수 타입
     using CompletionCallback = std::function<void(const struct CompletionEntry&, void* userData)>;
 
-    // =============================================================================
+    // =============================================================================  
     // English: Enumerations
     // 한글: 열거형
-    // =============================================================================
+    // =============================================================================  
 
     // English: Async I/O operation types
     // 한글: 비동기 I/O 작업 타입
@@ -180,10 +180,10 @@ namespace Network::AsyncIO
         Pooled,
     };
 
-    // =============================================================================
+    // =============================================================================  
     // English: Structures
     // 한글: 구조체
-    // =============================================================================
+    // =============================================================================  
 
     // English: Completion entry from I/O completion
     // 한글: I/O 완료 항목
@@ -343,10 +343,10 @@ namespace Network::AsyncIO
         int32_t mErrorCode;
     };
 
-    // =============================================================================
+    // =============================================================================  
     // English: Abstract Interface: AsyncIOProvider
     // 한글: 추상 인터페이스: AsyncIOProvider
-    // =============================================================================
+    // =============================================================================  
 
     class AsyncIOProvider
     {
@@ -361,7 +361,7 @@ namespace Network::AsyncIO
         // =====================================================================
 
         /**
-         * English: Initialize the async I/O provider
+         * English: Initialize async I/O provider
          * 한글: 비동기 I/O 공급자 초기화
          * @param queueDepth Queue depth for requests/completions (32-4096)
          * @param maxConcurrent Maximum concurrent requests
@@ -373,7 +373,7 @@ namespace Network::AsyncIO
         ) = 0;
 
         /**
-         * English: Shutdown the async I/O provider
+         * English: Shutdown async I/O provider
          * 한글: 비동기 I/O 공급자 종료
          */
         virtual void Shutdown() = 0;
@@ -515,10 +515,10 @@ namespace Network::AsyncIO
         virtual const char* GetLastError() const = 0;
     };
 
-    // =============================================================================
+    // =============================================================================  
     // English: Factory Functions
     // 한글: 팩토리 함수
-    // =============================================================================
+    // =============================================================================  
 
     /**
      * English: Create AsyncIOProvider with automatic platform selection

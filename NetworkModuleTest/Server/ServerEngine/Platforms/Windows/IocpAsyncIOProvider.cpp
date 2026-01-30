@@ -1,10 +1,10 @@
-// English: IOCP-based AsyncIOProvider implementation
+﻿// English: IOCP-based AsyncIOProvider implementation
 // 한글: IOCP 기반 AsyncIOProvider 구현
 
 #ifdef _WIN32
 
 #include "IocpAsyncIOProvider.h"
-#include "PlatformDetect.h"
+#include "Network/Core/PlatformDetect.h"
 #include <cstring>
 
 namespace Network::AsyncIO::Windows

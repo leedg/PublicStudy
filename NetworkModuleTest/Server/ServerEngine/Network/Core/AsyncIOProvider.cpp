@@ -1,4 +1,4 @@
-// English: Factory function implementations for AsyncIOProvider
+﻿// English: Factory function implementations for AsyncIOProvider
 // 한글: AsyncIOProvider 팩토리 함수 구현
 
 #include "AsyncIOProvider.h"

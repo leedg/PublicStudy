@@ -1,4 +1,4 @@
-// English: io_uring-based AsyncIOProvider implementation
+﻿// English: io_uring-based AsyncIOProvider implementation
 // 한글: io_uring 기반 AsyncIOProvider 구현
 
 #ifdef __linux__

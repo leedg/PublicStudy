@@ -1,4 +1,4 @@
-// English: epoll-based AsyncIOProvider implementation
+﻿// English: epoll-based AsyncIOProvider implementation
 // 한글: epoll 기반 AsyncIOProvider 구현
 
 #ifdef __linux__

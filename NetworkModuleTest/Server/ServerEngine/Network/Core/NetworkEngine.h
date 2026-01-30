@@ -1,25 +1,19 @@
-#pragma once
+﻿#pragma once
 
 // English: Core network abstraction layer for NetworkModule
 // 한글: NetworkModule용 핵심 네트워크 추상화 레이어
 
-#include "Utils/NetworkUtils.h"
+#include "../../Utils/NetworkUtils.h"
+#include "AsyncIOProvider.h"
 #include <memory>
 #include <functional>
 
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <mswsock.h>
-    using SocketHandle = SOCKET;
-    using OSError = DWORD;
-#else
-    #include <sys/socket.h>
-    using SocketHandle = int;
-    using OSError = int;
-#endif
-
 namespace Network::Core
 {
+    // English: Import utility types into Core namespace
+    // 한글: Core 네임스페이스에 유틸리티 타입 가져오기
+    using Utils::ConnectionId;
+    using Utils::Timestamp;
     // =============================================================================
     // English: Network event types
     // 한글: 네트워크 이벤트 타입

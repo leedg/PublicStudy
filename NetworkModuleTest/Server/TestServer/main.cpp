@@ -1,133 +1,148 @@
-// English: Simple test program for NetworkModuleTest
-// 한글: NetworkModuleTest용 간단한 테스트 프로그램
+// English: TestServer entry point - initializes and runs the game server
+// 한글: TestServer 진입점 - 게임 서버 초기화 및 실행
 
-#include "../Server/ServerEngine/Core/Types.h"
+#include "include/TestServer.h"
+#include "Utils/NetworkUtils.h"
 #include <iostream>
+#include <string>
+#include <csignal>
 #include <thread>
 #include <chrono>
+#include <atomic>
 
-using namespace Network::AsyncIO;
-using namespace Network::Protocols;
+// English: Global server instance for signal handling
+// 한글: 시그널 처리용 전역 서버 인스턴스
+static Network::TestServer::TestServer* g_pServer = nullptr;
+static std::atomic<bool> g_Running{ true };
 
-int main()
+// English: Signal handler for graceful shutdown
+// 한글: 정상 종료를 위한 시그널 핸들러
+void SignalHandler(int signum)
+{
+    Network::Utils::Logger::Info("Signal received: " + std::to_string(signum));
+    g_Running = false;
+}
+
+// English: Print usage information
+// 한글: 사용법 출력
+void PrintUsage(const char* programName)
+{
+    std::cout << "Usage: " << programName << " [options]" << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::cout << "  -p <port>       Server port (default: 9000)" << std::endl;
+    std::cout << "  -d <connstr>    DB connection string (optional)" << std::endl;
+    std::cout << "  -l <level>      Log level: DEBUG, INFO, WARN, ERROR (default: INFO)" << std::endl;
+    std::cout << "  -h              Show this help" << std::endl;
+}
+
+// English: Parse log level string
+// 한글: 로그 레벨 문자열 파싱
+Network::Utils::LogLevel ParseLogLevel(const std::string& level)
+{
+    std::string upper = Network::Utils::StringUtils::ToUpper(level);
+    if (upper == "DEBUG") return Network::Utils::LogLevel::Debug;
+    if (upper == "WARN")  return Network::Utils::LogLevel::Warn;
+    if (upper == "ERROR") return Network::Utils::LogLevel::Err;
+    return Network::Utils::LogLevel::Info;
+}
+
+int main(int argc, char* argv[])
 {
     std::cout << "====================================" << std::endl;
-    std::cout << "NetworkModuleTest Simple Test" << std::endl;
+    std::cout << "  TestServer - IOCP Game Server" << std::endl;
     std::cout << "====================================" << std::endl;
-    
-    try
+
+    // English: Default settings
+    // 한글: 기본 설정
+    uint16_t port = 9000;
+    std::string dbConnectionString;
+    Network::Utils::LogLevel logLevel = Network::Utils::LogLevel::Info;
+
+    // English: Parse command line arguments
+    // 한글: 커맨드라인 인자 파싱
+    for (int i = 1; i < argc; ++i)
     {
-        // Test 1: Platform Detection
-        std::cout << "\n=== Platform Detection Test ===" << std::endl;
-        
-        auto provider = CreateAsyncIOProvider();
-        if (provider)
+        std::string arg = argv[i];
+
+        if (arg == "-h" || arg == "--help")
         {
-            std::cout << "[PASS] AsyncIO provider created successfully" << std::endl;
-            
-            const auto& info = provider->GetInfo();
-            std::cout << "Backend: " << info.mName << std::endl;
-            std::cout << "Platform Type: " << static_cast<int>(info.mPlatformType) << std::endl;
-            std::cout << "Buffer Registration: " << (info.mSupportsBufferReg ? "Yes" : "No") << std::endl;
-            std::cout << "Batching: " << (info.mSupportsBatching ? "Yes" : "No") << std::endl;
-            std::cout << "Zero-copy: " << (info.mSupportsZeroCopy ? "Yes" : "No") << std::endl;
-            
-            // Test 2: Initialization
-            std::cout << "\n=== Initialization Test ===" << std::endl;
-            auto error = provider->Initialize(256, 1000);
-            if (error == AsyncIOError::Success)
-            {
-                std::cout << "[PASS] Provider initialized successfully" << std::endl;
-                
-                if (provider->IsInitialized())
-                {
-                    std::cout << "[PASS] IsInitialized returns true" << std::endl;
-                }
-                
-                // Test 3: Statistics
-                std::cout << "\n=== Statistics Test ===" << std::endl;
-                auto stats = provider->GetStats();
-                std::cout << "Total Requests: " << stats.mTotalRequests << std::endl;
-                std::cout << "Total Completions: " << stats.mTotalCompletions << std::endl;
-                std::cout << "Pending Requests: " << stats.mPendingRequests << std::endl;
-                
-                provider->Shutdown();
-                std::cout << "[PASS] Provider shutdown successfully" << std::endl;
-            }
-            else
-            {
-                std::cout << "[FAIL] Provider initialization failed: " 
-                          << static_cast<int>(error) << std::endl;
-            }
+            PrintUsage(argv[0]);
+            return 0;
+        }
+        else if (arg == "-p" && i + 1 < argc)
+        {
+            port = static_cast<uint16_t>(std::stoi(argv[++i]));
+        }
+        else if (arg == "-d" && i + 1 < argc)
+        {
+            dbConnectionString = argv[++i];
+        }
+        else if (arg == "-l" && i + 1 < argc)
+        {
+            logLevel = ParseLogLevel(argv[++i]);
         }
         else
         {
-            std::cout << "[FAIL] Failed to create AsyncIO provider" << std::endl;
+            std::cerr << "Unknown option: " << arg << std::endl;
+            PrintUsage(argv[0]);
+            return 1;
         }
-        
-        // Test 4: Message Handler
-        std::cout << "\n=== Message Handler Test ===" << std::endl;
-        auto messageHandler = std::make_unique<MessageHandler>();
-        std::cout << "[PASS] MessageHandler created successfully" << std::endl;
-        
-        // Register ping handler
-        bool pingReceived = false;
-        messageHandler->RegisterHandler(
-            MessageType::Ping,
-            [&pingReceived](const Message& msg) {
-                pingReceived = true;
-                std::cout << "Ping message received from connection: " 
-                          << msg.mConnectionId << std::endl;
-            }
-        );
-        std::cout << "[PASS] Ping handler registered" << std::endl;
-        
-        // Create a test message
-        std::string testData = "Hello, Network!";
-        auto messageData = messageHandler->CreateMessage(
-            MessageType::Ping, 
-            12345, // connection ID
-            testData.c_str(), 
-            testData.length()
-        );
-        
-        if (!messageData.empty())
-        {
-            std::cout << "[PASS] Message created successfully" << std::endl;
-            
-            // Process the message
-            if (messageHandler->ProcessMessage(12345, messageData.data(), messageData.size()))
-            {
-                std::cout << "[PASS] Message processed successfully" << std::endl;
-                
-                if (pingReceived)
-                {
-                    std::cout << "[PASS] Ping handler was called" << std::endl;
-                }
-                else
-                {
-                    std::cout << "[FAIL] Ping handler was not called" << std::endl;
-                }
-            }
-            else
-            {
-                std::cout << "[FAIL] Message processing failed" << std::endl;
-            }
-        }
-        else
-        {
-            std::cout << "[FAIL] Message creation failed" << std::endl;
-        }
-        
-        std::cout << "\n====================================" << std::endl;
-        std::cout << "All tests completed" << std::endl;
-        std::cout << "====================================" << std::endl;
-        
-        return 0;
     }
-    catch (const std::exception& e)
+
+    // English: Setup logging
+    // 한글: 로깅 설정
+    Network::Utils::Logger::SetLevel(logLevel);
+
+    // English: Register signal handlers
+    // 한글: 시그널 핸들러 등록
+    std::signal(SIGINT, SignalHandler);
+    std::signal(SIGTERM, SignalHandler);
+#ifdef _WIN32
+    // English: SIGBREAK is Windows-specific, defined in <signal.h>
+    // 한글: SIGBREAK는 Windows 전용, <signal.h>에 정의
+    #ifdef SIGBREAK
+    std::signal(SIGBREAK, SignalHandler);
+    #endif
+#endif
+
+    // English: Create and initialize server
+    // 한글: 서버 생성 및 초기화
+    Network::TestServer::TestServer server;
+    g_pServer = &server;
+
+    Network::Utils::Logger::Info("Initializing server on port " + std::to_string(port));
+
+    if (!server.Initialize(port, dbConnectionString))
     {
-        std::cerr << "Test exception: " << e.what() << std::endl;
+        Network::Utils::Logger::Error("Failed to initialize server");
         return 1;
     }
+
+    // English: Start server
+    // 한글: 서버 시작
+    if (!server.Start())
+    {
+        Network::Utils::Logger::Error("Failed to start server");
+        return 1;
+    }
+
+    Network::Utils::Logger::Info("Server is running. Press Ctrl+C to stop.");
+
+    // English: Main loop - wait for shutdown signal
+    // 한글: 메인 루프 - 종료 시그널 대기
+    while (g_Running && server.IsRunning())
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    // English: Graceful shutdown
+    // 한글: 정상 종료
+    Network::Utils::Logger::Info("Shutting down server...");
+    server.Stop();
+    g_pServer = nullptr;
+
+    Network::Utils::Logger::Info("Server stopped.");
+    std::cout << "Server shutdown complete." << std::endl;
+
+    return 0;
 }

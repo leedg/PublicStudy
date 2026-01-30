@@ -198,4 +198,353 @@ std::string ODBCConnection::getSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT han
     return std::string(reinterpret_cast<char*>(message));
 }
 
+// ODBCStatement Implementation
+ODBCStatement::ODBCStatement(SQLHDBC conn) 
+    : statement_(SQL_NULL_HANDLE), connection_(conn), prepared_(false), timeout_(30) {
+    SQLRETURN ret = SQLAllocHandle(SQL_HANDLE_STMT, connection_, &statement_);
+    if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+        throw DatabaseException("Failed to allocate ODBC statement handle");
+    }
+}
+
+ODBCStatement::~ODBCStatement() {
+    close();
+}
+
+void ODBCStatement::setQuery(const std::string& query) {
+    query_ = query;
+    prepared_ = false;
+}
+
+void ODBCStatement::setTimeout(int seconds) {
+    timeout_ = seconds;
+    SQLRETURN ret = SQLSetStmtAttr(statement_, SQL_ATTR_QUERY_TIMEOUT, 
+                                  (SQLPOINTER)timeout_, 0);
+    checkSQLReturn(ret, "Set timeout", statement_, SQL_HANDLE_STMT);
+}
+
+void ODBCStatement::bindParameter(size_t index, const std::string& value) {
+    parameters_.resize(std::max(parameters_.size(), index));
+    parameters_[index - 1] = value;
+    parameterLengths_.resize(std::max(parameterLengths_.size(), index));
+    parameterLengths_[index - 1] = SQL_NTS;
+}
+
+void ODBCStatement::bindParameter(size_t index, int value) {
+    parameters_.resize(std::max(parameters_.size(), index));
+    parameters_[index - 1] = std::to_string(value);
+    parameterLengths_.resize(std::max(parameterLengths_.size(), index));
+    parameterLengths_[index - 1] = 0;
+}
+
+void ODBCStatement::bindParameter(size_t index, long long value) {
+    parameters_.resize(std::max(parameters_.size(), index));
+    parameters_[index - 1] = std::to_string(value);
+    parameterLengths_.resize(std::max(parameterLengths_.size(), index));
+    parameterLengths_[index - 1] = 0;
+}
+
+void ODBCStatement::bindParameter(size_t index, double value) {
+    parameters_.resize(std::max(parameters_.size(), index));
+    parameters_[index - 1] = std::to_string(value);
+    parameterLengths_.resize(std::max(parameterLengths_.size(), index));
+    parameterLengths_[index - 1] = 0;
+}
+
+void ODBCStatement::bindParameter(size_t index, bool value) {
+    parameters_.resize(std::max(parameters_.size(), index));
+    parameters_[index - 1] = value ? "1" : "0";
+    parameterLengths_.resize(std::max(parameterLengths_.size(), index));
+    parameterLengths_[index - 1] = 0;
+}
+
+void ODBCStatement::bindNullParameter(size_t index) {
+    parameters_.resize(std::max(parameters_.size(), index));
+    parameters_[index - 1] = "";
+    parameterLengths_.resize(std::max(parameterLengths_.size(), index));
+    parameterLengths_[index - 1] = SQL_NULL_DATA;
+}
+
+void ODBCStatement::bindParameters() {
+    for (size_t i = 0; i < parameters_.size(); ++i) {
+        SQLRETURN ret = SQLBindParameter(statement_, i + 1, SQL_PARAM_INPUT,
+                                        SQL_C_CHAR, SQL_VARCHAR, 0, 0,
+                                        (SQLPOINTER)parameters_[i].c_str(),
+                                        parameters_[i].length(),
+                                        &parameterLengths_[i]);
+        checkSQLReturn(ret, "Bind parameter", statement_, SQL_HANDLE_STMT);
+    }
+}
+
+std::unique_ptr<IResultSet> ODBCStatement::executeQuery() {
+    if (!prepared_) {
+        bindParameters();
+        SQLRETURN ret = SQLExecDirect(statement_, (SQLCHAR*)query_.c_str(), SQL_NTS);
+        checkSQLReturn(ret, "Execute query", statement_, SQL_HANDLE_STMT);
+        prepared_ = true;
+    }
+    return std::make_unique<ODBCResultSet>(statement_);
+}
+
+int ODBCStatement::executeUpdate() {
+    if (!prepared_) {
+        bindParameters();
+        SQLRETURN ret = SQLExecDirect(statement_, (SQLCHAR*)query_.c_str(), SQL_NTS);
+        checkSQLReturn(ret, "Execute update", statement_, SQL_HANDLE_STMT);
+        prepared_ = true;
+    }
+    
+    SQLLEN rowCount = 0;
+    SQLRETURN ret = SQLRowCount(statement_, &rowCount);
+    checkSQLReturn(ret, "Get row count", statement_, SQL_HANDLE_STMT);
+    return static_cast<int>(rowCount);
+}
+
+bool ODBCStatement::execute() {
+    if (!prepared_) {
+        bindParameters();
+        SQLRETURN ret = SQLExecDirect(statement_, (SQLCHAR*)query_.c_str(), SQL_NTS);
+        if (ret == SQL_NO_DATA) {
+            return false;
+        }
+        checkSQLReturn(ret, "Execute", statement_, SQL_HANDLE_STMT);
+        prepared_ = true;
+        return true;
+    }
+    return true;
+}
+
+void ODBCStatement::addBatch() {
+    // ODBC batch implementation - simplified
+}
+
+std::vector<int> ODBCStatement::executeBatch() {
+    // ODBC batch execution implementation - simplified
+    return std::vector<int>();
+}
+
+void ODBCStatement::clearParameters() {
+    parameters_.clear();
+    parameterLengths_.clear();
+    prepared_ = false;
+}
+
+void ODBCStatement::close() {
+    if (statement_ != SQL_NULL_HANDLE) {
+        SQLFreeHandle(SQL_HANDLE_STMT, statement_);
+        statement_ = SQL_NULL_HANDLE;
+    }
+}
+
+void ODBCStatement::checkSQLReturn(SQLRETURN ret, const std::string& operation) {
+    if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+        throw DatabaseException(operation + ": " + getSQLErrorMessage(statement_, SQL_HANDLE_STMT));
+    }
+}
+
+std::string ODBCStatement::getSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType) {
+    SQLCHAR sqlState[6];
+    SQLCHAR message[SQL_MAX_MESSAGE_LENGTH];
+    SQLINTEGER nativeError;
+    SQLSMALLINT messageLength;
+    
+    SQLGetDiagRec(handleType, handle, 1, sqlState, &nativeError, 
+                  message, SQL_MAX_MESSAGE_LENGTH, &messageLength);
+    
+    return std::string(reinterpret_cast<char*>(message));
+}
+
+// ODBCResultSet Implementation
+ODBCResultSet::ODBCResultSet(SQLHSTMT stmt) 
+    : statement_(stmt), hasData_(false), metadataLoaded_(false) {
+    loadMetadata();
+}
+
+ODBCResultSet::~ODBCResultSet() {
+    close();
+}
+
+void ODBCResultSet::loadMetadata() {
+    if (metadataLoaded_) return;
+    
+    SQLSMALLINT columnCount = 0;
+    SQLRETURN ret = SQLNumResultCols(statement_, &columnCount);
+    checkSQLReturn(ret, "Get column count", statement_, SQL_HANDLE_STMT);
+    
+    columnNames_.resize(columnCount);
+    columnTypes_.resize(columnCount);
+    columnSizes_.resize(columnCount);
+    
+    for (SQLSMALLINT i = 0; i < columnCount; ++i) {
+        SQLCHAR columnName[256];
+        SQLSMALLINT nameLength;
+        SQLSMALLINT dataType;
+        SQLULEN columnSize;
+        SQLSMALLINT decimalDigits;
+        SQLSMALLINT nullable;
+        
+        ret = SQLDescribeCol(statement_, i + 1, columnName, sizeof(columnName),
+                             &nameLength, &dataType, &columnSize, &decimalDigits, &nullable);
+        checkSQLReturn(ret, "Describe column", statement_, SQL_HANDLE_STMT);
+        
+        columnNames_[i] = std::string(reinterpret_cast<char*>(columnName));
+        columnTypes_[i] = dataType;
+        columnSizes_[i] = columnSize;
+    }
+    
+    metadataLoaded_ = true;
+}
+
+bool ODBCResultSet::next() {
+    SQLRETURN ret = SQLFetch(statement_);
+    if (ret == SQL_NO_DATA) {
+        hasData_ = false;
+        return false;
+    }
+    checkSQLReturn(ret, "Fetch row", statement_, SQL_HANDLE_STMT);
+    hasData_ = true;
+    return true;
+}
+
+bool ODBCResultSet::isNull(size_t columnIndex) {
+    SQLLEN indicator;
+    SQLCHAR buffer[1];
+    SQLRETURN ret = SQLGetData(statement_, columnIndex + 1, SQL_C_CHAR,
+                              buffer, 0, &indicator);
+    checkSQLReturn(ret, "Get data (null check)", statement_, SQL_HANDLE_STMT);
+    return indicator == SQL_NULL_DATA;
+}
+
+bool ODBCResultSet::isNull(const std::string& columnName) {
+    size_t index = findColumn(columnName);
+    return isNull(index);
+}
+
+std::string ODBCResultSet::getString(size_t columnIndex) {
+    if (!hasData_) {
+        throw DatabaseException("No current row");
+    }
+    
+    std::string value;
+    SQLLEN indicator;
+    char buffer[4096];
+    
+    SQLRETURN ret = SQLGetData(statement_, columnIndex + 1, SQL_C_CHAR,
+                              buffer, sizeof(buffer), &indicator);
+    
+    if (indicator == SQL_NULL_DATA) {
+        return "";
+    }
+    
+    checkSQLReturn(ret, "Get data (string)", statement_, SQL_HANDLE_STMT);
+    
+    if (ret == SQL_SUCCESS_WITH_INFO && indicator > static_cast<SQLLEN>(sizeof(buffer) - 1)) {
+        // Handle long data - simplified for this example
+        value = std::string(buffer, sizeof(buffer) - 1);
+    } else {
+        value = std::string(buffer);
+    }
+    
+    return value;
+}
+
+std::string ODBCResultSet::getString(const std::string& columnName) {
+    size_t index = findColumn(columnName);
+    return getString(index);
+}
+
+int ODBCResultSet::getInt(size_t columnIndex) {
+    std::string value = getString(columnIndex);
+    try {
+        return std::stoi(value);
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+int ODBCResultSet::getInt(const std::string& columnName) {
+    size_t index = findColumn(columnName);
+    return getInt(index);
+}
+
+long long ODBCResultSet::getLong(size_t columnIndex) {
+    std::string value = getString(columnIndex);
+    try {
+        return std::stoll(value);
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+long long ODBCResultSet::getLong(const std::string& columnName) {
+    size_t index = findColumn(columnName);
+    return getLong(index);
+}
+
+double ODBCResultSet::getDouble(size_t columnIndex) {
+    std::string value = getString(columnIndex);
+    try {
+        return std::stod(value);
+    } catch (const std::exception&) {
+        return 0.0;
+    }
+}
+
+double ODBCResultSet::getDouble(const std::string& columnName) {
+    size_t index = findColumn(columnName);
+    return getDouble(index);
+}
+
+bool ODBCResultSet::getBool(size_t columnIndex) {
+    int value = getInt(columnIndex);
+    return value != 0;
+}
+
+bool ODBCResultSet::getBool(const std::string& columnName) {
+    size_t index = findColumn(columnName);
+    return getBool(index);
+}
+
+size_t ODBCResultSet::getColumnCount() const {
+    return columnNames_.size();
+}
+
+std::string ODBCResultSet::getColumnName(size_t columnIndex) const {
+    if (columnIndex >= columnNames_.size()) {
+        throw DatabaseException("Column index out of range");
+    }
+    return columnNames_[columnIndex];
+}
+
+size_t ODBCResultSet::findColumn(const std::string& columnName) const {
+    for (size_t i = 0; i < columnNames_.size(); ++i) {
+        if (columnNames_[i] == columnName) {
+            return i;
+        }
+    }
+    throw DatabaseException("Column not found: " + columnName);
+}
+
+void ODBCResultSet::close() {
+    // Statement handle is managed by the parent statement
+}
+
+void ODBCResultSet::checkSQLReturn(SQLRETURN ret, const std::string& operation) {
+    if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO) {
+        throw DatabaseException(operation + ": " + getSQLErrorMessage(statement_, SQL_HANDLE_STMT));
+    }
+}
+
+std::string ODBCResultSet::getSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType) {
+    SQLCHAR sqlState[6];
+    SQLCHAR message[SQL_MAX_MESSAGE_LENGTH];
+    SQLINTEGER nativeError;
+    SQLSMALLINT messageLength;
+    
+    SQLGetDiagRec(handleType, handle, 1, sqlState, &nativeError, 
+                  message, SQL_MAX_MESSAGE_LENGTH, &messageLength);
+    
+    return std::string(reinterpret_cast<char*>(message));
+}
+
 } // namespace DocDBModule

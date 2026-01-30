@@ -8,11 +8,57 @@
 
 ### 2.1 전송 계층
 - **기반**: TCP/IP
-- **직렬화**: Protocol Buffers v3
+- **직렬화**: 바이너리 패킷 (PacketDefine.h) + Protocol Buffers v3
 - **압축**: 선택적 (gzip/zstd)
 - **암호화**: 선택적 (TLS 1.3)
 
-### 2.2 메시지 구조
+### 2.2 바이너리 패킷 구조 (PacketDefine.h)
+
+클라이언트-서버 간 실시간 통신에 사용되는 경량 바이너리 패킷입니다.
+
+```cpp
+// 모든 패킷의 공통 헤더 (4바이트, #pragma pack(push, 1))
+struct PacketHeader {
+    uint16_t size;  // 헤더 포함 전체 패킷 크기
+    uint16_t id;    // 패킷 타입 ID (PacketType enum)
+};
+
+// 접속 요청 (Client → Server)
+struct PKT_SessionConnectReq {    // ID: 0x0001
+    PacketHeader header;
+    uint32_t clientVersion;       // 클라이언트 버전
+};
+
+// 접속 응답 (Server → Client)
+struct PKT_SessionConnectRes {    // ID: 0x0002
+    PacketHeader header;
+    uint64_t sessionId;           // 발급된 세션 ID
+    uint32_t serverTime;          // 서버 현재 시간
+    uint8_t  result;              // ConnectResult (0=Success, 1=VersionMismatch, ...)
+};
+
+// Ping 요청 (Client → Server)
+struct PKT_PingReq {              // ID: 0x0003
+    PacketHeader header;
+    uint64_t clientTime;          // 클라이언트 전송 시간
+    uint32_t sequence;            // 시퀀스 번호
+};
+
+// Pong 응답 (Server → Client)
+struct PKT_PongRes {              // ID: 0x0004
+    PacketHeader header;
+    uint64_t clientTime;          // 에코된 클라이언트 시간
+    uint64_t serverTime;          // 서버 응답 시간
+    uint32_t sequence;            // 에코된 시퀀스 번호
+};
+```
+
+**상수 정의**:
+- `RECV_BUFFER_SIZE`: 8192 bytes
+- `PING_INTERVAL_MS`: 5000 ms
+- `PING_TIMEOUT_MS`: 30000 ms
+
+### 2.3 Protobuf 메시지 구조 (서버간 통신)
 ```protobuf
 syntax = "proto3";
 
@@ -197,7 +243,36 @@ message AuthResponse {
 
 ## 4. 통신 흐름
 
-### 4.1 기본 요청-응답 흐름
+### 4.1 클라이언트 접속 및 세션 수립 흐름
+```
+Client                  TestServer (IOCP)              DB (ODBC)
+  |                         |                           |
+  |--- TCP Connect -------->|                           |
+  |                    [AcceptThread]                    |
+  |                    accept() → GameSession 생성      |
+  |                    IOCP 등록 + PostRecv()            |
+  |                    [LogicThreadPool]                 |
+  |                    OnConnected()                     |
+  |                    RecordConnectTimeToDB() ────────> INSERT INTO SessionLog
+  |                         |                           |  (SessionId, ConnectTime, IP)
+  |                         |                           |
+  |--- SessionConnectReq -->|                           |
+  |    (clientVersion)      |                           |
+  |                    [WorkerThread → LogicPool]        |
+  |                    HandleConnectRequest()            |
+  |                    버전 검증 → SessionConnectRes 생성|
+  |<-- SessionConnectRes ---|                           |
+  |    (sessionId, result)  |                           |
+  |                         |                           |
+  |--- PingReq ----------->|                           |
+  |    (clientTime, seq)    |                           |
+  |                    HandlePingRequest()               |
+  |<-- PongRes ------------|                           |
+  |    (clientTime,         |                           |
+  |     serverTime, seq)    |                           |
+```
+
+### 4.2 기본 요청-응답 흐름 (서버간)
 ```
 TestServer                    DBServer
     |                           |

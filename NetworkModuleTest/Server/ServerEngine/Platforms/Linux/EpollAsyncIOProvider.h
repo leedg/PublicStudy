@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // English: epoll-based AsyncIOProvider implementation for Linux
 // 한글: Linux용 epoll 기반 AsyncIOProvider 구현

@@ -1,11 +1,9 @@
 #include "IDatabase.h"
+#include "ODBCDatabase.h"
+#include "OLEDBDatabase.h"
 #include <stdexcept>
 
 namespace DocDBModule {
-
-// Forward declarations for implementation classes
-class ODBCDatabase;
-class OLEDBDatabase;
 
 std::unique_ptr<IDatabase> DatabaseFactory::createDatabase(DatabaseType type) {
     switch (type) {
