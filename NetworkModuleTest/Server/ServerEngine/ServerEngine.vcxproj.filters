@@ -1,99 +1,247 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Core\AsyncIOProvider.cpp">
-      <Filter>Network\Core</Filter>
+    <!-- Root Filters -->
+    <Filter Include="Core">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Interfaces">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Implementations">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Platform">
+      <UniqueIdentifier>{D0F16B8A-A9B5-4c5f-8E7D-9E8F3B2C1A0D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Examples">
+      <UniqueIdentifier>{E0F26C9B-B0C6-5d6g-9F8E-0F9G4C3D2B1E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Interfaces - Database -->
+    <ClInclude Include="Interfaces\DatabaseType_enum.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\DatabaseConfig.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\DatabaseException.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IDatabase.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IConnection.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IStatement.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IResultSet.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IConnectionPool.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\DatabaseUtils.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <!-- Interfaces - Message Handling -->
+    <ClInclude Include="Interfaces\MessageType_enum.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\Message.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IMessageHandler.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Core - Network -->
+    <Filter Include="Core\Network">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A301}</UniqueIdentifier>
+    </Filter>
+    <ClInclude Include="Network\Core\AsyncIOProvider.h">
+      <Filter>Core\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="Network\Core\NetworkEngine.h">
+      <Filter>Core\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="Network\Core\PlatformDetect.h">
+      <Filter>Core\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="Network\Core\PacketDefine.h">
+      <Filter>Core\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="Network\Core\Session.h">
+      <Filter>Core\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="Network\Core\SessionManager.h">
+      <Filter>Core\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="Network\Core\IOCPNetworkEngine.h">
+      <Filter>Core\Network</Filter>
+    </ClInclude>
+    <ClCompile Include="Network\Core\AsyncIOProvider.cpp">
+      <Filter>Core\Network</Filter>
     </ClCompile>
-    <ClCompile Include="Tests\AsyncIOTest.cpp">
-      <Filter>Test</Filter>
+    <ClCompile Include="Network\Core\PlatformDetect.cpp">
+      <Filter>Core\Network</Filter>
     </ClCompile>
-    <ClCompile Include="Platforms\Windows\IocpAsyncIOProvider.cpp">
-      <Filter>Network\Core\Platforms\Windows</Filter>
+    <ClCompile Include="Network\Core\Session.cpp">
+      <Filter>Core\Network</Filter>
     </ClCompile>
-    <ClCompile Include="Platforms\Windows\RIOAsyncIOProvider.cpp">
-      <Filter>Network\Core\Platforms\Windows</Filter>
+    <ClCompile Include="Network\Core\SessionManager.cpp">
+      <Filter>Core\Network</Filter>
     </ClCompile>
-    <ClCompile Include="Platforms\Linux\EpollAsyncIOProvider.cpp">
-      <Filter>Network\Core\Platforms\Linux</Filter>
-    </ClCompile>
-    <ClCompile Include="Platforms\Linux\IOUringAsyncIOProvider.cpp">
-      <Filter>Network\Core\Platforms\Linux</Filter>
-    </ClCompile>
-    <ClCompile Include="Platforms\macOS\KqueueAsyncIOProvider.cpp">
-      <Filter>Network\Core\Platforms\Mac</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\PlatformDetect.cpp">
-      <Filter>Network\Core</Filter>
-    </ClCompile>
-    <ClCompile Include="Protocols\PingPong.cpp">
-      <Filter>Test\Protocols</Filter>
-    </ClCompile>
-    <ClCompile Include="Protocols\MessageHandler.cpp">
-      <Filter>Test\Protocols</Filter>
+    <ClCompile Include="Network\Core\IOCPNetworkEngine.cpp">
+      <Filter>Core\Network</Filter>
     </ClCompile>
   </ItemGroup>
+
   <ItemGroup>
-    <ClInclude Include="Core\AsyncIOProvider.h">
-      <Filter>Network\Core</Filter>
+    <!-- Implementations - Protocols -->
+    <Filter Include="Implementations\Protocols">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD03}</UniqueIdentifier>
+    </Filter>
+    <ClInclude Include="Implementations\Protocols\BaseMessageHandler.h">
+      <Filter>Implementations\Protocols</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\NetworkUtils.h">
-      <Filter>Util</Filter>
+    <ClCompile Include="Implementations\Protocols\BaseMessageHandler.cpp">
+      <Filter>Implementations\Protocols</Filter>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Implementations - Database -->
+    <Filter Include="Implementations\Database">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Implementations\Database\Legacy">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD05}</UniqueIdentifier>
+    </Filter>
+    <ClInclude Include="Database\DatabaseFactory.h">
+      <Filter>Implementations\Database</Filter>
     </ClInclude>
+    <ClInclude Include="Database\DatabaseModule.h">
+      <Filter>Implementations\Database</Filter>
+    </ClInclude>
+    <ClInclude Include="Database\ODBCDatabase.h">
+      <Filter>Implementations\Database</Filter>
+    </ClInclude>
+    <ClInclude Include="Database\OLEDBDatabase.h">
+      <Filter>Implementations\Database</Filter>
+    </ClInclude>
+    <ClInclude Include="Database\ConnectionPool.h">
+      <Filter>Implementations\Database</Filter>
+    </ClInclude>
+    <ClCompile Include="Database\DatabaseFactory.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="Database\ODBCDatabase.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="Database\OLEDBDatabase.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="Database\ConnectionPool.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
+    <ClInclude Include="Database\DBConnection.h">
+      <Filter>Implementations\Database\Legacy</Filter>
+    </ClInclude>
+    <ClInclude Include="Database\DBConnectionPool.h">
+      <Filter>Implementations\Database\Legacy</Filter>
+    </ClInclude>
+    <ClCompile Include="Database\DBConnection.cpp">
+      <Filter>Implementations\Database\Legacy</Filter>
+    </ClCompile>
+    <ClCompile Include="Database\DBConnectionPool.cpp">
+      <Filter>Implementations\Database\Legacy</Filter>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Platform - Windows -->
+    <Filter Include="Platform\Windows">
+      <UniqueIdentifier>{D0F16B8A-A9B5-4c5f-8E7D-9E8F3B2C1A01}</UniqueIdentifier>
+    </Filter>
     <ClInclude Include="Platforms\Windows\IocpAsyncIOProvider.h">
-      <Filter>Network\Core\Platforms\Windows</Filter>
+      <Filter>Platform\Windows</Filter>
     </ClInclude>
     <ClInclude Include="Platforms\Windows\RIOAsyncIOProvider.h">
-      <Filter>Network\Core\Platforms\Windows</Filter>
+      <Filter>Platform\Windows</Filter>
     </ClInclude>
+    <ClCompile Include="Platforms\Windows\IocpAsyncIOProvider.cpp">
+      <Filter>Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Platforms\Windows\RIOAsyncIOProvider.cpp">
+      <Filter>Platform\Windows</Filter>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Platform - Linux -->
+    <Filter Include="Platform\Linux">
+      <UniqueIdentifier>{D0F16B8A-A9B5-4c5f-8E7D-9E8F3B2C1A02}</UniqueIdentifier>
+    </Filter>
     <ClInclude Include="Platforms\Linux\EpollAsyncIOProvider.h">
-      <Filter>Network\Core\Platforms\Linux</Filter>
+      <Filter>Platform\Linux</Filter>
     </ClInclude>
     <ClInclude Include="Platforms\Linux\IOUringAsyncIOProvider.h">
-      <Filter>Network\Core\Platforms\Linux</Filter>
+      <Filter>Platform\Linux</Filter>
     </ClInclude>
-    <ClInclude Include="Platforms\macOS\KqueueAsyncIOProvider.h">
-      <Filter>Network\Core\Platforms\Mac</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\PlatformDetect.h">
-      <Filter>Network\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\NetworkEngine.h">
-      <Filter>Network\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="Protocols\PingPong.h">
-      <Filter>Test\Protocols</Filter>
-    </ClInclude>
-    <ClInclude Include="Protocols\MessageHandler.h">
-      <Filter>Test\Protocols</Filter>
-    </ClInclude>
+    <ClCompile Include="Platforms\Linux\EpollAsyncIOProvider.cpp">
+      <Filter>Platform\Linux</Filter>
+    </ClCompile>
+    <ClCompile Include="Platforms\Linux\IOUringAsyncIOProvider.cpp">
+      <Filter>Platform\Linux</Filter>
+    </ClCompile>
   </ItemGroup>
+
   <ItemGroup>
-    <Filter Include="Network">
-      <UniqueIdentifier>{eab93da5-b943-4ea6-a79b-c63d20b91bb1}</UniqueIdentifier>
+    <!-- Platform - macOS -->
+    <Filter Include="Platform\macOS">
+      <UniqueIdentifier>{D0F16B8A-A9B5-4c5f-8E7D-9E8F3B2C1A03}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Network\Core">
-      <UniqueIdentifier>{d089e4e6-ec5a-4a20-91e4-54fd3aeb6d24}</UniqueIdentifier>
+    <ClInclude Include="Platforms\macOS\KqueueAsyncIOProvider.h">
+      <Filter>Platform\macOS</Filter>
+    </ClInclude>
+    <ClCompile Include="Platforms\macOS\KqueueAsyncIOProvider.cpp">
+      <Filter>Platform\macOS</Filter>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Examples (For Reference) -->
+    <Filter Include="Examples\Protocols">
+      <UniqueIdentifier>{E0F26C9B-B0C6-5d6g-9F8E-0F9G4C3D2B01}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Util">
-      <UniqueIdentifier>{845d2a08-709e-4dff-8fab-415ecaa62d25}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Test">
-      <UniqueIdentifier>{6cdabb90-6d4b-4fbe-9966-b2bfecccc0ce}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Network\Core\Platforms">
-      <UniqueIdentifier>{5c69fd5a-5b34-44cf-aaab-ba12fe2c0fed}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Network\Core\Platforms\Linux">
-      <UniqueIdentifier>{9375299c-e3be-4fa7-8420-92aadb995a80}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Network\Core\Platforms\Mac">
-      <UniqueIdentifier>{7ab8772b-5338-4fef-a6a2-ce9abb06bbcc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Network\Core\Platforms\Windows">
-      <UniqueIdentifier>{eeb718d6-46ec-4d0f-a8ba-fb5b43ff648a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Test\Protocols">
-      <UniqueIdentifier>{ebaaa4ad-76a0-430c-bcaf-7e0a20e8978c}</UniqueIdentifier>
-    </Filter>
+    <ClInclude Include="Tests\Protocols\MessageHandler.h">
+      <Filter>Examples\Protocols</Filter>
+    </ClInclude>
+    <ClInclude Include="Tests\Protocols\PingPong.h">
+      <Filter>Examples\Protocols</Filter>
+    </ClInclude>
+    <ClCompile Include="Tests\Protocols\MessageHandler.cpp">
+      <Filter>Examples\Protocols</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Protocols\PingPong.cpp">
+      <Filter>Examples\Protocols</Filter>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Utils -->
+    <ClInclude Include="Utils\NetworkUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

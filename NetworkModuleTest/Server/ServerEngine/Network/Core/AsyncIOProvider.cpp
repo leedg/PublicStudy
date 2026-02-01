@@ -8,28 +8,37 @@
 // English: Forward declarations - each factory lives in its platform sub-namespace
 // 한글: 전방 선언 - 각 팩토리는 플랫폼 하위 네임스페이스에 존재
 #ifdef _WIN32
-namespace Network::AsyncIO::Windows
-{
+namespace Network {
+namespace AsyncIO {
+namespace Windows {
     std::unique_ptr<AsyncIOProvider> CreateIocpProvider();
     std::unique_ptr<AsyncIOProvider> CreateRIOProvider();
 }
+}
+}
 #endif
 #ifdef __linux__
-namespace Network::AsyncIO::Linux
-{
+namespace Network {
+namespace AsyncIO {
+namespace Linux {
     std::unique_ptr<AsyncIOProvider> CreateEpollProvider();
     std::unique_ptr<AsyncIOProvider> CreateIOUringProvider();
 }
+}
+}
 #endif
 #ifdef __APPLE__
-namespace Network::AsyncIO::BSD
-{
+namespace Network {
+namespace AsyncIO {
+namespace BSD {
     std::unique_ptr<AsyncIOProvider> CreateKqueueProvider();
+}
+}
 }
 #endif
 
-namespace Network::AsyncIO
-{
+namespace Network {
+namespace AsyncIO {
 
     // =============================================================================
     // English: Factory Function Implementations
@@ -234,4 +243,6 @@ namespace Network::AsyncIO
         return Platform::GetDetailedPlatformInfo();
     }
 
-}  // namespace Network::AsyncIO
+}  // namespace AsyncIO
+}  // namespace Network
+

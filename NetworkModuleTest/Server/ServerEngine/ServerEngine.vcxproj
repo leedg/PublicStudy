@@ -42,13 +42,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -102,7 +102,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
@@ -115,13 +115,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>false</TreatWarningAsError>
       <AdditionalOptions>/Zc:twoPhase- %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
-<ItemGroup>
+  <ItemGroup>
     <!-- Core Source Files -->
     <ClInclude Include="Network\Core\AsyncIOProvider.h" />
     <ClInclude Include="Network\Core\NetworkEngine.h" />
@@ -150,18 +150,50 @@
     <ClCompile Include="Platforms\macOS\KqueueAsyncIOProvider.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Protocol Source Files -->
-    <ClInclude Include="Tests\Protocols\MessageHandler.h" />
-    <ClInclude Include="Tests\Protocols\PingPong.h" />
-    <ClCompile Include="Tests\Protocols\MessageHandler.cpp" />
-    <ClCompile Include="Tests\Protocols\PingPong.cpp" />
+    <!-- Interface Layer - Database -->
+    <ClInclude Include="Interfaces\DatabaseType_enum.h" />
+    <ClInclude Include="Interfaces\DatabaseConfig.h" />
+    <ClInclude Include="Interfaces\DatabaseException.h" />
+    <ClInclude Include="Interfaces\IDatabase.h" />
+    <ClInclude Include="Interfaces\IConnection.h" />
+    <ClInclude Include="Interfaces\IStatement.h" />
+    <ClInclude Include="Interfaces\IResultSet.h" />
+    <ClInclude Include="Interfaces\IConnectionPool.h" />
+    <ClInclude Include="Interfaces\DatabaseUtils.h" />
+    <!-- Interface Layer - Message Handling -->
+    <ClInclude Include="Interfaces\MessageType_enum.h" />
+    <ClInclude Include="Interfaces\Message.h" />
+    <ClInclude Include="Interfaces\IMessageHandler.h" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Database Source Files -->
+    <!-- Implementation Layer - Protocols -->
+    <ClInclude Include="Implementations\Protocols\BaseMessageHandler.h" />
+    <ClCompile Include="Implementations\Protocols\BaseMessageHandler.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Implementation Layer - Database -->
+    <ClInclude Include="Database\DatabaseFactory.h" />
+    <ClInclude Include="Database\DatabaseModule.h" />
+    <ClInclude Include="Database\ODBCDatabase.h" />
+    <ClInclude Include="Database\OLEDBDatabase.h" />
+    <ClInclude Include="Database\ConnectionPool.h" />
+    <ClCompile Include="Database\DatabaseFactory.cpp" />
+    <ClCompile Include="Database\ODBCDatabase.cpp" />
+    <ClCompile Include="Database\OLEDBDatabase.cpp" />
+    <ClCompile Include="Database\ConnectionPool.cpp" />
+    <!-- Legacy Database Support (Deprecated) -->
     <ClInclude Include="Database\DBConnection.h" />
     <ClInclude Include="Database\DBConnectionPool.h" />
     <ClCompile Include="Database\DBConnection.cpp" />
     <ClCompile Include="Database\DBConnectionPool.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Example Implementations (for reference) -->
+    <ClInclude Include="Tests\Protocols\MessageHandler.h" />
+    <ClInclude Include="Tests\Protocols\PingPong.h" />
+    <ClCompile Include="Tests\Protocols\MessageHandler.cpp" />
+    <ClCompile Include="Tests\Protocols\PingPong.cpp" />
+    <None Include="Tests\AsyncIOTest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <!-- Utility Source Files -->

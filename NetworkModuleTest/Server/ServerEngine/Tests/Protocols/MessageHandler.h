@@ -52,19 +52,19 @@ namespace Network::Protocols
     {
         // English: Message type
         // 한글: 메시지 타입
-        MessageType mType;
-        
+        MessageType mType = MessageType::Unknown;
+
         // English: Connection ID that sent this message
         // 한글: 이 메시지를 보낸 연결 ID
-        ConnectionId mConnectionId;
-        
+        ConnectionId mConnectionId = 0;
+
         // English: Message data
         // 한글: 메시지 데이터
         std::vector<uint8_t> mData;
-        
+
         // English: Timestamp when message was received
         // 한글: 메시지 수신 시간 타임스탬프
-        uint64_t mTimestamp;
+        uint64_t mTimestamp = 0;
     };
 
     // =============================================================================

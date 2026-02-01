@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -55,7 +55,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
-  <ImportGroup Label="Shared" >
+  <ImportGroup Label="Shared">
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -123,6 +123,7 @@
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -151,9 +152,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <!-- Core Source Files -->
+    <ClCompile Include="RIOAsyncIOProvider.cpp" />
     <ClInclude Include="AsyncIOProvider.h" />
     <ClInclude Include="PlatformDetect.h" />
     <ClCompile Include="AsyncIOProvider.cpp" />
+    <ClCompile Include="IocpAsyncIOProvider.cpp" />
     <ClCompile Include="PlatformDetect.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -163,8 +166,6 @@
     <ClInclude Include="EpollAsyncIOProvider.h" />
     <ClInclude Include="IOUringAsyncIOProvider.h" />
     <ClInclude Include="KqueueAsyncIOProvider.h" />
-    <ClCompile Include="IocpAsyncIOProvider.cpp" />
-    <ClCompile Include="RIOAsyncIOProvider.cpp" />
     <ClCompile Include="EpollAsyncIOProvider.cpp" />
     <ClCompile Include="IOUringAsyncIOProvider.cpp" />
     <ClCompile Include="KqueueAsyncIOProvider.cpp" />

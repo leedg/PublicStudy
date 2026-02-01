@@ -10,8 +10,9 @@
 #include <cstring>
 #include <cstdlib>
 
-namespace Network::AsyncIO::Linux
-{
+namespace Network {
+namespace AsyncIO {
+namespace Linux {
     // =============================================================================
     // English: Constructor & Destructor
     // 한글: 생성자 및 소멸자
@@ -273,9 +274,12 @@ namespace Network::AsyncIO::Linux
 
     std::unique_ptr<AsyncIOProvider> CreateEpollProvider()
     {
-        return std::make_unique<EpollAsyncIOProvider>();
+        return std::unique_ptr<AsyncIOProvider>(new EpollAsyncIOProvider());
     }
 
-}  // namespace Network::AsyncIO::Linux
+}  // namespace Linux
+}  // namespace AsyncIO
+}  // namespace Network
 
 #endif  // __linux__
+

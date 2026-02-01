@@ -1,5 +1,5 @@
-// English: DBConnection implementation
-// 한글: DBConnection 구현
+﻿// English: DBConnection implementation
+// ?쒓?: DBConnection 援ы쁽
 
 #include "DBConnection.h"
 #include <iostream>
@@ -28,7 +28,7 @@ bool DBConnection::Connect(const std::string& connectionString)
     SQLRETURN ret;
 
     // English: Allocate environment handle
-    // 한글: 환경 핸들 할당
+    // ?쒓?: ?섍꼍 ?몃뱾 ?좊떦
     ret = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &mEnv);
     if (!SQL_SUCCEEDED(ret))
     {
@@ -38,7 +38,7 @@ bool DBConnection::Connect(const std::string& connectionString)
     }
 
     // English: Set ODBC version
-    // 한글: ODBC 버전 설정
+    // ?쒓?: ODBC 踰꾩쟾 ?ㅼ젙
     ret = SQLSetEnvAttr(mEnv, SQL_ATTR_ODBC_VERSION,
                         reinterpret_cast<SQLPOINTER>(SQL_OV_ODBC3), 0);
     if (!SQL_SUCCEEDED(ret))
@@ -49,7 +49,7 @@ bool DBConnection::Connect(const std::string& connectionString)
     }
 
     // English: Allocate connection handle
-    // 한글: 연결 핸들 할당
+    // ?쒓?: ?곌껐 ?몃뱾 ?좊떦
     ret = SQLAllocHandle(SQL_HANDLE_DBC, mEnv, &mDbc);
     if (!SQL_SUCCEEDED(ret))
     {
@@ -59,7 +59,7 @@ bool DBConnection::Connect(const std::string& connectionString)
     }
 
     // English: Connect
-    // 한글: 연결
+    // ?쒓?: ?곌껐
     SQLCHAR outConnStr[1024];
     SQLSMALLINT outConnStrLen;
 
@@ -91,7 +91,7 @@ bool DBConnection::Connect(const std::string& connectionString)
     }
 
     // English: Allocate statement handle
-    // 한글: 구문 핸들 할당
+    // ?쒓?: 援щЦ ?몃뱾 ?좊떦
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mDbc, &mStmt);
     if (!SQL_SUCCEEDED(ret))
     {
@@ -145,7 +145,7 @@ bool DBConnection::Execute(const std::string& query)
     }
 
     // English: Close any existing cursor before executing new statement
-    // 한글: 새 구문 실행 전 기존 커서 닫기
+    // ?쒓?: ??援щЦ ?ㅽ뻾 ??湲곗〈 而ㅼ꽌 ?リ린
     SQLCloseCursor(mStmt);
 
     SQLRETURN ret = SQLExecDirectA(
@@ -178,3 +178,4 @@ bool DBConnection::Execute(const std::string& query)
 }
 
 } // namespace Network::Database
+

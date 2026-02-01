@@ -1,5 +1,5 @@
-// English: Header file for PingPong handler
-// 한글: PingPong 핸들러 헤더 파일
+﻿// English: Header file for PingPong handler
+// ?쒓?: PingPong ?몃뱾???ㅻ뜑 ?뚯씪
 
 #pragma once
 
@@ -20,19 +20,19 @@ namespace Network::Protocols
 {
     // =============================================================================
     // English: PingPong handler class
-    // 한글: PingPong 핸들러 클래스
+    // ?쒓?: PingPong ?몃뱾???대옒??
     // =============================================================================
 
     class PingPongHandler
     {
     public:
         // English: Constructor and Destructor
-        // 한글: 생성자 및 소멸자
+        // ?쒓?: ?앹꽦??諛??뚮㈇??
         PingPongHandler();
         ~PingPongHandler();
 
         // English: Serialization methods
-        // 한글: 직렬화 메소드
+        // ?쒓?: 吏곷젹??硫붿냼??
         std::vector<uint8_t> CreatePing(
             const std::string& message = "",
             uint32_t sequence = 0
@@ -44,12 +44,12 @@ namespace Network::Protocols
         );
 
         // English: Deserialization methods
-        // 한글: 역직렬화 메소드
+        // ?쒓?: ??쭅?ы솕 硫붿냼??
         bool ParsePing(const std::vector<uint8_t>& data);
         bool ParsePong(const std::vector<uint8_t>& data);
 
         // English: Utility methods
-        // 한글: 유틸리티 메소드
+        // ?쒓?: ?좏떥由ы떚 硫붿냼??
         uint64_t CalculateRTT(
             uint64_t pingTimestamp,
             uint64_t pongTimestamp
@@ -59,14 +59,14 @@ namespace Network::Protocols
 
 #ifdef HAS_PROTOBUF
         // English: Accessors (available only with protobuf)
-        // 한글: 접근자 (protobuf 있을 때만 사용 가능)
+        // ?쒓?: ?묎렐??(protobuf ?덉쓣 ?뚮쭔 ?ъ슜 媛??
         const ping::Ping* GetLastPing() const;
         const ping::Pong* GetLastPong() const;
 #endif
 
     private:
         // English: Member variables
-        // 한글: 멤버 변수
+        // ?쒓?: 硫ㅻ쾭 蹂??
         uint32_t mNextSequence;
 
 #ifdef HAS_PROTOBUF
@@ -76,3 +76,4 @@ namespace Network::Protocols
     };
 
 } // namespace Network::Protocols
+

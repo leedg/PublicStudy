@@ -1,5 +1,5 @@
-// English: Session class implementation
-// 한글: Session 클래스 구현
+﻿// English: Session class implementation
+// ?쒓?: Session ?대옒??援ы쁽
 
 #include "Session.h"
 #include <sstream>
@@ -75,7 +75,7 @@ void Session::Close()
     }
 
     // English: Clear send queue
-    // 한글: 전송 큐 비우기
+    // ?쒓?: ?꾩넚 ??鍮꾩슦湲?
     {
         std::lock_guard<std::mutex> lock(mSendMutex);
         while (!mSendQueue.empty())
@@ -95,7 +95,7 @@ void Session::Send(const void* data, uint32_t size)
     }
 
     // English: Enqueue send data
-    // 한글: 전송 데이터 큐잉
+    // ?쒓?: ?꾩넚 ?곗씠???먯엵
     {
         std::lock_guard<std::mutex> lock(mSendMutex);
         std::vector<char> buffer(size);
@@ -109,7 +109,7 @@ void Session::Send(const void* data, uint32_t size)
 void Session::FlushSendQueue()
 {
     // English: CAS to prevent concurrent sends
-    // 한글: CAS로 동시 전송 방지
+    // ?쒓?: CAS濡??숈떆 ?꾩넚 諛⑹?
     bool expected = false;
     if (!mIsSending.compare_exchange_strong(expected, true))
     {
@@ -167,7 +167,7 @@ bool Session::PostSend()
     return true;
 #else
     // English: Linux/macOS implementation (placeholder)
-    // 한글: Linux/macOS 구현 (플레이스홀더)
+    // ?쒓?: Linux/macOS 援ы쁽 (?뚮젅?댁뒪???
     mIsSending = false;
     return false;
 #endif
@@ -215,3 +215,4 @@ bool Session::PostRecv()
 }
 
 } // namespace Network::Core
+

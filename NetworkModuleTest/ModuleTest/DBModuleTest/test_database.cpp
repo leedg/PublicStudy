@@ -1,4 +1,4 @@
-#include "IDatabase.h"
+﻿#include "IDatabase.h"
 #include <iostream>
 #include <cassert>
 #include <string>
@@ -12,24 +12,24 @@ void test_database_factory() {
     auto odbcDb = DatabaseFactory::createODBCDatabase();
     assert(odbcDb != nullptr);
     assert(odbcDb->getType() == DatabaseType::ODBC);
-    std::cout << "✓ ODBC Database creation successful" << std::endl;
+    std::cout << "??ODBC Database creation successful" << std::endl;
     
     // Test OLEDB creation
     auto oledbDb = DatabaseFactory::createOLEDBDatabase();
     assert(oledbDb != nullptr);
     assert(oledbDb->getType() == DatabaseType::OLEDB);
-    std::cout << "✓ OLEDB Database creation successful" << std::endl;
+    std::cout << "??OLEDB Database creation successful" << std::endl;
     
     // Test generic factory
     auto db1 = DatabaseFactory::createDatabase(DatabaseType::ODBC);
     assert(db1 != nullptr);
     assert(db1->getType() == DatabaseType::ODBC);
-    std::cout << "✓ Generic ODBC Database creation successful" << std::endl;
+    std::cout << "??Generic ODBC Database creation successful" << std::endl;
     
     auto db2 = DatabaseFactory::createDatabase(DatabaseType::OLEDB);
     assert(db2 != nullptr);
     assert(db2->getType() == DatabaseType::OLEDB);
-    std::cout << "✓ Generic OLEDB Database creation successful" << std::endl;
+    std::cout << "??Generic OLEDB Database creation successful" << std::endl;
 }
 
 void test_connection_string_utils() {
@@ -47,7 +47,7 @@ void test_connection_string_utils() {
     std::cout << "ODBC Connection String: " << odbcConnStr << std::endl;
     assert(!odbcConnStr.empty());
     assert(odbcConnStr.find("DRIVER={SQL Server}") != std::string::npos);
-    std::cout << "✓ ODBC connection string building successful" << std::endl;
+    std::cout << "??ODBC connection string building successful" << std::endl;
     
     // Test OLEDB connection string
     std::map<std::string, std::string> oledbParams = {
@@ -61,7 +61,7 @@ void test_connection_string_utils() {
     std::cout << "OLEDB Connection String: " << oledbConnStr << std::endl;
     assert(!oledbConnStr.empty());
     assert(oledbConnStr.find("Provider=SQLOLEDB") != std::string::npos);
-    std::cout << "✓ OLEDB connection string building successful" << std::endl;
+    std::cout << "??OLEDB connection string building successful" << std::endl;
 }
 
 void test_database_config() {
@@ -84,7 +84,7 @@ void test_database_config() {
     assert(config.maxPoolSize == 20);
     assert(config.minPoolSize == 2);
     
-    std::cout << "✓ Database configuration creation successful" << std::endl;
+    std::cout << "??Database configuration creation successful" << std::endl;
 }
 
 void test_exception_handling() {
@@ -95,7 +95,7 @@ void test_exception_handling() {
     } catch (const DatabaseException& e) {
         assert(std::string(e.what()) == "Test error message");
         assert(e.getErrorCode() == 1234);
-        std::cout << "✓ DatabaseException handling successful" << std::endl;
+        std::cout << "??DatabaseException handling successful" << std::endl;
     }
 }
 
@@ -113,7 +113,7 @@ void test_parameter_binding() {
     
     // These would normally require a valid statement object
     // For testing purposes, we just verify the template parameters are valid
-    std::cout << "✓ Parameter binding templates compile successfully" << std::endl;
+    std::cout << "??Parameter binding templates compile successfully" << std::endl;
     std::cout << "  String: " << testString << std::endl;
     std::cout << "  Int: " << testInt << std::endl;
     std::cout << "  Long: " << testLong << std::endl;

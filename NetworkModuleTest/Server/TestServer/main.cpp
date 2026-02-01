@@ -1,5 +1,5 @@
-// English: TestServer entry point - initializes and runs the game server
-// 한글: TestServer 진입점 - 게임 서버 초기화 및 실행
+﻿// English: TestServer entry point - initializes and runs the game server
+// ?쒓?: TestServer 吏꾩엯??- 寃뚯엫 ?쒕쾭 珥덇린??諛??ㅽ뻾
 
 #include "include/TestServer.h"
 #include "Utils/NetworkUtils.h"
@@ -11,12 +11,12 @@
 #include <atomic>
 
 // English: Global server instance for signal handling
-// 한글: 시그널 처리용 전역 서버 인스턴스
+// ?쒓?: ?쒓렇??泥섎━???꾩뿭 ?쒕쾭 ?몄뒪?댁뒪
 static Network::TestServer::TestServer* g_pServer = nullptr;
 static std::atomic<bool> g_Running{ true };
 
 // English: Signal handler for graceful shutdown
-// 한글: 정상 종료를 위한 시그널 핸들러
+// ?쒓?: ?뺤긽 醫낅즺瑜??꾪븳 ?쒓렇???몃뱾??
 void SignalHandler(int signum)
 {
     Network::Utils::Logger::Info("Signal received: " + std::to_string(signum));
@@ -24,7 +24,7 @@ void SignalHandler(int signum)
 }
 
 // English: Print usage information
-// 한글: 사용법 출력
+// ?쒓?: ?ъ슜踰?異쒕젰
 void PrintUsage(const char* programName)
 {
     std::cout << "Usage: " << programName << " [options]" << std::endl;
@@ -36,7 +36,7 @@ void PrintUsage(const char* programName)
 }
 
 // English: Parse log level string
-// 한글: 로그 레벨 문자열 파싱
+// ?쒓?: 濡쒓렇 ?덈꺼 臾몄옄???뚯떛
 Network::Utils::LogLevel ParseLogLevel(const std::string& level)
 {
     std::string upper = Network::Utils::StringUtils::ToUpper(level);
@@ -53,13 +53,13 @@ int main(int argc, char* argv[])
     std::cout << "====================================" << std::endl;
 
     // English: Default settings
-    // 한글: 기본 설정
+    // ?쒓?: 湲곕낯 ?ㅼ젙
     uint16_t port = 9000;
     std::string dbConnectionString;
     Network::Utils::LogLevel logLevel = Network::Utils::LogLevel::Info;
 
     // English: Parse command line arguments
-    // 한글: 커맨드라인 인자 파싱
+    // ?쒓?: 而ㅻ㎤?쒕씪???몄옄 ?뚯떛
     for (int i = 1; i < argc; ++i)
     {
         std::string arg = argv[i];
@@ -90,23 +90,23 @@ int main(int argc, char* argv[])
     }
 
     // English: Setup logging
-    // 한글: 로깅 설정
+    // ?쒓?: 濡쒓퉭 ?ㅼ젙
     Network::Utils::Logger::SetLevel(logLevel);
 
     // English: Register signal handlers
-    // 한글: 시그널 핸들러 등록
+    // ?쒓?: ?쒓렇???몃뱾???깅줉
     std::signal(SIGINT, SignalHandler);
     std::signal(SIGTERM, SignalHandler);
 #ifdef _WIN32
     // English: SIGBREAK is Windows-specific, defined in <signal.h>
-    // 한글: SIGBREAK는 Windows 전용, <signal.h>에 정의
+    // ?쒓?: SIGBREAK??Windows ?꾩슜, <signal.h>???뺤쓽
     #ifdef SIGBREAK
     std::signal(SIGBREAK, SignalHandler);
     #endif
 #endif
 
     // English: Create and initialize server
-    // 한글: 서버 생성 및 초기화
+    // ?쒓?: ?쒕쾭 ?앹꽦 諛?珥덇린??
     Network::TestServer::TestServer server;
     g_pServer = &server;
 
@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
     }
 
     // English: Start server
-    // 한글: 서버 시작
+    // ?쒓?: ?쒕쾭 ?쒖옉
     if (!server.Start())
     {
         Network::Utils::Logger::Error("Failed to start server");
@@ -129,14 +129,14 @@ int main(int argc, char* argv[])
     Network::Utils::Logger::Info("Server is running. Press Ctrl+C to stop.");
 
     // English: Main loop - wait for shutdown signal
-    // 한글: 메인 루프 - 종료 시그널 대기
+    // ?쒓?: 硫붿씤 猷⑦봽 - 醫낅즺 ?쒓렇???湲?
     while (g_Running && server.IsRunning())
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     // English: Graceful shutdown
-    // 한글: 정상 종료
+    // ?쒓?: ?뺤긽 醫낅즺
     Network::Utils::Logger::Info("Shutting down server...");
     server.Stop();
     g_pServer = nullptr;
@@ -146,3 +146,4 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+

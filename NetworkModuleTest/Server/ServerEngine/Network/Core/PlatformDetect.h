@@ -5,8 +5,9 @@
 
 #include "AsyncIOProvider.h"
 
-namespace Network::AsyncIO::Platform
-{
+namespace Network {
+namespace AsyncIO {
+namespace Platform {
     // =============================================================================
     // English: Platform Detection Utilities
     // 한글: 플랫폼 감지 유틸리티
@@ -81,4 +82,7 @@ namespace Network::AsyncIO::Platform
      */
     bool GetMacOSVersion(uint32_t& outMajor, uint32_t& outMinor, uint32_t& outPatch);
 
-}  // namespace Network::AsyncIO::Platform
+}  // namespace Platform
+}  // namespace AsyncIO
+}  // namespace Network
+

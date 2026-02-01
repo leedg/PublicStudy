@@ -13,8 +13,9 @@
 #include <queue>
 #include <string>
 
-namespace Network::AsyncIO::Linux
-{
+namespace Network {
+namespace AsyncIO {
+namespace Linux {
     // =============================================================================
     // English: epoll-based AsyncIOProvider Implementation
     // 한글: epoll 기반 AsyncIOProvider 구현
@@ -127,6 +128,9 @@ namespace Network::AsyncIO::Linux
         bool mInitialized;                       // English: Initialization flag / 한글: 초기화 플래그
     };
 
-}  // namespace Network::AsyncIO::Linux
+}  // namespace Linux
+}  // namespace AsyncIO
+}  // namespace Network
 
 #endif  // __linux__
+

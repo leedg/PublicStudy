@@ -12,8 +12,9 @@
 #include <mutex>
 #include <string>
 
-namespace Network::AsyncIO::Windows
-{
+namespace Network {
+namespace AsyncIO {
+namespace Windows {
     // =============================================================================
     // English: RIO (Registered I/O) based AsyncIOProvider Implementation
     // 한글: RIO (등록 I/O) 기반 AsyncIOProvider 구현
@@ -174,6 +175,9 @@ namespace Network::AsyncIO::Windows
         bool LoadRIOFunctions();
     };
 
-}  // namespace Network::AsyncIO::Windows
+}  // namespace Windows
+}  // namespace AsyncIO
+}  // namespace Network
 
 #endif  // _WIN32
+

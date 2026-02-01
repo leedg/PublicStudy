@@ -1,5 +1,5 @@
-// English: TestServer implementation
-// 한글: TestServer 구현
+﻿// English: TestServer implementation
+// ?쒓?: TestServer 援ы쁽
 
 #include "../include/TestServer.h"
 #include <iostream>
@@ -20,7 +20,7 @@ namespace Network::TestServer
 
 // =============================================================================
 // English: GameSession implementation
-// 한글: GameSession 구현
+// ?쒓?: GameSession 援ы쁽
 // =============================================================================
 
 GameSession::GameSession()
@@ -37,7 +37,7 @@ void GameSession::OnConnected()
     Logger::Info("GameSession connected - ID: " + std::to_string(GetId()));
 
     // English: Record connect time to DB on first connection (async)
-    // 한글: 최초 접속 시 DB에 연결 시간 기록 (비동기)
+    // ?쒓?: 理쒖큹 ?묒냽 ??DB???곌껐 ?쒓컙 湲곕줉 (鍮꾨룞湲?
     if (!mConnectionRecorded)
     {
         RecordConnectTimeToDB();
@@ -96,7 +96,7 @@ void GameSession::HandleConnectRequest(const PKT_SessionConnectReq* packet)
                  ", ClientVersion: " + std::to_string(packet->clientVersion));
 
     // English: Send connect response
-    // 한글: 연결 응답 전송
+    // ?쒓?: ?곌껐 ?묐떟 ?꾩넚
     PKT_SessionConnectRes response;
     response.sessionId = GetId();
     response.serverTime = static_cast<uint32_t>(std::time(nullptr));
@@ -110,7 +110,7 @@ void GameSession::HandlePingRequest(const PKT_PingReq* packet)
     SetLastPingTime(Timer::GetCurrentTimestamp());
 
     // English: Send pong response
-    // 한글: 퐁 응답 전송
+    // ?쒓?: ???묐떟 ?꾩넚
     PKT_PongRes response;
     response.clientTime = packet->clientTime;
     response.serverTime = Timer::GetCurrentTimestamp();
@@ -128,7 +128,7 @@ void GameSession::RecordConnectTimeToDB()
     ConnectionId sessionId = GetId();
 
     // English: Get current time string
-    // 한글: 현재 시간 문자열 조회
+    // ?쒓?: ?꾩옱 ?쒓컙 臾몄옄??議고쉶
     auto now = std::chrono::system_clock::now();
     auto time = std::chrono::system_clock::to_time_t(now);
 
@@ -143,7 +143,7 @@ void GameSession::RecordConnectTimeToDB()
     std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &localTime);
 
     // English: Execute DB query via connection pool
-    // 한글: 연결 풀을 통해 DB 쿼리 실행
+    // ?쒓?: ?곌껐 ????듯빐 DB 荑쇰━ ?ㅽ뻾
     if (!DBConnectionPool::Instance().IsInitialized())
     {
         Logger::Info("DB not initialized - skipping connect time recording for Session: " +
@@ -180,17 +180,17 @@ void GameSession::RecordConnectTimeToDB()
 
 // =============================================================================
 // English: TestServer implementation
-// 한글: TestServer 구현
+// ?쒓?: TestServer 援ы쁽
 // =============================================================================
 
 TestServer::TestServer()
-    : mRunning(false)
+    : mIsRunning(false), mPort(0)
 {
 }
 
 TestServer::~TestServer()
 {
-    if (mRunning)
+    if (mIsRunning.load())
     {
         Stop();
     }
@@ -199,11 +199,11 @@ TestServer::~TestServer()
 bool TestServer::Initialize(uint16_t port, const std::string& dbConnectionString)
 {
     // English: Initialize SessionManager with GameSession factory
-    // 한글: GameSession 팩토리로 SessionManager 초기화
-    SessionManager::Instance().SetFactory(&TestServer::CreateGameSession);
+    // ?쒓?: GameSession ?⑺넗由щ줈 SessionManager 珥덇린??
+    // SessionManager::Instance().SetFactory(&TestServer::CreateGameSession);
 
     // English: Initialize DB connection pool (optional)
-    // 한글: DB 연결 풀 초기화 (선택)
+    // ?쒓?: DB ?곌껐 ? 珥덇린??(?좏깮)
 #ifdef ENABLE_DATABASE_SUPPORT
     if (!dbConnectionString.empty())
     {
@@ -223,7 +223,7 @@ bool TestServer::Initialize(uint16_t port, const std::string& dbConnectionString
 
     // English: Create and initialize network engine
     // 한글: 네트워크 엔진 생성 및 초기화
-    mEngine = std::make_unique<IOCPNetworkEngine>();
+    mEngine = std::unique_ptr<Core::IOCPNetworkEngine>(new Core::IOCPNetworkEngine());
 
     if (!mEngine->Initialize(MAX_CONNECTIONS, port))
     {
@@ -232,7 +232,7 @@ bool TestServer::Initialize(uint16_t port, const std::string& dbConnectionString
     }
 
     // English: Register event callbacks
-    // 한글: 이벤트 콜백 등록
+    // ?쒓?: ?대깽??肄쒕갚 ?깅줉
     mEngine->RegisterEventCallback(NetworkEvent::Connected,
         [this](const NetworkEventData& e) { OnConnectionEstablished(e); });
 
@@ -260,19 +260,19 @@ bool TestServer::Start()
         return false;
     }
 
-    mRunning = true;
+    mIsRunning.store(true);
     Logger::Info("TestServer started");
     return true;
 }
 
 void TestServer::Stop()
 {
-    if (!mRunning)
+    if (!mIsRunning.load())
     {
         return;
     }
 
-    mRunning = false;
+    mIsRunning.store(false);
 
     if (mEngine)
     {
@@ -280,7 +280,7 @@ void TestServer::Stop()
     }
 
     // English: Shutdown DB pool
-    // 한글: DB 풀 종료
+    // ?쒓?: DB ? 醫낅즺
 #ifdef ENABLE_DATABASE_SUPPORT
     if (DBConnectionPool::Instance().IsInitialized())
     {
@@ -293,7 +293,7 @@ void TestServer::Stop()
 
 bool TestServer::IsRunning() const
 {
-    return mRunning;
+    return mIsRunning.load();
 }
 
 void TestServer::OnConnectionEstablished(const NetworkEventData& eventData)
@@ -318,3 +318,4 @@ SessionRef TestServer::CreateGameSession()
 }
 
 } // namespace Network::TestServer
+

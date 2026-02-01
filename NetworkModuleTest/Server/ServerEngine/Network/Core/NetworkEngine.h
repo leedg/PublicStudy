@@ -166,13 +166,6 @@ namespace Network::Core
         // 한글: 통계
         // =====================================================================
         
-        /**
-         * English: Get engine statistics
-         * 한글: 엔진 통계 조회
-         * @return Statistics object
-         */
-        virtual struct Statistics GetStatistics() const = 0;
-        
         struct Statistics
         {
             uint64_t totalConnections;
@@ -182,6 +175,13 @@ namespace Network::Core
             uint64_t totalErrors;
             Timestamp startTime;
         };
+
+        /**
+         * English: Get engine statistics
+         * 한글: 엔진 통계 조회
+         * @return Statistics object
+         */
+        virtual Statistics GetStatistics() const = 0;
     };
     
     // =============================================================================

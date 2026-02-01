@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 // English: Unified utility functions for NetworkModule
-// 한글: NetworkModule용 통합 유틸리티 함수
+// ?쒓?: NetworkModule???듯빀 ?좏떥由ы떚 ?⑥닔
 
 #include <cstdint>
 #include <string>
@@ -25,7 +25,7 @@ namespace Network::Utils
 {
 	// =============================================================================
 	// English: Type definitions
-	// 한글: 타입 정의
+	// ?쒓?: ????뺤쓽
 	// =============================================================================
 
 	using NetworkHandle = uint64_t;
@@ -36,7 +36,7 @@ namespace Network::Utils
 
 	// =============================================================================
 	// English: Common constants
-	// 한글: 공용 상수
+	// ?쒓?: 怨듭슜 ?곸닔
 	// =============================================================================
 
 	constexpr uint32_t DEFAULT_PORT = 8000;
@@ -47,7 +47,7 @@ namespace Network::Utils
 
 	// =============================================================================
 	// English: Time utilities
-	// 한글: 시간 유틸리티
+	// ?쒓?: ?쒓컙 ?좏떥由ы떚
 	// =============================================================================
 
 	class Timer
@@ -78,7 +78,7 @@ namespace Network::Utils
 
 	// =============================================================================
 	// English: String utilities
-	// 한글: 문자열 유틸리티
+	// ?쒓?: 臾몄옄???좏떥由ы떚
 	// =============================================================================
 
 	class StringUtils
@@ -129,7 +129,7 @@ namespace Network::Utils
 
 	// =============================================================================
 	// English: Buffer utilities
-	// 한글: 버퍼 유틸리티
+	// ?쒓?: 踰꾪띁 ?좏떥由ы떚
 	// =============================================================================
 
 	class BufferManager
@@ -151,7 +151,7 @@ namespace Network::Utils
 		void Deallocate(uint8_t* /*buffer*/)
 		{
 			// English: No-op for unique_ptr-based allocation
-			// 한글: unique_ptr 기반 할당에서는 아무것도 안 함
+			// ?쒓?: unique_ptr 湲곕컲 ?좊떦?먯꽌???꾨Т寃껊룄 ????
 		}
 
 		size_t GetPoolSize() const
@@ -171,7 +171,7 @@ namespace Network::Utils
 
 	// =============================================================================
 	// English: Thread-safe queue
-	// 한글: 스레드 안전 큐
+	// ?쒓?: ?ㅻ젅???덉쟾 ??
 	// =============================================================================
 
 	template<typename T>
@@ -240,7 +240,7 @@ namespace Network::Utils
 
 	// =============================================================================
 	// English: Thread pool
-	// 한글: 스레드 풀
+	// ?쒓?: ?ㅻ젅???
 	// =============================================================================
 
 	class ThreadPool
@@ -321,7 +321,7 @@ namespace Network::Utils
 					catch (const std::exception& e)
 					{
 						// English: Swallow exception in worker thread
-						// 한글: 워커 스레드에서 예외 삼킴
+						// ?쒓?: ?뚯빱 ?ㅻ젅?쒖뿉???덉쇅 ?쇳궡
 						(void)e;
 					}
 					--mActiveTasks;
@@ -332,7 +332,7 @@ namespace Network::Utils
 
 	// =============================================================================
 	// English: Configuration utilities
-	// 한글: 설정 유틸리티
+	// ?쒓?: ?ㅼ젙 ?좏떥由ы떚
 	// =============================================================================
 
 	class ConfigManager
@@ -355,14 +355,14 @@ namespace Network::Utils
 		static Config LoadFromFile(const std::string& /*filename*/)
 		{
 			// English: Stub - returns default config
-			// 한글: 스텁 - 기본 설정 반환
+			// ?쒓?: ?ㅽ뀅 - 湲곕낯 ?ㅼ젙 諛섑솚
 			return GetDefault();
 		}
 
 		static bool SaveToFile(const Config& /*config*/, const std::string& /*filename*/)
 		{
 			// English: Stub
-			// 한글: 스텁
+			// ?쒓?: ?ㅽ뀅
 			return false;
 		}
 
@@ -379,7 +379,7 @@ namespace Network::Utils
 
 	// =============================================================================
 	// English: Logging utilities
-	// 한글: 로깅 유틸리티
+	// ?쒓?: 濡쒓퉭 ?좏떥由ы떚
 	// =============================================================================
 
 	enum class LogLevel : int
@@ -479,3 +479,4 @@ namespace Network::Utils
 	};
 
 } // namespace Network::Utils
+

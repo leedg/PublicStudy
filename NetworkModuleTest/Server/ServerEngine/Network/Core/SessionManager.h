@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 // English: Session manager for creating/tracking/removing sessions
-// 한글: 세션 생성/추적/제거를 위한 세션 관리자
+// ?쒓?: ?몄뀡 ?앹꽦/異붿쟻/?쒓굅瑜??꾪븳 ?몄뀡 愿由ъ옄
 
 #include "Session.h"
 #include <unordered_map>
@@ -11,14 +11,14 @@ namespace Network::Core
 {
     // =============================================================================
     // English: Session factory function type
-    // 한글: 세션 팩토리 함수 타입
+    // ?쒓?: ?몄뀡 ?⑺넗由??⑥닔 ???
     // =============================================================================
 
     using SessionFactory = std::function<SessionRef()>;
 
     // =============================================================================
     // English: SessionManager class
-    // 한글: SessionManager 클래스
+    // ?쒓?: SessionManager ?대옒??
     // =============================================================================
 
     class SessionManager
@@ -27,29 +27,29 @@ namespace Network::Core
         static SessionManager& Instance();
 
         // English: Set session factory (must be called before CreateSession)
-        // 한글: 세션 팩토리 설정 (CreateSession 호출 전에 설정 필요)
+        // ?쒓?: ?몄뀡 ?⑺넗由??ㅼ젙 (CreateSession ?몄텧 ?꾩뿉 ?ㅼ젙 ?꾩슂)
         void Initialize(SessionFactory factory);
 
         // English: Session lifecycle
-        // 한글: 세션 생명주기
+        // ?쒓?: ?몄뀡 ?앸챸二쇨린
         SessionRef CreateSession(SocketHandle socket);
         void RemoveSession(Utils::ConnectionId id);
         void RemoveSession(SessionRef session);
 
         // English: Session lookup
-        // 한글: 세션 조회
+        // ?쒓?: ?몄뀡 議고쉶
         SessionRef GetSession(Utils::ConnectionId id);
 
         // English: Iterate all sessions
-        // 한글: 모든 세션 순회
+        // ?쒓?: 紐⑤뱺 ?몄뀡 ?쒗쉶
         void ForEachSession(std::function<void(SessionRef)> func);
 
         // English: Session count
-        // 한글: 세션 수
+        // ?쒓?: ?몄뀡 ??
         size_t GetSessionCount() const;
 
         // English: Close all sessions
-        // 한글: 모든 세션 종료
+        // ?쒓?: 紐⑤뱺 ?몄뀡 醫낅즺
         void CloseAllSessions();
 
     private:
@@ -69,3 +69,4 @@ namespace Network::Core
     };
 
 } // namespace Network::Core
+

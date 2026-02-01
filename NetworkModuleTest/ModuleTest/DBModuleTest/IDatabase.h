@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <memory>
@@ -161,18 +161,6 @@ public:
     virtual size_t findColumn(const std::string& columnName) const = 0;
     
     virtual void close() = 0;
-};
-
-/**
- * Database factory for creating database instances
- */
-class DatabaseFactory {
-public:
-    static std::unique_ptr<IDatabase> createDatabase(DatabaseType type);
-    
-    // Convenience methods
-    static std::unique_ptr<IDatabase> createODBCDatabase();
-    static std::unique_ptr<IDatabase> createOLEDBDatabase();
 };
 
 /**

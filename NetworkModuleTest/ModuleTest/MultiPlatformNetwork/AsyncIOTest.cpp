@@ -1,5 +1,5 @@
-// English: AsyncIO Provider Test Suite - Simple verification (no GTest dependency)
-// 한글: AsyncIO 공급자 테스트 - 간단한 검증 (GTest 의존성 없음)
+﻿// English: AsyncIO Provider Test Suite - Simple verification (no GTest dependency)
+// ?쒓?: AsyncIO 怨듦툒???뚯뒪??- 媛꾨떒??寃利?(GTest ?섏〈???놁쓬)
 
 #include "AsyncIOProvider.h"
 #include <memory>
@@ -9,13 +9,13 @@ using namespace Network::AsyncIO;
 
 // =============================================================================
 // English: Test Functions
-// 한글: 테스트 함수
+// ?쒓?: ?뚯뒪???⑥닔
 // =============================================================================
 
 void TestPlatformDetection()
 {
     // English: Test platform detection
-    // 한글: 플랫폼 감지 테스트
+    // ?쒓?: ?뚮옯??媛먯? ?뚯뒪??
     std::cout << "=== Platform Detection Test ===" << std::endl;
 
     PlatformType platform = GetCurrentPlatform();
@@ -58,11 +58,11 @@ void TestPlatformDetection()
 void TestPlatformSupport()
 {
     // English: Test IsPlatformSupported and GetSupportedPlatforms
-    // 한글: IsPlatformSupported 및 GetSupportedPlatforms 테스트
+    // ?쒓?: IsPlatformSupported 諛?GetSupportedPlatforms ?뚯뒪??
     std::cout << "\n=== Platform Support Test ===" << std::endl;
 
     // English: Get supported platforms list
-    // 한글: 지원 플랫폼 목록 조회
+    // ?쒓?: 吏???뚮옯??紐⑸줉 議고쉶
     size_t count = 0;
     const char** platforms = GetSupportedPlatforms(count);
 
@@ -80,11 +80,11 @@ void TestPlatformSupport()
 void TestAsyncIOProviderCreation()
 {
     // English: Test automatic provider creation
-    // 한글: 자동 공급자 생성 테스트
+    // ?쒓?: ?먮룞 怨듦툒???앹꽦 ?뚯뒪??
     std::cout << "\n=== AsyncIOProvider Creation Test ===" << std::endl;
 
     // English: Create with automatic platform selection
-    // 한글: 자동 플랫폼 선택으로 생성
+    // ?쒓?: ?먮룞 ?뚮옯???좏깮?쇰줈 ?앹꽦
     auto provider = CreateAsyncIOProvider();
 
     if (provider)
@@ -92,38 +92,38 @@ void TestAsyncIOProviderCreation()
         std::cout << "[PASS] Provider created successfully" << std::endl;
 
         // English: Initialize with doc-specified interface
-        // 한글: 문서 사양 인터페이스로 초기화
+        // ?쒓?: 臾몄꽌 ?ъ뼇 ?명꽣?섏씠?ㅻ줈 珥덇린??
         AsyncIOError err = provider->Initialize(256, 1000);
         if (err == AsyncIOError::Success)
         {
             std::cout << "[PASS] Provider initialized successfully" << std::endl;
 
             // English: Check IsInitialized
-            // 한글: IsInitialized 확인
+            // ?쒓?: IsInitialized ?뺤씤
             if (provider->IsInitialized())
             {
                 std::cout << "[PASS] IsInitialized returns true" << std::endl;
             }
 
             // English: Check GetInfo
-            // 한글: GetInfo 확인
+            // ?쒓?: GetInfo ?뺤씤
             const ProviderInfo& info = provider->GetInfo();
             std::cout << "Backend: " << info.mName << std::endl;
             std::cout << "Buffer Registration: " << (info.mSupportsBufferReg ? "yes" : "no") << std::endl;
             std::cout << "Batching: " << (info.mSupportsBatching ? "yes" : "no") << std::endl;
 
             // English: Check GetStats
-            // 한글: GetStats 확인
+            // ?쒓?: GetStats ?뺤씤
             ProviderStats stats = provider->GetStats();
             std::cout << "Total Requests: " << stats.mTotalRequests << std::endl;
 
             // English: Check GetLastError
-            // 한글: GetLastError 확인
+            // ?쒓?: GetLastError ?뺤씤
             const char* lastErr = provider->GetLastError();
             std::cout << "Last Error: \"" << (lastErr ? lastErr : "") << "\"" << std::endl;
 
             // English: Test FlushRequests (should be no-op or success)
-            // 한글: FlushRequests 테스트 (no-op 또는 성공이어야 함)
+            // ?쒓?: FlushRequests ?뚯뒪??(no-op ?먮뒗 ?깃났?댁뼱????
             AsyncIOError flushErr = provider->FlushRequests();
             if (flushErr == AsyncIOError::Success)
             {
@@ -134,7 +134,7 @@ void TestAsyncIOProviderCreation()
             std::cout << "[PASS] Provider shutdown successfully" << std::endl;
 
             // English: Verify IsInitialized after shutdown
-            // 한글: 종료 후 IsInitialized 확인
+            // ?쒓?: 醫낅즺 ??IsInitialized ?뺤씤
             if (!provider->IsInitialized())
             {
                 std::cout << "[PASS] IsInitialized returns false after shutdown" << std::endl;
@@ -154,7 +154,7 @@ void TestAsyncIOProviderCreation()
 void TestNamedProviderCreation()
 {
     // English: Test named provider creation (CreateAsyncIOProvider with platformHint)
-    // 한글: 이름 기반 공급자 생성 테스트
+    // ?쒓?: ?대쫫 湲곕컲 怨듦툒???앹꽦 ?뚯뒪??
     std::cout << "\n=== Named Provider Creation Test ===" << std::endl;
 
 #ifdef _WIN32
@@ -190,7 +190,7 @@ void TestNamedProviderCreation()
 #endif
 
     // English: Test unsupported platform name
-    // 한글: 지원되지 않는 플랫폼 이름 테스트
+    // ?쒓?: 吏?먮릺吏 ?딅뒗 ?뚮옯???대쫫 ?뚯뒪??
     auto nullProvider = CreateAsyncIOProvider("nonexistent");
     if (!nullProvider)
     {
@@ -200,7 +200,7 @@ void TestNamedProviderCreation()
 
 // =============================================================================
 // English: Main Entry Point
-// 한글: 메인 진입점
+// ?쒓?: 硫붿씤 吏꾩엯??
 // =============================================================================
 
 int main(int argc, char* argv[])
@@ -228,3 +228,4 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+

@@ -14,8 +14,9 @@
     #include <sys/utsname.h>
 #endif
 
-namespace Network::AsyncIO::Platform
-{
+namespace Network {
+namespace AsyncIO {
+namespace Platform {
     // =============================================================================
     // English: Platform Detection Implementation
     // 한글: 플랫폼 감지 구현
@@ -238,4 +239,7 @@ namespace Network::AsyncIO::Platform
 #endif
     }
 
-}  // namespace Network::AsyncIO::Platform
+}  // namespace Platform
+}  // namespace AsyncIO
+}  // namespace Network
+

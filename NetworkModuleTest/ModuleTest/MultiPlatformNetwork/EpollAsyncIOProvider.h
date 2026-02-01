@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 // English: epoll-based AsyncIOProvider implementation for Linux
-// 한글: Linux용 epoll 기반 AsyncIOProvider 구현
+// ?쒓?: Linux??epoll 湲곕컲 AsyncIOProvider 援ы쁽
 
 #include "AsyncIOProvider.h"
 
@@ -13,32 +13,33 @@
 #include <queue>
 #include <string>
 
-namespace Network::AsyncIO::Linux
-{
+namespace Network {
+namespace AsyncIO {
+namespace Linux {
     // =============================================================================
     // English: epoll-based AsyncIOProvider Implementation
-    // 한글: epoll 기반 AsyncIOProvider 구현
+    // ?쒓?: epoll 湲곕컲 AsyncIOProvider 援ы쁽
     // =============================================================================
 
     class EpollAsyncIOProvider : public AsyncIOProvider
     {
     public:
         // English: Constructor
-        // 한글: 생성자
+        // ?쒓?: ?앹꽦??
         EpollAsyncIOProvider();
 
         // English: Destructor - releases epoll resources
-        // 한글: 소멸자 - epoll 리소스 해제
+        // ?쒓?: ?뚮㈇??- epoll 由ъ냼???댁젣
         virtual ~EpollAsyncIOProvider();
 
         // English: Prevent copy (move-only semantics)
-        // 한글: 복사 방지 (move-only 의미론)
+        // ?쒓?: 蹂듭궗 諛⑹? (move-only ?섎?濡?
         EpollAsyncIOProvider(const EpollAsyncIOProvider&) = delete;
         EpollAsyncIOProvider& operator=(const EpollAsyncIOProvider&) = delete;
 
         // =====================================================================
         // English: Lifecycle Management
-        // 한글: 생명주기 관리
+        // ?쒓?: ?앸챸二쇨린 愿由?
         // =====================================================================
 
         AsyncIOError Initialize(size_t queueDepth, size_t maxConcurrent) override;
@@ -47,7 +48,7 @@ namespace Network::AsyncIO::Linux
 
         // =====================================================================
         // English: Buffer Management
-        // 한글: 버퍼 관리
+        // ?쒓?: 踰꾪띁 愿由?
         // =====================================================================
 
         int64_t RegisterBuffer(const void* ptr, size_t size) override;
@@ -55,7 +56,7 @@ namespace Network::AsyncIO::Linux
 
         // =====================================================================
         // English: Async I/O Requests
-        // 한글: 비동기 I/O 요청
+        // ?쒓?: 鍮꾨룞湲?I/O ?붿껌
         // =====================================================================
 
         AsyncIOError SendAsync(
@@ -78,7 +79,7 @@ namespace Network::AsyncIO::Linux
 
         // =====================================================================
         // English: Completion Processing
-        // 한글: 완료 처리
+        // ?쒓?: ?꾨즺 泥섎━
         // =====================================================================
 
         int ProcessCompletions(
@@ -89,7 +90,7 @@ namespace Network::AsyncIO::Linux
 
         // =====================================================================
         // English: Information & Statistics
-        // 한글: 정보 및 통계
+        // ?쒓?: ?뺣낫 諛??듦퀎
         // =====================================================================
 
         const ProviderInfo& GetInfo() const override;
@@ -99,34 +100,35 @@ namespace Network::AsyncIO::Linux
     private:
         // =====================================================================
         // English: Internal Data Structures
-        // 한글: 내부 데이터 구조
+        // ?쒓?: ?대? ?곗씠??援ъ“
         // =====================================================================
 
         // English: Pending operation tracking structure
-        // 한글: 대기 중인 작업 추적 구조체
+        // ?쒓?: ?湲?以묒씤 ?묒뾽 異붿쟻 援ъ“泥?
         struct PendingOperation
         {
-            RequestContext mContext;              // English: User request context / 한글: 사용자 요청 컨텍스트
-            AsyncIOType mType;                   // English: Operation type / 한글: 작업 타입
-            std::unique_ptr<uint8_t[]> mBuffer;  // English: Dynamically allocated buffer / 한글: 동적 할당 버퍼
-            uint32_t mBufferSize;                // English: Buffer size / 한글: 버퍼 크기
+            RequestContext mContext;              // English: User request context / ?쒓?: ?ъ슜???붿껌 而⑦뀓?ㅽ듃
+            AsyncIOType mType;                   // English: Operation type / ?쒓?: ?묒뾽 ???
+            std::unique_ptr<uint8_t[]> mBuffer;  // English: Dynamically allocated buffer / ?쒓?: ?숈쟻 ?좊떦 踰꾪띁
+            uint32_t mBufferSize;                // English: Buffer size / ?쒓?: 踰꾪띁 ?ш린
         };
 
         // =====================================================================
         // English: Member Variables
-        // 한글: 멤버 변수
+        // ?쒓?: 硫ㅻ쾭 蹂??
         // =====================================================================
 
-        int mEpollFd;                            // English: epoll file descriptor / 한글: epoll 파일 디스크립터
-        std::map<SocketHandle, PendingOperation> mPendingOps;  // English: Pending operations / 한글: 대기 작업
-        mutable std::mutex mMutex;               // English: Thread safety mutex / 한글: 스레드 안전성 뮤텍스
-        ProviderInfo mInfo;                      // English: Provider info / 한글: 공급자 정보
-        ProviderStats mStats;                    // English: Statistics / 한글: 통계
-        std::string mLastError;                  // English: Last error message / 한글: 마지막 에러 메시지
-        size_t mMaxConcurrentOps;                // English: Max concurrent ops / 한글: 최대 동시 작업
-        bool mInitialized;                       // English: Initialization flag / 한글: 초기화 플래그
+        int mEpollFd;                            // English: epoll file descriptor / ?쒓?: epoll ?뚯씪 ?붿뒪?щ┰??
+        std::map<SocketHandle, PendingOperation> mPendingOps;  // English: Pending operations / ?쒓?: ?湲??묒뾽
+        mutable std::mutex mMutex;               // English: Thread safety mutex / ?쒓?: ?ㅻ젅???덉쟾??裕ㅽ뀓??
+        ProviderInfo mInfo;                      // English: Provider info / ?쒓?: 怨듦툒???뺣낫
+        ProviderStats mStats;                    // English: Statistics / ?쒓?: ?듦퀎
+        std::string mLastError;                  // English: Last error message / ?쒓?: 留덉?留??먮윭 硫붿떆吏
+        size_t mMaxConcurrentOps;                // English: Max concurrent ops / ?쒓?: 理쒕? ?숈떆 ?묒뾽
+        bool mInitialized;                       // English: Initialization flag / ?쒓?: 珥덇린???뚮옒洹?
     };
 
 }  // namespace Network::AsyncIO::Linux
 
 #endif  // __linux__
+

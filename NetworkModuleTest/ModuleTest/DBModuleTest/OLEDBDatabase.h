@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "IDatabase.h"
 #include <string>
@@ -77,6 +77,8 @@ private:
     std::string query_;
     bool prepared_;
     int timeout_;
+    std::vector<std::string> parameters_;
+    std::vector<std::string> batch_;
     
 public:
     OLEDBStatement();

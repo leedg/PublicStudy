@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 // English: IOCP-based AsyncIOProvider implementation for Windows
-// 한글: Windows용 IOCP 기반 AsyncIOProvider 구현
+// ?쒓?: Windows??IOCP 湲곕컲 AsyncIOProvider 援ы쁽
 
 #include "AsyncIOProvider.h"
 
@@ -11,32 +11,33 @@
 #include <mutex>
 #include <string>
 
-namespace Network::AsyncIO::Windows
-{
+namespace Network {
+namespace AsyncIO {
+namespace Windows {
     // =============================================================================
     // English: IOCP-based AsyncIOProvider Implementation
-    // 한글: IOCP 기반 AsyncIOProvider 구현
+    // ?쒓?: IOCP 湲곕컲 AsyncIOProvider 援ы쁽
     // =============================================================================
 
     class IocpAsyncIOProvider : public AsyncIOProvider
     {
     public:
         // English: Constructor
-        // 한글: 생성자
+        // ?쒓?: ?앹꽦??
         IocpAsyncIOProvider();
 
         // English: Destructor - releases IOCP resources
-        // 한글: 소멸자 - IOCP 리소스 해제
+        // ?쒓?: ?뚮㈇??- IOCP 由ъ냼???댁젣
         virtual ~IocpAsyncIOProvider();
 
         // English: Prevent copy (move-only semantics)
-        // 한글: 복사 방지 (move-only 의미론)
+        // ?쒓?: 蹂듭궗 諛⑹? (move-only ?섎?濡?
         IocpAsyncIOProvider(const IocpAsyncIOProvider&) = delete;
         IocpAsyncIOProvider& operator=(const IocpAsyncIOProvider&) = delete;
 
         // =====================================================================
         // English: Lifecycle Management
-        // 한글: 생명주기 관리
+        // ?쒓?: ?앸챸二쇨린 愿由?
         // =====================================================================
 
         AsyncIOError Initialize(size_t queueDepth, size_t maxConcurrent) override;
@@ -45,7 +46,7 @@ namespace Network::AsyncIO::Windows
 
         // =====================================================================
         // English: Buffer Management
-        // 한글: 버퍼 관리
+        // ?쒓?: 踰꾪띁 愿由?
         // =====================================================================
 
         int64_t RegisterBuffer(const void* ptr, size_t size) override;
@@ -53,7 +54,7 @@ namespace Network::AsyncIO::Windows
 
         // =====================================================================
         // English: Async I/O Requests
-        // 한글: 비동기 I/O 요청
+        // ?쒓?: 鍮꾨룞湲?I/O ?붿껌
         // =====================================================================
 
         AsyncIOError SendAsync(
@@ -76,7 +77,7 @@ namespace Network::AsyncIO::Windows
 
         // =====================================================================
         // English: Completion Processing
-        // 한글: 완료 처리
+        // ?쒓?: ?꾨즺 泥섎━
         // =====================================================================
 
         int ProcessCompletions(
@@ -87,7 +88,7 @@ namespace Network::AsyncIO::Windows
 
         // =====================================================================
         // English: Information & Statistics
-        // 한글: 정보 및 통계
+        // ?쒓?: ?뺣낫 諛??듦퀎
         // =====================================================================
 
         const ProviderInfo& GetInfo() const override;
@@ -97,35 +98,38 @@ namespace Network::AsyncIO::Windows
     private:
         // =====================================================================
         // English: Internal Data Structures
-        // 한글: 내부 데이터 구조
+        // ?쒓?: ?대? ?곗씠??援ъ“
         // =====================================================================
 
         // English: Pending operation tracking structure
-        // 한글: 대기 중인 작업 추적 구조체
+        // ?쒓?: ?湲?以묒씤 ?묒뾽 異붿쟻 援ъ“泥?
         struct PendingOperation
         {
-            OVERLAPPED mOverlapped;              // English: IOCP overlapped structure / 한글: IOCP 오버랩 구조체
-            WSABUF mWsaBuffer;                   // English: WSA buffer / 한글: WSA 버퍼
-            std::unique_ptr<uint8_t[]> mBuffer;  // English: Dynamically allocated buffer / 한글: 동적 할당 버퍼
-            RequestContext mContext;              // English: User request context / 한글: 사용자 요청 컨텍스트
-            AsyncIOType mType;                   // English: Operation type / 한글: 작업 타입
+            OVERLAPPED mOverlapped;              // English: IOCP overlapped structure / ?쒓?: IOCP ?ㅻ쾭??援ъ“泥?
+            WSABUF mWsaBuffer;                   // English: WSA buffer / ?쒓?: WSA 踰꾪띁
+            std::unique_ptr<uint8_t[]> mBuffer;  // English: Dynamically allocated buffer / ?쒓?: ?숈쟻 ?좊떦 踰꾪띁
+            RequestContext mContext;              // English: User request context / ?쒓?: ?ъ슜???붿껌 而⑦뀓?ㅽ듃
+            AsyncIOType mType;                   // English: Operation type / ?쒓?: ?묒뾽 ???
         };
 
         // =====================================================================
         // English: Member Variables
-        // 한글: 멤버 변수
+        // ?쒓?: 硫ㅻ쾭 蹂??
         // =====================================================================
 
-        HANDLE mCompletionPort;                  // English: IOCP completion port handle / 한글: IOCP 완료 포트 핸들
-        std::map<SocketHandle, std::unique_ptr<PendingOperation>> mPendingOps;  // English: Pending ops / 한글: 대기 작업
-        mutable std::mutex mMutex;               // English: Thread safety mutex / 한글: 스레드 안전성 뮤텍스
-        ProviderInfo mInfo;                      // English: Provider info cache / 한글: 공급자 정보 캐시
-        ProviderStats mStats;                    // English: Statistics / 한글: 통계
-        std::string mLastError;                  // English: Last error message / 한글: 마지막 에러 메시지
-        size_t mMaxConcurrentOps;                // English: Max concurrent ops / 한글: 최대 동시 작업 수
-        bool mInitialized;                       // English: Initialization flag / 한글: 초기화 플래그
+        HANDLE mCompletionPort;                  // English: IOCP completion port handle / ?쒓?: IOCP ?꾨즺 ?ы듃 ?몃뱾
+        std::map<SocketHandle, std::unique_ptr<PendingOperation>> mPendingOps;  // English: Pending ops / ?쒓?: ?湲??묒뾽
+        mutable std::mutex mMutex;               // English: Thread safety mutex / ?쒓?: ?ㅻ젅???덉쟾??裕ㅽ뀓??
+        ProviderInfo mInfo;                      // English: Provider info cache / ?쒓?: 怨듦툒???뺣낫 罹먯떆
+        ProviderStats mStats;                    // English: Statistics / ?쒓?: ?듦퀎
+        std::string mLastError;                  // English: Last error message / ?쒓?: 留덉?留??먮윭 硫붿떆吏
+        size_t mMaxConcurrentOps;                // English: Max concurrent ops / ?쒓?: 理쒕? ?숈떆 ?묒뾽 ??
+        bool mInitialized;                       // English: Initialization flag / ?쒓?: 珥덇린???뚮옒洹?
     };
 
-}  // namespace Network::AsyncIO::Windows
+}  // namespace Windows
+}  // namespace AsyncIO
+}  // namespace Network
 
 #endif  // _WIN32
+

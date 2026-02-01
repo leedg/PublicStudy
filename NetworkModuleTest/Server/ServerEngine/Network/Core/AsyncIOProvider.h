@@ -1,4 +1,5 @@
 ﻿#pragma once
+// encoding: UTF-8
 
 // English: Unified async I/O provider interface for all platforms
 // 한글: 모든 플랫폼의 비동기 I/O를 통일하는 인터페이스
@@ -9,8 +10,10 @@
 #include <functional>
 
 #ifdef _WIN32
-    #include <winsock2.h>
-    #include <mswsock.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <winsock2.h>
+#include <mswsock.h>
     // English: Windows socket handle type
     // 한글: Windows 소켓 핸들 타입
     using SocketHandle = SOCKET;
@@ -27,8 +30,8 @@
     using OSError = int;
 #endif
 
-namespace Network::AsyncIO
-{
+namespace Network {
+namespace AsyncIO {
     // =============================================================================  
     // English: Type Definitions
     // 한글: 타입 정의
@@ -575,4 +578,5 @@ namespace Network::AsyncIO
      */
     PlatformInfo GetPlatformInfo();
 
-}  // namespace Network::AsyncIO
+}  // namespace AsyncIO
+}  // namespace Network

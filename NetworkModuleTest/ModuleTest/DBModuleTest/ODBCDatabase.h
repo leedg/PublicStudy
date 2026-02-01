@@ -1,9 +1,14 @@
-#pragma once
+﻿#pragma once
 
 #include "IDatabase.h"
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
 #include <sql.h>
 #include <sqlext.h>
 #include <memory>
+#include <algorithm>
 
 namespace DocDBModule {
 

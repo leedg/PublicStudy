@@ -1,5 +1,5 @@
-// English: Database Server implementation
-// 한글: 데이터베이스 서버 구현
+﻿// English: Database Server implementation
+// ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 援ы쁽
 
 #include "include/DBServer.h"
 #include <iostream>
@@ -13,7 +13,7 @@ namespace Network::DBServer
 {
     // =============================================================================
     // English: Constructor and Destructor
-    // 한글: 생성자 및 소멸자
+    // ?쒓?: ?앹꽦??諛??뚮㈇??
     // =============================================================================
     
     DBServer::DBServer()
@@ -34,7 +34,7 @@ namespace Network::DBServer
     
     // =============================================================================
     // English: Lifecycle management
-    // 한글: 생명주기 관리
+    // ?쒓?: ?앸챸二쇨린 愿由?
     // =============================================================================
     
     bool DBServer::Initialize(uint16_t port, size_t maxConnections)
@@ -157,7 +157,7 @@ namespace Network::DBServer
     
     // =============================================================================
     // English: Network event handlers
-    // 한글: 네트워크 이벤트 핸들러
+    // ?쒓?: ?ㅽ듃?뚰겕 ?대깽???몃뱾??
     // =============================================================================
     
     void DBServer::OnConnectionEstablished(ConnectionId connectionId)
@@ -212,7 +212,7 @@ namespace Network::DBServer
     
     // =============================================================================
     // English: Database operations
-    // 한글: 데이터베이스 작업
+    // ?쒓?: ?곗씠?곕쿋?댁뒪 ?묒뾽
     // =============================================================================
     
     bool DBServer::ConnectToDatabase()
@@ -244,7 +244,7 @@ namespace Network::DBServer
     
     // =============================================================================
     // English: Private methods
-    // 한글: 비공개 메소드
+    // ?쒓?: 鍮꾧났媛?硫붿냼??
     // =============================================================================
     
     void DBServer::WorkerThread()

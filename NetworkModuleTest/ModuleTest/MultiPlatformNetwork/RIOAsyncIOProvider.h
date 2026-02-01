@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 // English: RIO (Registered I/O) based AsyncIOProvider implementation for Windows 8+
-// 한글: Windows 8+ 용 RIO (등록 I/O) 기반 AsyncIOProvider 구현
+// ?쒓?: Windows 8+ ??RIO (?깅줉 I/O) 湲곕컲 AsyncIOProvider 援ы쁽
 
 #include "AsyncIOProvider.h"
 
@@ -12,32 +12,33 @@
 #include <mutex>
 #include <string>
 
-namespace Network::AsyncIO::Windows
-{
+namespace Network {
+namespace AsyncIO {
+namespace Windows {
     // =============================================================================
     // English: RIO (Registered I/O) based AsyncIOProvider Implementation
-    // 한글: RIO (등록 I/O) 기반 AsyncIOProvider 구현
+    // ?쒓?: RIO (?깅줉 I/O) 湲곕컲 AsyncIOProvider 援ы쁽
     // =============================================================================
 
     class RIOAsyncIOProvider : public AsyncIOProvider
     {
     public:
         // English: Constructor
-        // 한글: 생성자
+        // ?쒓?: ?앹꽦??
         RIOAsyncIOProvider();
 
         // English: Destructor - releases RIO resources
-        // 한글: 소멸자 - RIO 리소스 해제
+        // ?쒓?: ?뚮㈇??- RIO 由ъ냼???댁젣
         virtual ~RIOAsyncIOProvider();
 
         // English: Prevent copy (move-only semantics)
-        // 한글: 복사 방지 (move-only 의미론)
+        // ?쒓?: 蹂듭궗 諛⑹? (move-only ?섎?濡?
         RIOAsyncIOProvider(const RIOAsyncIOProvider&) = delete;
         RIOAsyncIOProvider& operator=(const RIOAsyncIOProvider&) = delete;
 
         // =====================================================================
         // English: Lifecycle Management
-        // 한글: 생명주기 관리
+        // ?쒓?: ?앸챸二쇨린 愿由?
         // =====================================================================
 
         AsyncIOError Initialize(size_t queueDepth, size_t maxConcurrent) override;
@@ -46,7 +47,7 @@ namespace Network::AsyncIO::Windows
 
         // =====================================================================
         // English: Buffer Management
-        // 한글: 버퍼 관리
+        // ?쒓?: 踰꾪띁 愿由?
         // =====================================================================
 
         int64_t RegisterBuffer(const void* ptr, size_t size) override;
@@ -54,7 +55,7 @@ namespace Network::AsyncIO::Windows
 
         // =====================================================================
         // English: Async I/O Requests
-        // 한글: 비동기 I/O 요청
+        // ?쒓?: 鍮꾨룞湲?I/O ?붿껌
         // =====================================================================
 
         AsyncIOError SendAsync(
@@ -77,7 +78,7 @@ namespace Network::AsyncIO::Windows
 
         // =====================================================================
         // English: Completion Processing
-        // 한글: 완료 처리
+        // ?쒓?: ?꾨즺 泥섎━
         // =====================================================================
 
         int ProcessCompletions(
@@ -88,7 +89,7 @@ namespace Network::AsyncIO::Windows
 
         // =====================================================================
         // English: Information & Statistics
-        // 한글: 정보 및 통계
+        // ?쒓?: ?뺣낫 諛??듦퀎
         // =====================================================================
 
         const ProviderInfo& GetInfo() const override;
@@ -98,7 +99,7 @@ namespace Network::AsyncIO::Windows
     private:
         // =====================================================================
         // English: RIO Function Pointer Types
-        // 한글: RIO 함수 포인터 타입
+        // ?쒓?: RIO ?⑥닔 ?ъ씤?????
         // =====================================================================
 
         typedef int (WSAAPI *PfnRIOCloseCompletionQueue)(_In_ RIO_CQ cq);
@@ -113,40 +114,40 @@ namespace Network::AsyncIO::Windows
 
         // =====================================================================
         // English: Internal Data Structures
-        // 한글: 내부 데이터 구조
+        // ?쒓?: ?대? ?곗씠??援ъ“
         // =====================================================================
 
         // English: Registered buffer info
-        // 한글: 등록된 버퍼 정보
+        // ?쒓?: ?깅줉??踰꾪띁 ?뺣낫
         struct RegisteredBufferEntry
         {
-            RIO_BUFFERID mRioBufferId;  // English: RIO buffer ID / 한글: RIO 버퍼 ID
-            void* mBufferPtr;           // English: Buffer pointer / 한글: 버퍼 포인터
-            uint32_t mBufferSize;       // English: Buffer size / 한글: 버퍼 크기
+            RIO_BUFFERID mRioBufferId;  // English: RIO buffer ID / ?쒓?: RIO 踰꾪띁 ID
+            void* mBufferPtr;           // English: Buffer pointer / ?쒓?: 踰꾪띁 ?ъ씤??
+            uint32_t mBufferSize;       // English: Buffer size / ?쒓?: 踰꾪띁 ?ш린
         };
 
         // English: Pending operation tracking
-        // 한글: 대기 작업 추적
+        // ?쒓?: ?湲??묒뾽 異붿쟻
         struct PendingOperation
         {
-            RequestContext mContext;     // English: User request context / 한글: 사용자 요청 컨텍스트
-            SocketHandle mSocket;       // English: Socket handle / 한글: 소켓 핸들
-            AsyncIOType mType;          // English: Operation type / 한글: 작업 타입
+            RequestContext mContext;     // English: User request context / ?쒓?: ?ъ슜???붿껌 而⑦뀓?ㅽ듃
+            SocketHandle mSocket;       // English: Socket handle / ?쒓?: ?뚯폆 ?몃뱾
+            AsyncIOType mType;          // English: Operation type / ?쒓?: ?묒뾽 ???
         };
 
         // =====================================================================
         // English: Member Variables
-        // 한글: 멤버 변수
+        // ?쒓?: 硫ㅻ쾭 蹂??
         // =====================================================================
 
-        RIO_CQ mCompletionQueue;                          // English: RIO completion queue / 한글: RIO 완료 큐
-        std::map<SocketHandle, RIO_RQ> mRequestQueues;    // English: Request queues per socket / 한글: 소켓별 요청 큐
-        std::map<int64_t, RegisteredBufferEntry> mRegisteredBuffers;  // English: Registered buffers / 한글: 등록된 버퍼
-        std::map<void*, PendingOperation> mPendingOps;    // English: Pending operations / 한글: 대기 작업
-        mutable std::mutex mMutex;                        // English: Thread safety mutex / 한글: 스레드 안전성 뮤텍스
+        RIO_CQ mCompletionQueue;                          // English: RIO completion queue / ?쒓?: RIO ?꾨즺 ??
+        std::map<SocketHandle, RIO_RQ> mRequestQueues;    // English: Request queues per socket / ?쒓?: ?뚯폆蹂??붿껌 ??
+        std::map<int64_t, RegisteredBufferEntry> mRegisteredBuffers;  // English: Registered buffers / ?쒓?: ?깅줉??踰꾪띁
+        std::map<void*, PendingOperation> mPendingOps;    // English: Pending operations / ?쒓?: ?湲??묒뾽
+        mutable std::mutex mMutex;                        // English: Thread safety mutex / ?쒓?: ?ㅻ젅???덉쟾??裕ㅽ뀓??
 
         // English: RIO function pointers (mVariableName convention)
-        // 한글: RIO 함수 포인터 (mVariableName 규칙)
+        // ?쒓?: RIO ?⑥닔 ?ъ씤??(mVariableName 洹쒖튃)
         PfnRIOCloseCompletionQueue mPfnRIOCloseCompletionQueue;
         PfnRIOCreateCompletionQueue mPfnRIOCreateCompletionQueue;
         PfnRIOCreateRequestQueue mPfnRIOCreateRequestQueue;
@@ -157,23 +158,26 @@ namespace Network::AsyncIO::Windows
         PfnRIOSend mPfnRIOSend;
         PfnRIORecv mPfnRIORecv;
 
-        ProviderInfo mInfo;           // English: Provider info / 한글: 공급자 정보
-        ProviderStats mStats;         // English: Statistics / 한글: 통계
-        std::string mLastError;       // English: Last error message / 한글: 마지막 에러 메시지
-        size_t mMaxConcurrentOps;     // English: Max concurrent ops / 한글: 최대 동시 작업
-        int64_t mNextBufferId;        // English: Next buffer ID / 한글: 다음 버퍼 ID
-        bool mInitialized;            // English: Initialization flag / 한글: 초기화 플래그
+        ProviderInfo mInfo;           // English: Provider info / ?쒓?: 怨듦툒???뺣낫
+        ProviderStats mStats;         // English: Statistics / ?쒓?: ?듦퀎
+        std::string mLastError;       // English: Last error message / ?쒓?: 留덉?留??먮윭 硫붿떆吏
+        size_t mMaxConcurrentOps;     // English: Max concurrent ops / ?쒓?: 理쒕? ?숈떆 ?묒뾽
+        int64_t mNextBufferId;        // English: Next buffer ID / ?쒓?: ?ㅼ쓬 踰꾪띁 ID
+        bool mInitialized;            // English: Initialization flag / ?쒓?: 珥덇린???뚮옒洹?
 
         // =====================================================================
         // English: Helper Methods
-        // 한글: 헬퍼 메서드
+        // ?쒓?: ?ы띁 硫붿꽌??
         // =====================================================================
 
         // English: Load RIO function pointers from mswsock.dll
-        // 한글: mswsock.dll에서 RIO 함수 포인터 로드
+        // ?쒓?: mswsock.dll?먯꽌 RIO ?⑥닔 ?ъ씤??濡쒕뱶
         bool LoadRIOFunctions();
     };
 
-}  // namespace Network::AsyncIO::Windows
+}  // namespace Windows
+}  // namespace AsyncIO
+}  // namespace Network
 
 #endif  // _WIN32
+

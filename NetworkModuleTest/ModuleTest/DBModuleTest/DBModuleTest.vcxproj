@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -108,7 +108,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_LIB;SQL_WCHART_CONVERT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -136,13 +136,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="IDatabase.h" />
+    <ClInclude Include="DatabaseFactory.h" />
     <ClInclude Include="ODBCDatabase.h" />
     <ClInclude Include="OLEDBDatabase.h" />
+    <ClInclude Include="ConnectionPool.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DatabaseFactory.cpp" />
     <ClCompile Include="ODBCDatabase.cpp" />
     <ClCompile Include="OLEDBDatabase.cpp" />
+    <ClCompile Include="ConnectionPool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="odbc_sample.cpp" />

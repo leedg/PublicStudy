@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 // English: Database connection pool with RAII wrapper
-// 한글: RAII 래퍼를 포함한 데이터베이스 연결 풀
+// ?쒓?: RAII ?섑띁瑜??ы븿???곗씠?곕쿋?댁뒪 ?곌껐 ?
 
 #include "DBConnection.h"
 #include <queue>
@@ -16,7 +16,7 @@ namespace Network::Database
 
     // =============================================================================
     // English: DBConnectionPool class
-    // 한글: DBConnectionPool 클래스
+    // ?쒓?: DBConnectionPool ?대옒??
     // =============================================================================
 
     class DBConnectionPool
@@ -25,17 +25,17 @@ namespace Network::Database
         static DBConnectionPool& Instance();
 
         // English: Initialize / Shutdown
-        // 한글: 초기화 / 종료
+        // ?쒓?: 珥덇린??/ 醫낅즺
         bool Initialize(const std::string& connectionString, uint32_t poolSize);
         void Shutdown();
 
         // English: Acquire / Release connection
-        // 한글: 연결 획득 / 반환
+        // ?쒓?: ?곌껐 ?띾뱷 / 諛섑솚
         DBConnectionRef Acquire();
         void Release(DBConnectionRef connection);
 
         // English: Pool state
-        // 한글: 풀 상태
+        // ?쒓?: ? ?곹깭
         size_t GetAvailableCount() const;
         size_t GetTotalCount() const { return mTotalCount; }
         bool IsInitialized() const { return mInitialized; }
@@ -58,7 +58,7 @@ namespace Network::Database
 
     // =============================================================================
     // English: ScopedDBConnection - RAII wrapper for DB connection
-    // 한글: ScopedDBConnection - DB 연결용 RAII 래퍼
+    // ?쒓?: ScopedDBConnection - DB ?곌껐??RAII ?섑띁
     // =============================================================================
 
     class ScopedDBConnection
@@ -78,7 +78,7 @@ namespace Network::Database
         }
 
         // English: Prevent copy, allow move
-        // 한글: 복사 방지, 이동 허용
+        // ?쒓?: 蹂듭궗 諛⑹?, ?대룞 ?덉슜
         ScopedDBConnection(const ScopedDBConnection&) = delete;
         ScopedDBConnection& operator=(const ScopedDBConnection&) = delete;
 
@@ -91,3 +91,4 @@ namespace Network::Database
     };
 
 } // namespace Network::Database
+

@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 // English: Database Server main header
-// 한글: 데이터베이스 서버 메인 헤더
+// ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 硫붿씤 ?ㅻ뜑
 
 #include "../ServerEngine/Core/AsyncIOProvider.h"
 #include "../ServerEngine/Protocols/MessageHandler.h"
@@ -14,28 +14,28 @@ namespace Network::DBServer
 {
     // =============================================================================
     // English: Database Server class
-    // 한글: 데이터베이스 서버 클래스
+    // ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 ?대옒??
     // =============================================================================
     
     class DBServer
     {
     public:
         // English: Constructor
-        // 한글: 생성자
+        // ?쒓?: ?앹꽦??
         DBServer();
         
         // English: Destructor
-        // 한글: 소멸자
+        // ?쒓?: ?뚮㈇??
         ~DBServer();
 
         // =====================================================================
         // English: Lifecycle management
-        // 한글: 생명주기 관리
+        // ?쒓?: ?앸챸二쇨린 愿由?
         // =====================================================================
 
         /**
          * English: Initialize the database server
-         * 한글: 데이터베이스 서버 초기화
+         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 珥덇린??
          * @param port Port number to listen on
          * @param maxConnections Maximum allowed connections
          * @return True if initialization succeeded
@@ -44,32 +44,32 @@ namespace Network::DBServer
 
         /**
          * English: Start the database server
-         * 한글: 데이터베이스 서버 시작
+         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 ?쒖옉
          * @return True if server started successfully
          */
         bool Start();
 
         /**
          * English: Stop the database server
-         * 한글: 데이터베이스 서버 중지
+         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 以묒?
          */
         void Stop();
 
         /**
          * English: Check if server is running
-         * 한글: 서버 실행 상태 확인
+         * ?쒓?: ?쒕쾭 ?ㅽ뻾 ?곹깭 ?뺤씤
          * @return True if server is running
          */
         bool IsRunning() const;
 
         // =====================================================================
         // English: Configuration
-        // 한글: 설정
+        // ?쒓?: ?ㅼ젙
         // =====================================================================
 
         /**
          * English: Set database connection parameters
-         * 한글: 데이터베이스 연결 파라미터 설정
+         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?곌껐 ?뚮씪誘명꽣 ?ㅼ젙
          * @param host Database host
          * @param port Database port
          * @param database Database name
@@ -87,26 +87,26 @@ namespace Network::DBServer
     private:
         // =====================================================================
         // English: Network event handlers
-        // 한글: 네트워크 이벤트 핸들러
+        // ?쒓?: ?ㅽ듃?뚰겕 ?대깽???몃뱾??
         // =====================================================================
 
         /**
          * English: Handle new connection
-         * 한글: 새 연결 처리
+         * ?쒓?: ???곌껐 泥섎━
          * @param connectionId Connection ID
          */
         void OnConnectionEstablished(ConnectionId connectionId);
 
         /**
          * English: Handle connection closed
-         * 한글: 연결 종료 처리
+         * ?쒓?: ?곌껐 醫낅즺 泥섎━
          * @param connectionId Connection ID
          */
         void OnConnectionClosed(ConnectionId connectionId);
 
         /**
          * English: Handle data received
-         * 한글: 데이터 수신 처리
+         * ?쒓?: ?곗씠???섏떊 泥섎━
          * @param connectionId Connection ID
          * @param data Received data
          * @param size Data size
@@ -115,32 +115,32 @@ namespace Network::DBServer
 
         /**
          * English: Handle Ping message
-         * 한글: Ping 메시지 처리
+         * ?쒓?: Ping 硫붿떆吏 泥섎━
          * @param message Ping message
          */
         void OnPingMessage(const Protocols::Message& message);
 
         // =====================================================================
         // English: Database operations
-        // 한글: 데이터베이스 작업
+        // ?쒓?: ?곗씠?곕쿋?댁뒪 ?묒뾽
         // =====================================================================
 
         /**
          * English: Connect to database
-         * 한글: 데이터베이스 연결
+         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?곌껐
          * @return True if connection succeeded
          */
         bool ConnectToDatabase();
 
         /**
          * English: Disconnect from database
-         * 한글: 데이터베이스 연결 해제
+         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?곌껐 ?댁젣
          */
         void DisconnectFromDatabase();
 
         /**
          * English: Execute query
-         * 한글: 쿼리 실행
+         * ?쒓?: 荑쇰━ ?ㅽ뻾
          * @param query SQL query
          * @return Query result
          */
@@ -148,7 +148,7 @@ namespace Network::DBServer
 
         // =====================================================================
         // English: Private members
-        // 한글: 비공개 멤버
+        // ?쒓?: 鍮꾧났媛?硫ㅻ쾭
         // =====================================================================
 
         // Network components
@@ -180,18 +180,18 @@ namespace Network::DBServer
 
         // =====================================================================
         // English: Private methods
-        // 한글: 비공개 메소드
+        // ?쒓?: 鍮꾧났媛?硫붿냼??
         // =====================================================================
 
         /**
          * English: Worker thread function
-         * 한글: 워커 스레드 함수
+         * ?쒓?: ?뚯빱 ?ㅻ젅???⑥닔
          */
         void WorkerThread();
 
         /**
          * English: Send message to connection
-         * 한글: 연결로 메시지 전송
+         * ?쒓?: ?곌껐濡?硫붿떆吏 ?꾩넚
          * @param connectionId Connection ID
          * @param type Message type
          * @param data Message data
@@ -202,7 +202,7 @@ namespace Network::DBServer
 
         /**
          * English: Get current timestamp
-         * 한글: 현재 타임스탬프 조회
+         * ?쒓?: ?꾩옱 ??꾩뒪?ы봽 議고쉶
          * @return Timestamp in milliseconds
          */
         uint64_t GetCurrentTimestamp() const;

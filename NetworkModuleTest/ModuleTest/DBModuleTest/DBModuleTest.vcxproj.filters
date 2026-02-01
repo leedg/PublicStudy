@@ -27,33 +27,39 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\IDatabase.h">
+    <ClInclude Include="IDatabase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\odbc\ODBCDatabase.h">
-      <Filter>Header Files\ODBC</Filter>
+    <ClInclude Include="ODBCDatabase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OLEDBDatabase.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\DatabaseFactory.cpp">
+    <ClCompile Include="DatabaseFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\odbc\ODBCDatabase.cpp">
-      <Filter>Source Files\ODBC</Filter>
+    <ClCompile Include="ODBCDatabase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OLEDBDatabase.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="samples\odbc_sample.cpp">
-      <Filter>Samples</Filter>
-    </None>
-    <None Include="samples\oledb_sample.cpp">
-      <Filter>Samples</Filter>
-    </None>
-    <None Include="tests\test_database.cpp">
-      <Filter>Tests</Filter>
-    </None>
     <None Include="CMakeLists.txt">
       <Filter>Resource Files</Filter>
+    </None>
+    <None Include="odbc_sample.cpp">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="oledb_sample.cpp">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="test_database.cpp">
+      <Filter>Source Files</Filter>
     </None>
   </ItemGroup>
 </Project>

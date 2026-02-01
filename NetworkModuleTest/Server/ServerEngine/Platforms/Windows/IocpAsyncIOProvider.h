@@ -11,8 +11,9 @@
 #include <mutex>
 #include <string>
 
-namespace Network::AsyncIO::Windows
-{
+namespace Network {
+namespace AsyncIO {
+namespace Windows {
     // =============================================================================
     // English: IOCP-based AsyncIOProvider Implementation
     // 한글: IOCP 기반 AsyncIOProvider 구현
@@ -126,6 +127,9 @@ namespace Network::AsyncIO::Windows
         bool mInitialized;                       // English: Initialization flag / 한글: 초기화 플래그
     };
 
-}  // namespace Network::AsyncIO::Windows
+}  // namespace Windows
+}  // namespace AsyncIO
+}  // namespace Network
 
 #endif  // _WIN32
+

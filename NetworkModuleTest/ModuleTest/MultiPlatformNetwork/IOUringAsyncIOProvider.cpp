@@ -1,5 +1,5 @@
-// English: io_uring-based AsyncIOProvider implementation
-// 한글: io_uring 기반 AsyncIOProvider 구현
+﻿// English: io_uring-based AsyncIOProvider implementation
+// ?쒓?: io_uring 湲곕컲 AsyncIOProvider 援ы쁽
 
 #ifdef __linux__
 
@@ -11,12 +11,12 @@
 #include <cstdlib>
 #include <sys/socket.h>
 
-namespace Network::AsyncIO::Linux
-{
+namespace Network {
+namespace AsyncIO {
+namespace Linux {
     // =============================================================================
     // English: Constructor & Destructor
-    // 한글: 생성자 및 소멸자
-    // =============================================================================
+    // ?쒓?: ?앹꽦??諛??뚮㈇??    // =============================================================================
 
     IOUringAsyncIOProvider::IOUringAsyncIOProvider()
         : mInfo{}
@@ -38,7 +38,7 @@ namespace Network::AsyncIO::Linux
 
     // =============================================================================
     // English: Lifecycle Management
-    // 한글: 생명주기 관리
+    // ?쒓?: ?앸챸二쇨린 愿由?
     // =============================================================================
 
     AsyncIOError IOUringAsyncIOProvider::Initialize(size_t queueDepth, size_t maxConcurrent)
@@ -49,12 +49,12 @@ namespace Network::AsyncIO::Linux
         mMaxConcurrentOps = maxConcurrent;
 
         // English: Initialize io_uring ring with specified queue depth
-        // 한글: 지정된 큐 깊이로 io_uring 링 초기화
+        // ?쒓?: 吏?뺣맂 ??源딆씠濡?io_uring 留?珥덇린??
         struct io_uring_params params;
         std::memset(&params, 0, sizeof(params));
 
         // English: Cap queue depth at 4096 (io_uring limit)
-        // 한글: 큐 깊이를 4096으로 제한 (io_uring 제한)
+        // ?쒓?: ??源딆씠瑜?4096?쇰줈 ?쒗븳 (io_uring ?쒗븳)
         size_t actualDepth = (queueDepth > 4096) ? 4096 : queueDepth;
 
         int ret = io_uring_queue_init_params(
@@ -69,13 +69,13 @@ namespace Network::AsyncIO::Linux
         }
 
         // English: Check feature support
-        // 한글: 기능 지원 확인
+        // ?쒓?: 湲곕뒫 吏???뺤씤
         unsigned int features = mRing.features;
         mSupportsFixedBuffers = (features & IORING_FEAT_FAST_POLL) != 0;
         mSupportsDirectDescriptors = (features & IORING_FEAT_NODROP) != 0;
 
         // English: Initialize provider info
-        // 한글: 공급자 정보 초기화
+        // ?쒓?: 怨듦툒???뺣낫 珥덇린??
         mInfo.mPlatformType = PlatformType::IOUring;
         mInfo.mName = "io_uring";
         mInfo.mMaxQueueDepth = actualDepth;
@@ -99,7 +99,7 @@ namespace Network::AsyncIO::Linux
         mPendingOps.clear();
 
         // English: Exit the ring
-        // 한글: 링 종료
+        // ?쒓?: 留?醫낅즺
         io_uring_queue_exit(&mRing);
         mInitialized = false;
     }
@@ -111,7 +111,7 @@ namespace Network::AsyncIO::Linux
 
     // =============================================================================
     // English: Buffer Management
-    // 한글: 버퍼 관리
+    // ?쒓?: 踰꾪띁 愿由?
     // =============================================================================
 
     int64_t IOUringAsyncIOProvider::RegisterBuffer(const void* ptr, size_t size)
@@ -122,7 +122,7 @@ namespace Network::AsyncIO::Linux
         std::lock_guard<std::mutex> lock(mMutex);
 
         // English: Store buffer registration (simple mapping)
-        // 한글: 버퍼 등록 저장 (단순 매핑)
+        // ?쒓?: 踰꾪띁 ?깅줉 ???(?⑥닚 留ㅽ븨)
         int64_t bufferId = mNextBufferId++;
         RegisteredBufferEntry entry;
         entry.mAddress = const_cast<void*>(ptr);
@@ -150,7 +150,7 @@ namespace Network::AsyncIO::Linux
 
     // =============================================================================
     // English: Async I/O Operations
-    // 한글: 비동기 I/O 작업
+    // ?쒓?: 鍮꾨룞湲?I/O ?묒뾽
     // =============================================================================
 
     AsyncIOError IOUringAsyncIOProvider::SendAsync(
@@ -169,12 +169,12 @@ namespace Network::AsyncIO::Linux
         std::lock_guard<std::mutex> lock(mMutex);
 
         // English: Allocate buffer and copy data
-        // 한글: 버퍼 할당 및 데이터 복사
+        // ?쒓?: 踰꾪띁 ?좊떦 諛??곗씠??蹂듭궗
         auto internalBuffer = std::make_unique<uint8_t[]>(size);
         std::memcpy(internalBuffer.get(), buffer, size);
 
         // English: Store pending operation
-        // 한글: 대기 작업 저장
+        // ?쒓?: ?湲??묒뾽 ???
         uint64_t opKey = mNextOpKey++;
         PendingOperation pending;
         pending.mContext = context;
@@ -186,7 +186,7 @@ namespace Network::AsyncIO::Linux
         mPendingOps[opKey] = std::move(pending);
 
         // English: Prepare send operation in io_uring SQ
-        // 한글: io_uring SQ에 송신 작업 준비
+        // ?쒓?: io_uring SQ???≪떊 ?묒뾽 以鍮?
         struct io_uring_sqe* sqe = io_uring_get_sqe(&mRing);
         if (!sqe)
         {
@@ -202,7 +202,7 @@ namespace Network::AsyncIO::Linux
         mStats.mPendingRequests++;
 
         // English: Submit to ring
-        // 한글: 링에 제출
+        // ?쒓?: 留곸뿉 ?쒖텧
         return SubmitRing() ? AsyncIOError::Success : AsyncIOError::OperationFailed;
     }
 
@@ -222,7 +222,7 @@ namespace Network::AsyncIO::Linux
         std::lock_guard<std::mutex> lock(mMutex);
 
         // English: Store pending operation
-        // 한글: 대기 작업 저장
+        // ?쒓?: ?湲??묒뾽 ???
         uint64_t opKey = mNextOpKey++;
         PendingOperation pending;
         pending.mContext = context;
@@ -234,7 +234,7 @@ namespace Network::AsyncIO::Linux
         mPendingOps[opKey] = std::move(pending);
 
         // English: Prepare receive operation
-        // 한글: 수신 작업 준비
+        // ?쒓?: ?섏떊 ?묒뾽 以鍮?
         struct io_uring_sqe* sqe = io_uring_get_sqe(&mRing);
         if (!sqe)
         {
@@ -255,7 +255,7 @@ namespace Network::AsyncIO::Linux
     AsyncIOError IOUringAsyncIOProvider::FlushRequests()
     {
         // English: Submit all SQ entries to kernel
-        // 한글: 모든 SQ 항목을 커널에 제출
+        // ?쒓?: 紐⑤뱺 SQ ??ぉ??而ㅻ꼸???쒖텧
         if (!mInitialized)
             return AsyncIOError::NotInitialized;
 
@@ -264,7 +264,7 @@ namespace Network::AsyncIO::Linux
 
     // =============================================================================
     // English: Completion Processing
-    // 한글: 완료 처리
+    // ?쒓?: ?꾨즺 泥섎━
     // =============================================================================
 
     int IOUringAsyncIOProvider::ProcessCompletions(
@@ -281,11 +281,11 @@ namespace Network::AsyncIO::Linux
         std::lock_guard<std::mutex> lock(mMutex);
 
         // English: Process available completions
-        // 한글: 사용 가능한 완료 처리
+        // ?쒓?: ?ъ슜 媛?ν븳 ?꾨즺 泥섎━
         int count = ProcessCompletionQueue(entries, maxEntries);
 
         // English: If no completions and timeout > 0, wait
-        // 한글: 완료 없고 타임아웃 > 0이면 대기
+        // ?쒓?: ?꾨즺 ?녾퀬 ??꾩븘??> 0?대㈃ ?湲?
         if (count == 0 && timeoutMs != 0)
         {
             struct __kernel_timespec ts;
@@ -324,7 +324,7 @@ namespace Network::AsyncIO::Linux
             if (it != mPendingOps.end())
             {
                 // English: Fill completion entry
-                // 한글: 완료 항목 채우기
+                // ?쒓?: ?꾨즺 ??ぉ 梨꾩슦湲?
                 CompletionEntry& entry = entries[processedCount];
                 entry.mContext = it->second.mContext;
                 entry.mType = it->second.mType;
@@ -349,7 +349,7 @@ namespace Network::AsyncIO::Linux
 
     // =============================================================================
     // English: Helper Methods
-    // 한글: 헬퍼 메서드
+    // ?쒓?: ?ы띁 硫붿꽌??
     // =============================================================================
 
     bool IOUringAsyncIOProvider::SubmitRing()
@@ -364,7 +364,7 @@ namespace Network::AsyncIO::Linux
 
     // =============================================================================
     // English: Information & Statistics
-    // 한글: 정보 및 통계
+    // ?쒓?: ?뺣낫 諛??듦퀎
     // =============================================================================
 
     const ProviderInfo& IOUringAsyncIOProvider::GetInfo() const
@@ -384,14 +384,17 @@ namespace Network::AsyncIO::Linux
 
     // =============================================================================
     // English: Factory Function
-    // 한글: 팩토리 함수
+    // ?쒓?: ?⑺넗由??⑥닔
     // =============================================================================
 
     std::unique_ptr<AsyncIOProvider> CreateIOUringProvider()
     {
-        return std::make_unique<IOUringAsyncIOProvider>();
+        return std::unique_ptr<AsyncIOProvider>(new IOUringAsyncIOProvider());
     }
 
-}  // namespace Network::AsyncIO::Linux
+}  // namespace Linux
+}  // namespace AsyncIO
+}  // namespace Network
 
 #endif  // __linux__
+

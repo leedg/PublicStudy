@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 // English: Binary packet definitions for network framing
-// 한글: 네트워크 프레이밍용 바이너리 패킷 정의
+// ?쒓?: ?ㅽ듃?뚰겕 ?꾨젅?대컢??諛붿씠?덈━ ?⑦궥 ?뺤쓽
 
 #include <cstdint>
 
@@ -9,39 +9,39 @@ namespace Network::Core
 {
     // =============================================================================
     // English: Packet type IDs
-    // 한글: 패킷 타입 ID
+    // ?쒓?: ?⑦궥 ???ID
     // =============================================================================
 
     enum class PacketType : uint16_t
     {
         // English: Session connect request (Client -> Server)
-        // 한글: 세션 연결 요청 (클라이언트 -> 서버)
+        // ?쒓?: ?몄뀡 ?곌껐 ?붿껌 (?대씪?댁뼵??-> ?쒕쾭)
         SessionConnectReq   = 0x0001,
 
         // English: Session connect response (Server -> Client)
-        // 한글: 세션 연결 응답 (서버 -> 클라이언트)
+        // ?쒓?: ?몄뀡 ?곌껐 ?묐떟 (?쒕쾭 -> ?대씪?댁뼵??
         SessionConnectRes   = 0x0002,
 
         // English: Ping request (Client -> Server)
-        // 한글: 핑 요청 (클라이언트 -> 서버)
+        // ?쒓?: ???붿껌 (?대씪?댁뼵??-> ?쒕쾭)
         PingReq             = 0x0003,
 
         // English: Pong response (Server -> Client)
-        // 한글: 퐁 응답 (서버 -> 클라이언트)
+        // ?쒓?: ???묐떟 (?쒕쾭 -> ?대씪?댁뼵??
         PongRes             = 0x0004,
     };
 
     // =============================================================================
     // English: Packet header (common to all packets)
-    // 한글: 패킷 헤더 (모든 패킷의 공통 헤더)
+    // ?쒓?: ?⑦궥 ?ㅻ뜑 (紐⑤뱺 ?⑦궥??怨듯넻 ?ㅻ뜑)
     // =============================================================================
 
 #pragma pack(push, 1)
 
     struct PacketHeader
     {
-        uint16_t size;      // English: Total packet size (including header) / 한글: 패킷 전체 크기 (헤더 포함)
-        uint16_t id;        // English: Packet type ID / 한글: 패킷 타입 ID
+        uint16_t size;      // English: Total packet size (including header) / ?쒓?: ?⑦궥 ?꾩껜 ?ш린 (?ㅻ뜑 ?ы븿)
+        uint16_t id;        // English: Packet type ID / ?쒓?: ?⑦궥 ???ID
 
         PacketHeader()
             : size(0)
@@ -60,7 +60,7 @@ namespace Network::Core
 
     // =============================================================================
     // English: Session connect request packet
-    // 한글: 세션 연결 요청 패킷
+    // ?쒓?: ?몄뀡 ?곌껐 ?붿껌 ?⑦궥
     // =============================================================================
 
     struct PKT_SessionConnectReq
@@ -77,7 +77,7 @@ namespace Network::Core
 
     // =============================================================================
     // English: Session connect response packet
-    // 한글: 세션 연결 응답 패킷
+    // ?쒓?: ?몄뀡 ?곌껐 ?묐떟 ?⑦궥
     // =============================================================================
 
     enum class ConnectResult : uint8_t
@@ -93,8 +93,8 @@ namespace Network::Core
     {
         PacketHeader header;
         uint64_t sessionId;
-        uint32_t serverTime;        // English: Unix timestamp / 한글: 유닉스 타임스탬프
-        uint8_t  result;            // English: ConnectResult / 한글: 연결 결과
+        uint32_t serverTime;        // English: Unix timestamp / ?쒓?: ?좊땳????꾩뒪?ы봽
+        uint8_t  result;            // English: ConnectResult / ?쒓?: ?곌껐 寃곌낵
 
         PKT_SessionConnectRes()
             : header(sizeof(PKT_SessionConnectRes), PacketType::SessionConnectRes)
@@ -107,14 +107,14 @@ namespace Network::Core
 
     // =============================================================================
     // English: Ping request packet
-    // 한글: 핑 요청 패킷
+    // ?쒓?: ???붿껌 ?⑦궥
     // =============================================================================
 
     struct PKT_PingReq
     {
         PacketHeader header;
-        uint64_t clientTime;        // English: Client timestamp (ms) / 한글: 클라이언트 시간 (밀리초)
-        uint32_t sequence;          // English: Sequence number / 한글: 시퀀스 번호
+        uint64_t clientTime;        // English: Client timestamp (ms) / ?쒓?: ?대씪?댁뼵???쒓컙 (諛由ъ큹)
+        uint32_t sequence;          // English: Sequence number / ?쒓?: ?쒗??踰덊샇
 
         PKT_PingReq()
             : header(sizeof(PKT_PingReq), PacketType::PingReq)
@@ -126,15 +126,15 @@ namespace Network::Core
 
     // =============================================================================
     // English: Pong response packet
-    // 한글: 퐁 응답 패킷
+    // ?쒓?: ???묐떟 ?⑦궥
     // =============================================================================
 
     struct PKT_PongRes
     {
         PacketHeader header;
-        uint64_t clientTime;        // English: Echo of client time / 한글: 클라이언트 시간 에코
-        uint64_t serverTime;        // English: Server timestamp (ms) / 한글: 서버 시간 (밀리초)
-        uint32_t sequence;          // English: Echo of sequence / 한글: 시퀀스 에코
+        uint64_t clientTime;        // English: Echo of client time / ?쒓?: ?대씪?댁뼵???쒓컙 ?먯퐫
+        uint64_t serverTime;        // English: Server timestamp (ms) / ?쒓?: ?쒕쾭 ?쒓컙 (諛由ъ큹)
+        uint32_t sequence;          // English: Echo of sequence / ?쒓?: ?쒗???먯퐫
 
         PKT_PongRes()
             : header(sizeof(PKT_PongRes), PacketType::PongRes)
@@ -149,7 +149,7 @@ namespace Network::Core
 
     // =============================================================================
     // English: Network constants
-    // 한글: 네트워크 상수
+    // ?쒓?: ?ㅽ듃?뚰겕 ?곸닔
     // =============================================================================
 
     constexpr uint32_t MAX_PACKET_SIZE      = 4096;
@@ -159,3 +159,4 @@ namespace Network::Core
     constexpr uint32_t PING_TIMEOUT_MS      = 30000;
 
 } // namespace Network::Core
+

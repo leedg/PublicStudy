@@ -8,8 +8,9 @@
 #include <unistd.h>
 #include <cstring>
 
-namespace Network::AsyncIO::BSD
-{
+namespace Network {
+namespace AsyncIO {
+namespace BSD {
     // =============================================================================
     // English: Constructor & Destructor
     // 한글: 생성자 및 소멸자
@@ -311,9 +312,12 @@ namespace Network::AsyncIO::BSD
 
     std::unique_ptr<AsyncIOProvider> CreateKqueueProvider()
     {
-        return std::make_unique<KqueueAsyncIOProvider>();
+        return std::unique_ptr<AsyncIOProvider>(new KqueueAsyncIOProvider());
     }
 
-}  // namespace Network::AsyncIO::BSD
+}  // namespace BSD
+}  // namespace AsyncIO
+}  // namespace Network
 
 #endif  // __APPLE__
+

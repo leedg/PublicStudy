@@ -11,8 +11,9 @@
 #include <cstdlib>
 #include <sys/socket.h>
 
-namespace Network::AsyncIO::Linux
-{
+namespace Network {
+namespace AsyncIO {
+namespace Linux {
     // =============================================================================
     // English: Constructor & Destructor
     // 한글: 생성자 및 소멸자
@@ -389,9 +390,12 @@ namespace Network::AsyncIO::Linux
 
     std::unique_ptr<AsyncIOProvider> CreateIOUringProvider()
     {
-        return std::make_unique<IOUringAsyncIOProvider>();
+        return std::unique_ptr<AsyncIOProvider>(new IOUringAsyncIOProvider());
     }
 
-}  // namespace Network::AsyncIO::Linux
+}  // namespace Linux
+}  // namespace AsyncIO
+}  // namespace Network
 
 #endif  // __linux__
+

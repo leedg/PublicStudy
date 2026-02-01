@@ -41,9 +41,6 @@
     <ClCompile Include="PlatformDetect.cpp">
       <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="IocpAsyncIOProvider.cpp">
-      <Filter>Platform</Filter>
-    </ClCompile>
     <ClCompile Include="EpollAsyncIOProvider.cpp">
       <Filter>Platform</Filter>
     </ClCompile>
@@ -56,8 +53,7 @@
     <ClCompile Include="AsyncIOTest.cpp">
       <Filter>Test</Filter>
     </ClCompile>
-    <ClCompile Include="RIOAsyncIOProvider.cpp">
-      <Filter>Platform</Filter>
-    </ClCompile>
+    <ClCompile Include="IocpAsyncIOProvider.cpp" />
+    <ClCompile Include="RIOAsyncIOProvider.cpp" />
   </ItemGroup>
 </Project>

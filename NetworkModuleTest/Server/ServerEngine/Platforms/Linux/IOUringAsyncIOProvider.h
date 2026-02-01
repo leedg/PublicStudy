@@ -12,8 +12,9 @@
 #include <mutex>
 #include <string>
 
-namespace Network::AsyncIO::Linux
-{
+namespace Network {
+namespace AsyncIO {
+namespace Linux {
     // =============================================================================
     // English: io_uring-based AsyncIOProvider Implementation (Linux kernel 5.1+)
     // 한글: io_uring 기반 AsyncIOProvider 구현 (Linux 커널 5.1+)
@@ -154,6 +155,9 @@ namespace Network::AsyncIO::Linux
         int ProcessCompletionQueue(CompletionEntry* entries, size_t maxEntries);
     };
 
-}  // namespace Network::AsyncIO::Linux
+}  // namespace Linux
+}  // namespace AsyncIO
+}  // namespace Network
 
 #endif  // __linux__
+

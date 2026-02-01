@@ -1,5 +1,5 @@
-// English: epoll-based AsyncIOProvider implementation
-// 한글: epoll 기반 AsyncIOProvider 구현
+﻿// English: epoll-based AsyncIOProvider implementation
+// ?쒓?: epoll 湲곕컲 AsyncIOProvider 援ы쁽
 
 #ifdef __linux__
 
@@ -10,12 +10,12 @@
 #include <cstring>
 #include <cstdlib>
 
-namespace Network::AsyncIO::Linux
-{
+namespace Network {
+namespace AsyncIO {
+namespace Linux {
     // =============================================================================
     // English: Constructor & Destructor
-    // 한글: 생성자 및 소멸자
-    // =============================================================================
+    // ?쒓?: ?앹꽦??諛??뚮㈇??    // =============================================================================
 
     EpollAsyncIOProvider::EpollAsyncIOProvider()
         : mEpollFd(-1)
@@ -29,13 +29,13 @@ namespace Network::AsyncIO::Linux
     EpollAsyncIOProvider::~EpollAsyncIOProvider()
     {
         // English: Ensure resources are released
-        // 한글: 리소스 해제 보장
+        // ?쒓?: 由ъ냼???댁젣 蹂댁옣
         Shutdown();
     }
 
     // =============================================================================
     // English: Lifecycle Management
-    // 한글: 생명주기 관리
+    // ?쒓?: ?앸챸二쇨린 愿由?
     // =============================================================================
 
     AsyncIOError EpollAsyncIOProvider::Initialize(size_t queueDepth, size_t maxConcurrent)
@@ -44,7 +44,7 @@ namespace Network::AsyncIO::Linux
             return AsyncIOError::AlreadyInitialized;
 
         // English: Create epoll file descriptor with close-on-exec
-        // 한글: close-on-exec로 epoll 파일 디스크립터 생성
+        // ?쒓?: close-on-exec濡?epoll ?뚯씪 ?붿뒪?щ┰???앹꽦
         mEpollFd = epoll_create1(EPOLL_CLOEXEC);
         if (mEpollFd < 0)
         {
@@ -55,7 +55,7 @@ namespace Network::AsyncIO::Linux
         mMaxConcurrentOps = maxConcurrent;
 
         // English: Initialize provider info
-        // 한글: 공급자 정보 초기화
+        // ?쒓?: 怨듦툒???뺣낫 珥덇린??
         mInfo.mPlatformType = PlatformType::Epoll;
         mInfo.mName = "epoll";
         mInfo.mMaxQueueDepth = queueDepth;
@@ -76,7 +76,7 @@ namespace Network::AsyncIO::Linux
         std::lock_guard<std::mutex> lock(mMutex);
 
         // English: Close epoll file descriptor
-        // 한글: epoll 파일 디스크립터 닫기
+        // ?쒓?: epoll ?뚯씪 ?붿뒪?щ┰???リ린
         if (mEpollFd >= 0)
         {
             close(mEpollFd);
@@ -94,26 +94,26 @@ namespace Network::AsyncIO::Linux
 
     // =============================================================================
     // English: Buffer Management
-    // 한글: 버퍼 관리
+    // ?쒓?: 踰꾪띁 愿由?
     // =============================================================================
 
     int64_t EpollAsyncIOProvider::RegisterBuffer(const void* ptr, size_t size)
     {
         // English: epoll doesn't support pre-registered buffers (no-op)
-        // 한글: epoll은 사전 등록 버퍼를 지원하지 않음 (no-op)
+        // ?쒓?: epoll? ?ъ쟾 ?깅줉 踰꾪띁瑜?吏?먰븯吏 ?딆쓬 (no-op)
         return -1;
     }
 
     AsyncIOError EpollAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
     {
         // English: Not supported on epoll
-        // 한글: epoll에서 지원하지 않음
+        // ?쒓?: epoll?먯꽌 吏?먰븯吏 ?딆쓬
         return AsyncIOError::PlatformNotSupported;
     }
 
     // =============================================================================
     // English: Async I/O Operations
-    // 한글: 비동기 I/O 작업
+    // ?쒓?: 鍮꾨룞湲?I/O ?묒뾽
     // =============================================================================
 
     AsyncIOError EpollAsyncIOProvider::SendAsync(
@@ -132,7 +132,7 @@ namespace Network::AsyncIO::Linux
         std::lock_guard<std::mutex> lock(mMutex);
 
         // English: Store pending operation with buffer copy
-        // 한글: 버퍼 복사와 함께 대기 작업 저장
+        // ?쒓?: 踰꾪띁 蹂듭궗? ?④퍡 ?湲??묒뾽 ???
         PendingOperation pending;
         pending.mContext = context;
         pending.mType = AsyncIOType::Send;
@@ -163,7 +163,7 @@ namespace Network::AsyncIO::Linux
         std::lock_guard<std::mutex> lock(mMutex);
 
         // English: Store pending operation (caller manages buffer)
-        // 한글: 대기 작업 저장 (호출자가 버퍼 관리)
+        // ?쒓?: ?湲??묒뾽 ???(?몄텧?먭? 踰꾪띁 愿由?
         PendingOperation pending;
         pending.mContext = context;
         pending.mType = AsyncIOType::Recv;
@@ -180,7 +180,7 @@ namespace Network::AsyncIO::Linux
     AsyncIOError EpollAsyncIOProvider::FlushRequests()
     {
         // English: epoll doesn't support batch processing (no-op)
-        // 한글: epoll은 배치 처리를 지원하지 않음 (no-op)
+        // ?쒓?: epoll? 諛곗튂 泥섎━瑜?吏?먰븯吏 ?딆쓬 (no-op)
         if (!mInitialized)
             return AsyncIOError::NotInitialized;
 
@@ -189,7 +189,7 @@ namespace Network::AsyncIO::Linux
 
     // =============================================================================
     // English: Completion Processing
-    // 한글: 완료 처리
+    // ?쒓?: ?꾨즺 泥섎━
     // =============================================================================
 
     int EpollAsyncIOProvider::ProcessCompletions(
@@ -204,7 +204,7 @@ namespace Network::AsyncIO::Linux
             return static_cast<int>(AsyncIOError::InvalidParameter);
 
         // English: Poll for events
-        // 한글: 이벤트 폴링
+        // ?쒓?: ?대깽???대쭅
         std::unique_ptr<struct epoll_event[]> events(new struct epoll_event[maxEntries]);
         int numEvents = epoll_wait(mEpollFd, events.get(), static_cast<int>(maxEntries), timeoutMs);
 
@@ -228,7 +228,7 @@ namespace Network::AsyncIO::Linux
             if (it != mPendingOps.end())
             {
                 // English: Fill completion entry
-                // 한글: 완료 항목 채우기
+                // ?쒓?: ?꾨즺 ??ぉ 梨꾩슦湲?
                 CompletionEntry& entry = entries[processedCount];
                 entry.mContext = it->second.mContext;
                 entry.mType = it->second.mType;
@@ -248,7 +248,7 @@ namespace Network::AsyncIO::Linux
 
     // =============================================================================
     // English: Information & Statistics
-    // 한글: 정보 및 통계
+    // ?쒓?: ?뺣낫 諛??듦퀎
     // =============================================================================
 
     const ProviderInfo& EpollAsyncIOProvider::GetInfo() const
@@ -268,14 +268,17 @@ namespace Network::AsyncIO::Linux
 
     // =============================================================================
     // English: Factory Function
-    // 한글: 팩토리 함수
+    // ?쒓?: ?⑺넗由??⑥닔
     // =============================================================================
 
     std::unique_ptr<AsyncIOProvider> CreateEpollProvider()
     {
-        return std::make_unique<EpollAsyncIOProvider>();
+        return std::unique_ptr<AsyncIOProvider>(new EpollAsyncIOProvider());
     }
 
-}  // namespace Network::AsyncIO::Linux
+}  // namespace Linux
+}  // namespace AsyncIO
+}  // namespace Network
 
 #endif  // __linux__
+

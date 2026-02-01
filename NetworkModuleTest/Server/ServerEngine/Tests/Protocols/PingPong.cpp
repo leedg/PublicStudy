@@ -1,5 +1,5 @@
-// English: Implementation of PingPong handler
-// 한글: PingPong 핸들러 구현
+﻿// English: Implementation of PingPong handler
+// ?쒓?: PingPong ?몃뱾??援ы쁽
 
 #include "PingPong.h"
 
@@ -14,7 +14,7 @@ namespace Network::Protocols
 {
     // =============================================================================
     // English: Constructor and Destructor
-    // 한글: 생성자 및 소멸자
+    // ?쒓?: ?앹꽦??諛??뚮㈇??
     // =============================================================================
 
     PingPongHandler::PingPongHandler()
@@ -26,7 +26,7 @@ namespace Network::Protocols
 
     // =============================================================================
     // English: Serialization methods (requires HAS_PROTOBUF)
-    // 한글: 직렬화 메소드 (HAS_PROTOBUF 필요)
+    // ?쒓?: 吏곷젹??硫붿냼??(HAS_PROTOBUF ?꾩슂)
     // =============================================================================
 
     std::vector<uint8_t> PingPongHandler::CreatePing(
@@ -79,7 +79,7 @@ namespace Network::Protocols
 
     // =============================================================================
     // English: Deserialization methods
-    // 한글: 역직렬화 메소드
+    // ?쒓?: ??쭅?ы솕 硫붿냼??
     // =============================================================================
 
     bool PingPongHandler::ParsePing(const std::vector<uint8_t>& data)
@@ -122,7 +122,7 @@ namespace Network::Protocols
 
     // =============================================================================
     // English: Utility methods
-    // 한글: 유틸리티 메소드
+    // ?쒓?: ?좏떥由ы떚 硫붿냼??
     // =============================================================================
 
     uint64_t PingPongHandler::CalculateRTT(
@@ -142,7 +142,7 @@ namespace Network::Protocols
 
     // =============================================================================
     // English: Accessors (protobuf only)
-    // 한글: 접근자 (protobuf 전용)
+    // ?쒓?: ?묎렐??(protobuf ?꾩슜)
     // =============================================================================
 
 #ifdef HAS_PROTOBUF
@@ -158,3 +158,4 @@ namespace Network::Protocols
 #endif
 
 } // namespace Network::Protocols
+
