@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 // English: Client session class for connection management
-// ?쒓?: ?곌껐 愿由щ? ?꾪븳 ?대씪?댁뼵???몄뀡 ?대옒??
+// 한글: 연결 관리를 위한 클라이언트 세션 클래스
 
 #include "AsyncIOProvider.h"
 #include "PacketDefine.h"
@@ -16,7 +16,7 @@ namespace Network::Core
 {
     // =============================================================================
     // English: Session state
-    // ?쒓?: ?몄뀡 ?곹깭
+    // 한글: 세션 상태
     // =============================================================================
 
     enum class SessionState : uint8_t
@@ -30,7 +30,7 @@ namespace Network::Core
 
     // =============================================================================
     // English: IO operation type
-    // ?쒓?: IO ?묒뾽 ???
+    // 한글: IO 작업 타입
     // =============================================================================
 
     enum class IOType : uint8_t
@@ -43,7 +43,7 @@ namespace Network::Core
 
     // =============================================================================
     // English: IOCP overlapped context (Windows only)
-    // ?쒓?: IOCP ?ㅻ쾭??而⑦뀓?ㅽ듃 (Windows ?꾩슜)
+    // 한글: IOCP 오버랩 컨텍스트 (Windows 전용)
     // =============================================================================
 
 #ifdef _WIN32
@@ -73,7 +73,7 @@ namespace Network::Core
 
     // =============================================================================
     // English: Session class
-    // ?쒓?: ?몄뀡 ?대옒??
+    // 한글: 세션 클래스
     // =============================================================================
 
     class Session : public std::enable_shared_from_this<Session>
@@ -83,12 +83,12 @@ namespace Network::Core
         virtual ~Session();
 
         // English: Lifecycle
-        // ?쒓?: ?앸챸二쇨린
+        // 한글: 생명주기
         void Initialize(Utils::ConnectionId id, SocketHandle socket);
         void Close();
 
         // English: Send packet
-        // ?쒓?: ?⑦궥 ?꾩넚
+        // 한글: 패킷 전송
         void Send(const void* data, uint32_t size);
 
         template<typename T>
@@ -98,11 +98,11 @@ namespace Network::Core
         }
 
         // English: Post receive request to IOCP
-        // ?쒓?: IOCP???섏떊 ?붿껌 ?깅줉
+        // 한글: IOCP에 수신 요청 등록
         bool PostRecv();
 
         // English: Accessors
-        // ?쒓?: ?묎렐??
+        // 한글: 접근자
         Utils::ConnectionId GetId() const { return mId; }
         SocketHandle GetSocket() const { return mSocket; }
         SessionState GetState() const { return mState; }
@@ -115,21 +115,21 @@ namespace Network::Core
         void IncrementPingSequence() { ++mPingSequence; }
 
         // English: Access recv buffer (for IOCP completion)
-        // ?쒓?: ?섏떊 踰꾪띁 ?묎렐 (IOCP ?꾨즺 泥섎━??
+        // 한글: 수신 버퍼 접근 (IOCP 완료 처리용)
 #ifdef _WIN32
         IOContext& GetRecvContext() { return mRecvContext; }
         IOContext& GetSendContext() { return mSendContext; }
 #endif
 
         // English: Virtual event handlers (override in derived classes)
-        // ?쒓?: 媛???대깽???몃뱾??(?뚯깮 ?대옒?ㅼ뿉???ㅻ쾭?쇱씠??
+        // 한글: 가상 이벤트 핸들러 (파생 클래스에서 오버라이드)
         virtual void OnConnected() {}
         virtual void OnDisconnected() {}
         virtual void OnRecv(const char* data, uint32_t size) {}
 
     private:
         // English: Internal send processing
-        // ?쒓?: ?대? ?꾩넚 泥섎━
+        // 한글: 내부 전송 처리
         void FlushSendQueue();
         bool PostSend();
 
@@ -139,20 +139,20 @@ namespace Network::Core
         SessionState            mState;
 
         // English: Time tracking
-        // ?쒓?: ?쒓컙 異붿쟻
+        // 한글: 시간 추적
         Utils::Timestamp        mConnectTime;
         Utils::Timestamp        mLastPingTime;
         uint32_t                mPingSequence;
 
         // English: IO contexts (Windows IOCP)
-        // ?쒓?: IO 而⑦뀓?ㅽ듃 (Windows IOCP)
+        // 한글: IO 컨텍스트 (Windows IOCP)
 #ifdef _WIN32
         IOContext                mRecvContext;
         IOContext                mSendContext;
 #endif
 
         // English: Send queue
-        // ?쒓?: ?꾩넚 ??
+        // 한글: 전송 큐
         std::queue<std::vector<char>>   mSendQueue;
         std::mutex                      mSendMutex;
         std::atomic<bool>               mIsSending;
@@ -162,4 +162,3 @@ namespace Network::Core
     using SessionWeakRef = std::weak_ptr<Session>;
 
 } // namespace Network::Core
-

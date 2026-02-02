@@ -1,5 +1,5 @@
-﻿// English: DBConnectionPool implementation
-// ?쒓?: DBConnectionPool 援ы쁽
+// English: DBConnectionPool implementation
+// ???: DBConnectionPool ?닌뗭겱
 
 #include "DBConnectionPool.h"
 #include <iostream>
@@ -67,7 +67,7 @@ namespace Network::Database
 		std::unique_lock<std::mutex> lock(mMutex);
 
 		// English: Wait with timeout to avoid deadlock
-		// ?쒓?: ?곕뱶??諛⑹?瑜??꾪빐 ??꾩븘???湲?
+		// ???: ?怨뺣굡??獄쎻뫗????袁る퉸 ???袁⑸툡????疫?
 		bool result = mCondition.wait_for(lock, std::chrono::seconds(5), [this]()
 			{
 				return !mConnections.empty();

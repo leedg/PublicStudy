@@ -1,7 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "mcp__filesystem__list_directory"
+      "mcp__filesystem__list_directory",
+      "mcp__vscode__copilot_createFile",
+      "Bash(test:*)",
+      "Bash(python -c:*)",
+      "Bash(ls \"E:\\\\MyGitHub\\\\PublicStudy\\\\NetworkModuleTest\\\\Server\\\\ServerEngine\\\\Network\\\\Core\"\" 2>nul || echo \"Directory or file does not exist \")",
+      "Bash(powershell:*)",
+      "Bash(xxd:*)",
+      "Bash(ls \"E:\\\\MyGitHub\\\\PublicStudy\\\\NetworkModuleTest\\\\Server\\\\TestServer\\\\include\"\" && echo \"---\" && ls \"E:MyGitHubPublicStudyNetworkModuleTestServerTestServersrc\"\")",
+      "Bash(dir \"E:\\\\MyGitHub\\\\PublicStudy\\\\NetworkModuleTest\\\\Server\\\\TestServer\\\\include\"\" && echo --- && dir \"E:MyGitHubPublicStudyNetworkModuleTestServerTestServersrc\"\")",
+      "Bash(where:*)",
+      "Bash(\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" /version)",
+      "Bash(\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Professional\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" /version)",
+      "Bash(\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Enterprise\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" /version)",
+      "Bash(\"C:\\\\Program Files \\(x86\\)\\\\Microsoft Visual Studio\\\\2022\\\\BuildTools\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" /version)",
+      "Bash(\"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" \"E:\\\\MyGitHub\\\\PublicStudy\\\\NetworkModuleTest\\\\Server\\\\ServerEngine\\\\ServerEngine.vcxproj\" /p:Configuration=Debug /p:Platform=x64 /t:Build /verbosity:minimal)"
     ]
   }
 }

@@ -1,14 +1,19 @@
 #pragma once
 
+// English: ODBC implementation of database interfaces
+// 한글: 데이터베이스 인터페이스의 ODBC 구현
+
 #include "../Interfaces/IDatabase.h"
 #include "../Interfaces/IConnection.h"
 #include "../Interfaces/IStatement.h"
 #include "../Interfaces/IResultSet.h"
 #include "../Interfaces/DatabaseConfig.h"
 #include "../Interfaces/DatabaseException.h"
+
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+
 #include <windows.h>
 #include <sql.h>
 #include <sqlext.h>
@@ -16,170 +21,237 @@
 #include <algorithm>
 #include <vector>
 
-namespace Network::Database {
+namespace Network {
+namespace Database {
 
-// Forward declarations
-class ODBCConnection;
-class ODBCStatement;
-class ODBCResultSet;
+    // English: Forward declarations
+    // 한글: 전방 선언
+    class ODBCConnection;
+    class ODBCStatement;
+    class ODBCResultSet;
 
-/**
- * ODBC implementation of IDatabase
- */
-class ODBCDatabase : public IDatabase {
-private:
-    DatabaseConfig config_;
-    SQLHENV environment_;
-    bool connected_;
+    // =============================================================================
+    // English: ODBCDatabase class
+    // 한글: ODBCDatabase 클래스
+    // =============================================================================
 
-    void initializeEnvironment();
-    void cleanupEnvironment();
-    void checkSQLReturn(SQLRETURN ret, const std::string& operation, SQLHANDLE handle, SQLSMALLINT handleType);
+    /**
+     * English: ODBC implementation of IDatabase
+     * 한글: IDatabase의 ODBC 구현
+     */
+    class ODBCDatabase : public IDatabase 
+    {
+    public:
+        ODBCDatabase();
+        virtual ~ODBCDatabase();
 
-public:
-    ODBCDatabase();
-    virtual ~ODBCDatabase();
+        // English: IDatabase interface
+        // 한글: IDatabase 인터페이스
+        void Connect(const DatabaseConfig& config) override;
+        void Disconnect() override;
+        bool IsConnected() const override;
 
-    // IDatabase interface
-    void connect(const DatabaseConfig& config) override;
-    void disconnect() override;
-    bool isConnected() const override;
+        std::unique_ptr<IConnection> CreateConnection() override;
+        std::unique_ptr<IStatement> CreateStatement() override;
 
-    std::unique_ptr<IConnection> createConnection() override;
-    std::unique_ptr<IStatement> createStatement() override;
+        void BeginTransaction() override;
+        void CommitTransaction() override;
+        void RollbackTransaction() override;
 
-    void beginTransaction() override;
-    void commitTransaction() override;
-    void rollbackTransaction() override;
+        DatabaseType GetType() const override 
+        { 
+            return DatabaseType::ODBC; 
+        }
 
-    DatabaseType getType() const override { return DatabaseType::ODBC; }
-    const DatabaseConfig& getConfig() const override { return config_; }
+        const DatabaseConfig& GetConfig() const override 
+        { 
+            return mConfig; 
+        }
 
-    SQLHENV getEnvironment() const { return environment_; }
-};
+        SQLHENV GetEnvironment() const 
+        { 
+            return mEnvironment; 
+        }
 
-/**
- * ODBC implementation of IConnection
- */
-class ODBCConnection : public IConnection {
-private:
-    SQLHDBC connection_;
-    SQLHENV environment_;
-    bool connected_;
-    std::string lastError_;
-    int lastErrorCode_;
+    private:
+        // English: Helper methods
+        // 한글: 헬퍼 메서드
+        void InitializeEnvironment();
+        void CleanupEnvironment();
+        void CheckSQLReturn(SQLRETURN ret, const std::string& operation, SQLHANDLE handle, SQLSMALLINT handleType);
 
-    void checkSQLReturn(SQLRETURN ret, const std::string& operation);
-    std::string getSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
+    private:
+        DatabaseConfig mConfig;
+        SQLHENV mEnvironment;
+        bool mConnected;
+    };
 
-public:
-    explicit ODBCConnection(SQLHENV env);
-    virtual ~ODBCConnection();
+    // =============================================================================
+    // English: ODBCConnection class
+    // 한글: ODBCConnection 클래스
+    // =============================================================================
 
-    // IConnection interface
-    void open(const std::string& connectionString) override;
-    void close() override;
-    bool isOpen() const override;
+    /**
+     * English: ODBC implementation of IConnection
+     * 한글: IConnection의 ODBC 구현
+     */
+    class ODBCConnection : public IConnection 
+    {
+    public:
+        explicit ODBCConnection(SQLHENV env);
+        virtual ~ODBCConnection();
 
-    std::unique_ptr<IStatement> createStatement() override;
-    void beginTransaction() override;
-    void commitTransaction() override;
-    void rollbackTransaction() override;
+        // English: IConnection interface
+        // 한글: IConnection 인터페이스
+        void Open(const std::string& connectionString) override;
+        void Close() override;
+        bool IsOpen() const override;
 
-    int getLastErrorCode() const override { return lastErrorCode_; }
-    std::string getLastError() const override { return lastError_; }
+        std::unique_ptr<IStatement> CreateStatement() override;
+        void BeginTransaction() override;
+        void CommitTransaction() override;
+        void RollbackTransaction() override;
 
-    SQLHDBC getHandle() const { return connection_; }
-};
+        int GetLastErrorCode() const override 
+        { 
+            return mLastErrorCode; 
+        }
 
-/**
- * ODBC implementation of IStatement
- */
-class ODBCStatement : public IStatement {
-private:
-    SQLHSTMT statement_;
-    SQLHDBC connection_;
-    std::string query_;
-    std::vector<std::string> parameters_;
-    std::vector<SQLLEN> parameterLengths_;
-    bool prepared_;
-    int timeout_;
+        std::string GetLastError() const override 
+        { 
+            return mLastError; 
+        }
 
-    void checkSQLReturn(SQLRETURN ret, const std::string& operation);
-    std::string getSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
-    void bindParameters();
+        SQLHDBC GetHandle() const 
+        { 
+            return mConnection; 
+        }
 
-public:
-    explicit ODBCStatement(SQLHDBC conn);
-    virtual ~ODBCStatement();
+    private:
+        // English: Helper methods
+        // 한글: 헬퍼 메서드
+        void CheckSQLReturn(SQLRETURN ret, const std::string& operation);
+        std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
 
-    // IStatement interface
-    void setQuery(const std::string& query) override;
-    void setTimeout(int seconds) override;
+    private:
+        SQLHDBC mConnection;
+        SQLHENV mEnvironment;
+        bool mConnected;
+        std::string mLastError;
+        int mLastErrorCode;
+    };
 
-    void bindParameter(size_t index, const std::string& value) override;
-    void bindParameter(size_t index, int value) override;
-    void bindParameter(size_t index, long long value) override;
-    void bindParameter(size_t index, double value) override;
-    void bindParameter(size_t index, bool value) override;
-    void bindNullParameter(size_t index) override;
+    // =============================================================================
+    // English: ODBCStatement class
+    // 한글: ODBCStatement 클래스
+    // =============================================================================
 
-    std::unique_ptr<IResultSet> executeQuery() override;
-    int executeUpdate() override;
-    bool execute() override;
+    /**
+     * English: ODBC implementation of IStatement
+     * 한글: IStatement의 ODBC 구현
+     */
+    class ODBCStatement : public IStatement 
+    {
+    public:
+        explicit ODBCStatement(SQLHDBC conn);
+        virtual ~ODBCStatement();
 
-    void addBatch() override;
-    std::vector<int> executeBatch() override;
+        // English: IStatement interface
+        // 한글: IStatement 인터페이스
+        void SetQuery(const std::string& query) override;
+        void SetTimeout(int seconds) override;
 
-    void clearParameters() override;
-    void close() override;
-};
+        void BindParameter(size_t index, const std::string& value) override;
+        void BindParameter(size_t index, int value) override;
+        void BindParameter(size_t index, long long value) override;
+        void BindParameter(size_t index, double value) override;
+        void BindParameter(size_t index, bool value) override;
+        void BindNullParameter(size_t index) override;
 
-/**
- * ODBC implementation of IResultSet
- */
-class ODBCResultSet : public IResultSet {
-private:
-    SQLHSTMT statement_;
-    bool hasData_;
-    std::vector<std::string> columnNames_;
-    std::vector<SQLSMALLINT> columnTypes_;
-    std::vector<SQLULEN> columnSizes_;
-    bool metadataLoaded_;
+        std::unique_ptr<IResultSet> ExecuteQuery() override;
+        int ExecuteUpdate() override;
+        bool Execute() override;
 
-    void loadMetadata();
-    void checkSQLReturn(SQLRETURN ret, const std::string& operation);
-    std::string getSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
+        void AddBatch() override;
+        std::vector<int> ExecuteBatch() override;
 
-public:
-    explicit ODBCResultSet(SQLHSTMT stmt);
-    virtual ~ODBCResultSet();
+        void ClearParameters() override;
+        void Close() override;
 
-    // IResultSet interface
-    bool next() override;
-    bool isNull(size_t columnIndex) override;
-    bool isNull(const std::string& columnName) override;
+    private:
+        // English: Helper methods
+        // 한글: 헬퍼 메서드
+        void CheckSQLReturn(SQLRETURN ret, const std::string& operation);
+        std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
+        void BindParameters();
 
-    std::string getString(size_t columnIndex) override;
-    std::string getString(const std::string& columnName) override;
+    private:
+        SQLHSTMT mStatement;
+        SQLHDBC mConnection;
+        std::string mQuery;
+        std::vector<std::string> mParameters;
+        std::vector<SQLLEN> mParameterLengths;
+        bool mPrepared;
+        int mTimeout;
+    };
 
-    int getInt(size_t columnIndex) override;
-    int getInt(const std::string& columnName) override;
+    // =============================================================================
+    // English: ODBCResultSet class
+    // 한글: ODBCResultSet 클래스
+    // =============================================================================
 
-    long long getLong(size_t columnIndex) override;
-    long long getLong(const std::string& columnName) override;
+    /**
+     * English: ODBC implementation of IResultSet
+     * 한글: IResultSet의 ODBC 구현
+     */
+    class ODBCResultSet : public IResultSet 
+    {
+    public:
+        explicit ODBCResultSet(SQLHSTMT stmt);
+        virtual ~ODBCResultSet();
 
-    double getDouble(size_t columnIndex) override;
-    double getDouble(const std::string& columnName) override;
+        // English: IResultSet interface
+        // 한글: IResultSet 인터페이스
+        bool Next() override;
+        bool IsNull(size_t columnIndex) override;
+        bool IsNull(const std::string& columnName) override;
 
-    bool getBool(size_t columnIndex) override;
-    bool getBool(const std::string& columnName) override;
+        std::string GetString(size_t columnIndex) override;
+        std::string GetString(const std::string& columnName) override;
 
-    size_t getColumnCount() const override;
-    std::string getColumnName(size_t columnIndex) const override;
-    size_t findColumn(const std::string& columnName) const override;
+        int GetInt(size_t columnIndex) override;
+        int GetInt(const std::string& columnName) override;
 
-    void close() override;
-};
+        long long GetLong(size_t columnIndex) override;
+        long long GetLong(const std::string& columnName) override;
 
-} // namespace Network::Database
+        double GetDouble(size_t columnIndex) override;
+        double GetDouble(const std::string& columnName) override;
+
+        bool GetBool(size_t columnIndex) override;
+        bool GetBool(const std::string& columnName) override;
+
+        size_t GetColumnCount() const override;
+        std::string GetColumnName(size_t columnIndex) const override;
+        size_t FindColumn(const std::string& columnName) const override;
+
+        void Close() override;
+
+    private:
+        // English: Helper methods
+        // 한글: 헬퍼 메서드
+        void LoadMetadata();
+        void CheckSQLReturn(SQLRETURN ret, const std::string& operation);
+        std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
+
+    private:
+        SQLHSTMT mStatement;
+        bool mHasData;
+        std::vector<std::string> mColumnNames;
+        std::vector<SQLSMALLINT> mColumnTypes;
+        std::vector<SQLULEN> mColumnSizes;
+        bool mMetadataLoaded;
+    };
+
+}  // namespace Database
+}  // namespace Network

@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 // English: Database connection pool with RAII wrapper
-// ?쒓?: RAII ?섑띁瑜??ы븿???곗씠?곕쿋?댁뒪 ?곌껐 ?
+// ???: RAII ??묐쓠????釉???怨쀬뵠?怨뺤퓢??곷뮞 ?怨뚭퍙 ??
 
 #include "DBConnection.h"
 #include <queue>
@@ -16,7 +16,7 @@ namespace Network::Database
 
     // =============================================================================
     // English: DBConnectionPool class
-    // ?쒓?: DBConnectionPool ?대옒??
+    // ???: DBConnectionPool ?????
     // =============================================================================
 
     class DBConnectionPool
@@ -25,17 +25,17 @@ namespace Network::Database
         static DBConnectionPool& Instance();
 
         // English: Initialize / Shutdown
-        // ?쒓?: 珥덇린??/ 醫낅즺
+        // ???: ?λ뜃由??/ ?ル굝利?
         bool Initialize(const std::string& connectionString, uint32_t poolSize);
         void Shutdown();
 
         // English: Acquire / Release connection
-        // ?쒓?: ?곌껐 ?띾뱷 / 諛섑솚
+        // ???: ?怨뚭퍙 ??얜굣 / 獄쏆꼹??
         DBConnectionRef Acquire();
         void Release(DBConnectionRef connection);
 
         // English: Pool state
-        // ?쒓?: ? ?곹깭
+        // ???: ?? ?怨밴묶
         size_t GetAvailableCount() const;
         size_t GetTotalCount() const { return mTotalCount; }
         bool IsInitialized() const { return mInitialized; }
@@ -58,7 +58,7 @@ namespace Network::Database
 
     // =============================================================================
     // English: ScopedDBConnection - RAII wrapper for DB connection
-    // ?쒓?: ScopedDBConnection - DB ?곌껐??RAII ?섑띁
+    // ???: ScopedDBConnection - DB ?怨뚭퍙??RAII ??묐쓠
     // =============================================================================
 
     class ScopedDBConnection
@@ -78,7 +78,7 @@ namespace Network::Database
         }
 
         // English: Prevent copy, allow move
-        // ?쒓?: 蹂듭궗 諛⑹?, ?대룞 ?덉슜
+        // ???: 癰귣벊沅?獄쎻뫗?, ??猷???됱뒠
         ScopedDBConnection(const ScopedDBConnection&) = delete;
         ScopedDBConnection& operator=(const ScopedDBConnection&) = delete;
 

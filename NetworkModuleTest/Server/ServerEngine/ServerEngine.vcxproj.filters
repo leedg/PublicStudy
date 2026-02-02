@@ -21,7 +21,6 @@
       <UniqueIdentifier>{E0F26C9B-B0C6-5d6g-9F8E-0F9G4C3D2B1E}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
-
   <ItemGroup>
     <!-- Interfaces - Database -->
     <ClInclude Include="Interfaces\DatabaseType_enum.h">
@@ -62,7 +61,6 @@
       <Filter>Interfaces</Filter>
     </ClInclude>
   </ItemGroup>
-
   <ItemGroup>
     <!-- Core - Network -->
     <Filter Include="Core\Network">
@@ -105,7 +103,6 @@
       <Filter>Core\Network</Filter>
     </ClCompile>
   </ItemGroup>
-
   <ItemGroup>
     <!-- Implementations - Protocols -->
     <Filter Include="Implementations\Protocols">
@@ -118,7 +115,6 @@
       <Filter>Implementations\Protocols</Filter>
     </ClCompile>
   </ItemGroup>
-
   <ItemGroup>
     <!-- Implementations - Database -->
     <Filter Include="Implementations\Database">
@@ -167,7 +163,6 @@
       <Filter>Implementations\Database\Legacy</Filter>
     </ClCompile>
   </ItemGroup>
-
   <ItemGroup>
     <!-- Platform - Windows -->
     <Filter Include="Platform\Windows">
@@ -186,7 +181,6 @@
       <Filter>Platform\Windows</Filter>
     </ClCompile>
   </ItemGroup>
-
   <ItemGroup>
     <!-- Platform - Linux -->
     <Filter Include="Platform\Linux">
@@ -205,7 +199,6 @@
       <Filter>Platform\Linux</Filter>
     </ClCompile>
   </ItemGroup>
-
   <ItemGroup>
     <!-- Platform - macOS -->
     <Filter Include="Platform\macOS">
@@ -218,7 +211,6 @@
       <Filter>Platform\macOS</Filter>
     </ClCompile>
   </ItemGroup>
-
   <ItemGroup>
     <!-- Examples (For Reference) -->
     <Filter Include="Examples\Protocols">
@@ -237,11 +229,16 @@
       <Filter>Examples\Protocols</Filter>
     </ClCompile>
   </ItemGroup>
-
   <ItemGroup>
     <!-- Utils -->
     <ClInclude Include="Utils\NetworkUtils.h">
       <Filter>Utils</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Tests\AsyncIOTest.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Database\ODBCDatabase_new.cpp" />
   </ItemGroup>
 </Project>

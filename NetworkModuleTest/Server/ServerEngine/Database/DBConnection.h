@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 // English: ODBC database connection class
-// ?쒓?: ODBC ?곗씠?곕쿋?댁뒪 ?곌껐 ?대옒??
+// ???: ODBC ?怨쀬뵠?怨뺤퓢??곷뮞 ?怨뚭퍙 ?????
 
 #include <string>
 
@@ -17,7 +17,7 @@ namespace Network::Database
 {
     // =============================================================================
     // English: DBConnection class
-    // ?쒓?: DBConnection ?대옒??
+    // ???: DBConnection ?????
     // =============================================================================
 
     class DBConnection
@@ -27,16 +27,16 @@ namespace Network::Database
         ~DBConnection();
 
         // English: Connect / Disconnect
-        // ?쒓?: ?곌껐 / ?댁젣
+        // ???: ?怨뚭퍙 / ??곸젫
         bool Connect(const std::string& connectionString);
         void Disconnect();
 
         // English: Execute query
-        // ?쒓?: 荑쇰━ ?ㅽ뻾
+        // ???: ?묒눖????쎈뻬
         bool Execute(const std::string& query);
 
         // English: State
-        // ?쒓?: ?곹깭
+        // ???: ?怨밴묶
         bool IsConnected() const { return mConnected; }
         std::string GetLastError() const { return mLastError; }
 

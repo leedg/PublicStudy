@@ -1,35 +1,56 @@
 #pragma once
 
+// English: Abstract database interface
+// 한글: 추상 데이터베이스 인터페이스
+
 #include "DatabaseType_enum.h"
 #include "DatabaseConfig.h"
 #include <memory>
 
-namespace Network::Database {
+namespace Network {
+namespace Database {
 
-// Forward declarations
-class IConnection;
-class IStatement;
+    // English: Forward declarations
+    // 한글: 전방 선언
+    class IConnection;
+    class IStatement;
 
-/**
- * Abstract database interface
- */
-class IDatabase {
-public:
-    virtual ~IDatabase() = default;
+    // =============================================================================
+    // English: IDatabase interface
+    // 한글: IDatabase 인터페이스
+    // =============================================================================
 
-    virtual void connect(const DatabaseConfig& config) = 0;
-    virtual void disconnect() = 0;
-    virtual bool isConnected() const = 0;
+    /**
+     * English: Abstract database interface
+     * 한글: 추상 데이터베이스 인터페이스
+     */
+    class IDatabase 
+    {
+    public:
+        virtual ~IDatabase() = default;
 
-    virtual std::unique_ptr<IConnection> createConnection() = 0;
-    virtual std::unique_ptr<IStatement> createStatement() = 0;
+        // English: Connection management
+        // 한글: 연결 관리
+        virtual void Connect(const DatabaseConfig& config) = 0;
+        virtual void Disconnect() = 0;
+        virtual bool IsConnected() const = 0;
 
-    virtual void beginTransaction() = 0;
-    virtual void commitTransaction() = 0;
-    virtual void rollbackTransaction() = 0;
+        // English: Object creation
+        // 한글: 객체 생성
+        virtual std::unique_ptr<IConnection> CreateConnection() = 0;
+        virtual std::unique_ptr<IStatement> CreateStatement() = 0;
 
-    virtual DatabaseType getType() const = 0;
-    virtual const DatabaseConfig& getConfig() const = 0;
-};
+        // English: Transaction management
+        // 한글: 트랜잭션 관리
+        virtual void BeginTransaction() = 0;
+        virtual void CommitTransaction() = 0;
+        virtual void RollbackTransaction() = 0;
 
-} // namespace Network::Database
+        // English: Information
+        // 한글: 정보
+        virtual DatabaseType GetType() const = 0;
+        virtual const DatabaseConfig& GetConfig() const = 0;
+    };
+
+}  // namespace Database
+}  // namespace Network

@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 // English: Database Server main header
-// ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 硫붿씤 ?ㅻ뜑
+// ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 筌롫뗄????삳쐭
 
 #include "../ServerEngine/Core/AsyncIOProvider.h"
 #include "../ServerEngine/Protocols/MessageHandler.h"
@@ -14,28 +14,28 @@ namespace Network::DBServer
 {
     // =============================================================================
     // English: Database Server class
-    // ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 ?대옒??
+    // ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 ?????
     // =============================================================================
     
     class DBServer
     {
     public:
         // English: Constructor
-        // ?쒓?: ?앹꽦??
+        // ???: ??밴쉐??
         DBServer();
         
         // English: Destructor
-        // ?쒓?: ?뚮㈇??
+        // ???: ???늾??
         ~DBServer();
 
         // =====================================================================
         // English: Lifecycle management
-        // ?쒓?: ?앸챸二쇨린 愿由?
+        // ???: ??몄구雅뚯눊由??온??
         // =====================================================================
 
         /**
          * English: Initialize the database server
-         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 珥덇린??
+         * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 ?λ뜃由??
          * @param port Port number to listen on
          * @param maxConnections Maximum allowed connections
          * @return True if initialization succeeded
@@ -44,32 +44,32 @@ namespace Network::DBServer
 
         /**
          * English: Start the database server
-         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 ?쒖옉
+         * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 ??뽰삂
          * @return True if server started successfully
          */
         bool Start();
 
         /**
          * English: Stop the database server
-         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 以묒?
+         * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 餓λ쵐?
          */
         void Stop();
 
         /**
          * English: Check if server is running
-         * ?쒓?: ?쒕쾭 ?ㅽ뻾 ?곹깭 ?뺤씤
+         * ???: ??뺤쒔 ??쎈뻬 ?怨밴묶 ?類ㅼ뵥
          * @return True if server is running
          */
         bool IsRunning() const;
 
         // =====================================================================
         // English: Configuration
-        // ?쒓?: ?ㅼ젙
+        // ???: ??쇱젟
         // =====================================================================
 
         /**
          * English: Set database connection parameters
-         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?곌껐 ?뚮씪誘명꽣 ?ㅼ젙
+         * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ?怨뚭퍙 ???뵬沃섎챸苑???쇱젟
          * @param host Database host
          * @param port Database port
          * @param database Database name
@@ -87,26 +87,26 @@ namespace Network::DBServer
     private:
         // =====================================================================
         // English: Network event handlers
-        // ?쒓?: ?ㅽ듃?뚰겕 ?대깽???몃뱾??
+        // ???: ??쎈뱜??곌쾿 ??源???紐껊굶??
         // =====================================================================
 
         /**
          * English: Handle new connection
-         * ?쒓?: ???곌껐 泥섎━
+         * ???: ???怨뚭퍙 筌ｌ꼶??
          * @param connectionId Connection ID
          */
         void OnConnectionEstablished(ConnectionId connectionId);
 
         /**
          * English: Handle connection closed
-         * ?쒓?: ?곌껐 醫낅즺 泥섎━
+         * ???: ?怨뚭퍙 ?ル굝利?筌ｌ꼶??
          * @param connectionId Connection ID
          */
         void OnConnectionClosed(ConnectionId connectionId);
 
         /**
          * English: Handle data received
-         * ?쒓?: ?곗씠???섏떊 泥섎━
+         * ???: ?怨쀬뵠????뤿뻿 筌ｌ꼶??
          * @param connectionId Connection ID
          * @param data Received data
          * @param size Data size
@@ -115,32 +115,32 @@ namespace Network::DBServer
 
         /**
          * English: Handle Ping message
-         * ?쒓?: Ping 硫붿떆吏 泥섎━
+         * ???: Ping 筌롫뗄?놅쭪? 筌ｌ꼶??
          * @param message Ping message
          */
         void OnPingMessage(const Protocols::Message& message);
 
         // =====================================================================
         // English: Database operations
-        // ?쒓?: ?곗씠?곕쿋?댁뒪 ?묒뾽
+        // ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ?臾믩씜
         // =====================================================================
 
         /**
          * English: Connect to database
-         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?곌껐
+         * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ?怨뚭퍙
          * @return True if connection succeeded
          */
         bool ConnectToDatabase();
 
         /**
          * English: Disconnect from database
-         * ?쒓?: ?곗씠?곕쿋?댁뒪 ?곌껐 ?댁젣
+         * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ?怨뚭퍙 ??곸젫
          */
         void DisconnectFromDatabase();
 
         /**
          * English: Execute query
-         * ?쒓?: 荑쇰━ ?ㅽ뻾
+         * ???: ?묒눖????쎈뻬
          * @param query SQL query
          * @return Query result
          */
@@ -148,7 +148,7 @@ namespace Network::DBServer
 
         // =====================================================================
         // English: Private members
-        // ?쒓?: 鍮꾧났媛?硫ㅻ쾭
+        // ???: ??쑨?у첎?筌롢끇苡?
         // =====================================================================
 
         // Network components
@@ -180,18 +180,18 @@ namespace Network::DBServer
 
         // =====================================================================
         // English: Private methods
-        // ?쒓?: 鍮꾧났媛?硫붿냼??
+        // ???: ??쑨?у첎?筌롫뗄???
         // =====================================================================
 
         /**
          * English: Worker thread function
-         * ?쒓?: ?뚯빱 ?ㅻ젅???⑥닔
+         * ???: ???묽 ??살쟿????λ땾
          */
         void WorkerThread();
 
         /**
          * English: Send message to connection
-         * ?쒓?: ?곌껐濡?硫붿떆吏 ?꾩넚
+         * ???: ?怨뚭퍙嚥?筌롫뗄?놅쭪? ?袁⑸꽊
          * @param connectionId Connection ID
          * @param type Message type
          * @param data Message data
@@ -202,7 +202,7 @@ namespace Network::DBServer
 
         /**
          * English: Get current timestamp
-         * ?쒓?: ?꾩옱 ??꾩뒪?ы봽 議고쉶
+         * ???: ?袁⑹삺 ???袁⑸뮞??遊?鈺곌퀬??
          * @return Timestamp in milliseconds
          */
         uint64_t GetCurrentTimestamp() const;

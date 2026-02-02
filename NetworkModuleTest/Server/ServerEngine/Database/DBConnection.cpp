@@ -1,5 +1,5 @@
-﻿// English: DBConnection implementation
-// ?쒓?: DBConnection 援ы쁽
+// English: DBConnection implementation
+// ???: DBConnection ?닌뗭겱
 
 #include "DBConnection.h"
 #include <iostream>
@@ -28,7 +28,7 @@ bool DBConnection::Connect(const std::string& connectionString)
     SQLRETURN ret;
 
     // English: Allocate environment handle
-    // ?쒓?: ?섍꼍 ?몃뱾 ?좊떦
+    // ???: ??띻펾 ?紐껊굶 ?醫딅뼣
     ret = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &mEnv);
     if (!SQL_SUCCEEDED(ret))
     {
@@ -38,7 +38,7 @@ bool DBConnection::Connect(const std::string& connectionString)
     }
 
     // English: Set ODBC version
-    // ?쒓?: ODBC 踰꾩쟾 ?ㅼ젙
+    // ???: ODBC 甕곌쑴????쇱젟
     ret = SQLSetEnvAttr(mEnv, SQL_ATTR_ODBC_VERSION,
                         reinterpret_cast<SQLPOINTER>(SQL_OV_ODBC3), 0);
     if (!SQL_SUCCEEDED(ret))
@@ -49,7 +49,7 @@ bool DBConnection::Connect(const std::string& connectionString)
     }
 
     // English: Allocate connection handle
-    // ?쒓?: ?곌껐 ?몃뱾 ?좊떦
+    // ???: ?怨뚭퍙 ?紐껊굶 ?醫딅뼣
     ret = SQLAllocHandle(SQL_HANDLE_DBC, mEnv, &mDbc);
     if (!SQL_SUCCEEDED(ret))
     {
@@ -59,7 +59,7 @@ bool DBConnection::Connect(const std::string& connectionString)
     }
 
     // English: Connect
-    // ?쒓?: ?곌껐
+    // ???: ?怨뚭퍙
     SQLCHAR outConnStr[1024];
     SQLSMALLINT outConnStrLen;
 
@@ -91,7 +91,7 @@ bool DBConnection::Connect(const std::string& connectionString)
     }
 
     // English: Allocate statement handle
-    // ?쒓?: 援щЦ ?몃뱾 ?좊떦
+    // ???: ?닌됎??紐껊굶 ?醫딅뼣
     ret = SQLAllocHandle(SQL_HANDLE_STMT, mDbc, &mStmt);
     if (!SQL_SUCCEEDED(ret))
     {
@@ -145,7 +145,7 @@ bool DBConnection::Execute(const std::string& query)
     }
 
     // English: Close any existing cursor before executing new statement
-    // ?쒓?: ??援щЦ ?ㅽ뻾 ??湲곗〈 而ㅼ꽌 ?リ린
+    // ???: ???닌됎???쎈뻬 ??疫꿸퀣???뚣끉苑???る┛
     SQLCloseCursor(mStmt);
 
     SQLRETURN ret = SQLExecDirectA(

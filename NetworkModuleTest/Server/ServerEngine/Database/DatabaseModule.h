@@ -91,9 +91,11 @@ struct ModuleVersion {
 /**
  * Helper function to create a configured connection pool
  */
-inline std::unique_ptr<ConnectionPool> createConnectionPool(const DatabaseConfig& config) {
+inline std::unique_ptr<ConnectionPool> createConnectionPool(const DatabaseConfig& config)
+{
     auto pool = std::make_unique<ConnectionPool>();
-    if (!pool->initialize(config)) {
+    if (!pool->Initialize(config))
+    {
         return nullptr;
     }
     return pool;
@@ -102,10 +104,12 @@ inline std::unique_ptr<ConnectionPool> createConnectionPool(const DatabaseConfig
 /**
  * Helper function to create a database instance
  */
-inline std::unique_ptr<IDatabase> createDatabase(DatabaseType type, const DatabaseConfig& config) {
-    auto db = DatabaseFactory::createDatabase(type);
-    if (db) {
-        db->connect(config);
+inline std::unique_ptr<IDatabase> createDatabase(DatabaseType type, const DatabaseConfig& config)
+{
+    auto db = DatabaseFactory::CreateDatabase(type);
+    if (db)
+    {
+        db->Connect(config);
     }
     return db;
 }

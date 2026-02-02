@@ -1,4 +1,4 @@
-﻿// English: AsyncIO Provider Test Suite - Simple verification (no GTest dependency)
+// English: AsyncIO Provider Test Suite - Simple verification (no GTest dependency)
 // 한글: AsyncIO 공급자 테스트 - 간단한 검증 (GTest 의존성 없음)
 
 #include "Network/Core/AsyncIOProvider.h"

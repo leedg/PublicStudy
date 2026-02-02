@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // English: Core network abstraction layer for NetworkModule
 // 한글: NetworkModule용 핵심 네트워크 추상화 레이어

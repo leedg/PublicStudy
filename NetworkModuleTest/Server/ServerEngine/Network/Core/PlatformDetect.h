@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // English: Platform detection utilities for AsyncIO backend selection
 // 한글: AsyncIO 백엔드 선택을 위한 플랫폼 감지 유틸리티

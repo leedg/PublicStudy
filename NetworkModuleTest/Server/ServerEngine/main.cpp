@@ -1,4 +1,4 @@
-﻿// English: Main entry point for ServerEngine
+// English: Main entry point for ServerEngine
 // 한글: ServerEngine 메인 진입점
 
 #include "Network/Core/AsyncIOProvider.h"

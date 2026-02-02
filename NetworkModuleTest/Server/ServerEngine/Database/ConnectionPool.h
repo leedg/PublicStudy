@@ -1,8 +1,12 @@
 #pragma once
 
+// English: Connection pool implementation
+// 한글: 연결 풀 구현
+
 #include "../Interfaces/IConnectionPool.h"
 #include "../Interfaces/IDatabase.h"
 #include "../Interfaces/DatabaseConfig.h"
+#include "../Interfaces/DatabaseException.h"
 #include <queue>
 #include <mutex>
 #include <condition_variable>
@@ -10,110 +14,177 @@
 #include <atomic>
 #include <vector>
 
-namespace Network::Database {
+namespace Network {
+namespace Database {
 
-/**
- * Connection pool implementation
- */
-class ConnectionPool : public IConnectionPool {
-private:
-    struct PooledConnection {
-        std::shared_ptr<IConnection> connection;
-        std::chrono::steady_clock::time_point lastUsed;
-        bool inUse;
+    // =============================================================================
+    // English: ConnectionPool class
+    // 한글: ConnectionPool 클래스
+    // =============================================================================
 
-        PooledConnection(std::shared_ptr<IConnection> conn)
-            : connection(std::move(conn))
-            , lastUsed(std::chrono::steady_clock::now())
-            , inUse(false)
-        {}
+    /**
+     * English: Connection pool implementation
+     * 한글: 연결 풀 구현
+     */
+    class ConnectionPool : public IConnectionPool 
+    {
+    public:
+        ConnectionPool();
+        virtual ~ConnectionPool();
+
+        // English: Initialization
+        // 한글: 초기화
+        bool Initialize(const DatabaseConfig& config);
+        void Shutdown();
+
+        // English: IConnectionPool interface
+        // 한글: IConnectionPool 인터페이스
+        std::shared_ptr<IConnection> GetConnection() override;
+        void ReturnConnection(std::shared_ptr<IConnection> pConnection) override;
+        void Clear() override;
+        size_t GetActiveConnections() const override;
+        size_t GetAvailableConnections() const override;
+
+        // English: Configuration
+        // 한글: 설정
+        void SetMaxPoolSize(size_t size);
+        void SetMinPoolSize(size_t size);
+        void SetConnectionTimeout(int seconds);
+        void SetIdleTimeout(int seconds);
+
+        // English: Status
+        // 한글: 상태
+        bool IsInitialized() const 
+        { 
+            return mInitialized.load(); 
+        }
+
+        size_t GetTotalConnections() const;
+
+    private:
+        // English: Pooled connection structure
+        // 한글: 풀링된 연결 구조체
+        struct PooledConnection 
+        {
+            std::shared_ptr<IConnection> mConnection;
+            std::chrono::steady_clock::time_point mLastUsed;
+            bool mInUse;
+
+            PooledConnection(std::shared_ptr<IConnection> pConn)
+                : mConnection(std::move(pConn))
+                , mLastUsed(std::chrono::steady_clock::now())
+                , mInUse(false)
+            {
+            }
+        };
+
+        // English: Helper methods
+        // 한글: 헬퍼 메서드
+        std::shared_ptr<IConnection> CreateNewConnection();
+        void CleanupIdleConnections();
+
+    private:
+        DatabaseConfig mConfig;
+        std::unique_ptr<IDatabase> mDatabase;
+        std::vector<PooledConnection> mConnections;
+        std::mutex mMutex;
+        std::condition_variable mCondition;
+        std::atomic<bool> mInitialized;
+        std::atomic<size_t> mActiveConnections;
+
+        // English: Pool settings
+        // 한글: 풀 설정
+        size_t mMaxPoolSize;
+        size_t mMinPoolSize;
+        std::chrono::seconds mConnectionTimeout;
+        std::chrono::seconds mIdleTimeout;
     };
 
-    DatabaseConfig config_;
-    std::unique_ptr<IDatabase> database_;
-    std::vector<PooledConnection> connections_;
-    std::mutex mutex_;
-    std::condition_variable condition_;
-    std::atomic<bool> initialized_;
-    std::atomic<size_t> activeConnections_;
+    // =============================================================================
+    // English: ScopedConnection class
+    // 한글: ScopedConnection 클래스
+    // =============================================================================
 
-    // Pool settings
-    size_t maxPoolSize_;
-    size_t minPoolSize_;
-    std::chrono::seconds connectionTimeout_;
-    std::chrono::seconds idleTimeout_;
-
-    std::shared_ptr<IConnection> createNewConnection();
-    void cleanupIdleConnections();
-
-public:
-    ConnectionPool();
-    virtual ~ConnectionPool();
-
-    // Initialization
-    bool initialize(const DatabaseConfig& config);
-    void shutdown();
-
-    // IConnectionPool interface
-    std::shared_ptr<IConnection> getConnection() override;
-    void returnConnection(std::shared_ptr<IConnection> connection) override;
-    void clear() override;
-    size_t getActiveConnections() const override;
-    size_t getAvailableConnections() const override;
-
-    // Configuration
-    void setMaxPoolSize(size_t size);
-    void setMinPoolSize(size_t size);
-    void setConnectionTimeout(int seconds);
-    void setIdleTimeout(int seconds);
-
-    // Status
-    bool isInitialized() const { return initialized_.load(); }
-    size_t getTotalConnections() const;
-};
-
-/**
- * RAII wrapper for automatic connection return to pool
- */
-class ScopedConnection {
-private:
-    std::shared_ptr<IConnection> connection_;
-    IConnectionPool* pool_;
-
-public:
-    ScopedConnection(std::shared_ptr<IConnection> conn, IConnectionPool* pool)
-        : connection_(std::move(conn)), pool_(pool)
-    {}
-
-    ~ScopedConnection() {
-        if (connection_ && pool_) {
-            pool_->returnConnection(connection_);
-        }
-    }
-
-    // Prevent copy
-    ScopedConnection(const ScopedConnection&) = delete;
-    ScopedConnection& operator=(const ScopedConnection&) = delete;
-
-    // Allow move
-    ScopedConnection(ScopedConnection&& other) noexcept
-        : connection_(std::move(other.connection_))
-        , pool_(other.pool_)
+    /**
+     * English: RAII wrapper for automatic connection return to pool
+     * 한글: 풀에 자동으로 연결을 반환하는 RAII 래퍼
+     */
+    class ScopedConnection 
     {
-        other.pool_ = nullptr;
-    }
+    public:
+        ScopedConnection(std::shared_ptr<IConnection> pConn, IConnectionPool* pPool)
+            : mConnection(std::move(pConn))
+            , mPool(pPool)
+        {
+        }
 
-    IConnection* operator->() { return connection_.get(); }
-    IConnection& operator*() { return *connection_; }
-    const IConnection* operator->() const { return connection_.get(); }
-    const IConnection& operator*() const { return *connection_; }
+        ~ScopedConnection() 
+        {
+            if (mConnection && mPool) 
+            {
+                mPool->ReturnConnection(mConnection);
+            }
+        }
 
-    bool isValid() const {
-        return connection_ != nullptr && connection_->isOpen();
-    }
+        // English: Prevent copy
+        // 한글: 복사 방지
+        ScopedConnection(const ScopedConnection&) = delete;
+        ScopedConnection& operator=(const ScopedConnection&) = delete;
 
-    IConnection* get() { return connection_.get(); }
-    const IConnection* get() const { return connection_.get(); }
-};
+        // English: Allow move
+        // 한글: 이동 허용
+        ScopedConnection(ScopedConnection&& other) noexcept
+            : mConnection(std::move(other.mConnection))
+            , mPool(other.mPool)
+        {
+            other.mPool = nullptr;
+        }
 
-} // namespace Network::Database
+        // English: Access operators
+        // 한글: 접근 연산자
+        IConnection* operator->() 
+        { 
+            return mConnection.get(); 
+        }
+
+        IConnection& operator*() 
+        { 
+            return *mConnection; 
+        }
+
+        const IConnection* operator->() const 
+        { 
+            return mConnection.get(); 
+        }
+
+        const IConnection& operator*() const 
+        { 
+            return *mConnection; 
+        }
+
+        // English: Validation
+        // 한글: 유효성 검사
+        bool IsValid() const 
+        {
+            return mConnection != nullptr && mConnection->IsOpen();
+        }
+
+        // English: Direct access
+        // 한글: 직접 접근
+        IConnection* Get() 
+        { 
+            return mConnection.get(); 
+        }
+
+        const IConnection* Get() const 
+        { 
+            return mConnection.get(); 
+        }
+
+    private:
+        std::shared_ptr<IConnection> mConnection;
+        IConnectionPool* mPool;
+    };
+
+}  // namespace Database
+}  // namespace Network

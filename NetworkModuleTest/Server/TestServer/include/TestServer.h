@@ -1,12 +1,12 @@
-﻿#pragma once
+#pragma once
 
 // English: TestServer main header - game server using IOCPNetworkEngine
-// ?쒓?: TestServer 硫붿씤 ?ㅻ뜑 - IOCPNetworkEngine ?ъ슜 寃뚯엫 ?쒕쾭
+// 한글: TestServer 메인 헤더 - IOCPNetworkEngine 사용 게임 서버
 
 // English: DB support can be disabled if needed
-// ?쒓?: ?꾩슂??DB 吏?먯쓣 鍮꾪솢?깊솕?????덉쓬
+// 한글: 필요시 DB 지원을 비활성화할 수 있음
 #ifdef ENABLE_DATABASE_SUPPORT
-    #include "Database/DBConnectionPool.h"
+#include "Database/DBConnectionPool.h"
 #endif
 
 #include "Network/Core/IOCPNetworkEngine.h"
@@ -28,7 +28,7 @@ namespace Network::TestServer
 
     // =============================================================================
     // English: GameSession - extended session for game logic
-    // ?쒓?: GameSession - 寃뚯엫 濡쒖쭅???뺤옣 ?몄뀡
+    // 한글: GameSession - 게임 로직용 확장 세션
     // =============================================================================
 
     class GameSession : public Core::Session
@@ -38,20 +38,20 @@ namespace Network::TestServer
         virtual ~GameSession();
 
         // English: Session event overrides
-        // ?쒓?: ?몄뀡 ?대깽???ㅻ쾭?쇱씠??
+        // 한글: 세션 이벤트 오버라이드
         void OnConnected() override;
         void OnDisconnected() override;
         void OnRecv(const char* data, uint32_t size) override;
 
         // English: DB connect time recording
-        // ?쒓?: DB ?묒냽 ?쒓컙 湲곕줉
+        // 한글: DB 접속 시간 기록
         void RecordConnectTimeToDB();
 
         bool IsConnectionRecorded() const { return mConnectionRecorded; }
 
     private:
         // English: Packet handlers
-        // ?쒓?: ?⑦궥 ?몃뱾??
+        // 한글: 패킷 핸들러
         void ProcessPacket(const Core::PacketHeader* header, const char* data);
         void HandleConnectRequest(const Core::PKT_SessionConnectReq* packet);
         void HandlePingRequest(const Core::PKT_PingReq* packet);
@@ -64,7 +64,7 @@ namespace Network::TestServer
 
     // =============================================================================
     // English: TestServer class
-    // ?쒓?: TestServer ?대옒??
+    // 한글: TestServer 클래스
     // =============================================================================
 
     class TestServer
@@ -74,7 +74,7 @@ namespace Network::TestServer
         ~TestServer();
 
         // English: Lifecycle
-        // ?쒓?: ?앸챸二쇨린
+        // 한글: 생명주기
         bool Initialize(uint16_t port = 9000, const std::string& dbConnectionString = "");
         bool Start();
         void Stop();
@@ -82,13 +82,13 @@ namespace Network::TestServer
 
     private:
         // English: Network event handlers
-        // ?쒓?: ?ㅽ듃?뚰겕 ?대깽???몃뱾??
+        // 한글: 네트워크 이벤트 핸들러
         void OnConnectionEstablished(const Core::NetworkEventData& eventData);
         void OnConnectionClosed(const Core::NetworkEventData& eventData);
         void OnDataReceived(const Core::NetworkEventData& eventData);
 
         // English: Session factory
-        // ?쒓?: ?몄뀡 ?⑺넗由?
+        // 한글: 세션 팩토리
         static Core::SessionRef CreateGameSession();
 
     private:
@@ -99,4 +99,3 @@ namespace Network::TestServer
     };
 
 } // namespace Network::TestServer
-

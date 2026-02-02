@@ -1,5 +1,5 @@
-﻿// English: SessionManager implementation
-// ?쒓?: SessionManager 援ы쁽
+// English: SessionManager implementation
+// 한글: SessionManager 구현
 
 #include "SessionManager.h"
 #include <sstream>
@@ -124,4 +124,3 @@ Utils::ConnectionId SessionManager::GenerateSessionId()
 }
 
 } // namespace Network::Core
-

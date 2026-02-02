@@ -1,4 +1,4 @@
-﻿// English: Implementation of MessageHandler
+// English: Implementation of MessageHandler
 // 한글: MessageHandler 구현
 
 #include "MessageHandler.h"

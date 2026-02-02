@@ -1,233 +1,295 @@
+// English: ConnectionPool implementation
+// 한글: ConnectionPool 구현
+
 #include "ConnectionPool.h"
 #include "DatabaseFactory.h"
 #include <algorithm>
 #include <thread>
 
-namespace Network::Database {
+namespace Network {
+namespace Database {
 
-ConnectionPool::ConnectionPool()
-    : initialized_(false)
-    , activeConnections_(0)
-    , maxPoolSize_(10)
-    , minPoolSize_(2)
-    , connectionTimeout_(std::chrono::seconds(30))
-    , idleTimeout_(std::chrono::seconds(300))
-{}
-
-ConnectionPool::~ConnectionPool() {
-    shutdown();
-}
-
-bool ConnectionPool::initialize(const DatabaseConfig& config) {
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    if (initialized_.load()) {
-        return true;
-    }
-
-    config_ = config;
-    maxPoolSize_ = config.maxPoolSize;
-    minPoolSize_ = config.minPoolSize;
-
-    // Create database instance
-    database_ = DatabaseFactory::createDatabase(config.type);
-    if (!database_) {
-        return false;
-    }
-
-    try {
-        database_->connect(config);
-
-        // Pre-create minimum connections
-        for (size_t i = 0; i < minPoolSize_; ++i) {
-            auto conn = createNewConnection();
-            if (conn) {
-                connections_.emplace_back(conn);
-            }
-        }
-
-        initialized_.store(true);
-        return true;
-    }
-    catch (const DatabaseException&) {
-        return false;
-    }
-}
-
-void ConnectionPool::shutdown() {
-    if (!initialized_.load()) {
-        return;
-    }
-
-    // Wait for all connections to be returned
+    ConnectionPool::ConnectionPool()
+        : mInitialized(false)
+        , mActiveConnections(0)
+        , mMaxPoolSize(10)
+        , mMinPoolSize(2)
+        , mConnectionTimeout(std::chrono::seconds(30))
+        , mIdleTimeout(std::chrono::seconds(300))
     {
-        std::unique_lock<std::mutex> lock(mutex_);
-        condition_.wait_for(lock,
-                            std::chrono::seconds(5),
-                            [this] { return activeConnections_.load() == 0; });
     }
 
-    // Close all connections
-    std::lock_guard<std::mutex> lock(mutex_);
-    clear();
-
-    // Disconnect database
-    if (database_) {
-        database_->disconnect();
-        database_.reset();
+    ConnectionPool::~ConnectionPool() 
+    {
+        Shutdown();
     }
 
-    initialized_.store(false);
-}
+    bool ConnectionPool::Initialize(const DatabaseConfig& config) 
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
 
-std::shared_ptr<IConnection> ConnectionPool::createNewConnection() {
-    if (!database_ || !database_->isConnected()) {
-        throw DatabaseException("Database not connected");
-    }
+        if (mInitialized.load()) 
+        {
+            return true;
+        }
 
-    auto conn = database_->createConnection();
-    if (!conn) {
-        throw DatabaseException("Failed to create connection");
-    }
+        mConfig = config;
+        mMaxPoolSize = config.mMaxPoolSize;
+        mMinPoolSize = config.mMinPoolSize;
 
-    conn->open(config_.connectionString);
-    return std::shared_ptr<IConnection>(std::move(conn));
-}
+        // English: Create database instance
+        // 한글: 데이터베이스 인스턴스 생성
+        mDatabase = DatabaseFactory::CreateDatabase(config.mType);
+        if (!mDatabase) 
+        {
+            return false;
+        }
 
-std::shared_ptr<IConnection> ConnectionPool::getConnection() {
-    if (!initialized_.load()) {
-        throw DatabaseException("Connection pool not initialized");
-    }
+        try 
+        {
+            mDatabase->Connect(config);
 
-    std::unique_lock<std::mutex> lock(mutex_);
-
-    // Wait for available connection or timeout
-    bool acquired = condition_.wait_for(lock, connectionTimeout_, [this] {
-        // Check if any connection is available
-        for (auto& pooled : connections_) {
-            if (!pooled.inUse && pooled.connection->isOpen()) {
-                return true;
+            // English: Pre-create minimum connections
+            // 한글: 최소 연결 미리 생성
+            for (size_t i = 0; i < mMinPoolSize; ++i) 
+            {
+                auto pConn = CreateNewConnection();
+                if (pConn) 
+                {
+                    mConnections.emplace_back(pConn);
+                }
             }
+
+            mInitialized.store(true);
+            return true;
         }
-
-        // Can we create a new connection?
-        return connections_.size() < maxPoolSize_;
-    });
-
-    if (!acquired) {
-        throw DatabaseException("Connection pool timeout - no connections available");
-    }
-
-    // Try to find an existing free connection
-    for (auto& pooled : connections_) {
-        if (!pooled.inUse && pooled.connection->isOpen()) {
-            pooled.inUse = true;
-            pooled.lastUsed = std::chrono::steady_clock::now();
-            activeConnections_.fetch_add(1);
-            return pooled.connection;
+        catch (const DatabaseException&) 
+        {
+            return false;
         }
     }
 
-    // Create a new connection if under limit
-    if (connections_.size() < maxPoolSize_) {
-        auto conn = createNewConnection();
-        connections_.emplace_back(conn);
-        connections_.back().inUse = true;
-        activeConnections_.fetch_add(1);
-        return conn;
-    }
-
-    throw DatabaseException("No connections available");
-}
-
-void ConnectionPool::returnConnection(std::shared_ptr<IConnection> connection) {
-    if (!connection) {
-        return;
-    }
-
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    for (auto& pooled : connections_) {
-        if (pooled.connection == connection) {
-            pooled.inUse = false;
-            pooled.lastUsed = std::chrono::steady_clock::now();
-            activeConnections_.fetch_sub(1);
-            condition_.notify_one();
+    void ConnectionPool::Shutdown() 
+    {
+        if (!mInitialized.load()) 
+        {
             return;
         }
+
+        // English: Wait for all connections to be returned
+        // 한글: 모든 연결이 반환될 때까지 대기
+        {
+            std::unique_lock<std::mutex> lock(mMutex);
+            mCondition.wait_for(lock,
+                                std::chrono::seconds(5),
+                                [this] { return mActiveConnections.load() == 0; });
+        }
+
+        // English: Close all connections
+        // 한글: 모든 연결 닫기
+        std::lock_guard<std::mutex> lock(mMutex);
+        Clear();
+
+        // English: Disconnect database
+        // 한글: 데이터베이스 연결 해제
+        if (mDatabase) 
+        {
+            mDatabase->Disconnect();
+            mDatabase.reset();
+        }
+
+        mInitialized.store(false);
     }
-}
 
-void ConnectionPool::clear() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::shared_ptr<IConnection> ConnectionPool::CreateNewConnection() 
+    {
+        if (!mDatabase || !mDatabase->IsConnected()) 
+        {
+            throw DatabaseException("Database not connected");
+        }
 
-    // Close all connections that are not in use
-    for (auto it = connections_.begin(); it != connections_.end();) {
-        if (!it->inUse) {
-            it->connection->close();
-            it = connections_.erase(it);
-        } else {
+        auto pConn = mDatabase->CreateConnection();
+        if (!pConn) 
+        {
+            throw DatabaseException("Failed to create connection");
+        }
+
+        pConn->Open(mConfig.mConnectionString);
+        return std::shared_ptr<IConnection>(std::move(pConn));
+    }
+
+    std::shared_ptr<IConnection> ConnectionPool::GetConnection() 
+    {
+        if (!mInitialized.load()) 
+        {
+            throw DatabaseException("Connection pool not initialized");
+        }
+
+        std::unique_lock<std::mutex> lock(mMutex);
+
+        // English: Wait for available connection or timeout
+        // 한글: 사용 가능한 연결 대기 또는 타임아웃
+        bool acquired = mCondition.wait_for(lock, mConnectionTimeout, [this] 
+        {
+            // English: Check if any connection is available
+            // 한글: 사용 가능한 연결이 있는지 확인
+            for (auto& pooled : mConnections) 
+            {
+                if (!pooled.mInUse && pooled.mConnection->IsOpen()) 
+                {
+                    return true;
+                }
+            }
+
+            // English: Can we create a new connection?
+            // 한글: 새 연결을 생성할 수 있는가?
+            return mConnections.size() < mMaxPoolSize;
+        });
+
+        if (!acquired) 
+        {
+            throw DatabaseException("Connection pool timeout - no connections available");
+        }
+
+        // English: Try to find an existing free connection
+        // 한글: 기존 무료 연결 찾기 시도
+        for (auto& pooled : mConnections) 
+        {
+            if (!pooled.mInUse && pooled.mConnection->IsOpen()) 
+            {
+                pooled.mInUse = true;
+                pooled.mLastUsed = std::chrono::steady_clock::now();
+                mActiveConnections.fetch_add(1);
+                return pooled.mConnection;
+            }
+        }
+
+        // English: Create a new connection if under limit
+        // 한글: 제한 미만이면 새 연결 생성
+        if (mConnections.size() < mMaxPoolSize) 
+        {
+            auto pConn = CreateNewConnection();
+            mConnections.emplace_back(pConn);
+            mConnections.back().mInUse = true;
+            mActiveConnections.fetch_add(1);
+            return pConn;
+        }
+
+        throw DatabaseException("No connections available");
+    }
+
+    void ConnectionPool::ReturnConnection(std::shared_ptr<IConnection> pConnection) 
+    {
+        if (!pConnection) 
+        {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(mMutex);
+
+        for (auto& pooled : mConnections) 
+        {
+            if (pooled.mConnection == pConnection) 
+            {
+                pooled.mInUse = false;
+                pooled.mLastUsed = std::chrono::steady_clock::now();
+                mActiveConnections.fetch_sub(1);
+                mCondition.notify_one();
+                return;
+            }
+        }
+    }
+
+    void ConnectionPool::Clear() 
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+
+        // English: Close all connections that are not in use
+        // 한글: 사용 중이 아닌 모든 연결 닫기
+        for (auto it = mConnections.begin(); it != mConnections.end();) 
+        {
+            if (!it->mInUse) 
+            {
+                it->mConnection->Close();
+                it = mConnections.erase(it);
+            } 
+            else 
+            {
+                ++it;
+            }
+        }
+    }
+
+    size_t ConnectionPool::GetActiveConnections() const 
+    {
+        return mActiveConnections.load();
+    }
+
+    size_t ConnectionPool::GetAvailableConnections() const 
+    {
+        std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(mMutex));
+        size_t available = 0;
+        for (const auto& pooled : mConnections) 
+        {
+            if (!pooled.mInUse && pooled.mConnection->IsOpen()) 
+            {
+                ++available;
+            }
+        }
+        return available;
+    }
+
+    void ConnectionPool::SetMaxPoolSize(size_t size) 
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        mMaxPoolSize = size;
+    }
+
+    void ConnectionPool::SetMinPoolSize(size_t size) 
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        mMinPoolSize = size;
+    }
+
+    void ConnectionPool::SetConnectionTimeout(int seconds) 
+    {
+        mConnectionTimeout = std::chrono::seconds(seconds);
+    }
+
+    void ConnectionPool::SetIdleTimeout(int seconds) 
+    {
+        mIdleTimeout = std::chrono::seconds(seconds);
+    }
+
+    size_t ConnectionPool::GetTotalConnections() const 
+    {
+        std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(mMutex));
+        return mConnections.size();
+    }
+
+    void ConnectionPool::CleanupIdleConnections() 
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+
+        auto now = std::chrono::steady_clock::now();
+
+        for (auto it = mConnections.begin(); it != mConnections.end();) 
+        {
+            if (!it->mInUse) 
+            {
+                auto idleDuration = std::chrono::duration_cast<std::chrono::seconds>(
+                    now - it->mLastUsed);
+
+                if (idleDuration > mIdleTimeout && mConnections.size() > mMinPoolSize) 
+                {
+                    it->mConnection->Close();
+                    it = mConnections.erase(it);
+                    continue;
+                }
+            }
             ++it;
         }
     }
-}
 
-size_t ConnectionPool::getActiveConnections() const {
-    return activeConnections_.load();
-}
-
-size_t ConnectionPool::getAvailableConnections() const {
-    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(mutex_));
-    size_t available = 0;
-    for (const auto& pooled : connections_) {
-        if (!pooled.inUse && pooled.connection->isOpen()) {
-            ++available;
-        }
-    }
-    return available;
-}
-
-void ConnectionPool::setMaxPoolSize(size_t size) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    maxPoolSize_ = size;
-}
-
-void ConnectionPool::setMinPoolSize(size_t size) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    minPoolSize_ = size;
-}
-
-void ConnectionPool::setConnectionTimeout(int seconds) {
-    connectionTimeout_ = std::chrono::seconds(seconds);
-}
-
-void ConnectionPool::setIdleTimeout(int seconds) {
-    idleTimeout_ = std::chrono::seconds(seconds);
-}
-
-size_t ConnectionPool::getTotalConnections() const {
-    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(mutex_));
-    return connections_.size();
-}
-
-void ConnectionPool::cleanupIdleConnections() {
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    auto now = std::chrono::steady_clock::now();
-
-    for (auto it = connections_.begin(); it != connections_.end();) {
-        if (!it->inUse) {
-            auto idleDuration = std::chrono::duration_cast<std::chrono::seconds>(
-                now - it->lastUsed);
-
-            if (idleDuration > idleTimeout_ && connections_.size() > minPoolSize_) {
-                it->connection->close();
-                it = connections_.erase(it);
-                continue;
-            }
-        }
-        ++it;
-    }
-}
-
-} // namespace Network::Database
+}  // namespace Database
+}  // namespace Network

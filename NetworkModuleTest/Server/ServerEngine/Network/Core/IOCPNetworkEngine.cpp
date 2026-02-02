@@ -1,6 +1,5 @@
-﻿// English: IOCPNetworkEngine implementation
-// ?쒓?: IOCPNetworkEngine 援ы쁽
-// encoding: UTF-8
+// English: IOCPNetworkEngine implementation
+// 한글: IOCPNetworkEngine 구현
 
 #include "IOCPNetworkEngine.h"
 #include <sstream>
@@ -42,7 +41,7 @@ IOCPNetworkEngine::~IOCPNetworkEngine()
 
 // =============================================================================
 // English: INetworkEngine interface
-// ?쒓?: INetworkEngine ?명꽣?섏씠??
+// 한글: INetworkEngine 인터페이스
 // =============================================================================
 
 bool IOCPNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
@@ -94,7 +93,7 @@ bool IOCPNetworkEngine::Start()
     mRunning = true;
 
     // English: Start IOCP worker threads (CPU core count)
-    // ?쒓?: IOCP ?뚯빱 ?ㅻ젅???쒖옉 (CPU 肄붿뼱 ??
+    // 한글: IOCP 워커 스레드 시작 (CPU 코어 수)
     uint32_t workerCount = std::thread::hardware_concurrency();
     if (workerCount == 0)
     {
@@ -108,7 +107,7 @@ bool IOCPNetworkEngine::Start()
     }
 
     // English: Start accept thread
-    // ?쒓?: Accept ?ㅻ젅???쒖옉
+    // 한글: Accept 스레드 시작
     // Note: Full thread implementation deferred to platform-specific code
 
     Utils::Logger::Info("IOCPNetworkEngine started - Workers: " + std::to_string(workerCount));
@@ -125,7 +124,7 @@ void IOCPNetworkEngine::Stop()
     mRunning = false;
 
     // English: Close listen socket to unblock accept
-    // ?쒓?: accept 釉붾줈???댁젣瑜??꾪빐 listen ?뚯폆 ?リ린
+    // 한글: accept 블로킹 해제를 위해 listen 소켓 닫기
 #ifdef _WIN32
     if (mListenSocket != INVALID_SOCKET)
     {
@@ -140,7 +139,7 @@ void IOCPNetworkEngine::Stop()
     }
 
     // English: Post exit signals to IOCP workers
-    // ?쒓?: IOCP ?뚯빱??醫낅즺 ?좏샇
+    // 한글: IOCP 워커에 종료 신호
 #ifdef _WIN32
     if (mIOCP)
     {
@@ -161,7 +160,7 @@ void IOCPNetworkEngine::Stop()
     mWorkerThreads.clear();
 
     // English: Close all sessions
-    // ?쒓?: 紐⑤뱺 ?몄뀡 醫낅즺
+    // 한글: 모든 세션 종료
     SessionManager::Instance().CloseAllSessions();
 
 #ifdef _WIN32
@@ -242,8 +241,7 @@ std::string IOCPNetworkEngine::GetConnectionInfo(Utils::ConnectionId connectionI
 INetworkEngine::Statistics IOCPNetworkEngine::GetStatistics() const
 {
     std::lock_guard<std::mutex> lock(mStatsMutex);
-    INetworkEngine::Statistics stats = {}
-    ;
+    INetworkEngine::Statistics stats = {};
     // Copy fields explicitly to ensure matching type
     stats.totalConnections = mStats.totalConnections;
     stats.activeConnections = SessionManager::Instance().GetSessionCount();
@@ -256,7 +254,7 @@ INetworkEngine::Statistics IOCPNetworkEngine::GetStatistics() const
 
 // =============================================================================
 // English: Internal initialization
-// ?쒓?: ?대? 珥덇린??
+// 한글: 내부 초기화
 // =============================================================================
 
 bool IOCPNetworkEngine::InitializeWinsock()
@@ -289,7 +287,7 @@ bool IOCPNetworkEngine::CreateListenSocket()
     }
 
     // English: SO_REUSEADDR
-    // ?쒓?: ?뚯폆 ?ъ궗???ㅼ젙
+    // 한글: 소켓 재사용 설정
     int opt = 1;
     setsockopt(mListenSocket, SOL_SOCKET, SO_REUSEADDR,
                reinterpret_cast<char*>(&opt), sizeof(opt));
@@ -338,7 +336,7 @@ bool IOCPNetworkEngine::CreateIOCP()
 
 // =============================================================================
 // English: Thread functions
-// ?쒓?: ?ㅻ젅???⑥닔
+// 한글: 스레드 함수
 // =============================================================================
 
 void IOCPNetworkEngine::AcceptThread()
@@ -365,7 +363,7 @@ void IOCPNetworkEngine::AcceptThread()
         }
 
         // English: Create session via SessionManager
-        // ?쒓?: SessionManager瑜??듯빐 ?몄뀡 ?앹꽦
+        // 한글: SessionManager를 통해 세션 생성
         SessionRef session = SessionManager::Instance().CreateSession(clientSocket);
         if (!session)
         {
@@ -374,7 +372,7 @@ void IOCPNetworkEngine::AcceptThread()
         }
 
         // English: Associate socket with IOCP
-        // ?쒓?: ?뚯폆??IOCP???깅줉
+        // 한글: 소켓을 IOCP에 등록
         if (CreateIoCompletionPort(reinterpret_cast<HANDLE>(clientSocket),
                                     mIOCP,
                                     static_cast<ULONG_PTR>(session->GetId()),
@@ -386,14 +384,14 @@ void IOCPNetworkEngine::AcceptThread()
         }
 
         // English: Update stats
-        // ?쒓?: ?듦퀎 ?낅뜲?댄듃
+        // 한글: 통계 업데이트
         {
             std::lock_guard<std::mutex> lock(mStatsMutex);
             mStats.totalConnections++;
         }
 
         // English: Fire Connected event asynchronously on logic thread
-        // ?쒓?: 濡쒖쭅 ?ㅻ젅?쒖뿉??鍮꾨룞湲곕줈 Connected ?대깽??諛쒖깮
+        // 한글: 로직 스레드에서 비동기로 Connected 이벤트 발생
         auto sessionCopy = session;
         mLogicThreadPool.Submit([this, sessionCopy]()
         {
@@ -402,7 +400,7 @@ void IOCPNetworkEngine::AcceptThread()
         });
 
         // English: Start receiving
-        // ?쒓?: ?섏떊 ?쒖옉
+        // 한글: 수신 시작
         session->PostRecv();
 
         char clientIP[INET_ADDRSTRLEN];
@@ -434,7 +432,7 @@ void IOCPNetworkEngine::WorkerThread()
         );
 
         // English: Exit signal (nullptr overlapped, 0 key)
-        // ?쒓?: 醫낅즺 ?좏샇
+        // 한글: 종료 신호
         if (overlapped == nullptr)
         {
             break;
@@ -453,7 +451,7 @@ void IOCPNetworkEngine::WorkerThread()
         if (!result || bytesTransferred == 0)
         {
             // English: Connection closed
-            // ?쒓?: ?곌껐 醫낅즺
+            // 한글: 연결 종료
             auto sessionCopy = session;
             mLogicThreadPool.Submit([this, sessionCopy]()
             {
@@ -467,7 +465,7 @@ void IOCPNetworkEngine::WorkerThread()
         }
 
         // English: Process IO completion
-        // ?쒓?: IO ?꾨즺 泥섎━
+        // 한글: IO 완료 처리
         switch (ioContext->type)
         {
         case IOType::Recv:
@@ -493,7 +491,7 @@ void IOCPNetworkEngine::ProcessRecvCompletion(SessionRef session, uint32_t bytes
     }
 
     // English: Copy received data for async processing
-    // ?쒓?: 鍮꾨룞湲?泥섎━瑜??꾪빐 ?섏떊 ?곗씠??蹂듭궗
+    // 한글: 비동기 처리를 위해 수신 데이터 복사
 #ifdef _WIN32
     std::vector<char> data(session->GetRecvContext().buffer,
                            session->GetRecvContext().buffer + bytesTransferred);
@@ -502,27 +500,27 @@ void IOCPNetworkEngine::ProcessRecvCompletion(SessionRef session, uint32_t bytes
 #endif
 
     // English: Update stats
-    // ?쒓?: ?듦퀎 ?낅뜲?댄듃
+    // 한글: 통계 업데이트
     {
         std::lock_guard<std::mutex> lock(mStatsMutex);
         mStats.totalBytesReceived += bytesTransferred;
     }
 
     // English: Process on logic thread (async)
-    // ?쒓?: 濡쒖쭅 ?ㅻ젅?쒖뿉??泥섎━ (鍮꾨룞湲?
+    // 한글: 로직 스레드에서 처리 (비동기)
     auto sessionCopy = session;
     mLogicThreadPool.Submit([this, sessionCopy, data = std::move(data)]()
     {
         sessionCopy->OnRecv(data.data(), static_cast<uint32_t>(data.size()));
 
         // English: Fire DataReceived event
-        // ?쒓?: DataReceived ?대깽??諛쒖깮
+        // 한글: DataReceived 이벤트 발생
         FireEvent(NetworkEvent::DataReceived, sessionCopy->GetId(),
                   reinterpret_cast<const uint8_t*>(data.data()), data.size());
     });
 
     // English: Post next receive
-    // ?쒓?: ?ㅼ쓬 ?섏떊 ?깅줉
+    // 한글: 다음 수신 등록
     session->PostRecv();
 }
 
@@ -534,7 +532,7 @@ void IOCPNetworkEngine::ProcessSendCompletion(SessionRef session, uint32_t bytes
     }
 
     // English: Send completion is handled by Session internally
-    // ?쒓?: ?꾩넚 ?꾨즺??Session ?대??먯꽌 泥섎━
+    // 한글: 전송 완료는 Session 내부에서 처리
     FireEvent(NetworkEvent::DataSent, session->GetId());
 }
 
@@ -565,7 +563,7 @@ void IOCPNetworkEngine::FireEvent(NetworkEvent eventType, Utils::ConnectionId co
 
 // =============================================================================
 // English: Factory function implementation
-// ?쒓?: ?⑺넗由??⑥닔 援ы쁽
+// 한글: 팩토리 함수 구현
 // =============================================================================
 
 std::unique_ptr<INetworkEngine> CreateNetworkEngine(const std::string& engineType)
@@ -588,4 +586,3 @@ std::vector<std::string> GetAvailableEngineTypes()
 }
 
 } // namespace Network::Core
-

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 // encoding: UTF-8
 
 // English: Unified async I/O provider interface for all platforms

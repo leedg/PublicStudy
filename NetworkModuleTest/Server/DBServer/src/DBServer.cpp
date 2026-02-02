@@ -1,5 +1,5 @@
-﻿// English: Database Server implementation
-// ?쒓?: ?곗씠?곕쿋?댁뒪 ?쒕쾭 援ы쁽
+// English: Database Server implementation
+// ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 ?닌뗭겱
 
 #include "include/DBServer.h"
 #include <iostream>
@@ -13,7 +13,7 @@ namespace Network::DBServer
 {
     // =============================================================================
     // English: Constructor and Destructor
-    // ?쒓?: ?앹꽦??諛??뚮㈇??
+    // ???: ??밴쉐??獄????늾??
     // =============================================================================
     
     DBServer::DBServer()
@@ -34,7 +34,7 @@ namespace Network::DBServer
     
     // =============================================================================
     // English: Lifecycle management
-    // ?쒓?: ?앸챸二쇨린 愿由?
+    // ???: ??몄구雅뚯눊由??온??
     // =============================================================================
     
     bool DBServer::Initialize(uint16_t port, size_t maxConnections)
@@ -157,7 +157,7 @@ namespace Network::DBServer
     
     // =============================================================================
     // English: Network event handlers
-    // ?쒓?: ?ㅽ듃?뚰겕 ?대깽???몃뱾??
+    // ???: ??쎈뱜??곌쾿 ??源???紐껊굶??
     // =============================================================================
     
     void DBServer::OnConnectionEstablished(ConnectionId connectionId)
@@ -212,7 +212,7 @@ namespace Network::DBServer
     
     // =============================================================================
     // English: Database operations
-    // ?쒓?: ?곗씠?곕쿋?댁뒪 ?묒뾽
+    // ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ?臾믩씜
     // =============================================================================
     
     bool DBServer::ConnectToDatabase()
@@ -244,7 +244,7 @@ namespace Network::DBServer
     
     // =============================================================================
     // English: Private methods
-    // ?쒓?: 鍮꾧났媛?硫붿냼??
+    // ???: ??쑨?у첎?筌롫뗄???
     // =============================================================================
     
     void DBServer::WorkerThread()

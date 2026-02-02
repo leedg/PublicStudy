@@ -1,4 +1,4 @@
-﻿#ifdef _WIN32
+#ifdef _WIN32
 
 #include "RIOAsyncIOProvider.h"
 #include "../../Network/Core/PlatformDetect.h"

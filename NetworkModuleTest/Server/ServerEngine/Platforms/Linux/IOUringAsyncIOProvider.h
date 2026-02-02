@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // English: io_uring-based AsyncIOProvider implementation for Linux kernel 5.1+
 // 한글: Linux 커널 5.1+ 용 io_uring 기반 AsyncIOProvider 구현

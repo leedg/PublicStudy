@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // English: Simple message handler for network messages
 // 한글: 네트워크 메시지용 간단한 메시지 핸들러

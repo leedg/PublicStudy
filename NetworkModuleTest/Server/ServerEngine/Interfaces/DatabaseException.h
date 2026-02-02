@@ -1,27 +1,52 @@
 #pragma once
 
+// English: Exception class for database operations
+// 한글: 데이터베이스 작업용 예외 클래스
+
 #include <string>
 #include <exception>
 
-namespace Network::Database {
+namespace Network {
+namespace Database {
 
-/**
- * Exception class for database operations
- */
-class DatabaseException : public std::exception {
-private:
-    std::string message_;
-    int errorCode_;
+    // ==========================================================================
+    // English: DatabaseException class
+    // 한글: DatabaseException 클래스
+    // ==========================================================================
 
-public:
-    DatabaseException(const std::string& message, int errorCode = 0)
-        : message_(message), errorCode_(errorCode) {}
+    /**
+     * English: Exception class for database operations
+     * 한글: 데이터베이스 작업용 예외 클래스
+     */
+    class DatabaseException : public std::exception 
+    {
+    public:
+        // English: Constructor
+        // 한글: 생성자
+        DatabaseException(const std::string& message, int errorCode = 0)
+            : mMessage(message)
+            , mErrorCode(errorCode) 
+        {
+        }
 
-    const char* what() const noexcept override {
-        return message_.c_str();
-    }
+        // English: Get error message
+        // 한글: 에러 메시지 조회
+        const char* what() const noexcept override 
+        {
+            return mMessage.c_str();
+        }
 
-    int getErrorCode() const { return errorCode_; }
-};
+        // English: Get error code
+        // 한글: 에러 코드 조회
+        int GetErrorCode() const 
+        { 
+            return mErrorCode; 
+        }
 
-} // namespace Network::Database
+    private:
+        std::string mMessage;
+        int mErrorCode;
+    };
+
+}  // namespace Database
+}  // namespace Network

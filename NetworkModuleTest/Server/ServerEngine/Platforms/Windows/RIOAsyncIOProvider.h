@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // English: RIO (Registered I/O) based AsyncIOProvider implementation for Windows 8+
 // 한글: Windows 8+ 용 RIO (등록 I/O) 기반 AsyncIOProvider 구현

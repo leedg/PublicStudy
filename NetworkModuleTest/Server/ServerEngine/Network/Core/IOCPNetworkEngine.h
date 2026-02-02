@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 // English: IOCP-based INetworkEngine implementation
-// ?쒓?: IOCP 湲곕컲 INetworkEngine 援ы쁽
+// 한글: IOCP 기반 INetworkEngine 구현
 
 #include "NetworkEngine.h"
 #include "Session.h"
@@ -15,7 +15,7 @@ namespace Network::Core
 {
     // =============================================================================
     // English: IOCPNetworkEngine - concrete INetworkEngine using IOCP
-    // ?쒓?: IOCPNetworkEngine - IOCP ?ъ슜 INetworkEngine 援ы쁽泥?
+    // 한글: IOCPNetworkEngine - IOCP 사용 INetworkEngine 구현체
     // =============================================================================
 
     class IOCPNetworkEngine : public INetworkEngine
@@ -26,7 +26,7 @@ namespace Network::Core
 
         // =====================================================================
         // English: INetworkEngine interface implementation
-        // ?쒓?: INetworkEngine ?명꽣?섏씠??援ы쁽
+        // 한글: INetworkEngine 인터페이스 구현
         // =====================================================================
 
         bool Initialize(size_t maxConnections, uint16_t port) override;
@@ -45,37 +45,37 @@ namespace Network::Core
 
         // =====================================================================
         // English: Logic thread pool access
-        // ?쒓?: 濡쒖쭅 ?ㅻ젅??? ?묎렐
+        // 한글: 로직 스레드 풀 접근
         // =====================================================================
 
         Utils::ThreadPool& GetLogicThreadPool() { return mLogicThreadPool; }
 
     private:
         // English: Internal initialization
-        // ?쒓?: ?대? 珥덇린??
+        // 한글: 내부 초기화
         bool InitializeWinsock();
         bool CreateListenSocket();
         bool CreateIOCP();
 
         // English: Thread functions
-        // ?쒓?: ?ㅻ젅???⑥닔
+        // 한글: 스레드 함수
         void AcceptThread();
         void WorkerThread();
 
         // English: IO completion handlers
-        // ?쒓?: IO ?꾨즺 ?몃뱾??
+        // 한글: IO 완료 핸들러
         void ProcessRecvCompletion(SessionRef session, uint32_t bytesTransferred);
         void ProcessSendCompletion(SessionRef session, uint32_t bytesTransferred);
 
         // English: Fire event callback
-        // ?쒓?: ?대깽??肄쒕갚 ?몄텧
+        // 한글: 이벤트 콜백 호출
         void FireEvent(NetworkEvent eventType, Utils::ConnectionId connId,
                        const uint8_t* data = nullptr, size_t dataSize = 0,
                        OSError errorCode = 0);
 
     private:
         // English: Socket & IOCP handles
-        // ?쒓?: ?뚯폆 & IOCP ?몃뱾
+        // 한글: 소켓 & IOCP 핸들
         SocketHandle            mListenSocket;
         uint16_t                mPort;
         size_t                  mMaxConnections;
@@ -85,26 +85,25 @@ namespace Network::Core
 #endif
 
         // English: Threads
-        // ?쒓?: ?ㅻ젅??
+        // 한글: 스레드
         std::thread             mAcceptThread;
         std::vector<std::thread> mWorkerThreads;
         std::atomic<bool>       mRunning;
         std::atomic<bool>       mInitialized;
 
         // English: Logic thread pool (for async business logic)
-        // ?쒓?: 濡쒖쭅 ?ㅻ젅??? (鍮꾨룞湲?鍮꾩쫰?덉뒪 濡쒖쭅??
+        // 한글: 로직 스레드 풀 (비동기 비즈니스 로직용)
         Utils::ThreadPool       mLogicThreadPool;
 
         // English: Event callbacks
-        // ?쒓?: ?대깽??肄쒕갚
+        // 한글: 이벤트 콜백
         std::unordered_map<NetworkEvent, NetworkEventCallback> mCallbacks;
         std::mutex              mCallbackMutex;
 
         // English: Statistics
-        // ?쒓?: ?듦퀎
+        // 한글: 통계
         mutable std::mutex      mStatsMutex;
         INetworkEngine::Statistics              mStats;
     };
 
 } // namespace Network::Core
-
