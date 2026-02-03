@@ -144,11 +144,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\GameSession.cpp" />
+    <ClCompile Include="src\TestClientPacketHandler.cpp" />
+    <ClCompile Include="src\TestDbServerMessageHandler.cpp" />
     <ClCompile Include="src\TestServer.cpp" />
     <ClCompile Include="src\TestMessageHandler.cpp" />
     <ClCompile Include="src\TestDatabaseManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\GameSession.h" />
+    <ClInclude Include="include\TestClientPacketHandler.h" />
+    <ClInclude Include="include\TestDbServerMessageHandler.h" />
     <ClInclude Include="include\TestServer.h" />
     <ClInclude Include="include\TestMessageHandler.h" />
     <ClInclude Include="include\TestDatabaseManager.h" />
