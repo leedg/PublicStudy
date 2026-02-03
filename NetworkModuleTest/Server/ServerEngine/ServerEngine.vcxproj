@@ -127,6 +127,7 @@
     <ClInclude Include="Network\Core\NetworkEngine.h" />
     <ClInclude Include="Network\Core\PlatformDetect.h" />
     <ClInclude Include="Network\Core\PacketDefine.h" />
+    <ClInclude Include="Network\Core\ServerPacketDefine.h" />
     <ClInclude Include="Network\Core\Session.h" />
     <ClInclude Include="Network\Core\SessionManager.h" />
     <ClInclude Include="Network\Core\IOCPNetworkEngine.h" />
