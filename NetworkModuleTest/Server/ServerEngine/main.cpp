@@ -7,11 +7,11 @@
 
 int main()
 {
-    std::cout << "ServerEngine - Network Module Test" << std::endl;
-    
-    // Simple test
-    auto platform = Network::AsyncIO::Platform::DetectPlatform();
-    std::cout << "Current platform detected successfully." << std::endl;
-    
-    return 0;
+	std::cout << "ServerEngine - Network Module Test" << std::endl;
+
+	// Simple test
+	auto platform = Network::AsyncIO::Platform::DetectPlatform();
+	std::cout << "Current platform detected successfully." << std::endl;
+
+	return 0;
 }

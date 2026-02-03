@@ -4,7 +4,8 @@
 #include <cstdint>
 #include <vector>
 
-namespace Network::Interfaces {
+namespace Network::Interfaces
+{
 
 // Type definitions
 using ConnectionId = uint64_t;
@@ -12,11 +13,12 @@ using ConnectionId = uint64_t;
 /**
  * Message structure
  */
-struct Message {
-    MessageType type = MessageType::Unknown;
-    ConnectionId connectionId = 0;
-    std::vector<uint8_t> data;
-    uint64_t timestamp = 0;
+struct Message
+{
+	MessageType type = MessageType::Unknown;
+	ConnectionId connectionId = 0;
+	std::vector<uint8_t> data;
+	uint64_t timestamp = 0;
 };
 
 } // namespace Network::Interfaces
