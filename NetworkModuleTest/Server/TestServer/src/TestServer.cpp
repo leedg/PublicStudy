@@ -1,199 +1,153 @@
-// English: TestServer implementation
-// 한글: TestServer 구현
+// English: TestServer implementation with separated handlers
+// Korean: 분리된 핸들러를 가진 TestServer 구현
 
 #include "../include/TestServer.h"
-#include "../include/GameSession.h"
 #include <iostream>
-
-using namespace Network::Core;
-using namespace Network::Utils;
-
-#ifdef ENABLE_DATABASE_SUPPORT
-using namespace Network::Database;
-#endif
 
 namespace Network::TestServer
 {
-TestServer::TestServer()
-	: mIsRunning(false), mPort(0), mDbServerConnectionId(0)
-{
-}
+    using namespace Network::Core;
+    using namespace Network::Utils;
 
-TestServer::~TestServer()
-{
-	if (mIsRunning.load())
-	{
-		Stop();
-	}
-}
+    // =============================================================================
+    // English: TestServer implementation
+    // Korean: TestServer 구현
+    // =============================================================================
 
-bool TestServer::Initialize(uint16_t port,
-							const std::string &dbConnectionString)
-{
-	// English: Initialize DB connection pool (optional)
-	// 한글: DB 연결 풀 초기화 (선택 사항)
-#ifdef ENABLE_DATABASE_SUPPORT
-	if (!dbConnectionString.empty())
-	{
-		if (!DBConnectionPool::Instance().Initialize(dbConnectionString, 5))
-		{
-			Logger::Warn(
-				"Failed to initialize DB pool (continuing without DB)");
-		}
-	}
-	else
-	{
-		Logger::Info("No DB connection string - running without DB");
-	}
-#else
-	(void)dbConnectionString; // Suppress unused warning
-	Logger::Info("Database support disabled at compile time");
-#endif
+    TestServer::TestServer()
+        : mIsRunning(false)
+        , mPort(0)
+    {
+    }
 
-	// English: Create and initialize network engine
-	// 한글: 네트워크 엔진 생성 및 초기화
-	mEngine =
-		std::unique_ptr<Core::IOCPNetworkEngine>(new Core::IOCPNetworkEngine());
+    TestServer::~TestServer()
+    {
+        if (mIsRunning.load())
+        {
+            Stop();
+        }
+    }
 
-	if (!mEngine->Initialize(MAX_CONNECTIONS, port))
-	{
-		Logger::Error("Failed to initialize network engine");
-		return false;
-	}
+    bool TestServer::Initialize(uint16_t port, const std::string& dbConnectionString)
+    {
+        mPort = port;
+        mDbConnectionString = dbConnectionString;
 
-	// English: Register event callbacks
-	// 한글: 이벤트 콜백 등록
-	mEngine->RegisterEventCallback(NetworkEvent::Connected,
-									   [this](const NetworkEventData &e)
-									   { OnConnectionEstablished(e); });
+        // English: Initialize DB packet handler for server-to-server communication
+        // Korean: 서버 간 통신을 위한 DB 패킷 핸들러 초기화
+        mDBPacketHandler = std::make_unique<DBServerPacketHandler>();
 
-	mEngine->RegisterEventCallback(NetworkEvent::Disconnected,
-									   [this](const NetworkEventData &e)
-									   { OnConnectionClosed(e); });
+        // English: Create and initialize client network engine
+        // Korean: 클라이언트 네트워크 엔진 생성 및 초기화
+        mClientEngine = std::make_unique<IOCPNetworkEngine>();
 
-	mEngine->RegisterEventCallback(NetworkEvent::DataReceived,
-									   [this](const NetworkEventData &e)
-									   { OnDataReceived(e); });
+        constexpr size_t MAX_CONNECTIONS = 10000;
+        if (!mClientEngine->Initialize(MAX_CONNECTIONS, port))
+        {
+            Logger::Error("Failed to initialize client network engine");
+            return false;
+        }
 
-	// 한글: DB 서버 메시지 핸들러 초기화 및 전송 콜백 연결
-	mDbServerHandler.Initialize();
-	mDbServerHandler.SetSendCallback(
-		[this](Network::Protocols::ConnectionId connectionId,
-			   const std::vector<uint8_t> &data)
-		{
-			(void)connectionId;
-			// 한글: 실제 전송은 추후 네트워크 모듈과 연결한다.
-			Logger::Debug("DBServer send requested - bytes: " +
-						  std::to_string(data.size()));
-		});
+        // English: Register event callbacks for client connections
+        // Korean: 클라이언트 연결에 대한 이벤트 콜백 등록
+        mClientEngine->RegisterEventCallback(NetworkEvent::Connected,
+            [this](const NetworkEventData& e) { OnClientConnectionEstablished(e); });
 
-	Logger::Info("TestServer initialized on port " + std::to_string(port));
-	return true;
-}
+        mClientEngine->RegisterEventCallback(NetworkEvent::Disconnected,
+            [this](const NetworkEventData& e) { OnClientConnectionClosed(e); });
 
-bool TestServer::Start()
-{
-	if (!mEngine)
-	{
-		Logger::Error("TestServer not initialized");
-		return false;
-	}
+        mClientEngine->RegisterEventCallback(NetworkEvent::DataReceived,
+            [this](const NetworkEventData& e) { OnClientDataReceived(e); });
 
-	if (!mEngine->Start())
-	{
-		Logger::Error("Failed to start network engine");
-		return false;
-	}
+        Logger::Info("TestServer initialized on port " + std::to_string(port));
+        return true;
+    }
 
-	mIsRunning.store(true);
-	Logger::Info("TestServer started");
-	return true;
-}
+    bool TestServer::Start()
+    {
+        if (!mClientEngine)
+        {
+            Logger::Error("TestServer not initialized");
+            return false;
+        }
 
-void TestServer::Stop()
-{
-	if (!mIsRunning.load())
-	{
-		return;
-	}
+        if (!mClientEngine->Start())
+        {
+            Logger::Error("Failed to start client network engine");
+            return false;
+        }
 
-	mIsRunning.store(false);
+        mIsRunning.store(true);
+        Logger::Info("TestServer started");
+        return true;
+    }
 
-	if (mEngine)
-	{
-		mEngine->Stop();
-	}
+    void TestServer::Stop()
+    {
+        if (!mIsRunning.load())
+        {
+            return;
+        }
 
-	// English: Shutdown DB pool
-	// 한글: DB 풀 종료
-#ifdef ENABLE_DATABASE_SUPPORT
-	if (DBConnectionPool::Instance().IsInitialized())
-	{
-		DBConnectionPool::Instance().Shutdown();
-	}
-#endif
+        mIsRunning.store(false);
 
-	Logger::Info("TestServer stopped");
-}
+        if (mClientEngine)
+        {
+            mClientEngine->Stop();
+        }
 
-bool TestServer::IsRunning() const { return mIsRunning.load(); }
+        // English: Disconnect from DB server if connected
+        // Korean: DB 서버에 연결되어 있다면 연결 해제
+        if (mDBServerSession)
+        {
+            mDBServerSession->Close();
+            mDBServerSession.reset();
+        }
 
-void TestServer::BindDbServerConnection(
-	Network::Protocols::ConnectionId connectionId)
-{
-	// 한글: DB 서버 연결 ID를 저장해 이후 Ping 전송에 사용한다.
-	mDbServerConnectionId = connectionId;
-	Logger::Info("DBServer connection bound - ID: " +
-				 std::to_string(connectionId));
-}
+        Logger::Info("TestServer stopped");
+    }
 
-void TestServer::OnDbServerDataReceived(
-	Network::Protocols::ConnectionId connectionId, const uint8_t *data,
-	size_t size)
-{
-	// 한글: DB 서버 데이터는 전용 핸들러로 분리 처리한다.
-	if (!data || size == 0)
-	{
-		Logger::Warn("DBServer data ignored - empty payload");
-		return;
-	}
+    bool TestServer::IsRunning() const
+    {
+        return mIsRunning.load();
+    }
 
-	mDbServerHandler.ProcessIncomingData(connectionId, data, size);
-}
+    bool TestServer::ConnectToDBServer(const std::string& host, uint16_t port)
+    {
+        Logger::Info("Connecting to DB server at " + host + ":" + std::to_string(port));
 
-void TestServer::SendPingToDbServer(const std::string &message)
-{
-	if (mDbServerConnectionId == 0)
-	{
-		Logger::Warn("DBServer connection not bound - skipping ping");
-		return;
-	}
+        // English: TODO - Implement client-side connection to DB server
+        // Korean: TODO - DB 서버로의 클라이언트 측 연결 구현
+        // For now, this is a placeholder
+        // In full implementation, you would:
+        // 1. Create a client socket
+        // 2. Connect to DB server
+        // 3. Create a session for the connection
+        // 4. Set up packet handler
 
-	mDbServerHandler.SendPing(mDbServerConnectionId, message);
-}
+        Logger::Warn("ConnectToDBServer not yet fully implemented");
+        return false;
+    }
 
-void TestServer::OnConnectionEstablished(const NetworkEventData &eventData)
-{
-	Logger::Info("Client accepted - Connection: " +
-				 std::to_string(eventData.connectionId));
-}
+    void TestServer::OnClientConnectionEstablished(const NetworkEventData& eventData)
+    {
+        Logger::Info("Client connected - Connection: " + std::to_string(eventData.connectionId));
+    }
 
-void TestServer::OnConnectionClosed(const NetworkEventData &eventData)
-{
-	Logger::Info("Client disconnected - Connection: " +
-				 std::to_string(eventData.connectionId));
-}
+    void TestServer::OnClientConnectionClosed(const NetworkEventData& eventData)
+    {
+        Logger::Info("Client disconnected - Connection: " + std::to_string(eventData.connectionId));
+    }
 
-void TestServer::OnDataReceived(const NetworkEventData &eventData)
-{
-	Logger::Debug(
-		"Received " + std::to_string(eventData.dataSize) +
-		" bytes from Connection: " + std::to_string(eventData.connectionId));
-}
+    void TestServer::OnClientDataReceived(const NetworkEventData& eventData)
+    {
+        Logger::Debug("Received " + std::to_string(eventData.dataSize) +
+            " bytes from client Connection: " + std::to_string(eventData.connectionId));
+    }
 
-SessionRef TestServer::CreateGameSession()
-{
-	return std::make_shared<GameSession>();
-}
+    SessionRef TestServer::CreateGameSession()
+    {
+        return std::make_shared<GameSession>();
+    }
 
 } // namespace Network::TestServer

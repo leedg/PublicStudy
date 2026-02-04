@@ -72,7 +72,7 @@ bool DBServer::Initialize(uint16_t port, size_t maxConnections)
     mMessageHandler = std::make_unique<MessageHandler>();
     mPingPongHandler = std::make_unique<PingPongHandler>();
     // 한글: Ping/Pong 시간 기록용 DB 처리 모듈 준비
-    mDbProcessingModule = std::make_unique<DBProcessingModule>();
+    mDbPingTimeManager = std::make_unique<DBPingTimeManager>();
 
     // Register message handlers
     mMessageHandler->RegisterHandler(
@@ -198,11 +198,12 @@ void DBServer::OnPingMessage(const Message &message)
     }
 
     // 한글: Ping/Pong 시간을 GMT 기준으로 기록한다.
-    if (mDbProcessingModule)
+    if (mDbPingTimeManager)
     {
-        mDbProcessingModule->RecordPingPongTimeUtc(
-            message.mConnectionId, mPingPongHandler->GetLastPingTimestamp(),
-            mPingPongHandler->GetLastPongTimestamp());
+        mDbPingTimeManager->SavePingTime(
+            static_cast<uint32_t>(message.mConnectionId),
+            "TestServer",
+            mPingPongHandler->GetLastPingTimestamp());
     }
 
     SendMessage(message.mConnectionId, MessageType::Pong, pongData.data(),

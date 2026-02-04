@@ -1,88 +1,142 @@
-// English: TestDBServer entry point
-// 한글: TestDBServer 진입점
+// English: TestDBServer entry point - initializes and runs the database server
+// Korean: TestDBServer 진입점 - 데이터베이스 서버 초기화 및 실행
 
-#include "include/DBServer.h"
-#include <atomic>
-#include <chrono>
-#include <csignal>
+#include "include/TestDBServer.h"
+#include "Utils/NetworkUtils.h"
 #include <iostream>
 #include <string>
+#include <csignal>
 #include <thread>
+#include <chrono>
+#include <atomic>
 
-static std::atomic<bool> gRunning{true};
+// English: Global server instance for signal handling
+// Korean: 시그널 처리용 전역 서버 인스턴스
+static Network::DBServer::TestDBServer* g_pServer = nullptr;
+static std::atomic<bool> g_Running{ true };
 
+// English: Signal handler for graceful shutdown
+// Korean: 정상 종료를 위한 시그널 핸들러
 void SignalHandler(int signum)
 {
-	(void)signum;
-	gRunning = false;
+    Network::Utils::Logger::Info("Signal received: " + std::to_string(signum));
+    g_Running = false;
 }
 
-void PrintUsage(const char *programName)
+// English: Print usage information
+// Korean: 사용법 출력
+void PrintUsage(const char* programName)
 {
-	std::cout << "Usage: " << programName << " [options]" << std::endl;
-	std::cout << "Options:" << std::endl;
-	std::cout << "  -p <port>       Server port (default: 8002)" << std::endl;
-	std::cout << "  -m <max>        Max connections (default: 1000)"
-			  << std::endl;
-	std::cout << "  -h              Show this help" << std::endl;
+    std::cout << "Usage: " << programName << " [options]" << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::cout << "  -p <port>       Server port (default: 8001)" << std::endl;
+    std::cout << "  -l <level>      Log level: DEBUG, INFO, WARN, ERROR (default: INFO)" << std::endl;
+    std::cout << "  -h              Show this help" << std::endl;
 }
 
-int main(int argc, char *argv[])
+// English: Parse log level string
+// Korean: 로그 레벨 문자열 파싱
+Network::Utils::LogLevel ParseLogLevel(const std::string& level)
 {
-	uint16_t port = 8002;
-	size_t maxConnections = 1000;
+    std::string upper = Network::Utils::StringUtils::ToUpper(level);
+    if (upper == "DEBUG") return Network::Utils::LogLevel::Debug;
+    if (upper == "WARN")  return Network::Utils::LogLevel::Warn;
+    if (upper == "ERROR") return Network::Utils::LogLevel::Err;
+    return Network::Utils::LogLevel::Info;
+}
 
-	for (int i = 1; i < argc; ++i)
-	{
-		const std::string arg = argv[i];
-		if (arg == "-h" || arg == "--help")
-		{
-			PrintUsage(argv[0]);
-			return 0;
-		}
-		if (arg == "-p" && i + 1 < argc)
-		{
-			port = static_cast<uint16_t>(std::stoi(argv[++i]));
-			continue;
-		}
-		if (arg == "-m" && i + 1 < argc)
-		{
-			maxConnections = static_cast<size_t>(std::stoul(argv[++i]));
-			continue;
-		}
+int main(int argc, char* argv[])
+{
+    std::cout << "====================================" << std::endl;
+    std::cout << "  TestDBServer - Database Server" << std::endl;
+    std::cout << "====================================" << std::endl;
 
-		std::cerr << "Unknown option: " << arg << std::endl;
-		PrintUsage(argv[0]);
-		return 1;
-	}
+    // English: Default settings
+    // Korean: 기본 설정
+    uint16_t port = 8001;
+    Network::Utils::LogLevel logLevel = Network::Utils::LogLevel::Info;
 
-	Network::DBServer::DBServer server;
+    // English: Parse command line arguments
+    // Korean: 커맨드라인 인자 파싱
+    for (int i = 1; i < argc; ++i)
+    {
+        std::string arg = argv[i];
 
-	// 한글: 신호 처리로 안전하게 종료할 수 있도록 설정한다.
-	std::signal(SIGINT, SignalHandler);
-	std::signal(SIGTERM, SignalHandler);
+        if (arg == "-h" || arg == "--help")
+        {
+            PrintUsage(argv[0]);
+            return 0;
+        }
+        else if (arg == "-p" && i + 1 < argc)
+        {
+            port = static_cast<uint16_t>(std::stoi(argv[++i]));
+        }
+        else if (arg == "-l" && i + 1 < argc)
+        {
+            logLevel = ParseLogLevel(argv[++i]);
+        }
+        else
+        {
+            std::cerr << "Unknown option: " << arg << std::endl;
+            PrintUsage(argv[0]);
+            return 1;
+        }
+    }
 
-	if (!server.Initialize(port, maxConnections))
-	{
-		std::cerr << "Failed to initialize DBServer" << std::endl;
-		return 1;
-	}
+    // English: Setup logging
+    // Korean: 로깅 설정
+    Network::Utils::Logger::SetLevel(logLevel);
 
-	if (!server.Start())
-	{
-		std::cerr << "Failed to start DBServer" << std::endl;
-		return 1;
-	}
+    // English: Register signal handlers
+    // Korean: 시그널 핸들러 등록
+    std::signal(SIGINT, SignalHandler);
+    std::signal(SIGTERM, SignalHandler);
+#ifdef _WIN32
+    // English: SIGBREAK is Windows-specific
+    // Korean: SIGBREAK는 Windows 전용
+    #ifdef SIGBREAK
+    std::signal(SIGBREAK, SignalHandler);
+    #endif
+#endif
 
-	std::cout << "DBServer running on port " << port << std::endl;
+    // English: Create and initialize server
+    // Korean: 서버 생성 및 초기화
+    Network::DBServer::TestDBServer server;
+    g_pServer = &server;
 
-	while (gRunning && server.IsRunning())
-	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	}
+    Network::Utils::Logger::Info("Initializing TestDBServer on port " + std::to_string(port));
 
-	// 한글: 종료 요청 시 서버를 정상적으로 정리한다.
-	server.Stop();
+    if (!server.Initialize(port))
+    {
+        Network::Utils::Logger::Error("Failed to initialize server");
+        return 1;
+    }
 
-	return 0;
+    // English: Start server
+    // Korean: 서버 시작
+    if (!server.Start())
+    {
+        Network::Utils::Logger::Error("Failed to start server");
+        return 1;
+    }
+
+    Network::Utils::Logger::Info("TestDBServer is running. Press Ctrl+C to stop.");
+
+    // English: Main loop - wait for shutdown signal
+    // Korean: 메인 루프 - 종료 시그널 대기
+    while (g_Running && server.IsRunning())
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    // English: Graceful shutdown
+    // Korean: 정상 종료
+    Network::Utils::Logger::Info("Shutting down TestDBServer...");
+    server.Stop();
+    g_pServer = nullptr;
+
+    Network::Utils::Logger::Info("TestDBServer stopped.");
+    std::cout << "Server shutdown complete." << std::endl;
+
+    return 0;
 }

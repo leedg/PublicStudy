@@ -3,7 +3,7 @@
 // English: Database Server main header
 // ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 筌롫뗄????삳쐭
 
-#include "DBProcessingModule.h"
+#include "DBPingTimeManager.h"
 #include "../ServerEngine/Network/Core/AsyncIOProvider.h"
 #include "../ServerEngine/Tests/Protocols/MessageHandler.h"
 #include "../ServerEngine/Tests/Protocols/PingPong.h"
@@ -167,7 +167,7 @@ class DBServer
 	std::unique_ptr<Protocols::MessageHandler> mMessageHandler;
 	std::unique_ptr<Protocols::PingPongHandler> mPingPongHandler;
 	// 한글: Ping/Pong 시간 저장을 위한 DB 처리 모듈
-	std::unique_ptr<DBProcessingModule> mDbProcessingModule;
+	std::unique_ptr<DBPingTimeManager> mDbPingTimeManager;
 
 	// Server state
 	std::atomic<bool> mIsRunning;
