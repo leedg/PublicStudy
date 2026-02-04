@@ -31,10 +31,10 @@
     <ClCompile Include="src\GameSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\TestClientPacketHandler.cpp">
+    <ClCompile Include="src\ClientPacketHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\TestDbServerMessageHandler.cpp">
+    <ClCompile Include="src\DBServerPacketHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClInclude Include="include\TestServer.h">
@@ -43,10 +43,10 @@
     <ClInclude Include="include\GameSession.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\TestClientPacketHandler.h">
+    <ClInclude Include="include\ClientPacketHandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\TestDbServerMessageHandler.h">
+    <ClInclude Include="include\DBServerPacketHandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
