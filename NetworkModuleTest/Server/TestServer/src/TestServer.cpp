@@ -180,9 +180,10 @@ namespace Network::TestServer
             return false;
         }
 
-        // English: Create session for DB server connection
-        // 한글: DB 서버 연결을 위한 세션 생성
-        mDBServerSession = std::make_shared<Core::Session>(static_cast<uint64_t>(clientSocket), clientSocket);
+        // English: Create and initialize session for DB server connection
+        // 한글: DB 서버 연결을 위한 세션 생성 및 초기화
+        mDBServerSession = std::make_shared<Core::Session>();
+        mDBServerSession->Initialize(static_cast<uint64_t>(clientSocket), clientSocket);
         
         // English: Initialize packet handler for DB server
         // 한글: DB 서버용 패킷 핸들러 초기화
