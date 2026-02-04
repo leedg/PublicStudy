@@ -49,9 +49,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="CMakeLists.txt">
-      <Filter>Resource Files</Filter>
-    </None>
     <None Include="odbc_sample.cpp">
       <Filter>Source Files</Filter>
     </None>
@@ -60,6 +57,28 @@
     </None>
     <None Include="test_database.cpp">
       <Filter>Source Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Documentation">
+      <UniqueIdentifier>{042EF0E6-187B-4837-B2BF-BF32F49984A5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Documentation\Doc">
+      <UniqueIdentifier>{0C71A0E0-5015-40E2-9A41-5A83094ACFA9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Doc\README.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\README_SHORT.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\VERSION_SELECTOR.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="README.md">
+      <Filter>Documentation</Filter>
     </None>
   </ItemGroup>
 </Project>

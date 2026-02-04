@@ -241,4 +241,26 @@
   <ItemGroup>
     <ClCompile Include="Database\ODBCDatabase_new.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Documentation">
+      <UniqueIdentifier>{C7208E7F-31AB-4F71-AA51-3403F26FC837}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Documentation\Database">
+      <UniqueIdentifier>{B7961C06-14F9-4F14-84DC-C38CA29AD092}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Database\COMPILER_FIXES.md">
+      <Filter>Documentation\Database</Filter>
+    </None>
+    <None Include="Database\MIGRATION_GUIDE.md">
+      <Filter>Documentation\Database</Filter>
+    </None>
+    <None Include="Database\README.md">
+      <Filter>Documentation\Database</Filter>
+    </None>
+    <None Include="REFACTORING_PLAN.md">
+      <Filter>Documentation</Filter>
+    </None>
+  </ItemGroup>
 </Project>

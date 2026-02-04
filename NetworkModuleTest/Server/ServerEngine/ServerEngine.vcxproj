@@ -203,4 +203,10 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <None Include="Database\COMPILER_FIXES.md" />
+    <None Include="Database\MIGRATION_GUIDE.md" />
+    <None Include="Database\README.md" />
+    <None Include="REFACTORING_PLAN.md" />
+  </ItemGroup>
 </Project>

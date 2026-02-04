@@ -11,32 +11,10 @@ namespace Network::TestServer
 
     ClientPacketHandler::ClientPacketHandler()
     {
-        // English: Register all packet handlers on construction
-        // 한글: 생성 시 모든 패킷 핸들러 등록
-        RegisterHandlers();
     }
 
     ClientPacketHandler::~ClientPacketHandler()
     {
-    }
-
-    void ClientPacketHandler::RegisterHandlers()
-    {
-        // English: Register SessionConnectReq handler
-        // 한글: SessionConnectReq 핸들러 등록
-        mHandlers[static_cast<uint16_t>(PacketType::SessionConnectReq)] =
-            [this](Core::Session* session, const char* data, uint32_t size)
-            {
-                HandleConnectRequest(session, reinterpret_cast<const PKT_SessionConnectReq*>(data));
-            };
-
-        // English: Register PingReq handler
-        // 한글: PingReq 핸들러 등록
-        mHandlers[static_cast<uint16_t>(PacketType::PingReq)] =
-            [this](Core::Session* session, const char* data, uint32_t size)
-            {
-                HandlePingRequest(session, reinterpret_cast<const PKT_PingReq*>(data));
-            };
     }
 
     void ClientPacketHandler::ProcessPacket(Core::Session* session, const char* data, uint32_t size)
@@ -56,16 +34,21 @@ namespace Network::TestServer
             return;
         }
 
-        // English: Dispatch to handler using functor map
-        // 한글: 펑터 맵을 사용하여 핸들러로 디스패치
-        auto it = mHandlers.find(header->id);
-        if (it != mHandlers.end())
+        PacketType packetType = static_cast<PacketType>(header->id);
+
+        switch (packetType)
         {
-            it->second(session, data, size);
-        }
-        else
-        {
+        case PacketType::SessionConnectReq:
+            HandleConnectRequest(session, reinterpret_cast<const PKT_SessionConnectReq*>(data));
+            break;
+
+        case PacketType::PingReq:
+            HandlePingRequest(session, reinterpret_cast<const PKT_PingReq*>(data));
+            break;
+
+        default:
             Logger::Warn("Unknown packet type from client: " + std::to_string(header->id));
+            break;
         }
     }
 

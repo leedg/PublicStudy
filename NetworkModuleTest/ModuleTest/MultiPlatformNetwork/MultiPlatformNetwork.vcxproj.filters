@@ -56,4 +56,77 @@
     <ClCompile Include="IocpAsyncIOProvider.cpp" />
     <ClCompile Include="RIOAsyncIOProvider.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Documentation">
+      <UniqueIdentifier>{EBC8A248-A58E-4A48-9716-E8A8EE599181}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Documentation\Doc">
+      <UniqueIdentifier>{8EAF8D0B-EC86-4850-8182-D0ACEE95365E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Doc\01_IOCP_Architecture_Analysis.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\02_Coding_Conventions_Guide.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\03_Implementation_Roadmap.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\04_Reference_Files_Guide.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\05_RIO_IO_URING_Migration_Plan.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\06_Cross_Platform_Architecture.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\07_API_Design_Document.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\08_Performance_Benchmarking_Guide.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\09_PHASE3_COMPLETION_SUMMARY.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\10_Document_Integrity_Review.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\11_Architecture_Decision_Session_Naming.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\12_Document_Enhancement_Execution_Plan.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\13_Unit_Testing_Strategy.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\14_CMake_Build_Configuration.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\15_Memory_Leak_Prevention.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\16_Fallback_Mechanisms.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\17_Platform_Selection_Logic_Fix.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\ANALYSIS_SUMMARY.txt">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\COMPREHENSIVE_REVIEW_2026-01-27.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\PHASE2_COMPLETION_SUMMARY.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\README.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+  </ItemGroup>
 </Project>

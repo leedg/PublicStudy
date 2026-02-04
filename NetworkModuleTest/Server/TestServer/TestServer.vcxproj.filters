@@ -70,4 +70,14 @@
       <Filter>Implementations\Database</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Documentation">
+      <UniqueIdentifier>{E84E3D7F-3AF4-4715-8243-0DC95DDAE433}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="NAMING_CONVENTIONS.md">
+      <Filter>Documentation</Filter>
+    </None>
+  </ItemGroup>
 </Project>

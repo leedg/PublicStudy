@@ -6,6 +6,10 @@
 #include <cstdint>
 #include <ctime>
 
+// English: Disable padding for network packets to ensure consistent byte layout
+// 한글: 네트워크 패킷의 패딩을 비활성화하여 일관된 바이트 레이아웃 보장
+#pragma pack(push, 1)
+
 namespace Network::Core
 {
     // =============================================================================
@@ -166,3 +170,7 @@ namespace Network::Core
     };
 
 } // namespace Network::Core
+
+// English: Restore default packing
+// 한글: 기본 패킹으로 복원
+#pragma pack(pop)

@@ -12,6 +12,9 @@ namespace Network::DBServer
     ServerPacketHandler::ServerPacketHandler()
         : mDBPingTimeManager(nullptr)
     {
+        // English: Register all packet handlers
+        // 한글: 모든 패킷 핸들러 등록
+        RegisterHandlers();
     }
 
     ServerPacketHandler::~ServerPacketHandler()
@@ -21,6 +24,23 @@ namespace Network::DBServer
     void ServerPacketHandler::Initialize(DBPingTimeManager* dbPingTimeManager)
     {
         mDBPingTimeManager = dbPingTimeManager;
+    }
+
+    void ServerPacketHandler::RegisterHandlers()
+    {
+        // English: Register handler functors for each packet type
+        // 한글: 각 패킷 타입에 대한 핸들러 펑터 등록
+        mHandlers[static_cast<uint16_t>(ServerPacketType::ServerPingReq)] =
+            [this](Core::Session* session, const char* data, uint32_t size)
+            {
+                HandleServerPingRequest(session, reinterpret_cast<const PKT_ServerPingReq*>(data));
+            };
+
+        mHandlers[static_cast<uint16_t>(ServerPacketType::DBSavePingTimeReq)] =
+            [this](Core::Session* session, const char* data, uint32_t size)
+            {
+                HandleDBSavePingTimeRequest(session, reinterpret_cast<const PKT_DBSavePingTimeReq*>(data));
+            };
     }
 
     void ServerPacketHandler::ProcessPacket(Core::Session* session, const char* data, uint32_t size)
@@ -40,21 +60,16 @@ namespace Network::DBServer
             return;
         }
 
-        ServerPacketType packetType = static_cast<ServerPacketType>(header->id);
-
-        switch (packetType)
+        // English: Use functor map to dispatch packet handler
+        // 한글: 펑터 맵을 사용하여 패킷 핸들러 디스패치
+        auto it = mHandlers.find(header->id);
+        if (it != mHandlers.end())
         {
-        case ServerPacketType::ServerPingReq:
-            HandleServerPingRequest(session, reinterpret_cast<const PKT_ServerPingReq*>(data));
-            break;
-
-        case ServerPacketType::DBSavePingTimeReq:
-            HandleDBSavePingTimeRequest(session, reinterpret_cast<const PKT_DBSavePingTimeReq*>(data));
-            break;
-
-        default:
+            it->second(session, data, size);
+        }
+        else
+        {
             Logger::Warn("Unknown packet type from game server: " + std::to_string(header->id));
-            break;
         }
     }
 

@@ -168,4 +168,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <None Include="NAMING_CONVENTIONS.md" />
+  </ItemGroup>
 </Project>

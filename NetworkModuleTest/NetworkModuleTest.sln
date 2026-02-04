@@ -14,6 +14,26 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "8.Client", "8.Client", "{6E
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ModuleTest", "ModuleTest", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567891}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{9A33AC95-D8A2-4079-9534-5C3B07AF956C}"
+	ProjectSection(SolutionItems) = preProject
+		Doc\API.md = Doc\API.md
+		Doc\Architecture.md = Doc\Architecture.md
+		BUILD_CHECKLIST.md = BUILD_CHECKLIST.md
+		BUILD_READY.md = BUILD_READY.md
+		Database_Module_Enhancement_Summary.md = Database_Module_Enhancement_Summary.md
+		Doc\Development.md = Doc\Development.md
+		Doc\DevelopmentGuide.md = Doc\DevelopmentGuide.md
+		FINAL_BUILD_FIXES.md = FINAL_BUILD_FIXES.md
+		FINAL_CHANGES_SUMMARY.md = FINAL_CHANGES_SUMMARY.md
+		FIX_SUMMARY.md = FIX_SUMMARY.md
+		Doc\ProjectOverview.md = Doc\ProjectOverview.md
+		Doc\Protocol.md = Doc\Protocol.md
+		README.md = README.md
+		REFACTORING_CLASS_SEPARATION.md = REFACTORING_CLASS_SEPARATION.md
+		REFACTORING_COMPLETE.md = REFACTORING_COMPLETE.md
+		Doc\SolutionGuide.md = Doc\SolutionGuide.md
+	EndProjectSection
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ServerEngine", "Server\ServerEngine\ServerEngine.vcxproj", "{6EA11C87-7C8E-4AB0-973A-792CDC33894D}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestServer", "Server\TestServer\TestServer.vcxproj", "{AAAC174E-3170-4321-B390-303B3AFC2F5C}"
