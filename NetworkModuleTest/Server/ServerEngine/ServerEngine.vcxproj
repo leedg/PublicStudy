@@ -198,7 +198,15 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Utility Source Files -->
+    <ClInclude Include="Utils\BufferManager.h" />
+    <ClInclude Include="Utils\ConfigManager.h" />
+    <ClInclude Include="Utils\Logger.h" />
+    <ClInclude Include="Utils\NetworkTypes.h" />
     <ClInclude Include="Utils\NetworkUtils.h" />
+    <ClInclude Include="Utils\SafeQueue.h" />
+    <ClInclude Include="Utils\StringUtils.h" />
+    <ClInclude Include="Utils\ThreadPool.h" />
+    <ClInclude Include="Utils\Timer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

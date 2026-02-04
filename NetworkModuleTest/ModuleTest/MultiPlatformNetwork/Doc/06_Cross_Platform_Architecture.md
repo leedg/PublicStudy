@@ -2083,7 +2083,7 @@ for (int i = 0; i < count; i++)
     // 영문: Need to map context back to ObjectSession
     // 한글: context를 ObjectSession으로 매핑해야 함
     void* context = entries[i].context;
-    ObjectSession* session = ???;  // 어떻게 복원?
+    ObjectSession* session = nullptr;  // TODO: restore session
 }
 ```
 

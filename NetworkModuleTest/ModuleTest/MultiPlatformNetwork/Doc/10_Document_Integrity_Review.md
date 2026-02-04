@@ -72,7 +72,7 @@ void IocpObjectSession::HandleIocp(...)
 
 // 새 AsyncIOProvider로는 어떻게 되나?
 provider->SendAsync(socket, data, len, [this](const auto& result, void* ctx) {
-    // ???
+    // TODO
 });
 ```
 
@@ -222,7 +222,7 @@ auto session = pool.AcquireSession();  // session ID = 0~999
 
 // 새 AsyncIOProvider
 provider->SendAsync(socket, data, len, 
-    [&session](const auto& result, void* ctx) {  // ctx = ???
+    [&session](const auto& result, void* ctx) {  // ctx = TODO
         // ctx가 session 포인터라면?
         auto s = (IocpObjectSession*)ctx;
         // 그런데 이 session은 이미 반환되었을 수 있음!
@@ -575,4 +575,3 @@ endif()
 **검토 완료**: 2026-01-27  
 **검수자**: 자동 분석  
 **상태**: 보강 권고사항 제시 완료 ✅
-

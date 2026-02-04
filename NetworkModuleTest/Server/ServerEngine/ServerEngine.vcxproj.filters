@@ -78,6 +78,9 @@
     <ClInclude Include="Network\Core\PacketDefine.h">
       <Filter>Core\Network</Filter>
     </ClInclude>
+    <ClInclude Include="Network\Core\ServerPacketDefine.h">
+      <Filter>Core\Network</Filter>
+    </ClInclude>
     <ClInclude Include="Network\Core\Session.h">
       <Filter>Core\Network</Filter>
     </ClInclude>
@@ -231,7 +234,31 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Utils -->
+    <ClInclude Include="Utils\BufferManager.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\ConfigManager.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Logger.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\NetworkTypes.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
     <ClInclude Include="Utils\NetworkUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\SafeQueue.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\StringUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\ThreadPool.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Timer.h">
       <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>
