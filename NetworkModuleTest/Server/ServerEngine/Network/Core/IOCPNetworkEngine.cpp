@@ -370,7 +370,7 @@ void IOCPNetworkEngine::AcceptThread()
 				// English: Exponential backoff to prevent CPU spinning
 				// 한글: CPU 과부하 방지를 위한 지수 백오프
 				failureCount++;
-				uint32_t backoffMs = std::min(static_cast<uint32_t>(1 << failureCount), maxBackoffMs);
+				uint32_t backoffMs = (std::min)(static_cast<uint32_t>(1 << failureCount), maxBackoffMs);
 				std::this_thread::sleep_for(std::chrono::milliseconds(backoffMs));
 			}
 			continue;
