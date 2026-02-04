@@ -75,6 +75,14 @@ namespace Network::DBServer
 
     void ServerPacketHandler::HandleServerPingRequest(Core::Session* session, const PKT_ServerPingReq* packet)
     {
+        // English: Validate pointers
+        // 한글: 포인터 유효성 검사
+        if (!session || !packet)
+        {
+            Logger::Error("HandleServerPingRequest: null pointer");
+            return;
+        }
+
         Logger::Debug("Server ping received - Seq: " + std::to_string(packet->sequence));
 
         // English: Send pong response
@@ -91,6 +99,14 @@ namespace Network::DBServer
 
     void ServerPacketHandler::HandleDBSavePingTimeRequest(Core::Session* session, const PKT_DBSavePingTimeReq* packet)
     {
+        // English: Validate pointers
+        // 한글: 포인터 유효성 검사
+        if (!session || !packet)
+        {
+            Logger::Error("HandleDBSavePingTimeRequest: null pointer");
+            return;
+        }
+
         Logger::Info("DB save ping time request - ServerId: " + std::to_string(packet->serverId) +
             ", ServerName: " + std::string(packet->serverName));
 

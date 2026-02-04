@@ -71,6 +71,14 @@ namespace Network::TestServer
 
     void ClientPacketHandler::HandleConnectRequest(Core::Session* session, const PKT_SessionConnectReq* packet)
     {
+        // English: Validate pointers
+        // 한글: 포인터 유효성 검사
+        if (!session || !packet)
+        {
+            Logger::Error("HandleConnectRequest: null pointer");
+            return;
+        }
+
         Logger::Info("Client connect request - Session: " + std::to_string(session->GetId()) +
             ", ClientVersion: " + std::to_string(packet->clientVersion));
 
@@ -86,6 +94,14 @@ namespace Network::TestServer
 
     void ClientPacketHandler::HandlePingRequest(Core::Session* session, const PKT_PingReq* packet)
     {
+        // English: Validate pointers
+        // 한글: 포인터 유효성 검사
+        if (!session || !packet)
+        {
+            Logger::Error("HandlePingRequest: null pointer");
+            return;
+        }
+
         session->SetLastPingTime(Timer::GetCurrentTimestamp());
 
         // English: Send pong response

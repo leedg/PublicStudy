@@ -115,6 +115,14 @@ namespace Network::TestServer
 
     void DBServerPacketHandler::HandleServerPongResponse(Core::Session* session, const PKT_ServerPongRes* packet)
     {
+        // English: Validate pointers
+        // 한글: 포인터 유효성 검사
+        if (!session || !packet)
+        {
+            Logger::Error("HandleServerPongResponse: null pointer");
+            return;
+        }
+
         uint64_t currentTime = Timer::GetCurrentTimestamp();
         uint64_t rtt = currentTime - packet->requestTimestamp;
 
@@ -128,6 +136,14 @@ namespace Network::TestServer
 
     void DBServerPacketHandler::HandleDBSavePingTimeResponse(Core::Session* session, const PKT_DBSavePingTimeRes* packet)
     {
+        // English: Validate pointers
+        // 한글: 포인터 유효성 검사
+        if (!session || !packet)
+        {
+            Logger::Error("HandleDBSavePingTimeResponse: null pointer");
+            return;
+        }
+
         if (packet->result == 0)
         {
             Logger::Info("Ping time saved successfully in DB - ServerId: " + std::to_string(packet->serverId));

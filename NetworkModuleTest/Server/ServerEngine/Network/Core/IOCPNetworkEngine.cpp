@@ -195,6 +195,13 @@ void IOCPNetworkEngine::UnregisterEventCallback(NetworkEvent eventType)
 bool IOCPNetworkEngine::SendData(Utils::ConnectionId connectionId,
 								 const void *data, size_t size)
 {
+	// English: Validate data pointer
+	// 한글: 데이터 포인터 유효성 검사
+	if (!data || size == 0)
+	{
+		return false;
+	}
+
 	auto session = SessionManager::Instance().GetSession(connectionId);
 	if (!session || !session->IsConnected())
 	{
@@ -462,6 +469,14 @@ void IOCPNetworkEngine::WorkerThread()
 		}
 
 		IOContext *ioContext = static_cast<IOContext *>(overlapped);
+		
+		// English: Validate IOContext pointer
+		// 한글: IOContext 포인터 유효성 검사
+		if (!ioContext)
+		{
+			Utils::Logger::Error("WorkerThread: null IOContext");
+			continue;
+		}
 
 		if (!result || bytesTransferred == 0)
 		{
