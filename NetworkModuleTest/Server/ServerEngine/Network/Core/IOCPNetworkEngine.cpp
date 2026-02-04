@@ -221,14 +221,22 @@ bool IOCPNetworkEngine::SendData(Utils::ConnectionId connectionId,
 void IOCPNetworkEngine::CloseConnection(Utils::ConnectionId connectionId)
 {
 	auto session = SessionManager::Instance().GetSession(connectionId);
-	if (session)
+	if (!session)
 	{
-		session->Close();
-		session->OnDisconnected();
-		SessionManager::Instance().RemoveSession(connectionId);
-
-		FireEvent(NetworkEvent::Disconnected, connectionId);
+		return;
 	}
+
+	// English: Call OnDisconnected callback
+	// 한글: OnDisconnected 콜백 호출
+	session->OnDisconnected();
+
+	// English: RemoveSession will close the session internally
+	// 한글: RemoveSession이 내부적으로 세션을 닫음
+	SessionManager::Instance().RemoveSession(session);
+
+	// English: Fire disconnection event
+	// 한글: 연결 해제 이벤트 발생
+	FireEvent(NetworkEvent::Disconnected, connectionId);
 }
 
 std::string
@@ -480,8 +488,8 @@ void IOCPNetworkEngine::WorkerThread()
 
 		if (!result || bytesTransferred == 0)
 		{
-			// English: Connection closed
-			// 한글: 연결 종료
+			// English: Connection closed or error
+			// 한글: 연결 종료 또는 에러
 			auto sessionCopy = session;
 			mLogicThreadPool.Submit(
 				[this, sessionCopy]()
@@ -490,7 +498,8 @@ void IOCPNetworkEngine::WorkerThread()
 					FireEvent(NetworkEvent::Disconnected, sessionCopy->GetId());
 				});
 
-			session->Close();
+			// English: RemoveSession will close the session internally
+			// 한글: RemoveSession이 내부적으로 세션을 닫음
 			SessionManager::Instance().RemoveSession(session);
 			continue;
 		}
@@ -569,9 +578,19 @@ void IOCPNetworkEngine::ProcessSendCompletion(SessionRef session,
 		return;
 	}
 
-	// English: Send completion is handled by Session internally
-	// 한글: 전송 완료는 Session 내부에서 처리
+	// English: Fire event first
+	// 한글: 먼저 이벤트 발생
 	FireEvent(NetworkEvent::DataSent, session->GetId());
+
+	// English: Critical: Continue sending if queue has more data
+	// 한글: 중요: 큐에 더 많은 데이터가 있으면 계속 전송
+	if (!session->PostSend())
+	{
+		// English: PostSend returns false when queue is empty or error
+		// 한글: PostSend는 큐가 비었거나 에러 시 false 반환
+		Utils::Logger::Debug("Send queue empty for session: " + 
+							 std::to_string(session->GetId()));
+	}
 }
 
 void IOCPNetworkEngine::FireEvent(NetworkEvent eventType,

@@ -70,10 +70,19 @@ void SessionManager::RemoveSession(Utils::ConnectionId id)
 
 void SessionManager::RemoveSession(SessionRef session)
 {
-	if (session)
+	if (!session)
 	{
-		RemoveSession(session->GetId());
+		return;
 	}
+
+	// English: Close session before removing to cleanup resources
+	// 한글: 리소스 정리를 위해 제거 전 세션 닫기
+	if (session->IsConnected())
+	{
+		session->Close();
+	}
+
+	RemoveSession(session->GetId());
 }
 
 SessionRef SessionManager::GetSession(Utils::ConnectionId id)

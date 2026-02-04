@@ -87,24 +87,18 @@ void Session::Send(const void *data, uint32_t size)
 		return;
 	}
 
-	// English: Enqueue send data and try to flush
-	// 한글: 전송 데이터 인큐 및 플러시 시도
-	bool shouldFlush = false;
+	// English: Enqueue send data
+	// 한글: 전송 데이터 인큐
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
 		std::vector<char> buffer(size);
 		std::memcpy(buffer.data(), data, size);
 		mSendQueue.push(std::move(buffer));
-		
-		// English: Check if we need to start sending (avoid extra CAS)
-		// 한글: 전송 시작이 필요한지 확인 (추가 CAS 방지)
-		shouldFlush = !mIsSending.load(std::memory_order_relaxed);
 	}
 
-	if (shouldFlush)
-	{
-		FlushSendQueue();
-	}
+	// English: Always try to flush (CAS inside will prevent double send)
+	// 한글: 항상 플러시 시도 (내부 CAS가 중복 전송 방지)
+	FlushSendQueue();
 }
 
 void Session::FlushSendQueue()
@@ -130,7 +124,9 @@ bool Session::PostSend()
 
 		if (mSendQueue.empty())
 		{
-			mIsSending = false;
+			// English: No more data to send, release flag atomically
+			// 한글: 더 이상 전송할 데이터 없음, atomic으로 플래그 해제
+			mIsSending.store(false, std::memory_order_release);
 			return true;
 		}
 
@@ -154,7 +150,9 @@ bool Session::PostSend()
 		{
 			Utils::Logger::Error("WSASend failed - Error: " +
 								 std::to_string(error));
-			mIsSending = false;
+			// English: Release flag atomically on error
+			// 한글: 에러 시 atomic으로 플래그 해제
+			mIsSending.store(false, std::memory_order_release);
 			return false;
 		}
 	}
@@ -163,7 +161,7 @@ bool Session::PostSend()
 #else
 	// English: Linux/macOS implementation (placeholder)
 	// 한글: Linux/macOS 구현 (플레이스홀더)
-	mIsSending = false;
+	mIsSending.store(false, std::memory_order_release);
 	return false;
 #endif
 }
