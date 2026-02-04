@@ -1,6 +1,6 @@
-# API (Current Implementation)
+﻿# API (현재 구현 기준)
 
-## 1. Runtime messages
+## 1. 런타임 메시지
 ### 1.1 TestClient <-> TestServer
 - SessionConnectReq: clientVersion
 - SessionConnectRes: sessionId, serverTime, result
@@ -8,27 +8,27 @@
 - PongRes: clientTime, serverTime, sequence
 
 ### 1.2 TestServer <-> TestDBServer
-- MessageHandler format, MessageType Ping/Pong
+- MessageHandler 포맷, MessageType Ping/Pong
 
-## 2. CLI options
+## 2. CLI 옵션
 ### TestServer
-- -p <port> (default 9000)
-- -d <connstr> (optional DB connection string)
+- -p <port> (기본 9000)
+- -d <connstr> (DB 연결 문자열, 옵션)
 - -l <level> (DEBUG/INFO/WARN/ERROR)
-- -h (help)
+- -h (도움말)
 
 ### TestDBServer
-- -p <port> (default 8002)
-- -m <max> (default 1000)
-- -h (help)
+- -p <port> (기본 8002)
+- -m <max> (기본 1000)
+- -h (도움말)
 
 ### TestClient
-- --host <addr> (default 127.0.0.1)
-- --port <port> (default 9000)
+- --host <addr> (기본 127.0.0.1)
+- --port <port> (기본 9000)
 - -l <level> (DEBUG/INFO/WARN/ERROR)
-- -h (help)
+- -h (도움말)
 
-## 3. Library API summary
+## 3. 라이브러리 API 요약
 ### AsyncIOProvider
 - Initialize(queueDepth, maxConcurrent)
 - SendAsync / RecvAsync / ProcessCompletions
@@ -38,6 +38,6 @@
 - Start / Stop
 - SendData / CloseConnection
 
-### Database Module (ServerEngine)
+### Database 모듈 (ServerEngine)
 - DatabaseFactory::CreateDatabase
 - ConnectionPool::Initialize / GetConnection / ReturnConnection

@@ -1,10 +1,10 @@
-# DBModuleTest
+﻿# DBModuleTest
 
-DBModuleTest is a standalone database module test project.
-It uses the `DocDBModule` namespace and lower-case method names.
-For new development, use `Server/ServerEngine/Database` instead.
+DBModuleTest는 독립 DB 모듈 테스트 프로젝트입니다.
+DocDBModule 네임스페이스와 소문자 API를 사용합니다.
+신규 개발은 `Server/ServerEngine/Database` 모듈 사용을 권장합니다.
 
-## Layout
+## 구성
 ```text
 ModuleTest/DBModuleTest/
   IDatabase.h
@@ -19,11 +19,11 @@ ModuleTest/DBModuleTest/
   Doc/
 ```
 
-## Build
-- Preferred: build `DBModuleTest` from `NetworkModuleTest.sln`
-- Standalone: open `ModuleTest/DBModuleTest/DBModuleTest.vcxproj`
+## 빌드
+- 권장: `NetworkModuleTest.sln`에서 `DBModuleTest` 빌드
+- 단독: `ModuleTest/DBModuleTest/DBModuleTest.vcxproj` 열기
 
-## Example (DocDBModule API)
+## 예시 (DocDBModule API)
 ```cpp
 #include "IDatabase.h"
 #include "DatabaseFactory.h"
@@ -46,6 +46,6 @@ while (rs->next()) {
 }
 ```
 
-## Note
-- ServerEngine DB module uses PascalCase API (Connect, CreateStatement, etc).
-- This DBModuleTest project remains for legacy/testing purposes.
+## 참고
+- ServerEngine DB 모듈은 PascalCase API 사용 (Connect, CreateStatement 등)
+- DBModuleTest는 레거시/테스트 용도로 유지

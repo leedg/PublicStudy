@@ -91,9 +91,21 @@ SessionRef SessionManager::GetSession(Utils::ConnectionId id)
 
 void SessionManager::ForEachSession(std::function<void(SessionRef)> func)
 {
-	std::lock_guard<std::mutex> lock(mMutex);
+	// English: Copy session list to avoid long lock duration
+	// 한글: 긴 잠금 시간을 피하기 위해 세션 리스트 복사
+	std::vector<SessionRef> sessionsCopy;
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+		sessionsCopy.reserve(mSessions.size());
+		for (auto &[id, session] : mSessions)
+		{
+			sessionsCopy.push_back(session);
+		}
+	}
 
-	for (auto &[id, session] : mSessions)
+	// English: Process sessions without holding lock
+	// 한글: 잠금 없이 세션 처리
+	for (auto &session : sessionsCopy)
 	{
 		func(session);
 	}

@@ -8,6 +8,9 @@
 #include <cstdint>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
+#include <functional>
+#include <algorithm>
 
 namespace Network::Utils
 {
@@ -43,8 +46,19 @@ public:
 		std::string databasePassword = "password";
 	};
 
-	// English: Load configuration from file (simple key=value format)
-	// 한글: 파일에서 설정 로드 (간단한 key=value 형식)
+	// English: Helper function to trim whitespace efficiently
+	// 한글: 공백을 효율적으로 제거하는 헬퍼 함수
+	static std::string Trim(const std::string& str)
+	{
+		size_t start = str.find_first_not_of(" \t");
+		if (start == std::string::npos)
+			return "";
+		size_t end = str.find_last_not_of(" \t");
+		return str.substr(start, end - start + 1);
+	}
+
+	// English: Load configuration from file (optimized with map dispatch)
+	// 한글: 파일에서 설정 로드 (맵 디스패치로 최적화)
 	// @param filename - Path to configuration file
 	// @return Loaded configuration (or default if file not found)
 	static Config LoadFromFile(const std::string& filename)
@@ -58,6 +72,20 @@ public:
 			// 한글: 파일을 찾을 수 없음, 기본 설정 반환
 			return config;
 		}
+
+		// English: Create handler map for O(1) dispatch
+		// 한글: O(1) 디스패치를 위한 핸들러 맵 생성
+		std::unordered_map<std::string, std::function<void(const std::string&)>> handlers;
+		handlers["port"] = [&](const std::string& v) { config.port = static_cast<uint16_t>(std::stoi(v)); };
+		handlers["maxConnections"] = [&](const std::string& v) { config.maxConnections = static_cast<size_t>(std::stoull(v)); };
+		handlers["bufferSize"] = [&](const std::string& v) { config.bufferSize = static_cast<size_t>(std::stoull(v)); };
+		handlers["timeoutMs"] = [&](const std::string& v) { config.timeoutMs = std::stoi(v); };
+		handlers["logLevel"] = [&](const std::string& v) { config.logLevel = v; };
+		handlers["databaseHost"] = [&](const std::string& v) { config.databaseHost = v; };
+		handlers["databasePort"] = [&](const std::string& v) { config.databasePort = static_cast<uint16_t>(std::stoi(v)); };
+		handlers["databaseName"] = [&](const std::string& v) { config.databaseName = v; };
+		handlers["databaseUser"] = [&](const std::string& v) { config.databaseUser = v; };
+		handlers["databasePassword"] = [&](const std::string& v) { config.databasePassword = v; };
 
 		std::string line;
 		while (std::getline(file, line))
@@ -73,38 +101,24 @@ public:
 			if (pos == std::string::npos)
 				continue;
 
-			std::string key = line.substr(0, pos);
-			std::string value = line.substr(pos + 1);
+			std::string key = Trim(line.substr(0, pos));
+			std::string value = Trim(line.substr(pos + 1));
 
-			// English: Trim whitespace
-			// 한글: 공백 제거
-			key.erase(0, key.find_first_not_of(" \t"));
-			key.erase(key.find_last_not_of(" \t") + 1);
-			value.erase(0, value.find_first_not_of(" \t"));
-			value.erase(value.find_last_not_of(" \t") + 1);
-
-			// English: Set configuration values
-			// 한글: 설정 값 설정
-			if (key == "port")
-				config.port = static_cast<uint16_t>(std::stoi(value));
-			else if (key == "maxConnections")
-				config.maxConnections = static_cast<size_t>(std::stoull(value));
-			else if (key == "bufferSize")
-				config.bufferSize = static_cast<size_t>(std::stoull(value));
-			else if (key == "timeoutMs")
-				config.timeoutMs = std::stoi(value);
-			else if (key == "logLevel")
-				config.logLevel = value;
-			else if (key == "databaseHost")
-				config.databaseHost = value;
-			else if (key == "databasePort")
-				config.databasePort = static_cast<uint16_t>(std::stoi(value));
-			else if (key == "databaseName")
-				config.databaseName = value;
-			else if (key == "databaseUser")
-				config.databaseUser = value;
-			else if (key == "databasePassword")
-				config.databasePassword = value;
+			// English: Dispatch using map lookup (O(1))
+			// 한글: 맵 조회를 사용한 디스패치 (O(1))
+			auto it = handlers.find(key);
+			if (it != handlers.end())
+			{
+				try
+				{
+					it->second(value);
+				}
+				catch (...)
+				{
+					// English: Ignore parse errors, keep default value
+					// 한글: 파싱 오류 무시, 기본값 유지
+				}
+			}
 		}
 
 		file.close();

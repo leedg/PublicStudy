@@ -1,13 +1,13 @@
-# DocDBModule
+﻿# DocDBModule
 
-Documentation folder for DBModuleTest.
+DBModuleTest 문서 모음 폴더입니다.
 
-## Contents
-- README.md (detailed)
-- README_SHORT.md (short)
-- VERSION_SELECTOR.md (VS solution guide)
-- build.bat (local build helper)
+## 문서 목록
+- README.md (상세)
+- README_SHORT.md (요약)
+- VERSION_SELECTOR.md (솔루션/VS 가이드)
+- build.bat (간단 빌드 스크립트)
 
-## Recommended usage
-- Use `NetworkModuleTest.sln` and build `DBModuleTest`.
-- Use `ModuleTest/DBModuleTest/DocDBModule.sln` only if needed.
+## 권장 사용
+- `NetworkModuleTest.sln`에서 DBModuleTest 빌드
+- 필요 시 `ModuleTest/DBModuleTest/DocDBModule.sln` 사용

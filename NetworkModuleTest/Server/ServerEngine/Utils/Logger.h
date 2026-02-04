@@ -132,8 +132,8 @@ private:
 		}
 	}
 
-	// English: Format log message with timestamp and level
-	// 한글: 타임스탬프와 레벨로 로그 메시지 포맷
+	// English: Format log message with timestamp and level (optimized)
+	// 한글: 타임스탬프와 레벨로 로그 메시지 포맷 (최적화)
 	static std::string FormatMessage(LogLevel level, const std::string &message)
 	{
 		const char *levelStr = "???";
@@ -165,7 +165,12 @@ private:
 #endif
 		std::strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &localTime);
 
-		return std::string("[") + timeStr + "] [" + levelStr + "] " + message;
+		// English: Use string reserve and append to avoid multiple allocations
+		// 한글: 여러 할당을 피하기 위해 string reserve 및 append 사용
+		std::string result;
+		result.reserve(64 + message.size());
+		result.append("[").append(timeStr).append("] [").append(levelStr).append("] ").append(message);
+		return result;
 	}
 };
 

@@ -1,7 +1,7 @@
-# Solution Guide
+﻿# 솔루션 가이드
 
-## Solution projects
-`NetworkModuleTest.sln` includes:
+## 솔루션 프로젝트
+`NetworkModuleTest.sln`에 포함된 주요 프로젝트:
 - ServerEngine (`Server/ServerEngine/ServerEngine.vcxproj`)
 - TestServer (`Server/TestServer/TestServer.vcxproj`)
 - TestDBServer (`Server/DBServer/TestServer.vcxproj`)
@@ -9,20 +9,20 @@
 - DBModuleTest (`ModuleTest/DBModuleTest/DBModuleTest.vcxproj`)
 - MultiPlatformNetwork (`ModuleTest/MultiPlatformNetwork/MultiPlatformNetwork.vcxproj`)
 
-Solution folders
+솔루션 폴더
 - `1.Thirdparty`, `2.Lib`, `3.Server`, `8.Client`, `9.Test`, `ModuleTest`, `Documentation`
 
-## Build configurations
+## 빌드 구성
 - Debug/Release
 - x64/x86
 
-## Recommended build order
+## 권장 빌드 순서
 1. ServerEngine
 2. TestDBServer
 3. TestServer
 4. TestClient
-5. DBModuleTest, MultiPlatformNetwork (optional)
+5. DBModuleTest, MultiPlatformNetwork (선택)
 
-## CMake status
-- Root CMake builds MultiPlatformNetwork only
-- Other CMake files are reference
+## CMake 현황
+- 루트 CMake는 MultiPlatformNetwork만 빌드
+- 다른 CMake는 참고용

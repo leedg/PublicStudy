@@ -87,16 +87,24 @@ void Session::Send(const void *data, uint32_t size)
 		return;
 	}
 
-	// English: Enqueue send data
-	// 한글: 전송 데이터 인큐
+	// English: Enqueue send data and try to flush
+	// 한글: 전송 데이터 인큐 및 플러시 시도
+	bool shouldFlush = false;
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
 		std::vector<char> buffer(size);
 		std::memcpy(buffer.data(), data, size);
 		mSendQueue.push(std::move(buffer));
+		
+		// English: Check if we need to start sending (avoid extra CAS)
+		// 한글: 전송 시작이 필요한지 확인 (추가 CAS 방지)
+		shouldFlush = !mIsSending.load(std::memory_order_relaxed);
 	}
 
-	FlushSendQueue();
+	if (shouldFlush)
+	{
+		FlushSendQueue();
+	}
 }
 
 void Session::FlushSendQueue()

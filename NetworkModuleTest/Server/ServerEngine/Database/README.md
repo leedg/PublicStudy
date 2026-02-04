@@ -1,16 +1,16 @@
-# Database Module (ServerEngine)
+﻿# Database 모듈 (ServerEngine)
 
-A unified database access layer with ODBC/OLEDB implementations.
-Uses PascalCase API and RAII helpers.
+ODBC/OLEDB 구현을 포함한 통합 DB 접근 레이어입니다.
+PascalCase API와 RAII 헬퍼를 사용합니다.
 
-## Features
-- Abstract interfaces: IDatabase, IConnection, IStatement, IResultSet
-- ConnectionPool for reuse
-- ODBC and OLEDB implementations
-- RAII support (ScopedConnection)
-- Exception-based error handling (DatabaseException)
+## 주요 기능
+- 추상 인터페이스: IDatabase, IConnection, IStatement, IResultSet
+- ConnectionPool 기반 연결 재사용
+- ODBC/OLEDB 구현
+- RAII 지원(ScopedConnection)
+- 예외 기반 오류 처리(DatabaseException)
 
-## Structure
+## 구조
 ```text
 Database/
   DatabaseModule.h
@@ -23,7 +23,7 @@ Database/
   Examples/
 ```
 
-## Basic usage
+## 기본 사용
 ```cpp
 #include "Database/DatabaseModule.h"
 
@@ -44,13 +44,13 @@ auto rs = stmt->ExecuteQuery();
 pool.ReturnConnection(conn);
 ```
 
-## RAII example
+## RAII 예시
 ```cpp
 ScopedConnection scoped(pool.GetConnection(), &pool);
 auto stmt = scoped->CreateStatement();
 stmt->SetQuery("SELECT * FROM users");
 ```
 
-## Notes
-- DBConnection/DBConnectionPool are legacy APIs.
-- New code should use DatabaseModule.h.
+## 참고
+- DBConnection/DBConnectionPool은 레거시 API입니다.
+- 신규 코드는 DatabaseModule.h 사용 권장

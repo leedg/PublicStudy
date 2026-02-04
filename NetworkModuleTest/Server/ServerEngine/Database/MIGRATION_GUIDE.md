@@ -1,8 +1,8 @@
-# Database Module Migration Guide
+﻿# Database 모듈 마이그레이션 가이드
 
-Guide to migrate from legacy DBConnection/DBConnectionPool to DatabaseModule.
+레거시 DBConnection/DBConnectionPool에서 DatabaseModule로 전환하는 방법입니다.
 
-## 1. Header update
+## 1. 헤더 변경
 ### Before
 ```cpp
 #include "Database/DBConnection.h"
@@ -14,7 +14,7 @@ Guide to migrate from legacy DBConnection/DBConnectionPool to DatabaseModule.
 #include "Database/DatabaseModule.h"
 ```
 
-## 2. Connection update
+## 2. 연결 방식 변경
 ### Before
 ```cpp
 DBConnection conn;
@@ -39,7 +39,7 @@ auto rs = stmt->ExecuteQuery();
 db->Disconnect();
 ```
 
-## 3. ConnectionPool update
+## 3. ConnectionPool 변경
 ### Before
 ```cpp
 DBConnectionPool& pool = DBConnectionPool::Instance();
@@ -72,7 +72,7 @@ pool.ReturnConnection(conn);
 pool.Shutdown();
 ```
 
-## 4. RAII usage
+## 4. RAII 사용
 ```cpp
 {
     ScopedConnection scoped(pool.GetConnection(), &pool);

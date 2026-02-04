@@ -4,6 +4,8 @@
 #include "IOCPNetworkEngine.h"
 #include <iostream>
 #include <sstream>
+#include <thread>
+#include <algorithm>
 
 #ifdef _WIN32
 #include <ws2tcpip.h>
@@ -344,6 +346,11 @@ void IOCPNetworkEngine::AcceptThread()
 {
 	Utils::Logger::Info("Accept thread started");
 
+	// English: Exponential backoff for accept failures
+	// 한글: Accept 실패 시 지수 백오프
+	uint32_t failureCount = 0;
+	constexpr uint32_t maxBackoffMs = 1000;
+
 	while (mRunning)
 	{
 #ifdef _WIN32
@@ -359,9 +366,19 @@ void IOCPNetworkEngine::AcceptThread()
 			{
 				Utils::Logger::Warn("Accept failed - Error: " +
 									std::to_string(WSAGetLastError()));
+				
+				// English: Exponential backoff to prevent CPU spinning
+				// 한글: CPU 과부하 방지를 위한 지수 백오프
+				failureCount++;
+				uint32_t backoffMs = std::min(static_cast<uint32_t>(1 << failureCount), maxBackoffMs);
+				std::this_thread::sleep_for(std::chrono::milliseconds(backoffMs));
 			}
 			continue;
 		}
+
+		// English: Reset failure count on success
+		// 한글: 성공 시 실패 카운터 초기화
+		failureCount = 0;
 
 		// English: Create session via SessionManager
 		// 한글: SessionManager를 통해 세션 생성
@@ -490,15 +507,6 @@ void IOCPNetworkEngine::ProcessRecvCompletion(SessionRef session,
 		return;
 	}
 
-	// English: Copy received data for async processing
-	// 한글: 비동기 처리를 위해 수신 데이터 복사
-#ifdef _WIN32
-	std::vector<char> data(session->GetRecvContext().buffer,
-							   session->GetRecvContext().buffer + bytesTransferred);
-#else
-	std::vector<char> data;
-#endif
-
 	// English: Update stats
 	// 한글: 통계 업데이트
 	{
@@ -506,11 +514,21 @@ void IOCPNetworkEngine::ProcessRecvCompletion(SessionRef session,
 		mStats.totalBytesReceived += bytesTransferred;
 	}
 
-	// English: Process on logic thread (async)
-	// 한글: 로직 스레드에서 처리 (비동기)
+#ifdef _WIN32
+	// English: Get pointer to recv buffer directly (avoid copy)
+	// 한글: 수신 버퍼에 직접 접근 (복사 방지)
+	const char* recvBuffer = session->GetRecvContext().buffer;
+	
+	// English: Process on logic thread with buffer pointer
+	// 한글: 버퍼 포인터로 로직 스레드에서 처리
 	auto sessionCopy = session;
+	
+	// English: Only copy data if we need to keep it after PostRecv
+	// 한글: PostRecv 이후에도 데이터를 유지해야 하는 경우에만 복사
+	std::vector<char> dataCopy(recvBuffer, recvBuffer + bytesTransferred);
+	
 	mLogicThreadPool.Submit(
-		[this, sessionCopy, data = std::move(data)]()
+		[this, sessionCopy, data = std::move(dataCopy)]()
 		{
 			sessionCopy->OnRecv(data.data(),
 								static_cast<uint32_t>(data.size()));
@@ -521,6 +539,7 @@ void IOCPNetworkEngine::ProcessRecvCompletion(SessionRef session,
 						  reinterpret_cast<const uint8_t *>(data.data()),
 						  data.size());
 		});
+#endif
 
 	// English: Post next receive
 	// 한글: 다음 수신 등록

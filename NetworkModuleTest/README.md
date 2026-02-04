@@ -1,17 +1,17 @@
-# NetworkModuleTest
+﻿# NetworkModuleTest
 
-High-performance async network module plus test servers/clients for a distributed server architecture.
+분산 서버 아키텍처용 비동기 네트워크 모듈과 테스트 서버/클라이언트 프로젝트입니다.
 
-## Overview
-- Goal: Validate ServerEngine-based network and DB modules with TestServer/TestDBServer/TestClient.
-- Core: AsyncIOProvider, IOCPNetworkEngine, Session/Packet, Database module.
+## 개요
+- 목표: ServerEngine 기반 네트워크/DB 모듈을 TestServer/TestDBServer/TestClient로 검증
+- 핵심: AsyncIOProvider, IOCPNetworkEngine, Session/Packet, Database 모듈
 
-### Architecture (runtime flow)
-TestClient -> TestServer -> TestDBServer (optional)
+### 런타임 흐름
+TestClient -> TestServer -> TestDBServer (옵션)
       |           |
       +-----------+ ServerEngine (AsyncIO, Utils, Database, Protocols)
 
-### Project layout
+### 프로젝트 구조
 ```text
 NetworkModuleTest/
   Doc/
@@ -28,33 +28,33 @@ NetworkModuleTest/
   run_test.bat
 ```
 
-## Status (2026-02-04)
+## 상태 (2026-02-04)
 
-| Module | Status | Notes |
+| 모듈 | 상태 | 비고 |
 | --- | --- | --- |
-| ServerEngine | In progress | IOCP engine, AsyncIOProvider, Database module. Linux/macOS provider sources included. |
-| TestServer | Prototype | IOCP accept/session/ping. Optional DB pool with compile flag. |
-| TestDBServer | Prototype | AsyncIOProvider + MessageHandler + Ping/Pong. DB CRUD is stub. |
-| TestClient | Prototype | SessionConnect + Ping/Pong + RTT stats. |
-| DBModuleTest | Legacy/test | Standalone DB test module. New code should use ServerEngine/Database. |
-| MultiPlatformNetwork | Done/archived | Cross-platform AsyncIO reference. |
+| ServerEngine | 진행 중 | IOCP 엔진, AsyncIOProvider, Database 모듈 구현. Linux/macOS provider 소스 포함 |
+| TestServer | 프로토타입 | IOCP 기반 접속/세션/핑 처리. DB 풀은 컴파일 옵션으로 활성화 |
+| TestDBServer | 프로토타입 | AsyncIOProvider + MessageHandler + Ping/Pong. DB CRUD는 스텁 |
+| TestClient | 프로토타입 | SessionConnect + Ping/Pong + RTT 통계 |
+| DBModuleTest | 레거시/테스트 | 독립 DB 모듈 테스트. 신규 코드는 ServerEngine/Database 권장 |
+| MultiPlatformNetwork | 완료/보관 | 크로스 플랫폼 AsyncIO 참고 구현 |
 
-## Tech stack
+## 기술 스택
 - C++17
-- Visual Studio 2022 (primary)
-- CMake (partial, MultiPlatformNetwork focused)
+- Visual Studio 2022 (주 빌드)
+- CMake (부분적, MultiPlatformNetwork 위주)
 - Async I/O: IOCP/RIO, epoll/io_uring, kqueue
-- Database: ODBC/OLEDB (module implementation)
-- Serialization: Protobuf (optional, Ping/Pong handler)
+- Database: ODBC/OLEDB (모듈 구현)
+- Serialization: Protobuf (옵션, Ping/Pong 핸들러)
 
-## Quick start (Windows)
-1. Open `NetworkModuleTest.sln` and build x64 Debug/Release.
-2. Run `TestDBServer.exe -p 8002`.
-3. Run `TestServer.exe -p 9000` (optional DB: `-d "<connstr>"`).
-4. Run `TestClient.exe --host 127.0.0.1 --port 9000`.
-5. Auto run: `run_test.ps1` or `run_test.bat`.
+## 빠른 시작 (Windows)
+1. `NetworkModuleTest.sln` 열고 x64 Debug/Release 빌드
+2. `TestDBServer.exe -p 8002` 실행
+3. `TestServer.exe -p 9000` 실행 (DB 연결 필요 시 `-d "<connstr>"`)
+4. `TestClient.exe --host 127.0.0.1 --port 9000` 실행
+5. 자동 실행: `run_test.ps1` 또는 `run_test.bat`
 
-## Docs
+## 문서
 - `Doc/ProjectOverview.md`
 - `Doc/Architecture.md`
 - `Doc/Protocol.md`
@@ -65,8 +65,8 @@ NetworkModuleTest/
 - `Server/ServerEngine/Database/README.md`
 - `ModuleTest/DBModuleTest/README.md`
 
-## Next steps
-1. Implement real accept/send for TestDBServer.
-2. Expand TestServer packet handling and DBServer integration.
-3. Stabilize Protobuf path and test targets.
-4. Align/clean CMake scripts (currently partial).
+## 다음 단계
+1. TestDBServer의 실제 accept/send 로직 구현
+2. TestServer의 패킷 처리 확장 및 DBServer 연동 강화
+3. Protobuf 경로 및 테스트 타깃 정리
+4. CMake 스크립트 정합성 개선
