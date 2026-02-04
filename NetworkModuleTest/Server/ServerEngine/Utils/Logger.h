@@ -7,9 +7,11 @@
 #include <mutex>
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <chrono>
 #include <ctime>
 #include <cstring>
+#include <memory>
 
 namespace Network::Utils
 {
@@ -38,12 +40,28 @@ public:
 	// 한글: 최소 로그 레벨 설정
 	static void SetLevel(LogLevel level) { sCurrentLevel.store(level); }
 
-	// English: Set log file path (not implemented)
-	// 한글: 로그 파일 경로 설정 (미구현)
+	// English: Set log file path and open file for writing
+	// 한글: 로그 파일 경로 설정 및 쓰기용 파일 열기
 	static void SetLogFile(const std::string &filename)
 	{
 		std::lock_guard<std::mutex> lock(sMutex);
 		sLogFile = filename;
+		
+		// English: Open log file in append mode
+		// 한글: 추가 모드로 로그 파일 열기
+		if (!filename.empty())
+		{
+			sLogFileStream = std::make_unique<std::ofstream>(filename, std::ios::app);
+			if (!sLogFileStream->is_open())
+			{
+				sLogFileStream.reset();
+				std::cerr << "[Logger] Failed to open log file: " << filename << std::endl;
+			}
+		}
+		else
+		{
+			sLogFileStream.reset();
+		}
 	}
 
 	// English: Log debug message
@@ -85,10 +103,11 @@ public:
 private:
 	static inline std::atomic<LogLevel> sCurrentLevel{LogLevel::Info};
 	static inline std::string sLogFile;
+	static inline std::unique_ptr<std::ofstream> sLogFileStream;
 	static inline std::mutex sMutex;
 
-	// English: Write log message with level check
-	// 한글: 레벨 확인 후 로그 메시지 작성
+	// English: Write log message with level check to console and file
+	// 한글: 레벨 확인 후 콘솔과 파일에 로그 메시지 작성
 	static void WriteLog(LogLevel level, const std::string &message)
 	{
 		if (static_cast<int>(level) < static_cast<int>(sCurrentLevel.load()))
@@ -99,7 +118,18 @@ private:
 		std::string formatted = FormatMessage(level, message);
 
 		std::lock_guard<std::mutex> lock(sMutex);
+		
+		// English: Write to console
+		// 한글: 콘솔에 작성
 		std::cout << formatted << std::endl;
+		
+		// English: Write to file if available
+		// 한글: 파일이 있으면 파일에도 작성
+		if (sLogFileStream && sLogFileStream->is_open())
+		{
+			*sLogFileStream << formatted << std::endl;
+			sLogFileStream->flush();
+		}
 	}
 
 	// English: Format log message with timestamp and level
