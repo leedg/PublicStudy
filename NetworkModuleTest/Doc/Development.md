@@ -22,6 +22,9 @@
 3. `TestClient.exe --host 127.0.0.1 --port 9000`
 4. 자동 실행: `run_test.ps1` 또는 `run_test.bat`
 
+## DB 사용 주의
+- TestServer에서 DB 풀을 사용하려면 `ENABLE_DATABASE_SUPPORT`를 전처리 정의에 추가해야 합니다.
+
 ## 테스트
 - `Server/ServerEngine/Tests/`에 테스트 소스 존재
 - 기본 빌드 타깃에는 포함되지 않으므로 필요 시 GTest 연동 추가

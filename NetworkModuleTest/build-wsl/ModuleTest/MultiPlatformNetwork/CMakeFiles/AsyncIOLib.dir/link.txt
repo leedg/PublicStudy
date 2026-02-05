@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../lib/libAsyncIOLib.a CMakeFiles/AsyncIOLib.dir/AsyncIOProvider.cpp.o CMakeFiles/AsyncIOLib.dir/PlatformDetect.cpp.o CMakeFiles/AsyncIOLib.dir/EpollAsyncIOProvider.cpp.o CMakeFiles/AsyncIOLib.dir/IOUringAsyncIOProvider.cpp.o
+/usr/bin/ranlib ../../lib/libAsyncIOLib.a

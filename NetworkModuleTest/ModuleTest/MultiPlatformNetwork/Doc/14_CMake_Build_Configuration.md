@@ -1,4 +1,4 @@
-# CMake Build Configuration Guide
+﻿# CMake 빌드 구성
 
 **작성일**: 2026-01-27  
 **버전**: 1.0  

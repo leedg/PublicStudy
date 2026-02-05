@@ -620,29 +620,4 @@ void IOCPNetworkEngine::FireEvent(NetworkEvent eventType,
 	}
 }
 
-// =============================================================================
-// English: Factory function implementation
-// 한글: 팩토리 함수 구현
-// =============================================================================
-
-std::unique_ptr<INetworkEngine>
-CreateNetworkEngine(const std::string &engineType)
-{
-#ifdef _WIN32
-	return std::unique_ptr<INetworkEngine>(new IOCPNetworkEngine());
-#else
-	Utils::Logger::Error("No network engine available for this platform");
-	return nullptr;
-#endif
-}
-
-std::vector<std::string> GetAvailableEngineTypes()
-{
-	std::vector<std::string> types;
-#ifdef _WIN32
-	types.push_back("iocp");
-#endif
-	return types;
-}
-
 } // namespace Network::Core

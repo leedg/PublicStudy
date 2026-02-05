@@ -1,22 +1,26 @@
-// English: GameSession implementation
-// 한글: GameSession 구현
+// English: GameSession implementation with asynchronous DB operations
+// 한글: 비동기 DB 작업을 사용하는 GameSession 구현
 
 #include "../include/GameSession.h"
+#include "../include/DBTaskQueue.h"
 #include "Utils/NetworkUtils.h"
 #include <chrono>
 #include <cstring>
 #include <ctime>
-#include <sstream>
-
-#ifdef ENABLE_DATABASE_SUPPORT
-#include "Database/DBConnectionPool.h"
-using namespace Network::Database;
-#endif
 
 namespace Network::TestServer
 {
     using namespace Network::Core;
     using namespace Network::Utils;
+
+    // English: Static member initialization
+    // 한글: 정적 멤버 초기화
+    DBTaskQueue* GameSession::sDBTaskQueue = nullptr;
+
+    // =============================================================================
+    // English: GameSession implementation
+    // 한글: GameSession 구현
+    // =============================================================================
 
     GameSession::GameSession()
         : mConnectionRecorded(false)
@@ -28,15 +32,21 @@ namespace Network::TestServer
     {
     }
 
+    void GameSession::SetDBTaskQueue(DBTaskQueue* queue)
+    {
+        sDBTaskQueue = queue;
+        Logger::Info("GameSession: DBTaskQueue set");
+    }
+
     void GameSession::OnConnected()
     {
         Logger::Info("GameSession connected - ID: " + std::to_string(GetId()));
 
-        // English: Record connect time to DB on first connection (async)
-        // 한글: 최초 접속 시 DB에 접속 시간 기록 (비동기)
+        // English: Record connect time asynchronously (non-blocking)
+        // 한글: 접속 시간을 비동기로 기록 (논블로킹)
         if (!mConnectionRecorded)
         {
-            RecordConnectTimeToDB();
+            AsyncRecordConnectTime();
             mConnectionRecorded = true;
         }
     }
@@ -44,6 +54,10 @@ namespace Network::TestServer
     void GameSession::OnDisconnected()
     {
         Logger::Info("GameSession disconnected - ID: " + std::to_string(GetId()));
+
+        // English: Record disconnect time asynchronously (non-blocking)
+        // 한글: 접속 종료 시간을 비동기로 기록 (논블로킹)
+        AsyncRecordDisconnectTime();
     }
 
     void GameSession::OnRecv(const char* data, uint32_t size)
@@ -54,11 +68,8 @@ namespace Network::TestServer
         }
     }
 
-    void GameSession::RecordConnectTimeToDB()
+    void GameSession::AsyncRecordConnectTime()
     {
-#ifdef ENABLE_DATABASE_SUPPORT
-        ConnectionId sessionId = GetId();
-
         // English: Get current time string
         // 한글: 현재 시간 문자열 조회
         auto now = std::chrono::system_clock::now();
@@ -74,40 +85,51 @@ namespace Network::TestServer
         char timeStr[64];
         std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &localTime);
 
-        // English: Execute DB query via connection pool
-        // 한글: 접속 풀을 통해 DB 쿼리 실행
-        if (!DBConnectionPool::Instance().IsInitialized())
+        // English: Submit task to queue (immediate return, processed in background)
+        // 한글: 큐에 작업 제출 (즉시 반환, 백그라운드에서 처리)
+        if (sDBTaskQueue && sDBTaskQueue->IsRunning())
         {
-            Logger::Info("DB not initialized - skipping connect time recording for Session: " +
-                std::to_string(sessionId));
-            return;
-        }
-
-        ScopedDBConnection dbConn;
-
-        if (dbConn.IsValid())
-        {
-            std::ostringstream query;
-            query << "INSERT INTO SessionLog (SessionId, ConnectTime) VALUES ("
-                << sessionId << ", '" << timeStr << "')";
-
-            if (dbConn->Execute(query.str()))
-            {
-                Logger::Info("Connect time recorded - Session: " + std::to_string(sessionId));
-            }
-            else
-            {
-                Logger::Error("Failed to record connect time - Session: " +
-                    std::to_string(sessionId) + " - " + dbConn->GetLastError());
-            }
+            sDBTaskQueue->RecordConnectTime(GetId(), timeStr);
+            Logger::Debug("Async DB task submitted - RecordConnectTime for Session: " +
+                         std::to_string(GetId()));
         }
         else
         {
-            Logger::Warn("No DB connection available for Session: " + std::to_string(sessionId));
+            Logger::Warn("DBTaskQueue not available - skipping connect time recording for Session: " +
+                        std::to_string(GetId()));
         }
+    }
+
+    void GameSession::AsyncRecordDisconnectTime()
+    {
+        // English: Get current time string
+        // 한글: 현재 시간 문자열 조회
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::system_clock::to_time_t(now);
+
+        std::tm localTime;
+#ifdef _WIN32
+        localtime_s(&localTime, &time);
 #else
-        Logger::Info("Database support disabled - skipping connect time recording");
+        localtime_r(&time, &localTime);
 #endif
+
+        char timeStr[64];
+        std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &localTime);
+
+        // English: Submit task to queue (immediate return, processed in background)
+        // 한글: 큐에 작업 제출 (즉시 반환, 백그라운드에서 처리)
+        if (sDBTaskQueue && sDBTaskQueue->IsRunning())
+        {
+            sDBTaskQueue->RecordDisconnectTime(GetId(), timeStr);
+            Logger::Debug("Async DB task submitted - RecordDisconnectTime for Session: " +
+                         std::to_string(GetId()));
+        }
+        else
+        {
+            Logger::Warn("DBTaskQueue not available - skipping disconnect time recording for Session: " +
+                        std::to_string(GetId()));
+        }
     }
 
 } // namespace Network::TestServer

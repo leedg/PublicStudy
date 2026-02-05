@@ -90,7 +90,16 @@
     <ClInclude Include="Network\Core\IOCPNetworkEngine.h">
       <Filter>Core\Network</Filter>
     </ClInclude>
+    <ClInclude Include="Network\Core\BaseNetworkEngine.h">
+      <Filter>Core\Network</Filter>
+    </ClInclude>
     <ClCompile Include="Network\Core\AsyncIOProvider.cpp">
+      <Filter>Core\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="Network\Core\BaseNetworkEngine.cpp">
+      <Filter>Core\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="Network\Core\NetworkEngineFactory.cpp">
       <Filter>Core\Network</Filter>
     </ClCompile>
     <ClCompile Include="Network\Core\PlatformDetect.cpp">
@@ -123,9 +132,6 @@
     <Filter Include="Implementations\Database">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD04}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Implementations\Database\Legacy">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD05}</UniqueIdentifier>
-    </Filter>
     <ClInclude Include="Database\DatabaseFactory.h">
       <Filter>Implementations\Database</Filter>
     </ClInclude>
@@ -153,18 +159,6 @@
     <ClCompile Include="Database\ConnectionPool.cpp">
       <Filter>Implementations\Database</Filter>
     </ClCompile>
-    <ClInclude Include="Database\DBConnection.h">
-      <Filter>Implementations\Database\Legacy</Filter>
-    </ClInclude>
-    <ClInclude Include="Database\DBConnectionPool.h">
-      <Filter>Implementations\Database\Legacy</Filter>
-    </ClInclude>
-    <ClCompile Include="Database\DBConnection.cpp">
-      <Filter>Implementations\Database\Legacy</Filter>
-    </ClCompile>
-    <ClCompile Include="Database\DBConnectionPool.cpp">
-      <Filter>Implementations\Database\Legacy</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <!-- Platform - Windows -->
@@ -177,10 +171,16 @@
     <ClInclude Include="Platforms\Windows\RIOAsyncIOProvider.h">
       <Filter>Platform\Windows</Filter>
     </ClInclude>
-    <ClCompile Include="Platforms\Windows\IocpAsyncIOProvider.cpp">
+    <ClInclude Include="Network\Platforms\WindowsNetworkEngine.h">
+      <Filter>Platform\Windows</Filter>
+    </ClInclude>
+    <ClCompile Include="Platforms\Windows\WindowsIOCPProvider.cpp">
       <Filter>Platform\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="Platforms\Windows\RIOAsyncIOProvider.cpp">
+    <ClCompile Include="Platforms\Windows\WindowsRIOProvider.cpp">
+      <Filter>Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Network\Platforms\WindowsNetworkEngine.cpp">
       <Filter>Platform\Windows</Filter>
     </ClCompile>
   </ItemGroup>
@@ -195,10 +195,16 @@
     <ClInclude Include="Platforms\Linux\IOUringAsyncIOProvider.h">
       <Filter>Platform\Linux</Filter>
     </ClInclude>
+    <ClInclude Include="Network\Platforms\LinuxNetworkEngine.h">
+      <Filter>Platform\Linux</Filter>
+    </ClInclude>
     <ClCompile Include="Platforms\Linux\EpollAsyncIOProvider.cpp">
       <Filter>Platform\Linux</Filter>
     </ClCompile>
     <ClCompile Include="Platforms\Linux\IOUringAsyncIOProvider.cpp">
+      <Filter>Platform\Linux</Filter>
+    </ClCompile>
+    <ClCompile Include="Network\Platforms\LinuxNetworkEngine.cpp">
       <Filter>Platform\Linux</Filter>
     </ClCompile>
   </ItemGroup>
@@ -210,7 +216,13 @@
     <ClInclude Include="Platforms\macOS\KqueueAsyncIOProvider.h">
       <Filter>Platform\macOS</Filter>
     </ClInclude>
+    <ClInclude Include="Network\Platforms\macOSNetworkEngine.h">
+      <Filter>Platform\macOS</Filter>
+    </ClInclude>
     <ClCompile Include="Platforms\macOS\KqueueAsyncIOProvider.cpp">
+      <Filter>Platform\macOS</Filter>
+    </ClCompile>
+    <ClCompile Include="Network\Platforms\macOSNetworkEngine.cpp">
       <Filter>Platform\macOS</Filter>
     </ClCompile>
   </ItemGroup>

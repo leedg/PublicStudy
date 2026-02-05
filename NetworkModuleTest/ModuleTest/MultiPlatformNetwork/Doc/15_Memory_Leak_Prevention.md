@@ -1,4 +1,4 @@
-# Memory Leak Scenarios and Prevention Strategies
+﻿# 메모리 누수 방지
 
 **작성일**: 2026-01-27  
 **버전**: 1.0  

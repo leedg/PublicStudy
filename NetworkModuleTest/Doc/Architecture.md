@@ -48,6 +48,7 @@ NetworkModuleTest/
 
 ## 6. DBServer 연동
 - TestServer <-> TestDBServer는 MessageHandler 포맷 기반
+- TestServer의 DB 풀은 `ENABLE_DATABASE_SUPPORT` 정의 시 활성
 - DB CRUD 메시지는 계획 단계이며 현재는 스텁
 
 ## 7. 제약 및 향후 과제

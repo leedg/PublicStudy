@@ -1,4 +1,4 @@
-# RAON Server Engine - Reference Files Guide
+﻿# 참고 파일 가이드
 
 **목적**: IOCP 기반 네트워크 라이브러리 구축 시 참고해야 할 핵심 파일 목록  
 **생성일**: 2026-01-27  

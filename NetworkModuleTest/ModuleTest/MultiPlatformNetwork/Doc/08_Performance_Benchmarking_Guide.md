@@ -1,4 +1,4 @@
-# Performance Benchmarking Guide
+﻿# 성능 벤치마킹 가이드
 
 **Version**: 1.0  
 **Date**: 2026-01-27  

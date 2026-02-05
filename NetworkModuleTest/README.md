@@ -33,8 +33,8 @@ NetworkModuleTest/
 | 모듈 | 상태 | 비고 |
 | --- | --- | --- |
 | ServerEngine | 진행 중 | IOCP 엔진, AsyncIOProvider, Database 모듈 구현. Linux/macOS provider 소스 포함 |
-| TestServer | 프로토타입 | IOCP 기반 접속/세션/핑 처리. DB 풀은 컴파일 옵션으로 활성화 |
-| TestDBServer | 프로토타입 | AsyncIOProvider + MessageHandler + Ping/Pong. DB CRUD는 스텁 |
+| TestServer | 프로토타입 | IOCP 기반 접속/세션/핑 처리. DB 풀은 `ENABLE_DATABASE_SUPPORT` 정의 시 활성 |
+| TestDBServer | 프로토타입 | AsyncIOProvider + MessageHandler + Ping/Pong. 네트워크 accept/send 미구현, DB CRUD 스텁 |
 | TestClient | 프로토타입 | SessionConnect + Ping/Pong + RTT 통계 |
 | DBModuleTest | 레거시/테스트 | 독립 DB 모듈 테스트. 신규 코드는 ServerEngine/Database 권장 |
 | MultiPlatformNetwork | 완료/보관 | 크로스 플랫폼 AsyncIO 참고 구현 |
@@ -53,6 +53,8 @@ NetworkModuleTest/
 3. `TestServer.exe -p 9000` 실행 (DB 연결 필요 시 `-d "<connstr>"`)
 4. `TestClient.exe --host 127.0.0.1 --port 9000` 실행
 5. 자동 실행: `run_test.ps1` 또는 `run_test.bat`
+
+> 참고: TestServer의 DB 연결 옵션은 `ENABLE_DATABASE_SUPPORT`가 정의된 빌드에서만 동작합니다.
 
 ## 문서
 - `Doc/ProjectOverview.md`

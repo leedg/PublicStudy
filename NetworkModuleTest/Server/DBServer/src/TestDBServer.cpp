@@ -83,9 +83,14 @@ namespace Network::DBServer
         mPacketHandler = std::make_unique<ServerPacketHandler>();
         mPacketHandler->Initialize(mDBPingTimeManager.get());
 
-        // English: Create and initialize network engine
-        // Korean: 네트워크 엔진 생성 및 초기화
-        mEngine = std::make_unique<IOCPNetworkEngine>();
+        // English: Create and initialize network engine using factory (auto-detect best backend)
+        // Korean: 팩토리를 사용하여 네트워크 엔진 생성 및 초기화 (최적 백엔드 자동 감지)
+        mEngine = CreateNetworkEngine("auto");
+        if (!mEngine)
+        {
+            Logger::Error("Failed to create network engine");
+            return false;
+        }
 
         constexpr size_t MAX_CONNECTIONS = 1000;
         if (!mEngine->Initialize(MAX_CONNECTIONS, port))

@@ -1,4 +1,4 @@
-# Architecture Decision: Session Class Naming Strategy
+﻿# 아키텍처 결정: 세션 네이밍
 
 **작성일**: 2026-01-27  
 **주제**: IocpObjectSession vs RIOObjectSession vs 공용 AsyncObjectSession  

@@ -71,10 +71,6 @@
 #include "ConnectionPool.h"
 #include "DatabaseFactory.h"
 
-// Legacy support (deprecated)
-#include "DBConnection.h"
-#include "DBConnectionPool.h"
-
 namespace Network::Database
 {
 

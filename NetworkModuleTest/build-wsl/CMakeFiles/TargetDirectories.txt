@@ -1,0 +1,13 @@
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/CMakeFiles/edit_cache.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/CMakeFiles/rebuild_cache.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/CMakeFiles/list_install_components.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/CMakeFiles/install.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/CMakeFiles/install/local.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/CMakeFiles/install/strip.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/ModuleTest/MultiPlatformNetwork/CMakeFiles/AsyncIOLib.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/ModuleTest/MultiPlatformNetwork/CMakeFiles/edit_cache.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/ModuleTest/MultiPlatformNetwork/CMakeFiles/rebuild_cache.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/ModuleTest/MultiPlatformNetwork/CMakeFiles/list_install_components.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/ModuleTest/MultiPlatformNetwork/CMakeFiles/install.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/ModuleTest/MultiPlatformNetwork/CMakeFiles/install/local.dir
+/mnt/e/MyGitHub/PublicStudy/NetworkModuleTest/build-wsl/ModuleTest/MultiPlatformNetwork/CMakeFiles/install/strip.dir

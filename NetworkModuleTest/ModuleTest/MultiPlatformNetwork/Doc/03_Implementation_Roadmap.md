@@ -1,4 +1,4 @@
-# Implementation Roadmap - Cross-Platform Network Library
+﻿# 구현 로드맵
 
 **Version**: 2.0  
 **Date**: 2026-01-27  

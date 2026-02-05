@@ -2,6 +2,11 @@
 
 // English: IOCP-based INetworkEngine implementation
 // 한글: IOCP 기반 INetworkEngine 구현
+//
+// Note: This class uses Session-based IOCP for server applications
+// For multi-platform or Session-less I/O, use AsyncIOProvider
+// 참고: 이 클래스는 서버 애플리케이션용 Session 기반 IOCP 사용
+// 멀티플랫폼 또는 Session 없는 I/O는 AsyncIOProvider 사용
 
 #include "../../Utils/NetworkUtils.h"
 #include "NetworkEngine.h"
@@ -84,7 +89,7 @@ class IOCPNetworkEngine : public INetworkEngine
 	size_t mMaxConnections;
 
 #ifdef _WIN32
-	HANDLE mIOCP;
+	HANDLE mIOCP; // English: Session-based IOCP for server / 한글: 서버용 Session 기반 IOCP
 #endif
 
 	// English: Threads

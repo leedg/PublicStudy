@@ -43,9 +43,27 @@ namespace Network::TestServer
         // Korean: 서버 간 통신을 위한 DB 패킷 핸들러 초기화
         mDBPacketHandler = std::make_unique<DBServerPacketHandler>();
 
-        // English: Create and initialize client network engine
-        // Korean: 클라이언트 네트워크 엔진 생성 및 초기화
-        mClientEngine = std::make_unique<IOCPNetworkEngine>();
+        // English: Initialize asynchronous DB task queue (independent worker threads)
+        // Korean: 비동기 DB 작업 큐 초기화 (독립 워커 스레드)
+        mDBTaskQueue = std::make_unique<DBTaskQueue>();
+        if (!mDBTaskQueue->Initialize(2))  // 2 worker threads for DB operations
+        {
+            Logger::Error("Failed to initialize DB task queue");
+            return false;
+        }
+
+        // English: Inject DB task queue into GameSession (dependency injection)
+        // Korean: GameSession에 DB 작업 큐 주입 (의존성 주입)
+        GameSession::SetDBTaskQueue(mDBTaskQueue.get());
+
+        // English: Create and initialize client network engine using factory (auto-detect best backend)
+        // Korean: 팩토리를 사용하여 클라이언트 네트워크 엔진 생성 및 초기화 (최적 백엔드 자동 감지)
+        mClientEngine = CreateNetworkEngine("auto");
+        if (!mClientEngine)
+        {
+            Logger::Error("Failed to create network engine");
+            return false;
+        }
 
         constexpr size_t MAX_CONNECTIONS = 10000;
         if (!mClientEngine->Initialize(MAX_CONNECTIONS, port))
@@ -96,6 +114,17 @@ namespace Network::TestServer
         }
 
         mIsRunning.store(false);
+
+        // English: Shutdown DB task queue first (wait for pending tasks)
+        // Korean: DB 작업 큐를 먼저 종료 (대기 중인 작업 완료 대기)
+        if (mDBTaskQueue)
+        {
+            Logger::Info("Shutting down DB task queue...");
+            mDBTaskQueue->Shutdown();
+            Logger::Info("DB task queue statistics - Processed: " +
+                        std::to_string(mDBTaskQueue->GetProcessedCount()) +
+                        ", Failed: " + std::to_string(mDBTaskQueue->GetFailedCount()));
+        }
 
         if (mClientEngine)
         {

@@ -125,6 +125,7 @@
     <!-- Core Source Files -->
     <ClInclude Include="Network\Core\AsyncIOProvider.h" />
     <ClInclude Include="Network\Core\NetworkEngine.h" />
+    <ClInclude Include="Network\Core\BaseNetworkEngine.h" />
     <ClInclude Include="Network\Core\PlatformDetect.h" />
     <ClInclude Include="Network\Core\PacketDefine.h" />
     <ClInclude Include="Network\Core\ServerPacketDefine.h" />
@@ -132,6 +133,8 @@
     <ClInclude Include="Network\Core\SessionManager.h" />
     <ClInclude Include="Network\Core\IOCPNetworkEngine.h" />
     <ClCompile Include="Network\Core\AsyncIOProvider.cpp" />
+    <ClCompile Include="Network\Core\BaseNetworkEngine.cpp" />
+    <ClCompile Include="Network\Core\NetworkEngineFactory.cpp" />
     <ClCompile Include="Network\Core\PlatformDetect.cpp" />
     <ClCompile Include="Network\Core\Session.cpp" />
     <ClCompile Include="Network\Core\SessionManager.cpp" />
@@ -139,13 +142,19 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Platform-specific Source Files -->
+    <ClInclude Include="Network\Platforms\WindowsNetworkEngine.h" />
+    <ClInclude Include="Network\Platforms\LinuxNetworkEngine.h" />
+    <ClInclude Include="Network\Platforms\macOSNetworkEngine.h" />
     <ClInclude Include="Platforms\Windows\IocpAsyncIOProvider.h" />
     <ClInclude Include="Platforms\Windows\RIOAsyncIOProvider.h" />
     <ClInclude Include="Platforms\Linux\EpollAsyncIOProvider.h" />
     <ClInclude Include="Platforms\Linux\IOUringAsyncIOProvider.h" />
     <ClInclude Include="Platforms\macOS\KqueueAsyncIOProvider.h" />
-    <ClCompile Include="Platforms\Windows\IocpAsyncIOProvider.cpp" />
-    <ClCompile Include="Platforms\Windows\RIOAsyncIOProvider.cpp" />
+    <ClCompile Include="Network\Platforms\WindowsNetworkEngine.cpp" />
+    <ClCompile Include="Network\Platforms\LinuxNetworkEngine.cpp" />
+    <ClCompile Include="Network\Platforms\macOSNetworkEngine.cpp" />
+    <ClCompile Include="Platforms\Windows\WindowsIOCPProvider.cpp" />
+    <ClCompile Include="Platforms\Windows\WindowsRIOProvider.cpp" />
     <ClCompile Include="Platforms\Linux\EpollAsyncIOProvider.cpp" />
     <ClCompile Include="Platforms\Linux\IOUringAsyncIOProvider.cpp" />
     <ClCompile Include="Platforms\macOS\KqueueAsyncIOProvider.cpp" />
@@ -182,11 +191,6 @@
     <ClCompile Include="Database\ODBCDatabase.cpp" />
     <ClCompile Include="Database\OLEDBDatabase.cpp" />
     <ClCompile Include="Database\ConnectionPool.cpp" />
-    <!-- Legacy Database Support (Deprecated) -->
-    <ClInclude Include="Database\DBConnection.h" />
-    <ClInclude Include="Database\DBConnectionPool.h" />
-    <ClCompile Include="Database\DBConnection.cpp" />
-    <ClCompile Include="Database\DBConnectionPool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <!-- Example Implementations (for reference) -->

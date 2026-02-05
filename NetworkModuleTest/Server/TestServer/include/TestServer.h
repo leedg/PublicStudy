@@ -1,11 +1,12 @@
 #pragma once
 
-// English: TestServer main header - game server using IOCPNetworkEngine
-// 한글: TestServer 메인 헤더 - IOCPNetworkEngine 사용 게임 서버
+// English: TestServer main header - game server using NetworkEngine (multi-platform)
+// 한글: TestServer 메인 헤더 - NetworkEngine 사용 게임 서버 (멀티플랫폼)
 
 #include "GameSession.h"
 #include "DBServerPacketHandler.h"
-#include "Network/Core/IOCPNetworkEngine.h"
+#include "DBTaskQueue.h"
+#include "Network/Core/NetworkEngine.h"
 #include "Network/Core/SessionManager.h"
 #include "Utils/NetworkUtils.h"
 #include <memory>
@@ -49,13 +50,21 @@ namespace Network::TestServer
         static Core::SessionRef CreateGameSession();
 
     private:
-        // Client connection engine
-        std::unique_ptr<Core::IOCPNetworkEngine>    mClientEngine;
+        // English: Client connection engine (multi-platform support)
+        // 한글: 클라이언트 연결 엔진 (멀티플랫폼 지원)
+        std::unique_ptr<Core::INetworkEngine>       mClientEngine;
 
-        // DB Server connection
+        // English: DB Server connection
+        // 한글: DB 서버 연결
         Core::SessionRef                             mDBServerSession;
         std::unique_ptr<DBServerPacketHandler>      mDBPacketHandler;
 
+        // English: Asynchronous DB task queue (independent of game logic)
+        // 한글: 비동기 DB 작업 큐 (게임 로직과 독립적)
+        std::unique_ptr<DBTaskQueue>                mDBTaskQueue;
+
+        // English: Server state
+        // 한글: 서버 상태
         std::atomic<bool>                           mIsRunning;
         uint16_t                                    mPort;
         std::string                                 mDbConnectionString;

@@ -13,14 +13,12 @@ PascalCase API와 RAII 헬퍼를 사용합니다.
 ## 구조
 ```text
 Database/
-  DatabaseModule.h
-  DatabaseFactory.*
-  ConnectionPool.*
-  ODBCDatabase.*
-  OLEDBDatabase.*
-  DBConnection.*        (legacy)
-  DBConnectionPool.*    (legacy)
-  Examples/
+  DatabaseModule.h      (통합 헤더)
+  DatabaseFactory.*     (팩토리 패턴)
+  ConnectionPool.*      (연결 풀)
+  ODBCDatabase.*        (ODBC 구현)
+  OLEDBDatabase.*       (OLEDB 구현)
+  Examples/             (예제)
 ```
 
 ## 기본 사용
@@ -52,5 +50,5 @@ stmt->SetQuery("SELECT * FROM users");
 ```
 
 ## 참고
-- DBConnection/DBConnectionPool은 레거시 API입니다.
-- 신규 코드는 DatabaseModule.h 사용 권장
+- 모든 코드는 DatabaseModule.h의 새로운 API를 사용합니다.
+- 레거시 DBConnection/DBConnectionPool API는 제거되었습니다.

@@ -1,0 +1,350 @@
+// English: Windows IOCP AsyncIOProvider implementation
+// 한글: Windows IOCP AsyncIOProvider 구현
+
+#ifdef _WIN32
+
+#include "IocpAsyncIOProvider.h"
+#include <chrono>
+
+namespace Network
+{
+namespace AsyncIO
+{
+namespace Windows
+{
+
+// =============================================================================
+// English: Constructor & Destructor
+// 한글: 생성자 및 소멸자
+// =============================================================================
+
+IocpAsyncIOProvider::IocpAsyncIOProvider()
+	: mCompletionPort(INVALID_HANDLE_VALUE), mMaxConcurrentOps(0),
+	  mInitialized(false)
+{
+	std::memset(&mInfo, 0, sizeof(mInfo));
+	std::memset(&mStats, 0, sizeof(mStats));
+
+	mInfo.mPlatformType = PlatformType::IOCP;
+	mInfo.mName = "IOCP";
+	mInfo.mCapabilities = 0;
+	mInfo.mSupportsBufferReg = false;
+	mInfo.mSupportsBatching = false;
+	mInfo.mSupportsZeroCopy = false;
+}
+
+IocpAsyncIOProvider::~IocpAsyncIOProvider()
+{
+	Shutdown();
+}
+
+// =============================================================================
+// English: Lifecycle Management
+// 한글: 생명주기 관리
+// =============================================================================
+
+AsyncIOError IocpAsyncIOProvider::Initialize(size_t queueDepth,
+											 size_t maxConcurrent)
+{
+	if (mInitialized)
+	{
+		mLastError = "Already initialized";
+		return AsyncIOError::AlreadyInitialized;
+	}
+
+	// English: Create IOCP
+	// 한글: IOCP 생성
+	DWORD concurrentThreads = maxConcurrent > 0 ? static_cast<DWORD>(maxConcurrent) : 0;
+	mCompletionPort = CreateIoCompletionPort(
+		INVALID_HANDLE_VALUE, nullptr, 0, concurrentThreads);
+
+	if (!mCompletionPort || mCompletionPort == INVALID_HANDLE_VALUE)
+	{
+		DWORD error = ::GetLastError();
+		mLastError = std::string("Failed to create IOCP: ") + std::to_string(error);
+		return AsyncIOError::OperationFailed;
+	}
+
+	mMaxConcurrentOps = maxConcurrent;
+	mInfo.mMaxQueueDepth = queueDepth;
+	mInfo.mMaxConcurrentReq = maxConcurrent;
+	mInitialized = true;
+
+	return AsyncIOError::Success;
+}
+
+void IocpAsyncIOProvider::Shutdown()
+{
+	if (!mInitialized)
+	{
+		return;
+	}
+
+	if (mCompletionPort && mCompletionPort != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(mCompletionPort);
+		mCompletionPort = INVALID_HANDLE_VALUE;
+	}
+
+	std::lock_guard<std::mutex> lock(mMutex);
+	mPendingOps.clear();
+
+	mInitialized = false;
+}
+
+bool IocpAsyncIOProvider::IsInitialized() const
+{
+	return mInitialized;
+}
+
+// =============================================================================
+// English: Buffer Management
+// 한글: 버퍼 관리
+// =============================================================================
+
+int64_t IocpAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
+{
+	// English: IOCP doesn't need buffer registration
+	// 한글: IOCP는 버퍼 등록 불필요
+	return 0;
+}
+
+AsyncIOError IocpAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
+{
+	// English: IOCP doesn't support buffer registration
+	// 한글: IOCP는 버퍼 등록 미지원
+	return AsyncIOError::Success;
+}
+
+// =============================================================================
+// English: Async I/O Requests
+// 한글: 비동기 I/O 요청
+// =============================================================================
+
+AsyncIOError IocpAsyncIOProvider::SendAsync(SocketHandle socket,
+											const void *buffer, size_t size,
+											RequestContext context,
+											uint32_t flags)
+{
+	if (!mInitialized)
+	{
+		mLastError = "Not initialized";
+		return AsyncIOError::NotInitialized;
+	}
+
+	if (!buffer || size == 0)
+	{
+		mLastError = "Invalid buffer";
+		return AsyncIOError::InvalidBuffer;
+	}
+
+	// English: Create pending operation
+	// 한글: 대기 작업 생성
+	auto op = std::make_unique<PendingOperation>();
+	std::memset(&op->mOverlapped, 0, sizeof(OVERLAPPED));
+
+	op->mBuffer = std::make_unique<uint8_t[]>(size);
+	std::memcpy(op->mBuffer.get(), buffer, size);
+
+	op->mWsaBuffer.buf = reinterpret_cast<char*>(op->mBuffer.get());
+	op->mWsaBuffer.len = static_cast<ULONG>(size);
+	op->mContext = context;
+	op->mType = AsyncIOType::Send;
+
+	// English: Issue WSASend
+	// 한글: WSASend 발행
+	DWORD bytesSent = 0;
+	int result = WSASend(socket, &op->mWsaBuffer, 1, &bytesSent, 0,
+						 &op->mOverlapped, nullptr);
+
+	if (result == SOCKET_ERROR)
+	{
+		int errorCode = WSAGetLastError();
+		if (errorCode != WSA_IO_PENDING)
+		{
+			mLastError = "WSASend failed: " + std::to_string(errorCode);
+			mStats.mErrorCount++;
+			return AsyncIOError::OperationFailed;
+		}
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+		mPendingOps[socket] = std::move(op);
+		mStats.mTotalRequests++;
+		mStats.mPendingRequests++;
+	}
+
+	return AsyncIOError::Success;
+}
+
+AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
+											size_t size, RequestContext context,
+											uint32_t flags)
+{
+	if (!mInitialized)
+	{
+		mLastError = "Not initialized";
+		return AsyncIOError::NotInitialized;
+	}
+
+	if (!buffer || size == 0)
+	{
+		mLastError = "Invalid buffer";
+		return AsyncIOError::InvalidBuffer;
+	}
+
+	auto op = std::make_unique<PendingOperation>();
+	std::memset(&op->mOverlapped, 0, sizeof(OVERLAPPED));
+
+	op->mBuffer = std::make_unique<uint8_t[]>(size);
+	op->mWsaBuffer.buf = reinterpret_cast<char*>(op->mBuffer.get());
+	op->mWsaBuffer.len = static_cast<ULONG>(size);
+	op->mContext = context;
+	op->mType = AsyncIOType::Recv;
+
+	DWORD bytesRecv = 0;
+	DWORD dwFlags = 0;
+	int result = WSARecv(socket, &op->mWsaBuffer, 1, &bytesRecv, &dwFlags,
+						 &op->mOverlapped, nullptr);
+
+	if (result == SOCKET_ERROR)
+	{
+		int errorCode = WSAGetLastError();
+		if (errorCode != WSA_IO_PENDING)
+		{
+			mLastError = "WSARecv failed: " + std::to_string(errorCode);
+			mStats.mErrorCount++;
+			return AsyncIOError::OperationFailed;
+		}
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+		mPendingOps[socket] = std::move(op);
+		mStats.mTotalRequests++;
+		mStats.mPendingRequests++;
+	}
+
+	return AsyncIOError::Success;
+}
+
+AsyncIOError IocpAsyncIOProvider::FlushRequests()
+{
+	// English: IOCP executes immediately, no batching
+	// 한글: IOCP는 즉시 실행, 배치 없음
+	return AsyncIOError::Success;
+}
+
+// =============================================================================
+// English: Completion Processing
+// 한글: 완료 처리
+// =============================================================================
+
+int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
+											size_t maxEntries, int timeoutMs)
+{
+	if (!mInitialized)
+	{
+		mLastError = "Not initialized";
+		return static_cast<int>(AsyncIOError::NotInitialized);
+	}
+
+	if (!entries || maxEntries == 0)
+	{
+		mLastError = "Invalid parameters";
+		return static_cast<int>(AsyncIOError::InvalidParameter);
+	}
+
+	DWORD timeout = (timeoutMs < 0) ? INFINITE : static_cast<DWORD>(timeoutMs);
+	int completionCount = 0;
+	auto startTime = std::chrono::high_resolution_clock::now();
+
+	for (size_t i = 0; i < maxEntries; ++i)
+	{
+		DWORD bytesTransferred = 0;
+		ULONG_PTR completionKey = 0;
+		OVERLAPPED *pOverlapped = nullptr;
+
+		BOOL result = GetQueuedCompletionStatus(mCompletionPort, &bytesTransferred,
+												&completionKey, &pOverlapped, timeout);
+
+		if (!result && !pOverlapped)
+		{
+			break;
+		}
+
+		std::unique_ptr<PendingOperation> op;
+		{
+			std::lock_guard<std::mutex> lock(mMutex);
+			for (auto it = mPendingOps.begin(); it != mPendingOps.end(); ++it)
+			{
+				if (&it->second->mOverlapped == pOverlapped)
+				{
+					op = std::move(it->second);
+					mPendingOps.erase(it);
+					mStats.mPendingRequests--;
+					break;
+				}
+			}
+		}
+
+		if (!op)
+		{
+			continue;
+		}
+
+		entries[completionCount].mContext = op->mContext;
+		entries[completionCount].mType = op->mType;
+		entries[completionCount].mResult = result ? static_cast<int32_t>(bytesTransferred) : -1;
+		entries[completionCount].mOsError = static_cast<OSError>(result ? 0 : ::GetLastError());
+
+		auto endTime = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
+		entries[completionCount].mCompletionTime = duration.count();
+
+		mStats.mTotalCompletions++;
+		completionCount++;
+
+		timeout = 0;
+	}
+
+	return completionCount;
+}
+
+// =============================================================================
+// English: Information & Statistics
+// 한글: 정보 및 통계
+// =============================================================================
+
+const ProviderInfo &IocpAsyncIOProvider::GetInfo() const
+{
+	return mInfo;
+}
+
+ProviderStats IocpAsyncIOProvider::GetStats() const
+{
+	std::lock_guard<std::mutex> lock(mMutex);
+	return mStats;
+}
+
+const char *IocpAsyncIOProvider::GetLastError() const
+{
+	return mLastError.c_str();
+}
+
+// =============================================================================
+// English: Factory function
+// 한글: 팩토리 함수
+// =============================================================================
+
+std::unique_ptr<AsyncIOProvider> CreateIocpProvider()
+{
+	return std::make_unique<IocpAsyncIOProvider>();
+}
+
+} // namespace Windows
+} // namespace AsyncIO
+} // namespace Network
+
+#endif // _WIN32

@@ -17,6 +17,8 @@
 - -l <level> (DEBUG/INFO/WARN/ERROR)
 - -h (도움말)
 
+> 참고: `-d` 옵션은 `ENABLE_DATABASE_SUPPORT` 미정의 시 무시됩니다.
+
 ### TestDBServer
 - -p <port> (기본 8002)
 - -m <max> (기본 1000)

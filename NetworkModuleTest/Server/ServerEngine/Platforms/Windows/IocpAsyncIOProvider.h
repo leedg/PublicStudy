@@ -2,6 +2,41 @@
 
 // English: IOCP-based AsyncIOProvider implementation for Windows
 // 한글: Windows용 IOCP 기반 AsyncIOProvider 구현
+//
+// =============================================================================
+// Relationship with IOCPNetworkEngine / IOCPNetworkEngine과의 관계
+// =============================================================================
+//
+// English:
+// IocpAsyncIOProvider and IOCPNetworkEngine serve DIFFERENT purposes:
+//
+// IocpAsyncIOProvider:
+//   - Low-level IOCP abstraction for AsyncIOProvider interface
+//   - Platform-independent design (can swap with RIO/epoll/io_uring)
+//   - Session-independent I/O operations
+//   - Used for multi-platform libraries or advanced scenarios
+//
+// IOCPNetworkEngine:
+//   - High-level server engine with Session management
+//   - Optimized for Windows server applications
+//   - Session lifecycle, event callbacks, thread pools
+//   - Direct IOCP usage with Session::IOContext
+//
+// 한글:
+// IocpAsyncIOProvider와 IOCPNetworkEngine은 다른 목적을 가집니다:
+//
+// IocpAsyncIOProvider:
+//   - AsyncIOProvider 인터페이스를 위한 저수준 IOCP 추상화
+//   - 플랫폼 독립적 설계 (RIO/epoll/io_uring와 교체 가능)
+//   - Session과 독립적인 I/O 작업
+//   - 멀티플랫폼 라이브러리 또는 고급 시나리오에 사용
+//
+// IOCPNetworkEngine:
+//   - Session 관리를 포함한 고수준 서버 엔진
+//   - Windows 서버 애플리케이션에 최적화
+//   - Session 생명주기, 이벤트 콜백, 스레드 풀
+//   - Session::IOContext로 직접 IOCP 사용
+// =============================================================================
 
 #include "Network/Core/AsyncIOProvider.h"
 

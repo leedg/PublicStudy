@@ -19,12 +19,16 @@ template <typename T>
 class SafeQueue
 {
 public:
-	// English: Push an item to the queue
-	// 한글: 큐에 항목 추가
+	// English: Push an item to the queue and notify waiting threads
+	// 한글: 큐에 항목 추가 및 대기 중인 스레드에 알림
 	void Push(const T &item)
 	{
-		std::lock_guard<std::mutex> lock(mMutex);
-		mQueue.push(item);
+		{
+			std::lock_guard<std::mutex> lock(mMutex);
+			mQueue.push(item);
+		}
+		// English: Notify outside lock to avoid waking thread while holding lock
+		// 한글: 락을 잡은 채로 스레드를 깨우는 것을 방지하기 위해 락 밖에서 알림
 		mCondition.notify_one();
 	}
 

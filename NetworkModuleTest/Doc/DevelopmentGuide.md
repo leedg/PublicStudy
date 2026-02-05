@@ -21,9 +21,12 @@
 - 루트 CMake는 `ModuleTest/MultiPlatformNetwork`만 빌드
 - 다른 CMake는 참고용이며 소스 구조와 불일치 가능
 
-## 5. 로그/디버깅
+## 5. DB 사용
+- TestServer 프로젝트에 `ENABLE_DATABASE_SUPPORT` 전처리 정의 추가
+
+## 6. 로그/디버깅
 - Logger 레벨: DEBUG/INFO/WARN/ERROR
 - TestServer/TestClient는 `-l` 옵션 제공
 
-## 6. 테스트
+## 7. 테스트
 - AsyncIOProvider 테스트는 GTest 연동 시 사용 가능

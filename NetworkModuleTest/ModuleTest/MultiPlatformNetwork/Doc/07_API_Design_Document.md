@@ -1,4 +1,4 @@
-# Public API Design Document
+﻿# API 설계 문서
 
 **Version**: 1.0  
 **Date**: 2026-01-27  

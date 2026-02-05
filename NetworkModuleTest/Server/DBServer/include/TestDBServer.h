@@ -1,11 +1,11 @@
 #pragma once
 
-// English: TestDBServer main header - database server using IOCPNetworkEngine
-// Korean: TestDBServer 메인 헤더 - IOCPNetworkEngine 사용 데이터베이스 서버
+// English: TestDBServer main header - database server using NetworkEngine (multi-platform)
+// Korean: TestDBServer 메인 헤더 - NetworkEngine 사용 데이터베이스 서버 (멀티플랫폼)
 
 #include "DBPingTimeManager.h"
 #include "ServerPacketHandler.h"
-#include "Network/Core/IOCPNetworkEngine.h"
+#include "Network/Core/NetworkEngine.h"
 #include "Network/Core/Session.h"
 #include "Network/Core/SessionManager.h"
 #include "Utils/NetworkUtils.h"
@@ -73,10 +73,17 @@ namespace Network::DBServer
         Core::SessionRef CreateDBSession();
 
     private:
-        std::unique_ptr<Core::IOCPNetworkEngine>    mEngine;
+        // English: Network engine (multi-platform support)
+        // Korean: 네트워크 엔진 (멀티플랫폼 지원)
+        std::unique_ptr<Core::INetworkEngine>       mEngine;
+
+        // English: Database components
+        // Korean: 데이터베이스 컴포넌트
         std::unique_ptr<DBPingTimeManager>          mDBPingTimeManager;
         std::unique_ptr<ServerPacketHandler>        mPacketHandler;
 
+        // English: Server state
+        // Korean: 서버 상태
         std::atomic<bool>                           mIsRunning;
         uint16_t                                    mPort;
     };

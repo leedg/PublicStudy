@@ -1,4 +1,4 @@
-# Cross-Platform Architecture Design for Network Module
+﻿# 크로스 플랫폼 아키텍처
 
 **작성일**: 2026-01-27  
 **버전**: 1.0  

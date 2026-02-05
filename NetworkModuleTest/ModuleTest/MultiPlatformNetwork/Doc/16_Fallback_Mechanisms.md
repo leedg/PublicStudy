@@ -1,4 +1,4 @@
-# Fallback Mechanisms and Runtime Error Recovery
+﻿# 폴백 메커니즘
 
 **작성일**: 2026-01-27  
 **버전**: 1.0  
