@@ -8,29 +8,30 @@
 
 ## 📖 문서 목차
 
-### 🏗️ 아키텍처 문서
-1. [멀티플랫폼 엔진 완성 보고서](./docs/MULTIPLATFORM_ENGINE_COMPLETE.md) (작성 예정)
-   - 전체 아키텍처 설계 및 구조
-   - 플랫폼별 구현 상세
-   - 성능 특성 및 벤치마크
+**전체 문서 인덱스**: [Doc/README.md](./Doc/README.md) - 모든 문서 목록 및 상세 설명
 
-### 🔄 마이그레이션 문서
-2. [서버 마이그레이션 완료 보고서](./docs/SERVER_MIGRATION_COMPLETE.md)
-   - IOCPNetworkEngine → 멀티플랫폼 엔진 전환
-   - TestServer, TestDBServer 마이그레이션
-   - 빌드 결과 및 성능 비교
+### 🎯 빠른 링크
+- [프로젝트 개요](./Doc/01_ProjectOverview.md) - 프로젝트 소개 및 목표
+- [전체 아키텍처](./Doc/02_Architecture.md) - 시스템 구조
+- [개발 가이드](./Doc/05_DevelopmentGuide.md) - 빌드 및 실행 방법
+- [API 문서](./Doc/04_API.md) - API 사용법
 
-3. [비동기 DB 아키텍처 완성 보고서](./docs/DB_ASYNC_ARCHITECTURE.md)
-   - GameSession과 DB 처리 분리
-   - DBTaskQueue 설계 및 구현
-   - 논블로킹 비동기 처리 패턴
+### 🏗️ 주요 문서
 
-### ⚡ 성능 최적화 문서
-4. [Lock 경합 분석 보고서](./docs/LOCK_CONTENTION_ANALYSIS.md)
-   - P0-P3 우선순위별 Lock 경합 문제 분석
-   - SessionManager, Session, DBTaskQueue 최적화
-   - Atomic 연산 및 Lock-Free 패턴 적용
-   - 성능 측정 및 벤치마크 권장사항
+#### 아키텍처
+- [멀티플랫폼 엔진](./Doc/Architecture/MultiplatformEngine.md) - Windows/Linux/macOS 지원
+- [서버 마이그레이션](./Doc/Architecture/ServerMigration.md) - IOCP → 멀티플랫폼 전환
+- [비동기 DB](./Doc/Architecture/AsyncDB.md) - 논블로킹 DB 아키텍처
+- [네트워크 구조](./Doc/Architecture/NetworkArchitecture.md) - 네트워크 엔진 상세
+
+#### 성능 최적화
+- [Lock 경합 분석](./Doc/Performance/LockContentionAnalysis.md) - P0-P3 최적화
+- [벤치마킹 가이드](./Doc/Performance/Benchmarking.md) - 성능 측정 방법
+
+#### 개발 문서
+- [네이밍 규칙](./Doc/Development/NamingConventions.md) - 코딩 컨벤션
+- [유닛 테스트](./Doc/Development/UnitTesting.md) - 테스트 전략
+- [CMake 빌드](./Doc/Development/CMakeBuild.md) - 크로스플랫폼 빌드
 
 ---
 
@@ -68,11 +69,15 @@ NetworkModuleTest/
 ├── Client/
 │   └── TestClient/            # 테스트 클라이언트
 │
-├── docs/                      # 📚 문서 폴더
-│   ├── LOCK_CONTENTION_ANALYSIS.md
-│   ├── DB_ASYNC_ARCHITECTURE.md
-│   ├── SERVER_MIGRATION_COMPLETE.md
-│   └── MULTIPLATFORM_ENGINE_COMPLETE.md (작성 예정)
+├── Doc/                       # 📚 문서 폴더
+│   ├── 01_ProjectOverview.md
+│   ├── 02_Architecture.md
+│   ├── Architecture/          # 아키텍처 상세
+│   ├── Performance/           # 성능 최적화
+│   ├── Database/              # DB 문서
+│   ├── Network/               # 네트워크 문서
+│   ├── Development/           # 개발 가이드
+│   └── README.md              # 문서 인덱스
 │
 └── README.md                  # 이 파일
 ```
@@ -112,6 +117,12 @@ NetworkModuleTest/
 ---
 
 ## 🔧 최근 업데이트
+
+### 2026-02-06
+- ✅ 문서 구조 대대적 개편 (Doc/ 폴더로 통합)
+- ✅ 임시/중복 문서 제거 (25개 파일)
+- ✅ 카테고리별 분류 및 문서 인덱스 생성
+- ✅ README.md 업데이트 (최신 문서 링크 반영)
 
 ### 2026-02-05
 - ✅ P0: SessionManager::CloseAllSessions() Deadlock 수정
@@ -165,6 +176,6 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
 ---
 
-**마지막 업데이트**: 2026-02-05
-**버전**: 1.0.0
+**마지막 업데이트**: 2026-02-06
+**버전**: 2.0.0 (문서 구조 개편)
 **빌드 환경**: Visual Studio 2022, Windows 10, x64
