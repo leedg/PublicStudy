@@ -248,11 +248,5 @@
     <None Include="..\..\Doc\Development\FILTER_REORGANIZATION.md" />
     <None Include="..\..\Doc\Development\NamingConventions.md" />
     <None Include="..\..\Doc\Development\UnitTesting.md" />
-    <!-- Database 폴더 내 문서 -->
-    <None Include="Database\COMPILER_FIXES.md" />
-    <None Include="Database\MIGRATION_GUIDE.md" />
-    <None Include="Database\README.md" />
-    <!-- 루트 레거시 문서 -->
-    <None Include="REFACTORING_PLAN.md" />
   </ItemGroup>
 </Project>

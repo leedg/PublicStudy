@@ -374,15 +374,6 @@
     <None Include="..\..\Doc\Database\README.md">
       <Filter>Documentation\Database</Filter>
     </None>
-    <None Include="Database\COMPILER_FIXES.md">
-      <Filter>Documentation\Database</Filter>
-    </None>
-    <None Include="Database\MIGRATION_GUIDE.md">
-      <Filter>Documentation\Database</Filter>
-    </None>
-    <None Include="Database\README.md">
-      <Filter>Documentation\Database</Filter>
-    </None>
 
     <!-- Network Documentation -->
     <None Include="..\..\Doc\Network\APIDesign.md">
@@ -406,11 +397,6 @@
       <Filter>Documentation\Development</Filter>
     </None>
     <None Include="..\..\Doc\Development\UnitTesting.md">
-      <Filter>Documentation\Development</Filter>
-    </None>
-
-    <!-- Legacy Documentation -->
-    <None Include="REFACTORING_PLAN.md">
       <Filter>Documentation\Development</Filter>
     </None>
   </ItemGroup>
