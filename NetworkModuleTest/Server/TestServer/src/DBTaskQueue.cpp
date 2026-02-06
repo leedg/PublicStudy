@@ -113,7 +113,7 @@ namespace Network::TestServer
         return mIsRunning.load();
     }
 
-    void DBTaskQueue::EnqueueTask(DBTask task)
+    void DBTaskQueue::EnqueueTask(DBTask&& task)
     {
         if (!mIsRunning.load())
         {
@@ -141,8 +141,8 @@ namespace Network::TestServer
 
     void DBTaskQueue::RecordConnectTime(ConnectionId sessionId, const std::string& timestamp)
     {
-        // English: Non-blocking enqueue
-        // 한글: 논블로킹 큐잉
+        // English: Non-blocking enqueue with move semantics
+        // 한글: 이동 의미론을 사용한 논블로킹 큐잉
         EnqueueTask(DBTask(DBTaskType::RecordConnectTime, sessionId, timestamp));
 
         Logger::Debug("Enqueued RecordConnectTime task for Session: " + std::to_string(sessionId));
@@ -150,6 +150,8 @@ namespace Network::TestServer
 
     void DBTaskQueue::RecordDisconnectTime(ConnectionId sessionId, const std::string& timestamp)
     {
+        // English: Move temporary DBTask object (avoid copy)
+        // 한글: 임시 DBTask 객체를 이동 (복사 방지)
         EnqueueTask(DBTask(DBTaskType::RecordDisconnectTime, sessionId, timestamp));
 
         Logger::Debug("Enqueued RecordDisconnectTime task for Session: " + std::to_string(sessionId));
@@ -158,6 +160,8 @@ namespace Network::TestServer
     void DBTaskQueue::UpdatePlayerData(ConnectionId sessionId, const std::string& jsonData,
                                        std::function<void(bool, const std::string&)> callback)
     {
+        // English: Move temporary DBTask object with callback
+        // 한글: 콜백과 함께 임시 DBTask 객체 이동
         EnqueueTask(DBTask(DBTaskType::UpdatePlayerData, sessionId, jsonData, callback));
 
         Logger::Debug("Enqueued UpdatePlayerData task for Session: " + std::to_string(sessionId));

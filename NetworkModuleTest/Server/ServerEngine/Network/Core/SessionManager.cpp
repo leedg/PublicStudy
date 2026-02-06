@@ -105,7 +105,7 @@ SessionRef SessionManager::GetSession(Utils::ConnectionId id)
 	return nullptr;
 }
 
-void SessionManager::ForEachSession(std::function<void(SessionRef)> func)
+void SessionManager::ForEachSession(const std::function<void(SessionRef)>& func)
 {
 	// English: Copy session list to avoid long lock duration
 	// 한글: 긴 잠금 시간을 피하기 위해 세션 리스트 복사

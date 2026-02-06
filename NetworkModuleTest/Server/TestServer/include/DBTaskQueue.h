@@ -71,9 +71,9 @@ namespace Network::TestServer
         void Shutdown();
         bool IsRunning() const;
 
-        // English: Task submission (non-blocking)
-        // 한글: 작업 제출 (논블로킹)
-        void EnqueueTask(DBTask task);
+        // English: Task submission (non-blocking, move semantics)
+        // 한글: 작업 제출 (논블로킹, 이동 의미론)
+        void EnqueueTask(DBTask&& task);
 
         // English: Convenience methods for common operations
         // 한글: 일반적인 작업을 위한 편의 메서드

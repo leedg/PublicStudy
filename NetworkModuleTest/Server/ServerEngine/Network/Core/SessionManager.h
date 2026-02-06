@@ -40,9 +40,9 @@ class SessionManager
 	// 한글: 세션 조회
 	SessionRef GetSession(Utils::ConnectionId id);
 
-	// English: Iterate all sessions
-	// 한글: 모든 세션 순회
-	void ForEachSession(std::function<void(SessionRef)> func);
+	// English: Iterate all sessions (const reference to avoid function object copy)
+	// 한글: 모든 세션 순회 (함수 객체 복사 방지를 위한 const reference)
+	void ForEachSession(const std::function<void(SessionRef)>& func);
 
 	// English: Session count
 	// 한글: 세션 수
