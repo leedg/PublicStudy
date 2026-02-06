@@ -21,7 +21,8 @@ namespace Network::TestServer
     // =============================================================================
 
     DBTaskQueue::DBTaskQueue()
-        : mIsRunning(false)
+        : mQueueSize(0)
+        , mIsRunning(false)
         , mProcessedCount(0)
         , mFailedCount(0)
     {
@@ -96,6 +97,10 @@ namespace Network::TestServer
             {
                 mTaskQueue.pop();
             }
+
+            // English: Reset queue size counter
+            // 한글: 큐 크기 카운터 리셋
+            mQueueSize.store(0, std::memory_order_relaxed);
         }
 
         Logger::Info("DBTaskQueue shutdown complete - Processed: " +
@@ -123,6 +128,10 @@ namespace Network::TestServer
         {
             std::lock_guard<std::mutex> lock(mQueueMutex);
             mTaskQueue.push(std::move(task));
+
+            // English: Increment queue size atomically (enables lock-free GetQueueSize)
+            // 한글: Atomic으로 큐 크기 증가 (lock-free GetQueueSize 가능)
+            mQueueSize.fetch_add(1, std::memory_order_relaxed);
         }
 
         // English: Notify one worker thread
@@ -156,8 +165,13 @@ namespace Network::TestServer
 
     size_t DBTaskQueue::GetQueueSize() const
     {
-        std::lock_guard<std::mutex> lock(mQueueMutex);
-        return mTaskQueue.size();
+        // English: Lock-free queue size query (optimization)
+        // 한글: Lock-free 큐 크기 조회 (최적화)
+        // Performance: Atomic load is ~10-100x faster than mutex acquisition
+        // 성능: Atomic load는 mutex 획득보다 약 10-100배 빠름
+        // Note: May be slightly inaccurate due to concurrent operations, but acceptable for statistics
+        // 참고: 동시 작업으로 인해 약간 부정확할 수 있지만 통계용으로는 충분함
+        return mQueueSize.load(std::memory_order_relaxed);
     }
 
     size_t DBTaskQueue::GetProcessedCount() const
@@ -192,6 +206,11 @@ namespace Network::TestServer
                 {
                     task = std::move(mTaskQueue.front());
                     mTaskQueue.pop();
+
+                    // English: Decrement queue size atomically
+                    // 한글: Atomic으로 큐 크기 감소
+                    mQueueSize.fetch_sub(1, std::memory_order_relaxed);
+
                     hasTask = true;
                 }
             }

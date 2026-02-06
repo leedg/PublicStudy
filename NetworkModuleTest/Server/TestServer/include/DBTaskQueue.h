@@ -104,11 +104,17 @@ namespace Network::TestServer
         bool HandleUpdatePlayerData(const DBTask& task, std::string& result);
 
     private:
-        // English: Task queue
-        // 한글: 작업 큐
+        // English: Task queue with lock contention optimization
+        // 한글: Lock 경합 최적화가 적용된 작업 큐
         std::queue<DBTask>              mTaskQueue;
         mutable std::mutex              mQueueMutex;
         std::condition_variable         mQueueCV;
+
+        // English: Lock-free queue size counter (optimization for GetQueueSize)
+        // 한글: Lock-free 큐 크기 카운터 (GetQueueSize 최적화)
+        // Purpose: Avoid mutex acquisition for queue size queries
+        // 목적: 큐 크기 조회 시 mutex 획득 회피
+        std::atomic<size_t>             mQueueSize;
 
         // English: Worker threads
         // 한글: 워커 스레드
