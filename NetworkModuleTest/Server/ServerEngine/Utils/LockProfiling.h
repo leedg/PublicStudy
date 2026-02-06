@@ -156,9 +156,8 @@ class LockGuard
 
 #else
 
-#define NET_LOCK_GUARD_NAMED(mutex, name) std::lock_guard<std::mutex> name(mutex)
-#define NET_LOCK_GUARD(mutex)                                                                 \
-	std::lock_guard<std::mutex> NET_LOCK_PROFILE_UNIQUE(_net_lock_)(mutex)
+#define NET_LOCK_GUARD_NAMED(mutex, name) std::lock_guard<std::mutex> name((mutex))
+#define NET_LOCK_GUARD(mutex) std::lock_guard<std::mutex> NET_LOCK_PROFILE_UNIQUE(_net_lock_)((mutex))
 
 #define NET_UNIQUE_LOCK_NAMED(mutex, name) std::unique_lock<std::mutex> name(mutex)
 #define NET_UNIQUE_LOCK(mutex) std::unique_lock<std::mutex> lock(mutex)
