@@ -204,6 +204,7 @@
     <!-- Utility Source Files -->
     <ClInclude Include="Utils\BufferManager.h" />
     <ClInclude Include="Utils\ConfigManager.h" />
+    <ClInclude Include="Utils\LockProfiling.h" />
     <ClInclude Include="Utils\Logger.h" />
     <ClInclude Include="Utils\NetworkTypes.h" />
     <ClInclude Include="Utils\NetworkUtils.h" />
@@ -211,6 +212,7 @@
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\ThreadPool.h" />
     <ClInclude Include="Utils\Timer.h" />
+    <ClCompile Include="Utils\LockProfiling.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
@@ -220,5 +222,13 @@
     <None Include="Database\MIGRATION_GUIDE.md" />
     <None Include="Database\README.md" />
     <None Include="REFACTORING_PLAN.md" />
+  </ItemGroup>
+  <ItemGroup Label="Documentation">
+    <!-- 프로젝트 메인 문서 -->
+    <None Include="..\..\README.md" />
+    <!-- 아키텍처 및 분석 문서 -->
+    <None Include="..\..\docs\LOCK_CONTENTION_ANALYSIS.md" />
+    <None Include="..\..\docs\DB_ASYNC_ARCHITECTURE.md" />
+    <None Include="..\..\docs\SERVER_MIGRATION_COMPLETE.md" />
   </ItemGroup>
 </Project>
