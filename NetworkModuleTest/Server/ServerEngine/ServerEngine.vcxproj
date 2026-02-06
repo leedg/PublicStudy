@@ -131,14 +131,12 @@
     <ClInclude Include="Network\Core\ServerPacketDefine.h" />
     <ClInclude Include="Network\Core\Session.h" />
     <ClInclude Include="Network\Core\SessionManager.h" />
-    <ClInclude Include="Network\Core\IOCPNetworkEngine.h" />
     <ClCompile Include="Network\Core\AsyncIOProvider.cpp" />
     <ClCompile Include="Network\Core\BaseNetworkEngine.cpp" />
     <ClCompile Include="Network\Core\NetworkEngineFactory.cpp" />
     <ClCompile Include="Network\Core\PlatformDetect.cpp" />
     <ClCompile Include="Network\Core\Session.cpp" />
     <ClCompile Include="Network\Core\SessionManager.cpp" />
-    <ClCompile Include="Network\Core\IOCPNetworkEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
     <!-- Platform-specific Source Files -->
@@ -153,8 +151,8 @@
     <ClCompile Include="Network\Platforms\WindowsNetworkEngine.cpp" />
     <ClCompile Include="Network\Platforms\LinuxNetworkEngine.cpp" />
     <ClCompile Include="Network\Platforms\macOSNetworkEngine.cpp" />
-    <ClCompile Include="Platforms\Windows\WindowsIOCPProvider.cpp" />
-    <ClCompile Include="Platforms\Windows\WindowsRIOProvider.cpp" />
+    <ClCompile Include="Platforms\Windows\IocpAsyncIOProvider.cpp" />
+    <ClCompile Include="Platforms\Windows\RIOAsyncIOProvider.cpp" />
     <ClCompile Include="Platforms\Linux\EpollAsyncIOProvider.cpp" />
     <ClCompile Include="Platforms\Linux\IOUringAsyncIOProvider.cpp" />
     <ClCompile Include="Platforms\macOS\KqueueAsyncIOProvider.cpp" />

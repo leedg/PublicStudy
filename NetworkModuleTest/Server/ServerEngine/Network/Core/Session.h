@@ -79,7 +79,6 @@ class Session : public std::enable_shared_from_this<Session>
 {
 	// English: NetworkEngine classes need access to PostSend for completion handling
 	// 한글: NetworkEngine 클래스들이 완료 처리를 위해 PostSend 접근 필요
-	friend class IOCPNetworkEngine;
 	friend class BaseNetworkEngine;
 
   public:

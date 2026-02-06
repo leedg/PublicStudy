@@ -87,9 +87,6 @@
     <ClInclude Include="Network\Core\SessionManager.h">
       <Filter>Core\Network</Filter>
     </ClInclude>
-    <ClInclude Include="Network\Core\IOCPNetworkEngine.h">
-      <Filter>Core\Network</Filter>
-    </ClInclude>
     <ClInclude Include="Network\Core\BaseNetworkEngine.h">
       <Filter>Core\Network</Filter>
     </ClInclude>
@@ -109,9 +106,6 @@
       <Filter>Core\Network</Filter>
     </ClCompile>
     <ClCompile Include="Network\Core\SessionManager.cpp">
-      <Filter>Core\Network</Filter>
-    </ClCompile>
-    <ClCompile Include="Network\Core\IOCPNetworkEngine.cpp">
       <Filter>Core\Network</Filter>
     </ClCompile>
   </ItemGroup>
@@ -174,10 +168,10 @@
     <ClInclude Include="Network\Platforms\WindowsNetworkEngine.h">
       <Filter>Platform\Windows</Filter>
     </ClInclude>
-    <ClCompile Include="Platforms\Windows\WindowsIOCPProvider.cpp">
+    <ClCompile Include="Platforms\Windows\IocpAsyncIOProvider.cpp">
       <Filter>Platform\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="Platforms\Windows\WindowsRIOProvider.cpp">
+    <ClCompile Include="Platforms\Windows\RIOAsyncIOProvider.cpp">
       <Filter>Platform\Windows</Filter>
     </ClCompile>
     <ClCompile Include="Network\Platforms\WindowsNetworkEngine.cpp">
