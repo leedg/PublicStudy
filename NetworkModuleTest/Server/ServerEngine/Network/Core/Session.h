@@ -154,11 +154,17 @@ class Session : public std::enable_shared_from_this<Session>
 	IOContext mSendContext;
 #endif
 
-	// English: Send queue
-	// 한글: 전송 큐
+	// English: Send queue with lock contention optimization
+	// 한글: Lock 경합 최적화가 적용된 전송 큐
 	std::queue<std::vector<char>> mSendQueue;
 	std::mutex mSendMutex;
 	std::atomic<bool> mIsSending;
+
+	// English: Fast-path optimization - queue size counter (lock-free read)
+	// 한글: Fast-path 최적화 - 큐 크기 카운터 (lock-free 읽기)
+	// Purpose: Avoid mutex lock when queue is likely empty
+	// 목적: 큐가 비어있을 가능성이 높을 때 mutex lock 회피
+	std::atomic<size_t> mSendQueueSize;
 };
 
 using SessionRef = std::shared_ptr<Session>;

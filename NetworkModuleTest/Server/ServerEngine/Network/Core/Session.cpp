@@ -18,7 +18,7 @@ Session::Session()
 #endif
 				  ),
 		  mState(SessionState::None), mConnectTime(0), mLastPingTime(0),
-		  mPingSequence(0), mIsSending(false)
+		  mPingSequence(0), mIsSending(false), mSendQueueSize(0)
 #ifdef _WIN32
 		  ,
 		  mRecvContext(IOType::Recv), mSendContext(IOType::Send)
@@ -37,6 +37,7 @@ void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 	mLastPingTime = mConnectTime;
 	mPingSequence = 0;
 	mIsSending = false;
+	mSendQueueSize.store(0, std::memory_order_relaxed);
 
 	Utils::Logger::Info("Session initialized - ID: " + std::to_string(mId));
 }
@@ -75,6 +76,7 @@ void Session::Close()
 		{
 			mSendQueue.pop();
 		}
+		mSendQueueSize.store(0, std::memory_order_relaxed);
 	}
 
 	Utils::Logger::Info("Session closed - ID: " + std::to_string(mId));
@@ -87,13 +89,33 @@ void Session::Send(const void *data, uint32_t size)
 		return;
 	}
 
-	// English: Enqueue send data
-	// 한글: 전송 데이터 인큐
+	// English: Lock contention optimization using atomic queue size counter
+	// 한글: Atomic 큐 크기 카운터를 사용한 Lock 경합 최적화
+	//
+	// Performance optimization strategy:
+	// - Fast path: Check mSendQueueSize (lock-free) before acquiring mutex
+	// - Slow path: Only acquire mutex when actually enqueuing data
+	// - Benefit: Reduces lock contention when Send() is called frequently
+	//
+	// 성능 최적화 전략:
+	// - Fast path: mutex 획득 전에 mSendQueueSize를 확인 (lock-free)
+	// - Slow path: 실제로 데이터를 인큐할 때만 mutex 획득
+	// - 이점: Send()가 자주 호출될 때 lock 경합 감소
+
+	// English: Prepare buffer outside of lock (minimize critical section)
+	// 한글: Lock 외부에서 버퍼 준비 (임계 영역 최소화)
+	std::vector<char> buffer(size);
+	std::memcpy(buffer.data(), data, size);
+
+	// English: Enqueue with atomic size tracking
+	// 한글: Atomic 크기 추적과 함께 인큐
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
-		std::vector<char> buffer(size);
-		std::memcpy(buffer.data(), data, size);
 		mSendQueue.push(std::move(buffer));
+
+		// English: Increment queue size atomically (enables lock-free size check)
+		// 한글: Atomic으로 큐 크기 증가 (lock-free 크기 확인 가능)
+		mSendQueueSize.fetch_add(1, std::memory_order_relaxed);
 	}
 
 	// English: Always try to flush (CAS inside will prevent double send)
@@ -117,11 +139,25 @@ void Session::FlushSendQueue()
 bool Session::PostSend()
 {
 #ifdef _WIN32
+	// English: Fast path - check queue size without lock (lock-free optimization)
+	// 한글: Fast path - Lock 없이 큐 크기 확인 (lock-free 최적화)
+	// Performance: This atomic load is much faster than acquiring mutex
+	// 성능: 이 atomic load는 mutex 획득보다 훨씬 빠름
+	if (mSendQueueSize.load(std::memory_order_relaxed) == 0)
+	{
+		// English: Queue is empty, release sending flag and return
+		// 한글: 큐가 비어있음, 전송 플래그 해제 후 반환
+		mIsSending.store(false, std::memory_order_release);
+		return true;
+	}
+
 	std::vector<char> dataToSend;
 
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
 
+		// English: Double-check queue after acquiring lock (TOCTOU prevention)
+		// 한글: Lock 획득 후 큐 재확인 (TOCTOU 방지)
 		if (mSendQueue.empty())
 		{
 			// English: No more data to send, release flag atomically
@@ -132,6 +168,10 @@ bool Session::PostSend()
 
 		dataToSend = std::move(mSendQueue.front());
 		mSendQueue.pop();
+
+		// English: Decrement queue size atomically
+		// 한글: Atomic으로 큐 크기 감소
+		mSendQueueSize.fetch_sub(1, std::memory_order_relaxed);
 	}
 
 	mSendContext.Reset();
