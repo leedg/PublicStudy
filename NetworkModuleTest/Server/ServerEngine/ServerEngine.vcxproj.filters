@@ -310,7 +310,70 @@
       <UniqueIdentifier>{C7208E7F-31AB-4F71-AA51-3403F26FC804}</UniqueIdentifier>
     </Filter>
 
+    <!-- Main Documentation -->
+    <None Include="..\..\README.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="..\..\Doc\README.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="..\..\Doc\01_ProjectOverview.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="..\..\Doc\02_Architecture.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="..\..\Doc\03_Protocol.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="..\..\Doc\04_API.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="..\..\Doc\05_DevelopmentGuide.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="..\..\Doc\06_SolutionGuide.md">
+      <Filter>Documentation</Filter>
+    </None>
+
+    <!-- Architecture Documentation -->
+    <None Include="..\..\Doc\Architecture\AsyncDB.md">
+      <Filter>Documentation\Architecture</Filter>
+    </None>
+    <None Include="..\..\Doc\Architecture\CrossPlatform.md">
+      <Filter>Documentation\Architecture</Filter>
+    </None>
+    <None Include="..\..\Doc\Architecture\MultiplatformEngine.md">
+      <Filter>Documentation\Architecture</Filter>
+    </None>
+    <None Include="..\..\Doc\Architecture\NetworkArchitecture.md">
+      <Filter>Documentation\Architecture</Filter>
+    </None>
+    <None Include="..\..\Doc\Architecture\PLATFORM_STRUCTURE_ANALYSIS.md">
+      <Filter>Documentation\Architecture</Filter>
+    </None>
+    <None Include="..\..\Doc\Architecture\ServerMigration.md">
+      <Filter>Documentation\Architecture</Filter>
+    </None>
+
+    <!-- Performance Documentation -->
+    <None Include="..\..\Doc\Performance\Benchmarking.md">
+      <Filter>Documentation\Performance</Filter>
+    </None>
+    <None Include="..\..\Doc\Performance\LockContentionAnalysis.md">
+      <Filter>Documentation\Performance</Filter>
+    </None>
+    <None Include="..\..\Doc\Performance\VALUE_COPY_OPTIMIZATION.md">
+      <Filter>Documentation\Performance</Filter>
+    </None>
+
     <!-- Database Documentation -->
+    <None Include="..\..\Doc\Database\MigrationGuide.md">
+      <Filter>Documentation\Database</Filter>
+    </None>
+    <None Include="..\..\Doc\Database\README.md">
+      <Filter>Documentation\Database</Filter>
+    </None>
     <None Include="Database\COMPILER_FIXES.md">
       <Filter>Documentation\Database</Filter>
     </None>
@@ -321,7 +384,32 @@
       <Filter>Documentation\Database</Filter>
     </None>
 
-    <!-- Legacy Documentation (to be removed or moved to Doc/) -->
+    <!-- Network Documentation -->
+    <None Include="..\..\Doc\Network\APIDesign.md">
+      <Filter>Documentation\Network</Filter>
+    </None>
+    <None Include="..\..\Doc\Network\CodingConventions.md">
+      <Filter>Documentation\Network</Filter>
+    </None>
+    <None Include="..\..\Doc\Network\IOCPAnalysis.md">
+      <Filter>Documentation\Network</Filter>
+    </None>
+
+    <!-- Development Documentation -->
+    <None Include="..\..\Doc\Development\CMakeBuild.md">
+      <Filter>Documentation\Development</Filter>
+    </None>
+    <None Include="..\..\Doc\Development\FILTER_REORGANIZATION.md">
+      <Filter>Documentation\Development</Filter>
+    </None>
+    <None Include="..\..\Doc\Development\NamingConventions.md">
+      <Filter>Documentation\Development</Filter>
+    </None>
+    <None Include="..\..\Doc\Development\UnitTesting.md">
+      <Filter>Documentation\Development</Filter>
+    </None>
+
+    <!-- Legacy Documentation -->
     <None Include="REFACTORING_PLAN.md">
       <Filter>Documentation\Development</Filter>
     </None>
