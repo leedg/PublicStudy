@@ -1,7 +1,8 @@
 // English: SessionManager implementation
-// ?��?: SessionManager 구현
+// 한글: SessionManager 구현
 
 #include "SessionManager.h"
+#include "Utils/LockProfiling.h"
 #include <sstream>
 
 namespace Network::Core
@@ -38,7 +39,7 @@ SessionRef SessionManager::CreateSession(SocketHandle socket)
 	session->Initialize(id, socket);
 
 	{
-		NET_LOCK_GUARD();
+		NET_LOCK_GUARD(mMutex);
 
 		if (mSessions.size() >= Utils::MAX_CONNECTIONS)
 		{
@@ -57,7 +58,7 @@ SessionRef SessionManager::CreateSession(SocketHandle socket)
 
 void SessionManager::RemoveSession(Utils::ConnectionId id)
 {
-	NET_LOCK_GUARD();
+	NET_LOCK_GUARD(mMutex);
 
 	auto it = mSessions.find(id);
 	if (it != mSessions.end())
@@ -93,7 +94,7 @@ void SessionManager::RemoveSession(SessionRef session)
 
 SessionRef SessionManager::GetSession(Utils::ConnectionId id)
 {
-	NET_LOCK_GUARD();
+	NET_LOCK_GUARD(mMutex);
 
 	auto it = mSessions.find(id);
 	if (it != mSessions.end())
@@ -107,10 +108,10 @@ SessionRef SessionManager::GetSession(Utils::ConnectionId id)
 void SessionManager::ForEachSession(std::function<void(SessionRef)> func)
 {
 	// English: Copy session list to avoid long lock duration
-	// ?��?: �??�금 ?�간???�하�??�해 ?�션 리스??복사
+	// 한글: 긴 잠금 시간을 피하기 위해 세션 리스트 복사
 	std::vector<SessionRef> sessionsCopy;
 	{
-		NET_LOCK_GUARD();
+		NET_LOCK_GUARD(mMutex);
 		sessionsCopy.reserve(mSessions.size());
 		for (auto &[id, session] : mSessions)
 		{
@@ -119,7 +120,7 @@ void SessionManager::ForEachSession(std::function<void(SessionRef)> func)
 	}
 
 	// English: Process sessions without holding lock
-	// ?��?: ?�금 ?�이 ?�션 처리
+	// 한글: 잠금 없이 세션 처리
 	for (auto &session : sessionsCopy)
 	{
 		func(session);
@@ -128,28 +129,28 @@ void SessionManager::ForEachSession(std::function<void(SessionRef)> func)
 
 size_t SessionManager::GetSessionCount() const
 {
-	NET_LOCK_GUARD();
+	NET_LOCK_GUARD(mMutex);
 	return mSessions.size();
 }
 
 void SessionManager::CloseAllSessions()
 {
 	// English: Copy session list to avoid deadlock (pattern same as ForEachSession)
-	// ?��?: 교착 ?�태 방�?�??�해 ?�션 리스??복사 (ForEachSession�??�일 ?�턴)
+	// 한글: 교착 상태 방지를 위해 세션 리스트 복사 (ForEachSession과 동일 패턴)
 	// Deadlock scenario prevention:
 	//   Thread A: CloseAllSessions() holds mMutex -> calls session->Close() -> waits for Session::mSendMutex
 	//   Thread B: Session::Send() holds mSendMutex -> calls RemoveSession() -> waits for mMutex
 	//   Result: DEADLOCK!
 	// Solution: Release mMutex before calling session->Close()
-	// 교착 ?�태 ?�나리오 방�?:
-	//   ?�레??A: CloseAllSessions()가 mMutex 보유 -> session->Close() ?�출 -> Session::mSendMutex ?��?
-	//   ?�레??B: Session::Send()가 mSendMutex 보유 -> RemoveSession() ?�출 -> mMutex ?��?
-	//   결과: 교착 ?�태!
-	// ?�결�? session->Close() ?�출 ??mMutex ?�제
+	// 교착 상태 시나리오 방지:
+	//   스레드 A: CloseAllSessions()가 mMutex 보유 -> session->Close() 호출 -> Session::mSendMutex 대기
+	//   스레드 B: Session::Send()가 mSendMutex 보유 -> RemoveSession() 호출 -> mMutex 대기
+	//   결과: 교착 상태!
+	// 해결책: session->Close() 호출 전 mMutex 해제
 
 	std::vector<SessionRef> sessionsCopy;
 	{
-		NET_LOCK_GUARD();
+		NET_LOCK_GUARD(mMutex);
 		sessionsCopy.reserve(mSessions.size());
 		for (auto &[id, session] : mSessions)
 		{
@@ -158,7 +159,7 @@ void SessionManager::CloseAllSessions()
 	}
 
 	// English: Close sessions without holding mMutex
-	// ?��?: mMutex�?보유?��? ?��? 채로 ?�션 ?�기
+	// 한글: mMutex를 보유하지 않은 채로 세션 닫기
 	for (auto &session : sessionsCopy)
 	{
 		if (session)
@@ -168,9 +169,9 @@ void SessionManager::CloseAllSessions()
 	}
 
 	// English: Clear session map after all sessions are closed
-	// ?��?: 모든 ?�션???�힌 ???�션 �??�리
+	// 한글: 모든 세션이 닫힌 후 세션 맵 정리
 	{
-		NET_LOCK_GUARD();
+		NET_LOCK_GUARD(mMutex);
 		mSessions.clear();
 		Utils::Logger::Info("All sessions closed - Count: " + std::to_string(sessionsCopy.size()));
 	}
