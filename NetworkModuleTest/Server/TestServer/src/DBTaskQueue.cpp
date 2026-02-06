@@ -12,7 +12,7 @@ using namespace Network::Database;
 
 namespace Network::TestServer
 {
-    using namespace Network::Core;
+    //using namespace Network::Core;
     using namespace Network::Utils;
 
     // =============================================================================

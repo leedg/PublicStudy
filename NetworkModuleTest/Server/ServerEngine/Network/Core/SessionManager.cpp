@@ -128,15 +128,46 @@ size_t SessionManager::GetSessionCount() const
 
 void SessionManager::CloseAllSessions()
 {
-	std::lock_guard<std::mutex> lock(mMutex);
+	// English: Copy session list to avoid deadlock (pattern same as ForEachSession)
+	// 한글: 교착 상태 방지를 위해 세션 리스트 복사 (ForEachSession과 동일 패턴)
+	// Deadlock scenario prevention:
+	//   Thread A: CloseAllSessions() holds mMutex -> calls session->Close() -> waits for Session::mSendMutex
+	//   Thread B: Session::Send() holds mSendMutex -> calls RemoveSession() -> waits for mMutex
+	//   Result: DEADLOCK!
+	// Solution: Release mMutex before calling session->Close()
+	// 교착 상태 시나리오 방지:
+	//   스레드 A: CloseAllSessions()가 mMutex 보유 -> session->Close() 호출 -> Session::mSendMutex 대기
+	//   스레드 B: Session::Send()가 mSendMutex 보유 -> RemoveSession() 호출 -> mMutex 대기
+	//   결과: 교착 상태!
+	// 해결책: session->Close() 호출 전 mMutex 해제
 
-	for (auto &[id, session] : mSessions)
+	std::vector<SessionRef> sessionsCopy;
 	{
-		session->Close();
+		std::lock_guard<std::mutex> lock(mMutex);
+		sessionsCopy.reserve(mSessions.size());
+		for (auto &[id, session] : mSessions)
+		{
+			sessionsCopy.push_back(session);
+		}
 	}
 
-	mSessions.clear();
-	Utils::Logger::Info("All sessions closed");
+	// English: Close sessions without holding mMutex
+	// 한글: mMutex를 보유하지 않은 채로 세션 닫기
+	for (auto &session : sessionsCopy)
+	{
+		if (session)
+		{
+			session->Close();
+		}
+	}
+
+	// English: Clear session map after all sessions are closed
+	// 한글: 모든 세션이 닫힌 후 세션 맵 정리
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+		mSessions.clear();
+		Utils::Logger::Info("All sessions closed - Count: " + std::to_string(sessionsCopy.size()));
+	}
 }
 
 Utils::ConnectionId SessionManager::GenerateSessionId()
