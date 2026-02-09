@@ -91,6 +91,32 @@ void EpollAsyncIOProvider::Shutdown()
 bool EpollAsyncIOProvider::IsInitialized() const { return mInitialized; }
 
 // =============================================================================
+// English: Socket Association
+// 한글: 소켓 연결
+// =============================================================================
+
+AsyncIOError EpollAsyncIOProvider::AssociateSocket(SocketHandle socket,
+												   RequestContext context)
+{
+	if (!mInitialized)
+		return AsyncIOError::NotInitialized;
+
+	// English: Register socket with epoll for read events (edge-triggered)
+	// 한글: 소켓을 epoll에 읽기 이벤트로 등록 (엣지 트리거)
+	struct epoll_event ev;
+	ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
+	ev.data.u64 = context;
+
+	if (epoll_ctl(mEpollFd, EPOLL_CTL_ADD, socket, &ev) < 0)
+	{
+		mLastError = "epoll_ctl EPOLL_CTL_ADD failed";
+		return AsyncIOError::OperationFailed;
+	}
+
+	return AsyncIOError::Success;
+}
+
+// =============================================================================
 // English: Buffer Management
 // 한글: 버퍼 관리
 // =============================================================================

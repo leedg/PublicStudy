@@ -86,6 +86,31 @@ void KqueueAsyncIOProvider::Shutdown()
 bool KqueueAsyncIOProvider::IsInitialized() const { return mInitialized; }
 
 // =============================================================================
+// English: Socket Association
+// 한글: 소켓 연결
+// =============================================================================
+
+AsyncIOError KqueueAsyncIOProvider::AssociateSocket(SocketHandle socket,
+													RequestContext context)
+{
+	if (!mInitialized)
+		return AsyncIOError::NotInitialized;
+
+	// English: Register socket with kqueue for read/write events
+	// 한글: kqueue에 소켓을 읽기/쓰기 이벤트로 등록
+	if (!RegisterSocketEvents(socket))
+	{
+		mLastError = "Failed to register socket events with kqueue";
+		return AsyncIOError::OperationFailed;
+	}
+
+	std::lock_guard<std::mutex> lock(mMutex);
+	mRegisteredSockets[socket] = true;
+
+	return AsyncIOError::Success;
+}
+
+// =============================================================================
 // English: Buffer Management
 // 한글: 버퍼 관리
 // =============================================================================

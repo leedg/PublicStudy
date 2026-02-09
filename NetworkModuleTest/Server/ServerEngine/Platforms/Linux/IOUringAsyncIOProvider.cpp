@@ -101,6 +101,24 @@ void IOUringAsyncIOProvider::Shutdown()
 bool IOUringAsyncIOProvider::IsInitialized() const { return mInitialized; }
 
 // =============================================================================
+// English: Socket Association
+// 한글: 소켓 연결
+// =============================================================================
+
+AsyncIOError IOUringAsyncIOProvider::AssociateSocket(SocketHandle socket,
+													 RequestContext context)
+{
+	// English: io_uring doesn't require explicit socket association
+	// 한글: io_uring은 명시적 소켓 연결이 필요하지 않음
+	// io_uring operates on file descriptors directly via SQE submissions,
+	// no prior registration needed (unlike IOCP/epoll).
+	if (!mInitialized)
+		return AsyncIOError::NotInitialized;
+
+	return AsyncIOError::Success;
+}
+
+// =============================================================================
 // English: Buffer Management
 // 한글: 버퍼 관리
 // =============================================================================

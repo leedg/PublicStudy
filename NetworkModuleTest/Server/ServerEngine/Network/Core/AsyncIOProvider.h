@@ -443,6 +443,34 @@ class AsyncIOProvider
 	virtual AsyncIOError UnregisterBuffer(int64_t bufferId) = 0;
 
 	// =====================================================================
+	// English: Socket Association
+	// 한글: 소켓 연결
+	// =====================================================================
+
+	/**
+	 * English: Associate a socket with the I/O provider for async operations
+	 * 한글: 비동기 작업을 위해 소켓을 I/O 공급자에 연결
+	 *
+	 * This MUST be called after accept() and before any async I/O
+	 * (SendAsync/RecvAsync/PostRecv) on the socket.
+	 *
+	 * accept() 후, 소켓에 대한 비동기 I/O (SendAsync/RecvAsync/PostRecv)
+	 * 호출 전에 반드시 호출해야 합니다.
+	 *
+	 * Platform behavior:
+	 * - IOCP: CreateIoCompletionPort(socket, completionPort, context, 0)
+	 * - epoll: epoll_ctl(EPOLL_CTL_ADD)
+	 * - kqueue: kevent() with EV_ADD
+	 * - RIO/io_uring: Platform-specific registration
+	 *
+	 * @param socket Socket handle to associate
+	 * @param context Request context (typically ConnectionId)
+	 * @return Error code (Success if association succeeded)
+	 */
+	virtual AsyncIOError AssociateSocket(SocketHandle socket,
+										 RequestContext context) = 0;
+
+	// =====================================================================
 	// English: Async I/O Requests
 	// 한글: 비동기 I/O 요청
 	// =====================================================================

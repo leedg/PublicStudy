@@ -10,6 +10,13 @@
 #include <string>
 #include <thread>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
+
 // English: Global server instance for signal handling
 // 한글: 시그널 처리용 전역 서버 인스턴스
 static Network::TestServer::TestServer *g_pServer = nullptr;
@@ -54,6 +61,13 @@ Network::Utils::LogLevel ParseLogLevel(const std::string &level)
 
 int main(int argc, char *argv[])
 {
+#ifdef _WIN32
+	// English: Set console code page to UTF-8 for Korean output
+	// 한글: 한글 출력을 위해 콘솔 코드 페이지를 UTF-8로 설정
+	SetConsoleCP(65001);
+	SetConsoleOutputCP(65001);
+#endif
+
 	std::cout << "====================================" << std::endl;
 	std::cout << "  TestServer - IOCP Game Server" << std::endl;
 	std::cout << "====================================" << std::endl;

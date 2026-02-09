@@ -50,6 +50,14 @@ class EpollAsyncIOProvider : public AsyncIOProvider
 	bool IsInitialized() const override;
 
 	// =====================================================================
+	// English: Socket Association
+	// 한글: 소켓 연결
+	// =====================================================================
+
+	AsyncIOError AssociateSocket(SocketHandle socket,
+								RequestContext context) override;
+
+	// =====================================================================
 	// English: Buffer Management
 	// 한글: 버퍼 관리
 	// =====================================================================

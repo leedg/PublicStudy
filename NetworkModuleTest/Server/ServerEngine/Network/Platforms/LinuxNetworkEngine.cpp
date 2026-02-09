@@ -199,6 +199,22 @@ void LinuxNetworkEngine::AcceptLoop()
 			continue;
 		}
 
+		// English: Associate client socket with async I/O provider (epoll/io_uring)
+		// 한글: 클라이언트 소켓을 비동기 I/O 프로바이더에 연결 (epoll/io_uring)
+		auto assocResult = mProvider->AssociateSocket(
+			clientSocket,
+			static_cast<AsyncIO::RequestContext>(session->GetId()));
+		if (assocResult != AsyncIO::AsyncIOError::Success)
+		{
+			Utils::Logger::Error(
+				"Failed to associate socket with async I/O - Session " +
+				std::to_string(session->GetId()) + ": " +
+				std::string(mProvider->GetLastError()));
+			Core::SessionManager::Instance().RemoveSession(session);
+			close(clientSocket);
+			continue;
+		}
+
 		// English: Update stats
 		// 한글: 통계 업데이트
 		{
@@ -245,6 +261,13 @@ void LinuxNetworkEngine::ProcessCompletions()
 		// 한글: 에러 발생
 		Utils::Logger::Error("ProcessCompletions failed: " +
 							 std::string(mProvider->GetLastError()));
+		return;
+	}
+
+	// English: No completions - provider already waited with timeout, just return
+	// 한글: 완료 없음 - 프로바이더가 이미 타임아웃으로 대기했으므로 바로 리턴
+	if (count == 0)
+	{
 		return;
 	}
 

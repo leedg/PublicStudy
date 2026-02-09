@@ -184,6 +184,23 @@ bool RIOAsyncIOProvider::IsInitialized() const
 }
 
 // =============================================================================
+// English: Socket Association
+// 한글: 소켓 연결
+// =============================================================================
+
+AsyncIOError RIOAsyncIOProvider::AssociateSocket(SocketHandle socket,
+												 RequestContext context)
+{
+	// English: RIO uses request queues per socket, not completion port association
+	// 한글: RIO는 완료 포트 연결이 아닌 소켓별 요청 큐를 사용
+	// TODO: Create RIO request queue for this socket
+	if (!mInitialized)
+		return AsyncIOError::NotInitialized;
+
+	return AsyncIOError::Success;
+}
+
+// =============================================================================
 // English: Buffer Management
 // 한글: 버퍼 관리
 // =============================================================================

@@ -4,6 +4,7 @@
 #ifdef _WIN32
 
 #include "IocpAsyncIOProvider.h"
+#include "Network/Core/Session.h"
 #include <chrono>
 
 namespace Network
@@ -95,6 +96,43 @@ void IocpAsyncIOProvider::Shutdown()
 bool IocpAsyncIOProvider::IsInitialized() const
 {
 	return mInitialized;
+}
+
+// =============================================================================
+// English: Socket Association
+// 한글: 소켓 연결
+// =============================================================================
+
+AsyncIOError IocpAsyncIOProvider::AssociateSocket(SocketHandle socket,
+												  RequestContext context)
+{
+	if (!mInitialized)
+	{
+		mLastError = "Not initialized";
+		return AsyncIOError::NotInitialized;
+	}
+
+	// English: Associate the socket with the IOCP completion port
+	// 한글: 소켓을 IOCP 완료 포트에 연결
+	// The completionKey (context) is typically the ConnectionId,
+	// which will be returned in GetQueuedCompletionStatus completionKey parameter.
+	// 완료 키(context)는 일반적으로 ConnectionId이며,
+	// GetQueuedCompletionStatus의 completionKey 매개변수로 반환됩니다.
+	HANDLE result = CreateIoCompletionPort(
+		reinterpret_cast<HANDLE>(socket),
+		mCompletionPort,
+		static_cast<ULONG_PTR>(context),
+		0);
+
+	if (!result)
+	{
+		DWORD error = ::GetLastError();
+		mLastError = "CreateIoCompletionPort (associate) failed: " +
+					 std::to_string(error);
+		return AsyncIOError::OperationFailed;
+	}
+
+	return AsyncIOError::Success;
 }
 
 // =============================================================================
@@ -289,13 +327,42 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			}
 		}
 
-		if (!op)
+		if (op)
 		{
+			// English: Matched a PendingOperation from Provider's RecvAsync/SendAsync
+			// 한글: Provider의 RecvAsync/SendAsync에서 생성된 PendingOperation 매칭됨
+			entries[completionCount].mContext = op->mContext;
+			entries[completionCount].mType = op->mType;
+		}
+		else if (pOverlapped && completionKey != 0)
+		{
+			// English: No matching PendingOperation - this completion came from
+			// Session::PostRecv/PostSend which directly calls WSARecv/WSASend
+			// using Session's own IOContext (inherits OVERLAPPED).
+			// Use completionKey (= ConnectionId) as context, and cast
+			// pOverlapped back to IOContext to determine I/O type.
+			//
+			// 한글: 매칭되는 PendingOperation 없음 - Session::PostRecv/PostSend가
+			// 직접 WSARecv/WSASend를 호출하여 Session 자체의 IOContext
+			// (OVERLAPPED 상속)를 사용한 완료입니다.
+			// completionKey(= ConnectionId)를 context로 사용하고,
+			// pOverlapped를 IOContext로 캐스팅하여 I/O 타입을 결정합니다.
+			auto *ioCtx = reinterpret_cast<Network::Core::IOContext *>(pOverlapped);
+
+			entries[completionCount].mContext = static_cast<RequestContext>(completionKey);
+			entries[completionCount].mType =
+				(ioCtx->type == Network::Core::IOType::Recv)
+					? AsyncIOType::Recv
+					: AsyncIOType::Send;
+		}
+		else
+		{
+			// English: Unknown completion - skip
+			// 한글: 알 수 없는 완료 - 건너뜀
+			timeout = 0;
 			continue;
 		}
 
-		entries[completionCount].mContext = op->mContext;
-		entries[completionCount].mType = op->mType;
 		entries[completionCount].mResult = result ? static_cast<int32_t>(bytesTransferred) : -1;
 		entries[completionCount].mOsError = static_cast<OSError>(result ? 0 : ::GetLastError());
 

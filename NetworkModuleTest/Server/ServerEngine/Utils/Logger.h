@@ -13,6 +13,16 @@
 #include <cstring>
 #include <memory>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 namespace Network::Utils
 {
 // =============================================================================
@@ -105,11 +115,33 @@ private:
 	static inline std::string sLogFile;
 	static inline std::unique_ptr<std::ofstream> sLogFileStream;
 	static inline std::mutex sMutex;
+	static inline std::atomic<bool> sConsoleInitialized{false};
+
+	// English: Initialize console for UTF-8 output (Korean support)
+	// 한글: 콘솔 UTF-8 출력 초기화 (한글 지원)
+	static void InitConsoleUTF8()
+	{
+		if (sConsoleInitialized.exchange(true))
+		{
+			return; // English: Already initialized / 한글: 이미 초기화됨
+		}
+
+#ifdef _WIN32
+		// English: Set console code page to UTF-8 for Korean output
+		// 한글: 한글 출력을 위해 콘솔 코드 페이지를 UTF-8로 설정
+		SetConsoleCP(65001);
+		SetConsoleOutputCP(65001);
+#endif
+	}
 
 	// English: Write log message with level check to console and file
 	// 한글: 레벨 확인 후 콘솔과 파일에 로그 메시지 작성
 	static void WriteLog(LogLevel level, const std::string &message)
 	{
+		// English: Ensure console is initialized for UTF-8 on first use
+		// 한글: 최초 사용 시 콘솔 UTF-8 초기화 보장
+		InitConsoleUTF8();
+
 		if (static_cast<int>(level) < static_cast<int>(sCurrentLevel.load()))
 		{
 			return;
