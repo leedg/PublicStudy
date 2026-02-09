@@ -2,6 +2,7 @@
 // 한글: 클라이언트 패킷 핸들러 구현
 
 #include "../include/ClientPacketHandler.h"
+#include "Utils/PingPongConfig.h"
 #include <ctime>
 
 namespace Network::TestServer
@@ -113,8 +114,17 @@ namespace Network::TestServer
 
         session->Send(response);
 
+#ifdef ENABLE_PINGPONG_VERBOSE_LOG
         Logger::Debug("Client Ping/Pong - Session: " + std::to_string(session->GetId()) +
             ", Seq: " + std::to_string(packet->sequence));
+#else
+        if (packet->sequence % PINGPONG_LOG_INTERVAL == 0)
+        {
+            Logger::Info("[GameServer] Client Ping/Pong (every " + std::to_string(PINGPONG_LOG_INTERVAL) +
+                "th) - Session: " + std::to_string(session->GetId()) +
+                ", Seq: " + std::to_string(packet->sequence));
+        }
+#endif
     }
 
 } // namespace Network::TestServer

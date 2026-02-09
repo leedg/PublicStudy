@@ -3,6 +3,7 @@
 
 #include "../include/ServerPacketHandler.h"
 #include "../include/OrderedTaskQueue.h"
+#include "Utils/PingPongConfig.h"
 #include <cstring>
 
 namespace Network::DBServer
@@ -95,8 +96,17 @@ namespace Network::DBServer
         uint64_t receiveTime = Timer::GetCurrentTimestamp();
         uint64_t rttMs = receiveTime - packet->timestamp;
 
+#ifdef ENABLE_PINGPONG_VERBOSE_LOG
         Logger::Debug("Server ping received - Seq: " + std::to_string(packet->sequence) +
                      ", Latency: " + std::to_string(rttMs) + "ms");
+#else
+        if (packet->sequence % PINGPONG_LOG_INTERVAL == 0)
+        {
+            Logger::Info("[DBServer] Ping received (every " + std::to_string(PINGPONG_LOG_INTERVAL) +
+                "th) - Seq: " + std::to_string(packet->sequence) +
+                ", Latency: " + std::to_string(rttMs) + "ms");
+        }
+#endif
 
         // English: Send pong response immediately (low latency path)
         // 한글: 퐁 응답 즉시 전송 (저지연 경로)
@@ -107,7 +117,9 @@ namespace Network::DBServer
 
         session->Send(response);
 
+#ifdef ENABLE_PINGPONG_VERBOSE_LOG
         Logger::Debug("Server pong sent - Seq: " + std::to_string(packet->sequence));
+#endif
 
         // English: Derive serverId from session's connection ID for per-server tracking
         // 한글: 서버별 추적을 위해 세션의 연결 ID에서 serverId 유도

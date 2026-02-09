@@ -2,6 +2,7 @@
 // 한글: TestClient 구현
 
 #include "../include/TestClient.h"
+#include "Utils/PingPongConfig.h"
 #include <cstring>
 #include <iomanip>
 #include <iostream>
@@ -465,9 +466,17 @@ void TestClient::HandlePongResponse(const PKT_PongRes *packet)
 		mStats.Update(rtt);
 	}
 
+#ifdef ENABLE_PINGPONG_VERBOSE_LOG
 	Logger::Debug("Pong received - Seq: " + std::to_string(packet->sequence) +
 				  ", RTT: " + std::to_string(rtt) + "ms" +
 				  ", ServerTime: " + std::to_string(packet->serverTime));
+#else
+	if (packet->sequence % PINGPONG_LOG_INTERVAL == 0)
+	{
+		Logger::Info("[Client] Pong received (every " + std::to_string(PINGPONG_LOG_INTERVAL) + "th) - Seq: " +
+					 std::to_string(packet->sequence) + ", RTT: " + std::to_string(rtt) + "ms");
+	}
+#endif
 }
 
 // =========================================================================
@@ -485,6 +494,16 @@ void TestClient::SendPing()
 	{
 		std::lock_guard<std::mutex> lock(mStatsMutex);
 		mStats.pingCount++;
+
+#ifdef ENABLE_PINGPONG_VERBOSE_LOG
+		Logger::Debug("[Client] Ping sent - Seq: " + std::to_string(pingReq.sequence));
+#else
+		if (pingReq.sequence % PINGPONG_LOG_INTERVAL == 0)
+		{
+			Logger::Info("[Client] Ping sent (every " + std::to_string(PINGPONG_LOG_INTERVAL) + "th) - Seq: " +
+						 std::to_string(pingReq.sequence) + ", Total: " + std::to_string(mStats.pingCount));
+		}
+#endif
 	}
 	else
 	{

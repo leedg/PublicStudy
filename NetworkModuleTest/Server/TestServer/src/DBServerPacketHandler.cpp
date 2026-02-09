@@ -2,6 +2,7 @@
 // 한글: DB 서버 패킷 핸들러 구현
 
 #include "../include/DBServerPacketHandler.h"
+#include "Utils/PingPongConfig.h"
 #include <cstring>
 #include <chrono>
 
@@ -83,7 +84,15 @@ namespace Network::TestServer
 
         session->Send(packet);
 
+#ifdef ENABLE_PINGPONG_VERBOSE_LOG
         Logger::Debug("Sent ping to DB server - Seq: " + std::to_string(packet.sequence));
+#else
+        if (packet.sequence % PINGPONG_LOG_INTERVAL == 0)
+        {
+            Logger::Info("[GameServer->DB] Ping sent (every " + std::to_string(PINGPONG_LOG_INTERVAL) +
+                "th) - Seq: " + std::to_string(packet.sequence));
+        }
+#endif
     }
 
     void DBServerPacketHandler::RequestSavePingTime(Core::Session* session, uint32_t serverId, const char* serverName)
@@ -126,8 +135,17 @@ namespace Network::TestServer
         uint64_t currentTime = Timer::GetCurrentTimestamp();
         uint64_t rtt = currentTime - packet->requestTimestamp;
 
+#ifdef ENABLE_PINGPONG_VERBOSE_LOG
         Logger::Info("Received pong from DB server - Seq: " + std::to_string(packet->sequence) +
             ", RTT: " + std::to_string(rtt) + "ms");
+#else
+        if (packet->sequence % PINGPONG_LOG_INTERVAL == 0)
+        {
+            Logger::Info("[GameServer<-DB] Pong received (every " + std::to_string(PINGPONG_LOG_INTERVAL) +
+                "th) - Seq: " + std::to_string(packet->sequence) +
+                ", RTT: " + std::to_string(rtt) + "ms");
+        }
+#endif
 
         // English: Update session's last ping time
         // 한글: 세션의 마지막 Ping 시간 갱신
