@@ -22,7 +22,7 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{C0003D60-E384-4C68-A4B5-0E0DA4D62A41}</ProjectGuid>
-    <RootNamespace>TestServer</RootNamespace>
+    <RootNamespace>TestDBServer</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>TestDBServer</ProjectName>
   </PropertyGroup>
