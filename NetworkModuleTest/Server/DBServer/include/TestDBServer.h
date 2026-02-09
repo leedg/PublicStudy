@@ -4,7 +4,9 @@
 // Korean: TestDBServer 메인 헤더 - NetworkEngine 사용 데이터베이스 서버 (멀티플랫폼)
 
 #include "DBPingTimeManager.h"
+#include "ServerLatencyManager.h"
 #include "ServerPacketHandler.h"
+#include "OrderedTaskQueue.h"
 #include "Network/Core/NetworkEngine.h"
 #include "Network/Core/Session.h"
 #include "Network/Core/SessionManager.h"
@@ -81,6 +83,16 @@ namespace Network::DBServer
         // Korean: 데이터베이스 컴포넌트
         std::unique_ptr<DBPingTimeManager>          mDBPingTimeManager;
         std::unique_ptr<ServerPacketHandler>        mPacketHandler;
+
+        // English: Per-server latency tracking and DB persistence
+        // Korean: 서버별 레이턴시 추적 및 DB 저장
+        std::unique_ptr<ServerLatencyManager>       mLatencyManager;
+
+        // English: Ordered task queue for per-serverId ordering guarantee
+        //          Uses hash-based thread affinity: same serverId -> same worker thread
+        // Korean: serverId별 순서 보장을 위한 순서 보장 작업 큐
+        //         해시 기반 스레드 친화도: 같은 serverId -> 같은 워커 스레드
+        std::unique_ptr<OrderedTaskQueue>           mOrderedTaskQueue;
 
         // English: Server state
         // Korean: 서버 상태

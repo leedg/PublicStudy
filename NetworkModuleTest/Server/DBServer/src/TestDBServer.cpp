@@ -78,10 +78,32 @@ namespace Network::DBServer
             return false;
         }
 
-        // English: Initialize packet handler
-        // Korean: 패킷 핸들러 초기화
+        // English: Initialize per-server latency manager
+        // Korean: 서버별 레이턴시 관리자 초기화
+        mLatencyManager = std::make_unique<ServerLatencyManager>();
+        if (!mLatencyManager->Initialize())
+        {
+            Logger::Error("Failed to initialize server latency manager");
+            return false;
+        }
+
+        // English: Initialize ordered task queue with 4 worker threads
+        //          Uses serverId-based hash affinity for per-server ordering guarantee
+        // Korean: 4개 워커 스레드로 순서 보장 작업 큐 초기화
+        //         서버별 순서 보장을 위해 serverId 기반 해시 친화도 사용
+        mOrderedTaskQueue = std::make_unique<OrderedTaskQueue>();
+        if (!mOrderedTaskQueue->Initialize(4))
+        {
+            Logger::Error("Failed to initialize ordered task queue");
+            return false;
+        }
+
+        // English: Initialize packet handler with all dependencies
+        // Korean: 모든 의존성을 주입하여 패킷 핸들러 초기화
         mPacketHandler = std::make_unique<ServerPacketHandler>();
-        mPacketHandler->Initialize(mDBPingTimeManager.get());
+        mPacketHandler->Initialize(mDBPingTimeManager.get(),
+                                    mLatencyManager.get(),
+                                    mOrderedTaskQueue.get());
 
         // English: Create and initialize network engine using factory (auto-detect best backend)
         // Korean: 팩토리를 사용하여 네트워크 엔진 생성 및 초기화 (최적 백엔드 자동 감지)
@@ -142,9 +164,29 @@ namespace Network::DBServer
 
         mIsRunning.store(false);
 
+        // English: Stop accepting new connections first
+        // Korean: 새로운 연결 수락을 먼저 중지
         if (mEngine)
         {
             mEngine->Stop();
+        }
+
+        // English: Shutdown ordered task queue (drains remaining tasks before stopping)
+        // Korean: 순서 보장 작업 큐 종료 (남은 작업을 처리한 후 중지)
+        if (mOrderedTaskQueue)
+        {
+            Logger::Info("Shutting down ordered task queue...");
+            mOrderedTaskQueue->Shutdown();
+            Logger::Info("OrderedTaskQueue statistics - Enqueued: " +
+                        std::to_string(mOrderedTaskQueue->GetTotalEnqueuedCount()) +
+                        ", Processed: " + std::to_string(mOrderedTaskQueue->GetTotalProcessedCount()));
+        }
+
+        // English: Shutdown latency manager
+        // Korean: 레이턴시 관리자 종료
+        if (mLatencyManager)
+        {
+            mLatencyManager->Shutdown();
         }
 
         if (mDBPingTimeManager)

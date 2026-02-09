@@ -30,6 +30,12 @@
     <ClCompile Include="src\ServerPacketHandler.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="src\ServerLatencyManager.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OrderedTaskQueue.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
     <ClInclude Include="include\TestDBServer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -40,6 +46,12 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="include\ServerPacketHandler.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ServerLatencyManager.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\OrderedTaskQueue.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

@@ -144,12 +144,16 @@
     <ClCompile Include="src\TestDBServer.cpp" />
     <ClCompile Include="src\DBPingTimeManager.cpp" />
     <ClCompile Include="src\ServerPacketHandler.cpp" />
+    <ClCompile Include="src\ServerLatencyManager.cpp" />
+    <ClCompile Include="src\OrderedTaskQueue.cpp" />
     <ClCompile Include="src\DBServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\TestDBServer.h" />
     <ClInclude Include="include\DBPingTimeManager.h" />
     <ClInclude Include="include\ServerPacketHandler.h" />
+    <ClInclude Include="include\ServerLatencyManager.h" />
+    <ClInclude Include="include\OrderedTaskQueue.h" />
     <ClInclude Include="include\DBServer.h" />
   </ItemGroup>
   <!-- Project Reference: ServerEngine static library -->
