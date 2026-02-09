@@ -13,7 +13,7 @@ namespace Network::DBServer
     using namespace Network::Utils;
 
     ServerLatencyManager::ServerLatencyManager()
-        : mInitialized(false)
+        : mInitialized{false}
     {
     }
 
@@ -27,7 +27,7 @@ namespace Network::DBServer
 
     bool ServerLatencyManager::Initialize()
     {
-        if (mInitialized)
+        if (mInitialized.load(std::memory_order_acquire))
         {
             Logger::Warn("ServerLatencyManager already initialized");
             return false;
@@ -55,25 +55,25 @@ namespace Network::DBServer
 
         // ExecuteQuery(createTableQuery);  // Placeholder call
 
-        mInitialized = true;
+        mInitialized.store(true, std::memory_order_release);
         Logger::Info("ServerLatencyManager initialized successfully");
         return true;
     }
 
     void ServerLatencyManager::Shutdown()
     {
-        if (!mInitialized)
+        if (!mInitialized.load(std::memory_order_acquire))
             return;
 
         Logger::Info("Shutting down ServerLatencyManager...");
-        mInitialized = false;
+        mInitialized.store(false, std::memory_order_release);
         Logger::Info("ServerLatencyManager shut down");
     }
 
     void ServerLatencyManager::RecordLatency(uint32_t serverId, const std::string& serverName,
                                               uint64_t rttMs, uint64_t timestamp)
     {
-        if (!mInitialized)
+        if (!mInitialized.load(std::memory_order_acquire))
         {
             Logger::Error("ServerLatencyManager not initialized");
             return;

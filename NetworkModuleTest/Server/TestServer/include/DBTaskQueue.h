@@ -57,6 +57,18 @@ namespace Network::TestServer
     // =============================================================================
     // English: Asynchronous DB task queue
     // 한글: 비동기 DB 작업 큐
+    //
+    // English: WARNING - Multi-worker ordering caveat:
+    //   When workerThreadCount > 1, tasks for the same sessionId may execute
+    //   out of order because multiple workers dequeue from a single shared queue.
+    //   If per-session ordering is required, use workerThreadCount = 1, or
+    //   migrate to OrderedTaskQueue (hash-based thread affinity) pattern.
+    //
+    // 한글: 경고 - 멀티워커 순서 주의:
+    //   workerThreadCount > 1인 경우, 같은 sessionId의 작업이 순서가 보장되지 않을 수 있음.
+    //   여러 워커가 하나의 공유 큐에서 가져가므로 동일 세션의 작업이 서로 다른 워커에서
+    //   동시에 실행될 수 있음. 세션별 순서가 필요하면 workerThreadCount = 1을 사용하거나,
+    //   OrderedTaskQueue (해시 기반 스레드 친화도) 패턴으로 전환 필요.
     // =============================================================================
 
     class DBTaskQueue

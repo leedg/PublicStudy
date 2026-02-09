@@ -4,6 +4,7 @@
 #include "../include/DBTaskQueue.h"
 #include "Utils/Logger.h"
 #include <chrono>
+#include <vector>
 
 #ifdef ENABLE_DATABASE_SUPPORT
 #include "Database/DatabaseModule.h"
@@ -46,6 +47,14 @@ namespace Network::TestServer
 
         Logger::Info("Initializing DBTaskQueue with " + std::to_string(workerThreadCount) + " worker threads");
 
+        // English: Warn about multi-worker ordering limitation
+        // 한글: 멀티워커 순서 보장 제한 경고
+        if (workerThreadCount > 1)
+        {
+            Logger::Warn("DBTaskQueue: workerThreadCount > 1 - per-sessionId task ordering is NOT guaranteed. "
+                         "Consider using OrderedTaskQueue for ordered processing.");
+        }
+
         mIsRunning.store(true);
 
         // English: Start worker threads
@@ -84,23 +93,42 @@ namespace Network::TestServer
         }
         mWorkerThreads.clear();
 
-        // English: Clear remaining tasks
-        // 한글: 남은 작업 제거
+        // English: Drain remaining tasks before clearing (execute pending work + invoke failure callbacks)
+        // 한글: 제거 전 남은 작업 처리 (대기 중인 작업 실행 + 실패 콜백 호출)
         {
-            std::lock_guard<std::mutex> lock(mQueueMutex);
-            size_t remaining = mTaskQueue.size();
-            if (remaining > 0)
+            std::vector<DBTask> drainTasks;
             {
-                Logger::Warn("DBTaskQueue shutdown with " + std::to_string(remaining) + " tasks remaining");
-            }
-            while (!mTaskQueue.empty())
-            {
-                mTaskQueue.pop();
+                std::lock_guard<std::mutex> lock(mQueueMutex);
+                size_t remaining = mTaskQueue.size();
+                if (remaining > 0)
+                {
+                    Logger::Warn("DBTaskQueue draining " + std::to_string(remaining) + " remaining tasks before shutdown");
+                }
+                while (!mTaskQueue.empty())
+                {
+                    drainTasks.push_back(std::move(mTaskQueue.front()));
+                    mTaskQueue.pop();
+                }
+                mQueueSize.store(0, std::memory_order_relaxed);
             }
 
-            // English: Reset queue size counter
-            // 한글: 큐 크기 카운터 리셋
-            mQueueSize.store(0, std::memory_order_relaxed);
+            // English: Execute drained tasks outside of lock
+            // 한글: 수집된 작업을 락 밖에서 실행
+            for (auto& task : drainTasks)
+            {
+                try
+                {
+                    ProcessTask(task);
+                }
+                catch (const std::exception& e)
+                {
+                    Logger::Error("DBTaskQueue drain task exception: " + std::string(e.what()));
+                    if (task.callback)
+                    {
+                        task.callback(false, std::string("Drain exception: ") + e.what());
+                    }
+                }
+            }
         }
 
         Logger::Info("DBTaskQueue shutdown complete - Processed: " +

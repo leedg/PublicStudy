@@ -204,16 +204,28 @@ namespace Network::DBServer
             }
         }
 
-        // English: Drain remaining tasks before exit
-        // 한글: 종료 전 남은 작업 처리
+        // English: Drain remaining tasks before exit (execute outside lock to avoid holding
+        //          mutex during potentially slow DB operations)
+        // 한글: 종료 전 남은 작업 처리 (잠재적으로 느린 DB 작업 중 mutex 점유를 피하기 위해
+        //       lock 밖에서 실행)
         {
-            std::lock_guard<std::mutex> lock(wq->queueMutex);
-            while (!wq->taskQueue.empty())
+            // English: Collect all remaining tasks under lock, then execute outside
+            // 한글: 락 안에서 남은 작업을 모두 수집, 이후 밖에서 실행
+            std::vector<OrderedTask> drainTasks;
             {
-                auto remainingTask = std::move(wq->taskQueue.front());
-                wq->taskQueue.pop();
-                wq->queueSize.fetch_sub(1, std::memory_order_relaxed);
+                std::lock_guard<std::mutex> lock(wq->queueMutex);
+                while (!wq->taskQueue.empty())
+                {
+                    drainTasks.push_back(std::move(wq->taskQueue.front()));
+                    wq->taskQueue.pop();
+                    wq->queueSize.fetch_sub(1, std::memory_order_relaxed);
+                }
+            }
 
+            // English: Execute drained tasks outside of lock
+            // 한글: 수집된 작업을 락 밖에서 실행
+            for (auto& remainingTask : drainTasks)
+            {
                 try
                 {
                     if (remainingTask.taskFunc)

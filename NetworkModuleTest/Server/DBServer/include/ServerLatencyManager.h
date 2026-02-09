@@ -80,7 +80,7 @@ namespace Network::DBServer
         // 한글: 전체 서버 레이턴시 정보 조회 (스레드 안전 스냅샷)
         std::unordered_map<uint32_t, ServerLatencyInfo> GetAllLatencyInfos() const;
 
-        bool IsInitialized() const { return mInitialized; }
+        bool IsInitialized() const { return mInitialized.load(std::memory_order_acquire); }
 
     private:
         // English: Format latency data as SQL INSERT query
@@ -99,7 +99,7 @@ namespace Network::DBServer
         bool ExecuteQuery(const std::string& query);
 
     private:
-        bool mInitialized;
+        std::atomic<bool> mInitialized;
 
         // English: Per-server latency map, guarded by mutex
         // 한글: 서버별 레이턴시 맵, mutex로 보호

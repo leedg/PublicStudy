@@ -11,7 +11,7 @@
 namespace Network::DBServer
 {
     DBPingTimeManager::DBPingTimeManager()
-        : mInitialized(false)
+        : mInitialized{false}
     {
     }
 
@@ -25,7 +25,7 @@ namespace Network::DBServer
 
     bool DBPingTimeManager::Initialize()
     {
-        if (mInitialized)
+        if (mInitialized.load(std::memory_order_acquire))
         {
             std::cerr << "DBPingTimeManager already initialized" << std::endl;
             return false;
@@ -52,14 +52,14 @@ namespace Network::DBServer
 
         // ExecuteQuery(createTableQuery); // Placeholder call
 
-        mInitialized = true;
+        mInitialized.store(true, std::memory_order_release);
         std::cout << "DBPingTimeManager initialized successfully" << std::endl;
         return true;
     }
 
     void DBPingTimeManager::Shutdown()
     {
-        if (!mInitialized)
+        if (!mInitialized.load(std::memory_order_acquire))
             return;
 
         std::cout << "Shutting down DBPingTimeManager..." << std::endl;
@@ -67,13 +67,13 @@ namespace Network::DBServer
         // English: TODO - Close database connection here
         // 한글: TODO - 여기에 데이터베이스 연결 종료
 
-        mInitialized = false;
+        mInitialized.store(false, std::memory_order_release);
         std::cout << "DBPingTimeManager shut down" << std::endl;
     }
 
     bool DBPingTimeManager::SavePingTime(uint32_t serverId, const std::string& serverName, uint64_t timestamp)
     {
-        if (!mInitialized)
+        if (!mInitialized.load(std::memory_order_acquire))
         {
             std::cerr << "DBPingTimeManager not initialized" << std::endl;
             return false;
@@ -117,7 +117,7 @@ namespace Network::DBServer
 
     uint64_t DBPingTimeManager::GetLastPingTime(uint32_t serverId)
     {
-        if (!mInitialized)
+        if (!mInitialized.load(std::memory_order_acquire))
         {
             std::cerr << "DBPingTimeManager not initialized" << std::endl;
             return 0;

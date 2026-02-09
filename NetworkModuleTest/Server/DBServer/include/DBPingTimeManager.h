@@ -7,6 +7,7 @@
 #include <string>
 #include <memory>
 #include <mutex>
+#include <atomic>
 
 namespace Network::DBServer
 {
@@ -45,7 +46,7 @@ namespace Network::DBServer
 
         // English: Check if manager is initialized
         // 한글: 매니저 초기화 여부 확인
-        bool IsInitialized() const { return mInitialized; }
+        bool IsInitialized() const { return mInitialized.load(std::memory_order_acquire); }
 
     private:
         // English: Internal helper to format GMT timestamp as string
@@ -57,7 +58,7 @@ namespace Network::DBServer
         bool ExecuteQuery(const std::string& query);
 
     private:
-        bool mInitialized;
+        std::atomic<bool> mInitialized;
         std::mutex mMutex;
 
         // English: Database connection placeholder
