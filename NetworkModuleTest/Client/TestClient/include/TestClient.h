@@ -3,9 +3,11 @@
 // English: TestClient - synchronous TCP client for testing game server
 // 한글: TestClient - 게임 서버 테스트용 동기 TCP 클라이언트
 
+#include "LatencyStats.h"
+#include "PacketStream.h"
+#include "PlatformSocket.h"
 #include "Network/Core/PacketDefine.h"
 #include "Utils/NetworkUtils.h"
-#include "PlatformSocket.h"
 
 #include <atomic>
 #include <cstdint>
@@ -16,42 +18,6 @@
 namespace Network::TestClient
 {
 using Utils::ConnectionId;
-
-// =============================================================================
-// English: Latency statistics tracker
-// 한글: 지연 시간 통계 추적기
-// =============================================================================
-
-struct LatencyStats
-{
-	uint64_t lastRtt; // English: Last round-trip time (ms) / 한글: 마지막 왕복
-						  // 시간 (ms)
-	uint64_t minRtt;    // English: Minimum RTT / 한글: 최소 RTT
-	uint64_t maxRtt;    // English: Maximum RTT / 한글: 최대 RTT
-	double avgRtt;      // English: Average RTT / 한글: 평균 RTT
-	uint32_t pingCount; // English: Total pings sent / 한글: 총 핑 전송 수
-	uint32_t pongCount; // English: Total pongs received / 한글: 총 퐁 수신 수
-
-	LatencyStats();
-	void Update(uint64_t rtt);
-	void Reset();
-};
-
-// =============================================================================
-// English: Connection state enumeration
-// 한글: 연결 상태 열거형
-// =============================================================================
-
-enum class ClientState : uint8_t
-{
-	Disconnected = 0, // English: Not connected / 한글: 연결 안됨
-	Connecting, // English: TCP connect in progress / 한글: TCP 연결 진행 중
-	Connected, // English: TCP connected, handshake pending / 한글: TCP 연결됨,
-				   // 핸드셰이크 대기
-	SessionActive, // English: Session established / 한글: 세션 수립됨
-	Disconnecting, // English: Graceful shutdown in progress / 한글: 정상 종료
-					   // 진행 중
-};
 
 // =============================================================================
 // English: TestClient class - synchronous cross-platform TCP client
@@ -119,23 +85,6 @@ class TestClient
 	// 한글: 네트워크 워커 스레드 함수
 	void NetworkWorkerThread();
 
-	// English: Send raw bytes (blocking, handles partial send)
-	// 한글: 원시 바이트 전송 (블로킹, 부분 전송 처리)
-	bool SendRaw(const char *data, int size);
-
-	// English: Send a typed packet struct
-	// 한글: 타입된 패킷 구조체 전송
-	template <typename T> bool SendPacket(const T &packet)
-	{
-		return SendRaw(reinterpret_cast<const char *>(&packet),
-						   packet.header.size);
-	}
-
-	// English: Try to read one complete packet from socket
-	// 한글: 소켓에서 완전한 패킷 하나 읽기 시도
-	bool RecvPacket(Core::PacketHeader &outHeader, char *outBody,
-					int bodyBufferSize);
-
 	// English: Packet dispatch
 	// 한글: 패킷 디스패치
 	void ProcessPacket(const Core::PacketHeader &header, const char *body);
@@ -162,10 +111,9 @@ class TestClient
 	std::string mHost;
 	uint16_t mPort;
 
-	// English: Recv buffer for TCP stream reassembly
-	// 한글: TCP 스트림 재조립용 수신 버퍼
-	char mRecvBuffer[Core::RECV_BUFFER_SIZE];
-	int mRecvBufferOffset;
+	// English: Packet stream handler for TCP send/recv
+	// 한글: TCP 송수신을 위한 패킷 스트림 핸들러
+	PacketStream mStream;
 };
 
 } // namespace Network::TestClient

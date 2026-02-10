@@ -27,11 +27,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(TESTCLIENT_SOURCES
     main.cpp
     src/TestClient.cpp
+    src/LatencyStats.cpp
+    src/PacketStream.cpp
 )
 
 set(TESTCLIENT_HEADERS
     include/TestClient.h
     include/PlatformSocket.h
+    include/PlatformInput.h
+    include/LatencyStats.h
+    include/PacketStream.h
 )
 
 # =============================================================================

@@ -21,12 +21,27 @@
     <ClCompile Include="src\TestClient.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="src\LatencyStats.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\PacketStream.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\TestClient.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="include\PlatformSocket.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\PlatformInput.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\LatencyStats.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\PacketStream.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

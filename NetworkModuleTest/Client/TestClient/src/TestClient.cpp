@@ -1,5 +1,5 @@
-// English: TestClient implementation
-// 한글: TestClient 구현
+// English: TestClient implementation - orchestration and protocol handling
+// 한글: TestClient 구현 - 오케스트레이션 및 프로토콜 처리
 
 #include "../include/TestClient.h"
 #include "Utils/PingPongConfig.h"
@@ -19,38 +19,6 @@ namespace Network::TestClient
 {
 
 // =============================================================================
-// English: LatencyStats implementation
-// 한글: LatencyStats 구현
-// =============================================================================
-
-LatencyStats::LatencyStats() { Reset(); }
-
-void LatencyStats::Update(uint64_t rtt)
-{
-	lastRtt = rtt;
-	if (rtt < minRtt)
-		minRtt = rtt;
-	if (rtt > maxRtt)
-		maxRtt = rtt;
-
-	// English: Running average calculation
-	// 한글: 이동 평균 계산
-	avgRtt =
-		((avgRtt * pongCount) + static_cast<double>(rtt)) / (pongCount + 1);
-	++pongCount;
-}
-
-void LatencyStats::Reset()
-{
-	lastRtt = 0;
-	minRtt = UINT64_MAX;
-	maxRtt = 0;
-	avgRtt = 0.0;
-	pingCount = 0;
-	pongCount = 0;
-}
-
-// =============================================================================
 // English: TestClient implementation
 // 한글: TestClient 구현
 // =============================================================================
@@ -58,9 +26,8 @@ void LatencyStats::Reset()
 TestClient::TestClient()
 	: mSocket(INVALID_SOCKET_HANDLE), mState(ClientState::Disconnected),
 		  mStopRequested(false), mPlatformInitialized(false), mSessionId(0),
-		  mPingSequence(0), mPort(0), mRecvBufferOffset(0)
+		  mPingSequence(0), mPort(0)
 {
-	std::memset(mRecvBuffer, 0, sizeof(mRecvBuffer));
 }
 
 TestClient::~TestClient() { Shutdown(); }
@@ -157,16 +124,21 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 	mState.store(ClientState::Connected);
 	Logger::Info("TCP connected");
 
+	// English: Attach socket to packet stream
+	// 한글: 패킷 스트림에 소켓 연결
+	mStream.Attach(mSocket);
+
 	// English: Send SessionConnectReq
 	// 한글: SessionConnectReq 전송
 	PKT_SessionConnectReq connectReq;
 	connectReq.clientVersion = 1;
 
-	if (!SendPacket(connectReq))
+	if (!mStream.SendPacket(connectReq))
 	{
 		Logger::Error("Failed to send SessionConnectReq");
 		PlatformCloseSocket(mSocket);
 		mSocket = INVALID_SOCKET_HANDLE;
+		mStream.Reset();
 		mState.store(ClientState::Disconnected);
 		return false;
 	}
@@ -189,6 +161,7 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 						  std::to_string(PlatformGetLastError()));
 			PlatformCloseSocket(mSocket);
 			mSocket = INVALID_SOCKET_HANDLE;
+			mStream.Reset();
 			mState.store(ClientState::Disconnected);
 			return false;
 		}
@@ -206,6 +179,7 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 						  std::to_string(response->result));
 		PlatformCloseSocket(mSocket);
 		mSocket = INVALID_SOCKET_HANDLE;
+		mStream.Reset();
 		mState.store(ClientState::Disconnected);
 		return false;
 	}
@@ -267,129 +241,25 @@ void TestClient::NetworkWorkerThread()
 		PacketHeader header;
 		char body[MAX_PACKET_SIZE];
 
-		if (RecvPacket(header, body, sizeof(body)))
+		RecvResult result = mStream.RecvPacket(header, body, sizeof(body));
+
+		if (result == RecvResult::Success)
 		{
 			ProcessPacket(header, body);
 		}
+		else if (result == RecvResult::ConnectionClosed ||
+				 result == RecvResult::Error ||
+				 result == RecvResult::InvalidPacket)
+		{
+			// English: Fatal recv error - mark disconnected
+			// 한글: 치명적 수신 에러 - 연결 해제로 표시
+			mState.store(ClientState::Disconnected);
+		}
+		// English: RecvResult::Timeout - normal, try again next iteration
+		// 한글: RecvResult::Timeout - 정상, 다음 반복에서 재시도
 	}
 
 	Logger::Debug("Worker thread exiting");
-}
-
-// =========================================================================
-// English: Recv one complete packet with TCP stream reassembly
-// 한글: TCP 스트림 재조립으로 완전한 패킷 하나 수신
-// =========================================================================
-
-bool TestClient::RecvPacket(PacketHeader &outHeader, char *outBody,
-							int bodyBufferSize)
-{
-	// English: Try to receive more data into buffer
-	// 한글: 버퍼에 더 많은 데이터 수신 시도
-	if (mRecvBufferOffset < static_cast<int>(sizeof(PacketHeader)))
-	{
-		int bytesNeeded =
-			static_cast<int>(sizeof(PacketHeader)) - mRecvBufferOffset;
-		int received = recv(mSocket, mRecvBuffer + mRecvBufferOffset,
-							RECV_BUFFER_SIZE - mRecvBufferOffset, 0);
-
-		if (received > 0)
-		{
-			mRecvBufferOffset += received;
-		}
-		else if (received == 0)
-		{
-			// English: Connection closed by server
-			// 한글: 서버에 의해 연결 종료됨
-			Logger::Info("Server closed connection");
-			mState.store(ClientState::Disconnected);
-			return false;
-		}
-		else
-		{
-			int err = PlatformGetLastError();
-			if (IsTimeoutOrWouldBlock(err))
-			{
-				return false; // English: Timeout, not an error / 한글:
-								  // 타임아웃, 에러 아님
-			}
-			Logger::Error("recv() failed: " + std::to_string(err));
-			mState.store(ClientState::Disconnected);
-			return false;
-		}
-	}
-
-	// English: Check if we have a complete header
-	// 한글: 완전한 헤더가 있는지 확인
-	if (mRecvBufferOffset < static_cast<int>(sizeof(PacketHeader)))
-	{
-		return false;
-	}
-
-	// English: Read packet size from header
-	// 한글: 헤더에서 패킷 크기 읽기
-	const PacketHeader *pHeader =
-		reinterpret_cast<const PacketHeader *>(mRecvBuffer);
-	int packetSize = pHeader->size;
-
-	if (packetSize < static_cast<int>(sizeof(PacketHeader)) ||
-		packetSize > MAX_PACKET_SIZE)
-	{
-		Logger::Error("Invalid packet size: " + std::to_string(packetSize));
-		mState.store(ClientState::Disconnected);
-		return false;
-	}
-
-	// English: Try to receive remaining bytes if needed
-	// 한글: 필요한 경우 나머지 바이트 수신 시도
-	while (mRecvBufferOffset < packetSize)
-	{
-		int received = recv(mSocket, mRecvBuffer + mRecvBufferOffset,
-							packetSize - mRecvBufferOffset, 0);
-
-		if (received > 0)
-		{
-			mRecvBufferOffset += received;
-		}
-		else if (received == 0)
-		{
-			Logger::Info("Server closed connection");
-			mState.store(ClientState::Disconnected);
-			return false;
-		}
-		else
-		{
-			int err = PlatformGetLastError();
-			if (IsTimeoutOrWouldBlock(err))
-			{
-				return false; // English: Incomplete, try again later / 한글:
-								  // 불완전, 나중에 재시도
-			}
-			Logger::Error("recv() failed: " + std::to_string(err));
-			mState.store(ClientState::Disconnected);
-			return false;
-		}
-	}
-
-	// English: Complete packet received - copy out
-	// 한글: 완전한 패킷 수신됨 - 복사
-	outHeader = *pHeader;
-	int bodySize = packetSize - sizeof(PacketHeader);
-	if (bodySize > 0 && bodySize <= bodyBufferSize)
-	{
-		std::memcpy(outBody, mRecvBuffer + sizeof(PacketHeader), bodySize);
-	}
-
-	// English: Shift remaining data in buffer
-	// 한글: 버퍼의 나머지 데이터 이동
-	int remaining = mRecvBufferOffset - packetSize;
-	if (remaining > 0)
-	{
-		std::memmove(mRecvBuffer, mRecvBuffer + packetSize, remaining);
-	}
-	mRecvBufferOffset = remaining;
-
-	return true;
 }
 
 // =========================================================================
@@ -486,7 +356,7 @@ void TestClient::SendPing()
 	pingReq.clientTime = Timer::GetCurrentTimestamp();
 	pingReq.sequence = mPingSequence++;
 
-	if (SendPacket(pingReq))
+	if (mStream.SendPacket(pingReq))
 	{
 		std::lock_guard<std::mutex> lock(mStatsMutex);
 		mStats.pingCount++;
@@ -505,28 +375,6 @@ void TestClient::SendPing()
 	{
 		Logger::Warn("Failed to send PingReq");
 	}
-}
-
-// =========================================================================
-// English: Send raw bytes
-// 한글: 원시 바이트 전송
-// =========================================================================
-
-bool TestClient::SendRaw(const char *data, int size)
-{
-	int totalSent = 0;
-	while (totalSent < size)
-	{
-		int sent = send(mSocket, data + totalSent, size - totalSent, 0);
-		if (sent == SOCKET_ERROR_VALUE)
-		{
-			Logger::Error("send() failed: " +
-						  std::to_string(PlatformGetLastError()));
-			return false;
-		}
-		totalSent += sent;
-	}
-	return true;
 }
 
 // =========================================================================
@@ -559,6 +407,10 @@ void TestClient::Disconnect()
 		PlatformCloseSocket(mSocket);
 		mSocket = INVALID_SOCKET_HANDLE;
 	}
+
+	// English: Reset packet stream state
+	// 한글: 패킷 스트림 상태 초기화
+	mStream.Reset();
 
 	mState.store(ClientState::Disconnected);
 	Logger::Info("Disconnected");

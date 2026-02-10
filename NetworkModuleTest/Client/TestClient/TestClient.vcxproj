@@ -141,10 +141,15 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="src\TestClient.cpp" />
+    <ClCompile Include="src\LatencyStats.cpp" />
+    <ClCompile Include="src\PacketStream.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\TestClient.h" />
     <ClInclude Include="include\PlatformSocket.h" />
+    <ClInclude Include="include\PlatformInput.h" />
+    <ClInclude Include="include\LatencyStats.h" />
+    <ClInclude Include="include\PacketStream.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
