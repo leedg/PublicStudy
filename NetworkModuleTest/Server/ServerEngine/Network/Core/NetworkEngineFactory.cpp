@@ -1,15 +1,11 @@
 // English: NetworkEngine factory implementation
-// 한글: NetworkEngine 팩토리 구현
 
 #include "NetworkEngine.h"
+#include "PlatformDetect.h"
 #include "../Platforms/WindowsNetworkEngine.h"
 #include "../Platforms/LinuxNetworkEngine.h"
 #include "../Platforms/macOSNetworkEngine.h"
 #include "../../Utils/Logger.h"
-
-#ifdef _WIN32
-#include <windows.h>
-#endif
 
 #ifdef __linux__
 #include <sys/utsname.h>
@@ -20,7 +16,6 @@ namespace Network::Core
 
 // =============================================================================
 // English: Factory function
-// 한글: 팩토리 함수
 // =============================================================================
 
 std::unique_ptr<INetworkEngine>
@@ -28,38 +23,16 @@ CreateNetworkEngine(const std::string &engineType)
 {
 #ifdef _WIN32
 	// English: Windows platform
-	// 한글: Windows 플랫폼
-
 	if (engineType == "auto" || engineType == "default" || engineType.empty())
 	{
-		// English: Auto-detect best backend for Windows
-		// 한글: Windows 최적 백엔드 자동 감지
-
-		// English: Try RIO first (Windows 8+)
-		// 한글: RIO 먼저 시도 (Windows 8+)
-		OSVERSIONINFOEX osvi;
-		ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
-		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-
-#pragma warning(push)
-#pragma warning(disable : 4996) // GetVersionEx is deprecated
-		if (GetVersionEx((OSVERSIONINFO *)&osvi))
+		if (Network::AsyncIO::Platform::IsWindowsRIOSupported())
 		{
-			// Windows 8+ = Major version >= 6 and Minor >= 2
-			if (osvi.dwMajorVersion > 6 ||
-				(osvi.dwMajorVersion == 6 && osvi.dwMinorVersion >= 2))
-			{
-				Utils::Logger::Info(
-					"Windows 8+ detected, using RIO backend (auto)");
-				return std::make_unique<Platforms::WindowsNetworkEngine>(
-					Platforms::WindowsNetworkEngine::Mode::RIO);
-			}
+			Utils::Logger::Info("Windows RIO supported, using RIO backend (auto)");
+			return std::make_unique<Platforms::WindowsNetworkEngine>(
+				Platforms::WindowsNetworkEngine::Mode::RIO);
 		}
-#pragma warning(pop)
 
-		// English: Fallback to IOCP
-		// 한글: IOCP로 폴백
-		Utils::Logger::Info("Using IOCP backend (auto)");
+		Utils::Logger::Info("Using IOCP backend (auto fallback)");
 		return std::make_unique<Platforms::WindowsNetworkEngine>(
 			Platforms::WindowsNetworkEngine::Mode::IOCP);
 	}
@@ -84,15 +57,11 @@ CreateNetworkEngine(const std::string &engineType)
 
 #elif defined(__linux__)
 	// English: Linux platform
-	// 한글: Linux 플랫폼
-
 	if (engineType == "auto" || engineType == "default" || engineType.empty())
 	{
 		// English: Auto-detect best backend for Linux
-		// 한글: Linux 최적 백엔드 자동 감지
 
 		// English: Try io_uring first (Linux 5.1+)
-		// 한글: io_uring 먼저 시도 (Linux 5.1+)
 		struct utsname unameData;
 		if (uname(&unameData) == 0)
 		{
@@ -110,7 +79,6 @@ CreateNetworkEngine(const std::string &engineType)
 		}
 
 		// English: Fallback to epoll
-		// 한글: epoll로 폴백
 		Utils::Logger::Info("Using epoll backend (auto)");
 		return std::make_unique<Platforms::LinuxNetworkEngine>(
 			Platforms::LinuxNetworkEngine::Mode::Epoll);
@@ -136,8 +104,6 @@ CreateNetworkEngine(const std::string &engineType)
 
 #elif defined(__APPLE__)
 	// English: macOS platform
-	// 한글: macOS 플랫폼
-
 	if (engineType == "auto" || engineType == "default" || engineType.empty() ||
 		engineType == "kqueue")
 	{
@@ -159,7 +125,6 @@ CreateNetworkEngine(const std::string &engineType)
 
 // =============================================================================
 // English: Get available engine types
-// 한글: 사용 가능한 엔진 타입 조회
 // =============================================================================
 
 std::vector<std::string> GetAvailableEngineTypes()
