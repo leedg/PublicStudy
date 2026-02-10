@@ -138,7 +138,14 @@ bool BaseNetworkEngine::SendData(Utils::ConnectionId connectionId,
 		return false;
 	}
 
+	// English: Session::Send is void - check IsConnected() after to detect immediate failures
+	// 한글: Session::Send는 void이므로 즉각적인 실패 감지를 위해 이후 IsConnected() 확인
 	session->Send(data, static_cast<uint32_t>(size));
+
+	if (!session->IsConnected())
+	{
+		return false;
+	}
 
 	{
 		std::lock_guard<std::mutex> lock(mStatsMutex);

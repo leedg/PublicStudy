@@ -312,12 +312,22 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			break;
 		}
 
+		// English: pOverlapped points to PendingOperation::mOverlapped (first member),
+		//          so we can recover the owning PendingOperation* directly.
+		//          This avoids an O(n) linear search through mPendingOps.
+		// 한글: pOverlapped는 PendingOperation::mOverlapped(첫 번째 멤버)를 가리키므로
+		//       소유하는 PendingOperation*를 직접 복원하여 O(n) 선형 탐색을 제거합니다.
 		std::unique_ptr<PendingOperation> op;
+		if (pOverlapped)
 		{
+			// English: Cast OVERLAPPED* to PendingOperation* (mOverlapped is first member)
+			// 한글: mOverlapped가 첫 번째 멤버이므로 OVERLAPPED* -> PendingOperation* 캐스트
+			auto *candidate = reinterpret_cast<PendingOperation *>(pOverlapped);
+
 			std::lock_guard<std::mutex> lock(mMutex);
 			for (auto it = mPendingOps.begin(); it != mPendingOps.end(); ++it)
 			{
-				if (&it->second->mOverlapped == pOverlapped)
+				if (it->second.get() == candidate)
 				{
 					op = std::move(it->second);
 					mPendingOps.erase(it);
@@ -339,14 +349,14 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			// English: No matching PendingOperation - this completion came from
 			// Session::PostRecv/PostSend which directly calls WSARecv/WSASend
 			// using Session's own IOContext (inherits OVERLAPPED).
-			// Use completionKey (= ConnectionId) as context, and cast
-			// pOverlapped back to IOContext to determine I/O type.
+			// IOContext has OVERLAPPED as its base class, so the cast is valid.
+			// Use completionKey (= ConnectionId) as context.
 			//
 			// 한글: 매칭되는 PendingOperation 없음 - Session::PostRecv/PostSend가
 			// 직접 WSARecv/WSASend를 호출하여 Session 자체의 IOContext
-			// (OVERLAPPED 상속)를 사용한 완료입니다.
-			// completionKey(= ConnectionId)를 context로 사용하고,
-			// pOverlapped를 IOContext로 캐스팅하여 I/O 타입을 결정합니다.
+			// (OVERLAPPED를 상속)를 사용한 완료입니다.
+			// IOContext는 OVERLAPPED를 기반 클래스로 가지므로 캐스트가 유효합니다.
+			// completionKey(= ConnectionId)를 context로 사용합니다.
 			auto *ioCtx = reinterpret_cast<Network::Core::IOContext *>(pOverlapped);
 
 			entries[completionCount].mContext = static_cast<RequestContext>(completionKey);

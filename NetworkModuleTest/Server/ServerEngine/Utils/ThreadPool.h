@@ -3,6 +3,7 @@
 // English: Thread pool implementation
 // 한글: 스레드 풀 구현
 
+#include "Logger.h"
 #include "SafeQueue.h"
 #include <vector>
 #include <thread>
@@ -112,9 +113,16 @@ private:
 				}
 				catch (const std::exception &e)
 				{
-					// English: Swallow exception in worker thread
-					// 한글: 워커 스레드에서 예외 무시
-					(void)e;
+					// English: Log exception from worker thread task
+					// 한글: 워커 스레드 작업에서 발생한 예외 로깅
+					Logger::Error("[ThreadPool] Task threw exception: " +
+								  std::string(e.what()));
+				}
+				catch (...)
+				{
+					// English: Catch unknown exception types
+					// 한글: 알 수 없는 예외 타입 처리
+					Logger::Error("[ThreadPool] Task threw unknown exception");
 				}
 				--mActiveTasks;
 			}
