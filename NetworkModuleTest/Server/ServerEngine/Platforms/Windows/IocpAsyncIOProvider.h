@@ -41,7 +41,7 @@
 #include "Network/Core/AsyncIOProvider.h"
 
 #ifdef _WIN32
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -155,7 +155,7 @@ class IocpAsyncIOProvider : public AsyncIOProvider
 
 	HANDLE mCompletionPort; // English: IOCP completion port handle / 한글: IOCP
 							// 완료 포트 핸들
-	std::map<SocketHandle, std::unique_ptr<PendingOperation>>
+	std::unordered_map<SocketHandle, std::unique_ptr<PendingOperation>>
 		mPendingOps; // English: Pending ops / 한글: 대기 작업
 	mutable std::mutex
 		mMutex; // English: Thread safety mutex / 한글: 스레드 안전성 뮤텍스

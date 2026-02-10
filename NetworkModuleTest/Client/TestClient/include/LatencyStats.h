@@ -20,8 +20,8 @@ struct LatencyStats
 	uint64_t minRtt;    // English: Minimum RTT / 한글: 최소 RTT
 	uint64_t maxRtt;    // English: Maximum RTT / 한글: 최대 RTT
 	double avgRtt;      // English: Average RTT / 한글: 평균 RTT
-	uint32_t pingCount; // English: Total pings sent / 한글: 총 핑 전송 수
-	uint32_t pongCount; // English: Total pongs received / 한글: 총 퐁 수신 수
+	uint64_t pingCount; // English: Total pings sent / 한글: 총 핑 전송 수
+	uint64_t pongCount; // English: Total pongs received / 한글: 총 퐁 수신 수
 
 	LatencyStats();
 	void Update(uint64_t rtt);

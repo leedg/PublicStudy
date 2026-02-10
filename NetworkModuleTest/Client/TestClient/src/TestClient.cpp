@@ -81,6 +81,8 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 	if (ret != 0)
 	{
 		Logger::Error("getaddrinfo failed: " + std::to_string(ret));
+		if (addrResult)
+			freeaddrinfo(addrResult);
 		mState.store(ClientState::Disconnected);
 		return false;
 	}
@@ -275,8 +277,15 @@ void TestClient::ProcessPacket(const PacketHeader &header, const char *body)
 	{
 	case PacketType::SessionConnectRes:
 	{
-		// English: Reconstruct full packet for handler
-		// 한글: 핸들러용 전체 패킷 재구성
+		// English: Validate packet size before reconstructing
+		// 한글: 재구성 전에 패킷 크기 검증
+		if (header.size < sizeof(PKT_SessionConnectRes))
+		{
+			Logger::Error("SessionConnectRes: packet too small (" +
+						  std::to_string(header.size) + " < " +
+						  std::to_string(sizeof(PKT_SessionConnectRes)) + ")");
+			break;
+		}
 		char fullPacket[sizeof(PKT_SessionConnectRes)];
 		std::memcpy(fullPacket, &header, sizeof(PacketHeader));
 		std::memcpy(fullPacket + sizeof(PacketHeader), body,
@@ -287,6 +296,15 @@ void TestClient::ProcessPacket(const PacketHeader &header, const char *body)
 	}
 	case PacketType::PongRes:
 	{
+		// English: Validate packet size before reconstructing
+		// 한글: 재구성 전에 패킷 크기 검증
+		if (header.size < sizeof(PKT_PongRes))
+		{
+			Logger::Error("PongRes: packet too small (" +
+						  std::to_string(header.size) + " < " +
+						  std::to_string(sizeof(PKT_PongRes)) + ")");
+			break;
+		}
 		char fullPacket[sizeof(PKT_PongRes)];
 		std::memcpy(fullPacket, &header, sizeof(PacketHeader));
 		std::memcpy(fullPacket + sizeof(PacketHeader), body,

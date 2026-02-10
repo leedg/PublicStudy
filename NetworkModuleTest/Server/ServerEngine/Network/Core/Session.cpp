@@ -113,9 +113,10 @@ void Session::Send(const void *data, uint32_t size)
 		std::lock_guard<std::mutex> lock(mSendMutex);
 		mSendQueue.push(std::move(buffer));
 
-		// English: Increment queue size atomically (enables lock-free size check)
-		// 한글: Atomic으로 큐 크기 증가 (lock-free 크기 확인 가능)
-		mSendQueueSize.fetch_add(1, std::memory_order_relaxed);
+		// English: Increment queue size atomically with release so PostSend's
+		//          acquire load sees the enqueued data
+		// 한글: PostSend의 acquire load가 인큐된 데이터를 볼 수 있도록 release로 증가
+		mSendQueueSize.fetch_add(1, std::memory_order_release);
 	}
 
 	// English: Always try to flush (CAS inside will prevent double send)
@@ -139,11 +140,11 @@ void Session::FlushSendQueue()
 bool Session::PostSend()
 {
 #ifdef _WIN32
-	// English: Fast path - check queue size without lock (lock-free optimization)
-	// 한글: Fast path - Lock 없이 큐 크기 확인 (lock-free 최적화)
-	// Performance: This atomic load is much faster than acquiring mutex
-	// 성능: 이 atomic load는 mutex 획득보다 훨씬 빠름
-	if (mSendQueueSize.load(std::memory_order_relaxed) == 0)
+	// English: Fast path - acquire load pairs with release store in Send()
+	//          so we see all enqueued items before deciding queue is empty
+	// 한글: Fast path - Send()의 release store와 쌍을 이루는 acquire load로
+	//       큐가 비어있다고 판단하기 전에 인큐된 모든 항목을 볼 수 있음
+	if (mSendQueueSize.load(std::memory_order_acquire) == 0)
 	{
 		// English: Queue is empty, release sending flag and return
 		// 한글: 큐가 비어있음, 전송 플래그 해제 후 반환
@@ -171,7 +172,7 @@ bool Session::PostSend()
 
 		// English: Decrement queue size atomically
 		// 한글: Atomic으로 큐 크기 감소
-		mSendQueueSize.fetch_sub(1, std::memory_order_relaxed);
+		mSendQueueSize.fetch_sub(1, std::memory_order_release);
 	}
 
 	mSendContext.Reset();
