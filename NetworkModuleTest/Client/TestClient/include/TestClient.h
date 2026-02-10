@@ -5,12 +5,7 @@
 
 #include "Network/Core/PacketDefine.h"
 #include "Utils/NetworkUtils.h"
-
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <WS2tcpip.h>
-#include <WinSock2.h>
+#include "PlatformSocket.h"
 
 #include <atomic>
 #include <cstdint>
@@ -59,8 +54,8 @@ enum class ClientState : uint8_t
 };
 
 // =============================================================================
-// English: TestClient class - synchronous Winsock2 TCP client
-// 한글: TestClient 클래스 - 동기 Winsock2 TCP 클라이언트
+// English: TestClient class - synchronous cross-platform TCP client
+// 한글: TestClient 클래스 - 동기 크로스 플랫폼 TCP 클라이언트
 // =============================================================================
 
 class TestClient
@@ -79,8 +74,8 @@ class TestClient
 	// 한글: 생명주기 메서드
 	// =====================================================================
 
-	// English: Initialize Winsock
-	// 한글: Winsock 초기화
+	// English: Initialize socket platform
+	// 한글: 소켓 플랫폼 초기화
 	bool Initialize();
 
 	// English: Connect to server (blocking TCP + handshake)
@@ -95,8 +90,8 @@ class TestClient
 	// 한글: 정상 연결 해제
 	void Disconnect();
 
-	// English: Full cleanup (Disconnect + WSACleanup)
-	// 한글: 전체 정리 (Disconnect + WSACleanup)
+	// English: Full cleanup (Disconnect + platform cleanup)
+	// 한글: 전체 정리 (Disconnect + 플랫폼 정리)
 	void Shutdown();
 
 	// =====================================================================
@@ -152,10 +147,10 @@ class TestClient
 	void SendPing();
 
   private:
-	SOCKET mSocket;
+	SocketHandle mSocket;
 	std::atomic<ClientState> mState;
 	std::atomic<bool> mStopRequested;
-	bool mWsaInitialized;
+	bool mPlatformInitialized;
 
 	uint64_t mSessionId;
 	uint32_t mPingSequence;

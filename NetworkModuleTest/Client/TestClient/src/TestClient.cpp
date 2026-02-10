@@ -8,7 +8,9 @@
 #include <iostream>
 #include <sstream>
 
+#ifdef _MSC_VER
 #pragma comment(lib, "Ws2_32.lib")
+#endif
 
 using namespace Network::Core;
 using namespace Network::Utils;
@@ -54,8 +56,8 @@ void LatencyStats::Reset()
 // =============================================================================
 
 TestClient::TestClient()
-	: mSocket(INVALID_SOCKET), mState(ClientState::Disconnected),
-		  mStopRequested(false), mWsaInitialized(false), mSessionId(0),
+	: mSocket(INVALID_SOCKET_HANDLE), mState(ClientState::Disconnected),
+		  mStopRequested(false), mPlatformInitialized(false), mSessionId(0),
 		  mPingSequence(0), mPort(0), mRecvBufferOffset(0)
 {
 	std::memset(mRecvBuffer, 0, sizeof(mRecvBuffer));
@@ -64,22 +66,20 @@ TestClient::TestClient()
 TestClient::~TestClient() { Shutdown(); }
 
 // =========================================================================
-// English: Initialize Winsock
-// 한글: Winsock 초기화
+// English: Initialize socket platform
+// 한글: 소켓 플랫폼 초기화
 // =========================================================================
 
 bool TestClient::Initialize()
 {
-	WSADATA wsaData;
-	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (result != 0)
+	if (!PlatformSocketInit())
 	{
-		Logger::Error("WSAStartup failed: " + std::to_string(result));
+		Logger::Error("Socket platform initialization failed");
 		return false;
 	}
 
-	mWsaInitialized = true;
-	Logger::Info("Winsock initialized");
+	mPlatformInitialized = true;
+	Logger::Info("Socket platform initialized");
 	return true;
 }
 
@@ -122,9 +122,9 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 	// 한글: 소켓 생성
 	mSocket = socket(addrResult->ai_family, addrResult->ai_socktype,
 					 addrResult->ai_protocol);
-	if (mSocket == INVALID_SOCKET)
+	if (mSocket == INVALID_SOCKET_HANDLE)
 	{
-		Logger::Error("socket() failed: " + std::to_string(WSAGetLastError()));
+		Logger::Error("socket() failed: " + std::to_string(PlatformGetLastError()));
 		freeaddrinfo(addrResult);
 		mState.store(ClientState::Disconnected);
 		return false;
@@ -137,26 +137,22 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 				  static_cast<int>(addrResult->ai_addrlen));
 	freeaddrinfo(addrResult);
 
-	if (ret == SOCKET_ERROR)
+	if (ret == SOCKET_ERROR_VALUE)
 	{
-		Logger::Error("connect() failed: " + std::to_string(WSAGetLastError()));
-		closesocket(mSocket);
-		mSocket = INVALID_SOCKET;
+		Logger::Error("connect() failed: " + std::to_string(PlatformGetLastError()));
+		PlatformCloseSocket(mSocket);
+		mSocket = INVALID_SOCKET_HANDLE;
 		mState.store(ClientState::Disconnected);
 		return false;
 	}
 
 	// English: Set socket options
 	// 한글: 소켓 옵션 설정
-	BOOL nodelay = TRUE;
-	setsockopt(mSocket, IPPROTO_TCP, TCP_NODELAY,
-				   reinterpret_cast<const char *>(&nodelay), sizeof(nodelay));
+	PlatformSetTcpNoDelay(mSocket, true);
 
 	// English: Set recv timeout (1 second) for non-blocking worker loop
 	// 한글: 논블로킹 워커 루프를 위한 수신 타임아웃 (1초) 설정
-	DWORD timeout = 1000;
-	setsockopt(mSocket, SOL_SOCKET, SO_RCVTIMEO,
-				   reinterpret_cast<const char *>(&timeout), sizeof(timeout));
+	PlatformSetRecvTimeout(mSocket, 1000);
 
 	mState.store(ClientState::Connected);
 	Logger::Info("TCP connected");
@@ -169,8 +165,8 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 	if (!SendPacket(connectReq))
 	{
 		Logger::Error("Failed to send SessionConnectReq");
-		closesocket(mSocket);
-		mSocket = INVALID_SOCKET;
+		PlatformCloseSocket(mSocket);
+		mSocket = INVALID_SOCKET_HANDLE;
 		mState.store(ClientState::Disconnected);
 		return false;
 	}
@@ -190,9 +186,9 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 		if (received <= 0)
 		{
 			Logger::Error("Failed to receive SessionConnectRes: " +
-						  std::to_string(WSAGetLastError()));
-			closesocket(mSocket);
-			mSocket = INVALID_SOCKET;
+						  std::to_string(PlatformGetLastError()));
+			PlatformCloseSocket(mSocket);
+			mSocket = INVALID_SOCKET_HANDLE;
 			mState.store(ClientState::Disconnected);
 			return false;
 		}
@@ -208,8 +204,8 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 	{
 		Logger::Error("Connection rejected - result: " +
 						  std::to_string(response->result));
-		closesocket(mSocket);
-		mSocket = INVALID_SOCKET;
+		PlatformCloseSocket(mSocket);
+		mSocket = INVALID_SOCKET_HANDLE;
 		mState.store(ClientState::Disconnected);
 		return false;
 	}
@@ -311,8 +307,8 @@ bool TestClient::RecvPacket(PacketHeader &outHeader, char *outBody,
 		}
 		else
 		{
-			int err = WSAGetLastError();
-			if (err == WSAETIMEDOUT || err == WSAEWOULDBLOCK)
+			int err = PlatformGetLastError();
+			if (IsTimeoutOrWouldBlock(err))
 			{
 				return false; // English: Timeout, not an error / 한글:
 								  // 타임아웃, 에러 아님
@@ -363,8 +359,8 @@ bool TestClient::RecvPacket(PacketHeader &outHeader, char *outBody,
 		}
 		else
 		{
-			int err = WSAGetLastError();
-			if (err == WSAETIMEDOUT || err == WSAEWOULDBLOCK)
+			int err = PlatformGetLastError();
+			if (IsTimeoutOrWouldBlock(err))
 			{
 				return false; // English: Incomplete, try again later / 한글:
 								  // 불완전, 나중에 재시도
@@ -522,10 +518,10 @@ bool TestClient::SendRaw(const char *data, int size)
 	while (totalSent < size)
 	{
 		int sent = send(mSocket, data + totalSent, size - totalSent, 0);
-		if (sent == SOCKET_ERROR)
+		if (sent == SOCKET_ERROR_VALUE)
 		{
 			Logger::Error("send() failed: " +
-						  std::to_string(WSAGetLastError()));
+						  std::to_string(PlatformGetLastError()));
 			return false;
 		}
 		totalSent += sent;
@@ -557,11 +553,11 @@ void TestClient::Disconnect()
 
 	// English: Close socket
 	// 한글: 소켓 닫기
-	if (mSocket != INVALID_SOCKET)
+	if (mSocket != INVALID_SOCKET_HANDLE)
 	{
-		shutdown(mSocket, SD_BOTH);
-		closesocket(mSocket);
-		mSocket = INVALID_SOCKET;
+		shutdown(mSocket, SHUT_RDWR_VALUE);
+		PlatformCloseSocket(mSocket);
+		mSocket = INVALID_SOCKET_HANDLE;
 	}
 
 	mState.store(ClientState::Disconnected);
@@ -577,10 +573,10 @@ void TestClient::Shutdown()
 {
 	Disconnect();
 
-	if (mWsaInitialized)
+	if (mPlatformInitialized)
 	{
-		WSACleanup();
-		mWsaInitialized = false;
+		PlatformSocketCleanup();
+		mPlatformInitialized = false;
 	}
 }
 
