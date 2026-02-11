@@ -138,14 +138,15 @@ class IocpAsyncIOProvider : public AsyncIOProvider
 	// 한글: 대기 중인 작업 추적 구조체
 	struct PendingOperation
 	{
-		OVERLAPPED mOverlapped; // English: IOCP overlapped structure / 한글:
-								// IOCP 오버랩 구조체
+		OVERLAPPED mOverlapped; // English: IOCP overlapped structure (must be first member for pointer cast)
+								// 한글: IOCP 오버랩 구조체 (포인터 캐스트를 위해 반드시 첫 번째 멤버여야 함)
 		WSABUF mWsaBuffer;      // English: WSA buffer / 한글: WSA 버퍼
-		std::unique_ptr<uint8_t[]> mBuffer; // English: Dynamically allocated
-											// buffer / 한글: 동적 할당 버퍼
-		RequestContext mContext; // English: User request context / 한글: 사용자
-								 // 요청 컨텍스트
-		AsyncIOType mType; // English: Operation type / 한글: 작업 타입
+		std::unique_ptr<uint8_t[]> mBuffer; // English: Dynamically allocated buffer
+											// 한글: 동적 할당 버퍼
+		RequestContext mContext; // English: User request context / 한글: 사용자 요청 컨텍스트
+		AsyncIOType mType;       // English: Operation type / 한글: 작업 타입
+		SocketHandle mSocket = INVALID_SOCKET; // English: Owning socket - enables O(1) map lookup from OVERLAPPED*
+											   // 한글: 소유 소켓 - OVERLAPPED* 에서 O(1) 맵 탐색 가능
 	};
 
 	// =====================================================================

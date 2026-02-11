@@ -189,6 +189,7 @@ AsyncIOError IocpAsyncIOProvider::SendAsync(SocketHandle socket,
 	op->mWsaBuffer.len = static_cast<ULONG>(size);
 	op->mContext = context;
 	op->mType = AsyncIOType::Send;
+	op->mSocket = socket;
 
 	// English: Issue WSASend
 	// 한글: WSASend 발행
@@ -241,6 +242,7 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	op->mWsaBuffer.len = static_cast<ULONG>(size);
 	op->mContext = context;
 	op->mType = AsyncIOType::Recv;
+	op->mSocket = socket;
 
 	DWORD bytesRecv = 0;
 	DWORD dwFlags = 0;
@@ -313,11 +315,10 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			break;
 		}
 
-		// English: pOverlapped points to PendingOperation::mOverlapped (first member),
-		//          so we can recover the owning PendingOperation* directly.
-		//          This avoids an O(n) linear search through mPendingOps.
-		// 한글: pOverlapped는 PendingOperation::mOverlapped(첫 번째 멤버)를 가리키므로
-		//       소유하는 PendingOperation*를 직접 복원하여 O(n) 선형 탐색을 제거합니다.
+		// English: pOverlapped points to PendingOperation::mOverlapped (first member).
+		//          Cast to PendingOperation* and use mSocket for O(1) map lookup.
+		// 한글: pOverlapped는 PendingOperation::mOverlapped(첫 번째 멤버)를 가리킴.
+		//       PendingOperation*로 캐스트 후 mSocket으로 O(1) 맵 탐색.
 		std::unique_ptr<PendingOperation> op;
 		if (pOverlapped)
 		{
@@ -326,29 +327,23 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			auto *candidate = reinterpret_cast<PendingOperation *>(pOverlapped);
 
 			std::lock_guard<std::mutex> lock(mMutex);
-			// English: Search recv map first, then send map
-			// 한글: 수신 맵 먼저 검색, 그 다음 송신 맵 검색
-			for (auto it = mPendingRecvOps.begin(); it != mPendingRecvOps.end(); ++it)
+			// English: O(1) lookup using mSocket key, verify pointer to guard against stale ops
+			// 한글: mSocket 키로 O(1) 탐색, 포인터 확인으로 오래된 작업 방지
+			auto recvIt = mPendingRecvOps.find(candidate->mSocket);
+			if (recvIt != mPendingRecvOps.end() && recvIt->second.get() == candidate)
 			{
-				if (it->second.get() == candidate)
-				{
-					op = std::move(it->second);
-					mPendingRecvOps.erase(it);
-					mStats.mPendingRequests--;
-					break;
-				}
+				op = std::move(recvIt->second);
+				mPendingRecvOps.erase(recvIt);
+				mStats.mPendingRequests--;
 			}
-			if (!op)
+			else
 			{
-				for (auto it = mPendingSendOps.begin(); it != mPendingSendOps.end(); ++it)
+				auto sendIt = mPendingSendOps.find(candidate->mSocket);
+				if (sendIt != mPendingSendOps.end() && sendIt->second.get() == candidate)
 				{
-					if (it->second.get() == candidate)
-					{
-						op = std::move(it->second);
-						mPendingSendOps.erase(it);
-						mStats.mPendingRequests--;
-						break;
-					}
+					op = std::move(sendIt->second);
+					mPendingSendOps.erase(sendIt);
+					mStats.mPendingRequests--;
 				}
 			}
 		}

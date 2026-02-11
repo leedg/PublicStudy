@@ -3,7 +3,9 @@
 #ifdef _WIN32
 
 #include "RIOAsyncIOProvider.h"
+#include <chrono>
 #include <cstring>
+#include <thread>
 #include <vector>
 
 namespace Network
@@ -481,13 +483,48 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		return static_cast<int>(AsyncIOError::InvalidParameter);
 	}
 
-	std::vector<RIORESULT> rioResults(maxEntries);
-	auto dequeue = [&]() -> ULONG {
-		return mPfnRIODequeueCompletion(
-			mCompletionQueue, rioResults.data(), static_cast<ULONG>(maxEntries));
-	};
+	// RIO 알림 직렬화: 한 번에 한 스레드만 RIONotify + 이벤트 대기 수행
+	// Serialize RIO notification: only one thread calls RIONotify + waits at a time
+	std::unique_lock<std::mutex> notifyLock(mNotifyMutex, std::try_to_lock);
+	if (!notifyLock.owns_lock())
+	{
+		// 다른 스레드가 이미 알림 대기 중 - 짧게 양보 후 0 반환
+		// Another thread is already waiting for notification - yield briefly and return 0
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		return 0;
+	}
 
-	ULONG numResults = dequeue();
+	// RIO 이벤트 알림 활성화 (dequeue 전에 반드시 호출해야 함)
+	// Arm RIO event notification (must be called before dequeue to avoid missed wakeups)
+	if (!mPfnRIONotify(mCompletionQueue))
+	{
+		DWORD err = GetLastError();
+		mLastError = "RIONotify failed: " + std::to_string(err);
+		std::lock_guard<std::mutex> lock(mMutex);
+		mStats.mErrorCount++;
+		return static_cast<int>(AsyncIOError::OperationFailed);
+	}
+
+	// 완료 이벤트가 신호될 때까지 블로킹 대기 (timeoutMs 기반)
+	// Block until completion event is signaled (timeoutMs-based)
+	DWORD waitMs = (timeoutMs < 0) ? INFINITE : static_cast<DWORD>(timeoutMs);
+	DWORD waitResult = WaitForSingleObject(mCompletionEvent, waitMs);
+	if (waitResult == WAIT_TIMEOUT)
+	{
+		return 0;
+	}
+	if (waitResult != WAIT_OBJECT_0)
+	{
+		mLastError = "WaitForSingleObject failed: " + std::to_string(GetLastError());
+		return static_cast<int>(AsyncIOError::OperationFailed);
+	}
+
+	// 이벤트 수신 후 완료 항목 dequeue
+	// Dequeue completions after event signaled
+	std::vector<RIORESULT> rioResults(maxEntries);
+	ULONG numResults = mPfnRIODequeueCompletion(
+		mCompletionQueue, rioResults.data(), static_cast<ULONG>(maxEntries));
+
 	if (numResults == RIO_CORRUPT_CQ)
 	{
 		mLastError = "RIO completion queue corrupted";

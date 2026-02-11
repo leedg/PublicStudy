@@ -6,11 +6,11 @@
 #include "Network/Core/AsyncIOProvider.h"
 
 #ifdef _WIN32
-#include <map>
 #include <memory>
 #include <mswsock.h>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace Network
@@ -99,9 +99,9 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	};
 
 	RIO_CQ mCompletionQueue;
-	std::map<SocketHandle, RIO_RQ> mRequestQueues;
-	std::map<int64_t, RegisteredBufferEntry> mRegisteredBuffers;
-	std::map<void *, std::unique_ptr<PendingOperation>> mPendingOps;
+	std::unordered_map<SocketHandle, RIO_RQ> mRequestQueues;           // English: O(1) request queue lookup / 한글: O(1) 요청 큐 탐색
+	std::unordered_map<int64_t, RegisteredBufferEntry> mRegisteredBuffers; // English: O(1) buffer lookup / 한글: O(1) 버퍼 탐색
+	std::unordered_map<void *, std::unique_ptr<PendingOperation>> mPendingOps; // English: O(1) pending op lookup / 한글: O(1) 대기 작업 탐색
 	mutable std::mutex mMutex;
 
 	PfnRIOCloseCompletionQueue mPfnRIOCloseCompletionQueue;
@@ -115,6 +115,8 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	PfnRIORecv mPfnRIORecv;
 
 	HANDLE mCompletionEvent;
+	mutable std::mutex mNotifyMutex; // English: Serializes RIONotify + event wait to one thread at a time
+									 // 한글: RIONotify + 이벤트 대기를 한 스레드씩 직렬화
 	ProviderInfo mInfo;
 	ProviderStats mStats;
 	std::string mLastError;
