@@ -159,10 +159,13 @@ class BaseNetworkEngine : public INetworkEngine
 	// 한글: 로직 스레드 풀 (비동기 비즈니스 로직용)
 	Utils::ThreadPool mLogicThreadPool;
 
-	// English: Statistics
-	// 한글: 통계
+	// English: Statistics - hot-path counters are atomic; cold-path data uses mutex
+	// 한글: 통계 - 핫 패스 카운터는 atomic; 콜드 패스 데이터는 mutex 사용
 	mutable std::mutex mStatsMutex;
 	Statistics mStats;
+	std::atomic<uint64_t> mTotalBytesSent{0};
+	std::atomic<uint64_t> mTotalBytesReceived{0};
+	std::atomic<uint64_t> mTotalConnections{0};
 };
 
 } // namespace Network::Core

@@ -1,6 +1,9 @@
 # Platform/Network 구조 분석 및 정리 계획
 
-## 작성일: 2026-02-06
+## 작성일: 2026-02-06 (2026-02-09 업데이트)
+
+> 이 문서는 구조 분석 기록(레거시)입니다.  
+> IOCPNetworkEngine은 현재 코드에서 **이미 제거됨**을 전제로 읽어주세요.
 
 ---
 
@@ -10,7 +13,6 @@
 
 ```
 INetworkEngine (인터페이스)
-├── IOCPNetworkEngine (Network/Core/) ❌ 사용 안함
 └── BaseNetworkEngine (Network/Core/)
     ├── WindowsNetworkEngine (Network/Platforms/)  ✅ 사용 중
     ├── LinuxNetworkEngine (Network/Platforms/)    ✅ 사용 중
@@ -21,8 +23,8 @@ INetworkEngine (인터페이스)
 
 ```
 AsyncIOProvider (Network/Core/)
-├── IocpAsyncIOProvider (Platforms/Windows/)  ✅ 헤더만 존재
-├── RIOAsyncIOProvider (Platforms/Windows/)   ✅ 헤더만 존재
+├── IocpAsyncIOProvider (Platforms/Windows/)  ✅ 구현 존재
+├── RIOAsyncIOProvider (Platforms/Windows/)   ✅ 구현 존재
 ├── EpollAsyncIOProvider (Platforms/Linux/)   ✅ 구현 존재
 ├── IOUringAsyncIOProvider (Platforms/Linux/) ✅ 구현 존재
 └── KqueueAsyncIOProvider (Platforms/macOS/)  ✅ 구현 존재
@@ -31,7 +33,6 @@ AsyncIOProvider (Network/Core/)
 ### 3. 파일 위치 문제
 
 #### Network/Core/
-- **IOCPNetworkEngine.h/cpp** ❌ - 사용 안함 (WindowsNetworkEngine 사용)
 - **BaseNetworkEngine.h/cpp** ✅ - 사용 중 (Platform 기본 클래스)
 - **AsyncIOProvider.h/cpp** ✅ - 사용 중 (인터페이스)
 

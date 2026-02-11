@@ -24,9 +24,11 @@ class ThreadPool
 public:
 	// English: Constructor - creates worker threads
 	// 한글: 생성자 - 워커 스레드 생성
-	// @param numThreads - Number of threads (0 = hardware concurrency, default = 4)
-	ThreadPool(size_t numThreads = std::thread::hardware_concurrency())
-		: mStop(false), mActiveTasks(0)
+	// @param numThreads - Number of threads (0 = hardware concurrency)
+	// @param maxQueueDepth - Max task queue depth (0 = unlimited)
+	ThreadPool(size_t numThreads = std::thread::hardware_concurrency(),
+			   size_t maxQueueDepth = 0)
+		: mStop(false), mActiveTasks(0), mTasks(maxQueueDepth)
 	{
 		if (numThreads == 0)
 			numThreads = 4;
@@ -53,24 +55,24 @@ public:
 		}
 	}
 
-	// English: Submit a task to the thread pool
-	// 한글: 스레드 풀에 작업 제출
+	// English: Submit a task to the thread pool - returns false if queue is full
+	// 한글: 스레드 풀에 작업 제출 - 큐가 가득 찬 경우 false 반환
 	// @param f - Function to execute
 	// @param args - Arguments for the function
-	// @return Future for the result
+	// @return true if task was queued, false if queue was full (task dropped)
 	template <typename F, typename... Args>
-	auto Submit(F &&f, Args &&...args) -> std::future<decltype(f(args...))>
+	bool Submit(F &&f, Args &&...args)
 	{
-		using ReturnType = decltype(f(args...));
-
-		auto task = std::make_shared<std::packaged_task<ReturnType()>>(
+		auto task = std::make_shared<std::packaged_task<void()>>(
 			std::bind(std::forward<F>(f), std::forward<Args>(args)...));
 
-		std::future<ReturnType> result = task->get_future();
+		if (!mTasks.Push([task]() { (*task)(); }))
+		{
+			Logger::Warn("[ThreadPool] Task queue full - task dropped");
+			return false;
+		}
 
-		mTasks.Push([task]() { (*task)(); });
-
-		return result;
+		return true;
 	}
 
 	// English: Wait for all tasks to complete

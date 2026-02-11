@@ -2,7 +2,12 @@
 // Korean: 분리된 핸들러를 가진 TestServer 구현
 
 #include "../include/TestServer.h"
+#include "Network/Core/ServerPacketDefine.h"
 #include <iostream>
+#include <mutex>
+#include <thread>
+#include <chrono>
+#include <cstring>
 
 #ifdef _WIN32
 #include <WinSock2.h>
@@ -23,7 +28,15 @@ namespace Network::TestServer
     TestServer::TestServer()
         : mIsRunning(false)
         , mPort(0)
+#ifdef _WIN32
+        , mDBServerSocket(INVALID_SOCKET)
+        , mDBRunning(false)
+        , mDBPingSequence(0)
+#endif
     {
+#ifdef _WIN32
+        mDBRecvBuffer.reserve(8192 * 4);
+#endif
     }
 
     TestServer::~TestServer()
@@ -38,6 +51,10 @@ namespace Network::TestServer
     {
         mPort = port;
         mDbConnectionString = dbConnectionString;
+
+        // English: Set Session factory for game clients
+        // Korean: 게임 클라이언트용 세션 팩토리 설정
+        Core::SessionManager::Instance().Initialize(&TestServer::CreateGameSession);
 
         // English: Initialize DB packet handler for server-to-server communication
         // Korean: 서버 간 통신을 위한 DB 패킷 핸들러 초기화
@@ -131,13 +148,9 @@ namespace Network::TestServer
             mClientEngine->Stop();
         }
 
-        // English: Disconnect from DB server if connected
-        // Korean: DB 서버에 연결되어 있다면 연결 해제
-        if (mDBServerSession)
-        {
-            mDBServerSession->Close();
-            mDBServerSession.reset();
-        }
+        // English: Disconnect from DB server
+        // Korean: DB 서버 연결 해제
+        DisconnectFromDBServer();
 
         Logger::Info("TestServer stopped");
     }
@@ -152,19 +165,25 @@ namespace Network::TestServer
         Logger::Info("Connecting to DB server at " + host + ":" + std::to_string(port));
 
 #ifdef _WIN32
-        // English: Initialize Winsock if not already initialized
-        // 한글: Winsock이 초기화되지 않았다면 초기화
-        WSADATA wsaData;
-        static bool wsaInitialized = false;
-        if (!wsaInitialized)
+        if (mDBRunning.load())
         {
+            Logger::Warn("DB server connection already running");
+            return true;
+        }
+
+        // English: Initialize Winsock exactly once (thread-safe via call_once)
+        // 한글: Winsock을 정확히 한 번 초기화 (call_once로 스레드 안전)
+        WSADATA wsaData;
+        static std::once_flag sWsaInitFlag;
+        bool wsaOk = true;
+        std::call_once(sWsaInitFlag, [&]() {
             if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
             {
                 Logger::Error("WSAStartup failed");
-                return false;
+                wsaOk = false;
             }
-            wsaInitialized = true;
-        }
+        });
+        if (!wsaOk) return false;
 
         // English: Create client socket
         // 한글: 클라이언트 소켓 생성
@@ -199,20 +218,18 @@ namespace Network::TestServer
             return false;
         }
 
-        // English: Set socket to non-blocking mode
-        // 한글: 소켓을 non-blocking 모드로 설정
-        u_long mode = 1;
-        if (ioctlsocket(clientSocket, FIONBIO, &mode) != 0)
-        {
-            Logger::Error("Failed to set non-blocking mode: " + std::to_string(WSAGetLastError()));
-            closesocket(clientSocket);
-            return false;
-        }
-
         // English: Create and initialize session for DB server connection
         // 한글: DB 서버 연결을 위한 세션 생성 및 초기화
         mDBServerSession = std::make_shared<Core::Session>();
         mDBServerSession->Initialize(static_cast<uint64_t>(clientSocket), clientSocket);
+
+        mDBServerSocket = clientSocket;
+        mDBRunning.store(true);
+
+        // English: Start DB recv/ping threads
+        // 한글: DB 수신/핑 스레드 시작
+        mDBRecvThread = std::thread(&TestServer::DBRecvLoop, this);
+        mDBPingThread = std::thread(&TestServer::DBPingLoop, this);
         
         // English: Initialize packet handler for DB server
         // 한글: DB 서버용 패킷 핸들러 초기화
@@ -250,6 +267,183 @@ namespace Network::TestServer
     SessionRef TestServer::CreateGameSession()
     {
         return std::make_shared<GameSession>();
+    }
+
+    void TestServer::DisconnectFromDBServer()
+    {
+#ifdef _WIN32
+        if (!mDBRunning.load())
+        {
+            return;
+        }
+
+        mDBRunning.store(false);
+
+        if (mDBServerSocket != INVALID_SOCKET)
+        {
+            shutdown(mDBServerSocket, SD_BOTH);
+        }
+
+        if (mDBRecvThread.joinable())
+        {
+            mDBRecvThread.join();
+        }
+
+        if (mDBPingThread.joinable())
+        {
+            mDBPingThread.join();
+        }
+
+        if (mDBServerSession)
+        {
+            mDBServerSession->Close();
+            mDBServerSession.reset();
+        }
+
+        mDBServerSocket = INVALID_SOCKET;
+        mDBRecvBuffer.clear();
+        mDBRecvOffset = 0;
+#endif
+    }
+
+    bool TestServer::SendDBPacket(const void* data, uint32_t size)
+    {
+#ifdef _WIN32
+        if (!mDBRunning.load() || mDBServerSocket == INVALID_SOCKET || !data || size == 0)
+        {
+            return false;
+        }
+
+        std::lock_guard<std::mutex> lock(mDBSendMutex);
+
+        const char* ptr = static_cast<const char*>(data);
+        uint32_t remaining = size;
+        while (remaining > 0)
+        {
+            int sent = send(mDBServerSocket, ptr, remaining, 0);
+            if (sent == SOCKET_ERROR)
+            {
+                Logger::Error("Failed to send DB packet: " + std::to_string(WSAGetLastError()));
+                return false;
+            }
+            remaining -= static_cast<uint32_t>(sent);
+            ptr += sent;
+        }
+
+        return true;
+#else
+        (void)data;
+        (void)size;
+        return false;
+#endif
+    }
+
+    void TestServer::DBRecvLoop()
+    {
+#ifdef _WIN32
+        constexpr size_t kTempBufferSize = 4096;
+        std::vector<char> tempBuffer(kTempBufferSize);
+
+        while (mDBRunning.load())
+        {
+            int received = recv(mDBServerSocket, tempBuffer.data(),
+                                static_cast<int>(tempBuffer.size()), 0);
+            if (received > 0)
+            {
+                mDBRecvBuffer.insert(mDBRecvBuffer.end(),
+                                     tempBuffer.data(),
+                                     tempBuffer.data() + received);
+
+                while (mDBRecvBuffer.size() - mDBRecvOffset >= sizeof(Core::ServerPacketHeader))
+                {
+                    const auto* header = reinterpret_cast<const Core::ServerPacketHeader*>(
+                        mDBRecvBuffer.data() + mDBRecvOffset);
+
+                    if (header->size < sizeof(Core::ServerPacketHeader) || header->size > 4096)
+                    {
+                        Logger::Warn("Invalid DB packet size: " + std::to_string(header->size));
+                        mDBRecvBuffer.clear();
+                        mDBRecvOffset = 0;
+                        break;
+                    }
+
+                    if (mDBRecvBuffer.size() - mDBRecvOffset < header->size)
+                    {
+                        break;
+                    }
+
+                    if (mDBPacketHandler && mDBServerSession)
+                    {
+                        mDBPacketHandler->ProcessPacket(
+                            mDBServerSession.get(),
+                            mDBRecvBuffer.data() + mDBRecvOffset,
+                            header->size);
+                    }
+
+                    mDBRecvOffset += header->size;
+                }
+
+                // English: Compact buffer when offset exceeds half the buffer size
+                // 한글: 오프셋이 버퍼 크기의 절반을 초과하면 버퍼 압축
+                if (mDBRecvOffset > 0 && mDBRecvOffset > mDBRecvBuffer.size() / 2)
+                {
+                    mDBRecvBuffer.erase(mDBRecvBuffer.begin(),
+                                        mDBRecvBuffer.begin() + mDBRecvOffset);
+                    mDBRecvOffset = 0;
+                }
+            }
+            else if (received == 0)
+            {
+                Logger::Warn("DB server closed connection");
+                break;
+            }
+            else
+            {
+                int error = WSAGetLastError();
+                if (error == WSAEINTR)
+                {
+                    continue;
+                }
+                Logger::Error("DB recv failed: " + std::to_string(error));
+                break;
+            }
+        }
+
+        mDBRunning.store(false);
+#endif
+    }
+
+    void TestServer::DBPingLoop()
+    {
+#ifdef _WIN32
+        constexpr uint32_t kPingIntervalMs = 5000;
+        constexpr uint32_t kSaveInterval = 5;
+
+        while (mDBRunning.load())
+        {
+            Core::PKT_ServerPingReq pingPacket;
+            pingPacket.sequence = ++mDBPingSequence;
+            pingPacket.timestamp = Timer::GetCurrentTimestamp();
+            SendDBPacket(&pingPacket, sizeof(pingPacket));
+
+            if (mDBPingSequence.load() % kSaveInterval == 0)
+            {
+                Core::PKT_DBSavePingTimeReq savePacket;
+                savePacket.serverId = 1;
+                savePacket.timestamp = Timer::GetCurrentTimestamp();
+#ifdef _WIN32
+                strncpy_s(savePacket.serverName, sizeof(savePacket.serverName),
+                          "TestServer", _TRUNCATE);
+#else
+                strncpy(savePacket.serverName, "TestServer", sizeof(savePacket.serverName) - 1);
+                savePacket.serverName[sizeof(savePacket.serverName) - 1] = '\0';
+#endif
+                SendDBPacket(&savePacket, sizeof(savePacket));
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(kPingIntervalMs));
+        }
+#endif
     }
 
 } // namespace Network::TestServer

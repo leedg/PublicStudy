@@ -8,13 +8,23 @@ param(
 	# 한글: TestDBServer 포트
 	[int]$DbPort = 8002,
 	# 한글: TestClient 접속 대상
-	[string]$Host = "127.0.0.1",
+	[string]$TargetHost = "127.0.0.1",
 	# 한글: 동일 콘솔에서 실행할지 여부
 	[switch]$NoNewWindow
 )
 
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+$OutputEncoding = $utf8NoBom
+[Console]::OutputEncoding = $utf8NoBom
+[Console]::InputEncoding = $utf8NoBom
+try { chcp 65001 > $null } catch {}
+
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $binDir = Join-Path $root "$Platform\$Configuration"
+
+if ([string]::IsNullOrWhiteSpace($TargetHost)) {
+	$TargetHost = "127.0.0.1"
+}
 
 $testDbServer = Join-Path $binDir "TestDBServer.exe"
 $testServer = Join-Path $binDir "TestServer.exe"
@@ -22,7 +32,7 @@ $testClient = Join-Path $binDir "TestClient.exe"
 
 function Assert-Exe([string]$path) {
 	if (-not (Test-Path -Path $path -PathType Leaf)) {
-		Write-Error "실행 파일을 찾을 수 없습니다: $path"
+		Write-Error "Executable not found: $path"
 		exit 1
 	}
 }
@@ -31,7 +41,7 @@ Assert-Exe $testDbServer
 Assert-Exe $testServer
 Assert-Exe $testClient
 
-Write-Host "=== 테스트 실행 시작 ==="
+Write-Host "=== Test run start ==="
 Write-Host "Bin: $binDir"
 
 try {
@@ -44,19 +54,19 @@ try {
 	Start-Sleep -Milliseconds 500
 
 	$serverProc = Start-Process -FilePath $testServer `
-		-ArgumentList @("-p", $ServerPort) `
+		-ArgumentList @("-p", $ServerPort, "--db-host", $TargetHost, "--db-port", $DbPort) `
 		-WorkingDirectory $binDir `
 		-PassThru -NoNewWindow:$NoNewWindow
 
 	Start-Sleep -Milliseconds 500
 
 	$clientProc = Start-Process -FilePath $testClient `
-		-ArgumentList @("--host", $Host, "--port", $ServerPort) `
+		-ArgumentList @("--host", $TargetHost, "--port", $ServerPort) `
 		-WorkingDirectory $binDir `
 		-PassThru -NoNewWindow:$NoNewWindow
 
 	Write-Host ""
-	Write-Host "실행 중... 종료하려면 Enter를 누르세요."
+	Write-Host "Running... Press Enter to stop."
 	[void][System.Console]::ReadLine()
 }
 finally {
@@ -78,4 +88,4 @@ finally {
 	}
 }
 
-Write-Host "=== 테스트 종료 ==="
+Write-Host "=== Test run end ==="

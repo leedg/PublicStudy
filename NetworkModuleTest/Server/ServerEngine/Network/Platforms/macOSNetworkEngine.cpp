@@ -16,7 +16,7 @@ namespace Network::Platforms
 {
 
 macOSNetworkEngine::macOSNetworkEngine()
-	: mListenSocket(-1)
+	: mListenSocket(-1), mAcceptBackoffMs(10)
 {
 	Utils::Logger::Info("macOSNetworkEngine created with kqueue backend");
 }
@@ -35,7 +35,7 @@ bool macOSNetworkEngine::InitializePlatform()
 {
 	// English: Create kqueue AsyncIOProvider
 	// 한글: kqueue AsyncIOProvider 생성
-	mProvider = std::make_unique<AsyncIO::macOS::KqueueAsyncIOProvider>();
+	mProvider = std::make_unique<AsyncIO::BSD::KqueueAsyncIOProvider>();
 	Utils::Logger::Info("Using kqueue backend");
 
 	// English: Initialize provider
@@ -162,17 +162,16 @@ void macOSNetworkEngine::AcceptLoop()
 
 			Utils::Logger::Error("Accept failed: " + std::string(strerror(errno)));
 
-			// English: Exponential backoff on error
-			// 한글: 에러 시 지수 백오프
-			static int backoffMs = 10;
-			std::this_thread::sleep_for(std::chrono::milliseconds(backoffMs));
-			backoffMs = (std::min)(backoffMs * 2, 1000);
+			// English: Exponential backoff on error (member var, not static)
+			// 한글: 에러 시 지수 백오프 (static 대신 멤버 변수 사용)
+			std::this_thread::sleep_for(std::chrono::milliseconds(mAcceptBackoffMs));
+			mAcceptBackoffMs = (std::min)(mAcceptBackoffMs * 2, 1000);
 			continue;
 		}
 
 		// English: Reset backoff on success
 		// 한글: 성공 시 백오프 리셋
-		static int backoffMs = 10;
+		mAcceptBackoffMs = 10;
 
 		// English: Set socket to non-blocking mode
 		// 한글: 소켓을 논블로킹 모드로 설정
@@ -205,12 +204,13 @@ void macOSNetworkEngine::AcceptLoop()
 			continue;
 		}
 
-		// English: Update stats
-		// 한글: 통계 업데이트
-		{
-			std::lock_guard<std::mutex> lock(mStatsMutex);
-			mStats.totalConnections++;
-		}
+		// English: Set async provider so session can queue sends via EVFILT_WRITE
+		// 한글: EVFILT_WRITE를 통해 세션이 송신을 큐에 넣을 수 있도록 async 공급자 설정
+		session->SetAsyncProvider(mProvider.get());
+
+		// English: Update stats (atomic)
+		// 한글: 통계 업데이트 (atomic)
+		mTotalConnections.fetch_add(1, std::memory_order_relaxed);
 
 		// English: Fire Connected event asynchronously on logic thread
 		// 한글: 로직 스레드에서 비동기로 Connected 이벤트 발생
@@ -224,7 +224,14 @@ void macOSNetworkEngine::AcceptLoop()
 
 		// English: Start receiving on this session
 		// 한글: 이 세션에서 수신 시작
-		session->PostRecv();
+		if (!QueueRecv(session))
+		{
+			Utils::Logger::Error("Failed to queue recv - Session " +
+								 std::to_string(session->GetId()));
+			Core::SessionManager::Instance().RemoveSession(session);
+			close(clientSocket);
+			continue;
+		}
 
 		// English: Log connection
 		// 한글: 연결 로깅
@@ -304,12 +311,12 @@ void macOSNetworkEngine::ProcessCompletions()
 		{
 			// English: Get received data from session's recv buffer
 			// 한글: 세션의 수신 버퍼에서 받은 데이터 가져오기
-			const char *recvBuffer = session->GetRecvContext().buffer;
+			const char *recvBuffer = session->GetRecvBuffer();
 			ProcessRecvCompletion(session, entry.mResult, recvBuffer);
 
 			// English: Post next receive
 			// 한글: 다음 수신 등록
-			session->PostRecv();
+			QueueRecv(session);
 			break;
 		}
 
@@ -337,6 +344,28 @@ void macOSNetworkEngine::WorkerThread()
 	}
 
 	Utils::Logger::Debug("Worker thread stopped");
+}
+
+bool macOSNetworkEngine::QueueRecv(const Core::SessionRef &session)
+{
+	if (!session || !mProvider)
+	{
+		return false;
+	}
+
+	auto error = mProvider->RecvAsync(
+		session->GetSocket(),
+		session->GetRecvBuffer(),
+		session->GetRecvBufferSize(),
+		static_cast<AsyncIO::RequestContext>(session->GetId()));
+
+	if (error != AsyncIO::AsyncIOError::Success)
+	{
+		Utils::Logger::Error("RecvAsync failed: " + std::string(mProvider->GetLastError()));
+		return false;
+	}
+
+	return true;
 }
 
 // =============================================================================

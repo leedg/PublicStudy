@@ -12,10 +12,12 @@
 3. 권장 빌드 순서: ServerEngine -> TestDBServer -> TestServer -> TestClient
 
 ## 3. 실행 순서
-1. `TestDBServer.exe -p 8002`
-2. `TestServer.exe -p 9000 -d "<connstr>"` (옵션)
+1. `TestDBServer.exe -p 8001` (기본)
+2. `TestServer.exe -p 9000 --db-host 127.0.0.1 --db-port 8001 -d "<connstr>"` (옵션)
 3. `TestClient.exe --host 127.0.0.1 --port 9000`
 4. 자동 실행: `run_test.ps1` 또는 `run_test.bat`
+
+> 참고: `run_test.ps1` 기본값은 DB 포트를 `8002`로 전달합니다.
 
 ## 4. CMake 사용
 - 루트 CMake는 `ModuleTest/MultiPlatformNetwork`만 빌드
@@ -26,7 +28,7 @@
 
 ## 6. 로그/디버깅
 - Logger 레벨: DEBUG/INFO/WARN/ERROR
-- TestServer/TestClient는 `-l` 옵션 제공
+- TestServer/TestDBServer/TestClient는 `-l` 옵션 제공
 
 ## 7. 테스트
 - AsyncIOProvider 테스트는 GTest 연동 시 사용 가능

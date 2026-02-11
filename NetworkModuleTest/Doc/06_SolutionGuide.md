@@ -4,7 +4,7 @@
 `NetworkModuleTest.sln`에 포함된 주요 프로젝트:
 - ServerEngine (`Server/ServerEngine/ServerEngine.vcxproj`)
 - TestServer (`Server/TestServer/TestServer.vcxproj`)
-- TestDBServer (`Server/DBServer/TestServer.vcxproj`)
+- TestDBServer (`Server/DBServer/TestDBServer.vcxproj`)
 - TestClient (`Client/TestClient/TestClient.vcxproj`)
 - DBModuleTest (`ModuleTest/DBModuleTest/DBModuleTest.vcxproj`)
 - MultiPlatformNetwork (`ModuleTest/MultiPlatformNetwork/MultiPlatformNetwork.vcxproj`)

@@ -13,8 +13,8 @@
 ## 완료된 작업 개요
 
 ### ✅ 1단계: 중복 정의 경고 수정
-- **문제**: `IOCPNetworkEngine.cpp`와 `NetworkEngineFactory.cpp`에 팩토리 함수 중복
-- **해결**: IOCPNetworkEngine.cpp에서 중복 코드 제거
+- **문제**: 팩토리 함수 중복 정의로 경고 발생
+- **해결**: `NetworkEngineFactory.cpp` 기준으로 정리 및 중복 제거
 - **결과**: 경고 없이 깔끔한 빌드 성공
 
 ### ✅ 4단계: LinuxNetworkEngine 구현

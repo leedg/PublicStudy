@@ -105,6 +105,14 @@ namespace Network::DBServer
                                     mLatencyManager.get(),
                                     mOrderedTaskQueue.get());
 
+        // English: Set session factory for DB server connections
+        // Korean: DB 서버 연결용 세션 팩토리 설정
+        Core::SessionManager::Instance().Initialize([this]() {
+            auto session = std::make_shared<DBSession>();
+            session->SetPacketHandler(mPacketHandler.get());
+            return session;
+        });
+
         // English: Create and initialize network engine using factory (auto-detect best backend)
         // Korean: 팩토리를 사용하여 네트워크 엔진 생성 및 초기화 (최적 백엔드 자동 감지)
         mEngine = CreateNetworkEngine("auto");

@@ -8,21 +8,27 @@
 - PongRes: clientTime, serverTime, sequence
 
 ### 1.2 TestServer <-> TestDBServer
-- MessageHandler 포맷, MessageType Ping/Pong
+- `ServerPacketDefine` 기반 Ping/DBSavePingTime 패킷 (부분 구현)
+- MessageHandler 포맷은 DBServer.cpp 실험 경로에서만 사용
 
 ## 2. CLI 옵션
 ### TestServer
 - -p <port> (기본 9000)
 - -d <connstr> (DB 연결 문자열, 옵션)
+- --db (DB 서버 연결 활성화, 기본: 127.0.0.1:8001)
+- --db-host <addr> (DB 서버 호스트)
+- --db-port <port> (DB 서버 포트)
 - -l <level> (DEBUG/INFO/WARN/ERROR)
 - -h (도움말)
 
 > 참고: `-d` 옵션은 `ENABLE_DATABASE_SUPPORT` 미정의 시 무시됩니다.
 
 ### TestDBServer
-- -p <port> (기본 8002)
-- -m <max> (기본 1000)
+- -p <port> (기본 8001)
+- -l <level> (DEBUG/INFO/WARN/ERROR)
 - -h (도움말)
+
+> 참고: `run_test.ps1` 기본값은 `-p 8002`로 실행합니다.
 
 ### TestClient
 - --host <addr> (기본 127.0.0.1)

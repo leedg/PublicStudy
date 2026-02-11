@@ -108,8 +108,8 @@ class Session : public std::enable_shared_from_this<Session>
 	// ???: ???쒋닪???
 	Utils::ConnectionId GetId() const { return mId; }
 	SocketHandle GetSocket() const { return mSocket; }
-	SessionState GetState() const { return mState; }
-	bool IsConnected() const { return mState == SessionState::Connected; }
+	SessionState GetState() const { return mState.load(std::memory_order_acquire); }
+	bool IsConnected() const { return mState.load(std::memory_order_acquire) == SessionState::Connected; }
 
 	Utils::Timestamp GetConnectTime() const { return mConnectTime; }
 	Utils::Timestamp GetLastPingTime() const { return mLastPingTime; }
@@ -117,12 +117,10 @@ class Session : public std::enable_shared_from_this<Session>
 	uint32_t GetPingSequence() const { return mPingSequence; }
 	void IncrementPingSequence() { ++mPingSequence; }
 
-#ifdef _WIN32
 	void SetAsyncProvider(AsyncIO::AsyncIOProvider *provider)
 	{
 		mAsyncProvider = provider;
 	}
-#endif
 	// English: Cross-platform recv buffer access
 	// ???: ??繞??????????筌뚯슜堉??類???????쒋닪??
 	char *GetRecvBuffer();
@@ -142,6 +140,10 @@ class Session : public std::enable_shared_from_this<Session>
 	virtual void OnDisconnected() {}
 	virtual void OnRecv(const char *data, uint32_t size) {}
 
+	// English: TCP stream reassembly - engine calls this with raw bytes
+	// 한글: TCP 스트림 재조립 - 엔진이 원시 바이트로 이 메서드를 호출
+	void ProcessRawRecv(const char *data, uint32_t size);
+
   private:
 	// English: Internal send processing
 	// ???: ???? ??ш끽維뽬땻?癲ル슪?ｇ몭??
@@ -151,7 +153,7 @@ class Session : public std::enable_shared_from_this<Session>
   private:
 	Utils::ConnectionId mId;
 	SocketHandle mSocket;
-	SessionState mState;
+	std::atomic<SessionState> mState;
 
 	// English: Time tracking
 	// ???: ??癰?????⑤베毓??
@@ -181,9 +183,14 @@ class Session : public std::enable_shared_from_this<Session>
 	// Purpose: Avoid mutex lock when queue is likely empty
 	// 癲ル슢?꾤땟?? ??? ????룹젂???源낃도 ??좊읈????묐빝???亦껋꼨援?キ???mutex lock ???⑤베猷?
 	std::atomic<size_t> mSendQueueSize;
-#ifdef _WIN32
+
+	// English: Async I/O provider (cross-platform)
+	// 한글: 비동기 I/O 공급자 (크로스플랫폼)
 	AsyncIO::AsyncIOProvider *mAsyncProvider;
-#endif
+
+	// English: TCP reassembly accumulation buffer
+	// 한글: TCP 재조립 누적 버퍼
+	std::vector<char> mRecvAccumBuffer;
 };
 
 using SessionRef = std::shared_ptr<Session>;

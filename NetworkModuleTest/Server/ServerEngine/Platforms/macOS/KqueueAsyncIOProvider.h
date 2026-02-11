@@ -108,7 +108,10 @@ class KqueueAsyncIOProvider : public AsyncIOProvider
 								 // 요청 컨텍스트
 		AsyncIOType mType;    // English: Operation type / 한글: 작업 타입
 		SocketHandle mSocket; // English: Socket handle / 한글: 소켓 핸들
-		std::unique_ptr<uint8_t[]> mBuffer; // English: Buffer / 한글: 버퍼
+		uint8_t *mBuffer; // English: Buffer pointer (recv or owned send buffer)
+						  // 한글: 버퍼 포인터 (수신 또는 송신 소유 버퍼)
+		std::unique_ptr<uint8_t[]> mOwnedBuffer; // English: Owned buffer for send
+												 // 한글: 송신용 소유 버퍼
 		uint32_t mBufferSize; // English: Buffer size / 한글: 버퍼 크기
 	};
 
@@ -120,7 +123,9 @@ class KqueueAsyncIOProvider : public AsyncIOProvider
 	int mKqueueFd; // English: kqueue file descriptor / 한글: kqueue 파일
 					   // 디스크립터
 	std::map<SocketHandle, PendingOperation>
-		mPendingOps; // English: Pending ops / 한글: 대기 작업
+		mPendingRecvOps; // English: Pending recv ops / 한글: 대기 수신 작업
+	std::map<SocketHandle, PendingOperation>
+		mPendingSendOps; // English: Pending send ops / 한글: 대기 송신 작업
 	std::map<SocketHandle, bool>
 		mRegisteredSockets; // English: Registered sockets / 한글: 등록된 소켓
 	mutable std::mutex

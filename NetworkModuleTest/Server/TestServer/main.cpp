@@ -39,6 +39,9 @@ void PrintUsage(const char *programName)
 	std::cout << "  -p <port>       Server port (default: 9000)" << std::endl;
 	std::cout << "  -d <connstr>    DB connection string (optional)"
 				  << std::endl;
+	std::cout << "  --db            Connect to DB server (default: 127.0.0.1:8001)" << std::endl;
+	std::cout << "  --db-host <h>   DB server host" << std::endl;
+	std::cout << "  --db-port <p>   DB server port" << std::endl;
 	std::cout << "  -l <level>      Log level: DEBUG, INFO, WARN, ERROR "
 				 "(default: INFO)"
 				  << std::endl;
@@ -77,6 +80,9 @@ int main(int argc, char *argv[])
 	uint16_t port = 9000;
 	std::string dbConnectionString;
 	Network::Utils::LogLevel logLevel = Network::Utils::LogLevel::Info;
+	bool dbConnectRequested = false;
+	std::string dbHost = "127.0.0.1";
+	uint16_t dbPort = 8001;
 
 	// English: Parse command line arguments
 	// 한글: 커맨드라인 인자 파싱
@@ -100,6 +106,20 @@ int main(int argc, char *argv[])
 		else if (arg == "-l" && i + 1 < argc)
 		{
 			logLevel = ParseLogLevel(argv[++i]);
+		}
+		else if (arg == "--db")
+		{
+			dbConnectRequested = true;
+		}
+		else if (arg == "--db-host" && i + 1 < argc)
+		{
+			dbHost = argv[++i];
+			dbConnectRequested = true;
+		}
+		else if (arg == "--db-port" && i + 1 < argc)
+		{
+			dbPort = static_cast<uint16_t>(std::stoi(argv[++i]));
+			dbConnectRequested = true;
 		}
 		else
 		{
@@ -145,6 +165,14 @@ int main(int argc, char *argv[])
 	{
 		Network::Utils::Logger::Error("Failed to start server");
 		return 1;
+	}
+
+	if (dbConnectRequested)
+	{
+		if (!server.ConnectToDBServer(dbHost, dbPort))
+		{
+			Network::Utils::Logger::Warn("DB server connection failed - continuing without DB link");
+		}
 	}
 
 	Network::Utils::Logger::Info("Server is running. Press Ctrl+C to stop.");

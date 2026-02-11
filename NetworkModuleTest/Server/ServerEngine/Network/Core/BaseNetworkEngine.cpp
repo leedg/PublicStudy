@@ -10,7 +10,7 @@ namespace Network::Core
 
 BaseNetworkEngine::BaseNetworkEngine()
 	: mPort(0), mMaxConnections(0), mRunning(false), mInitialized(false),
-	  mLogicThreadPool(4)
+	  mLogicThreadPool(4, MAX_LOGIC_QUEUE_DEPTH)
 {
 	std::memset(&mStats, 0, sizeof(mStats));
 }
@@ -147,10 +147,7 @@ bool BaseNetworkEngine::SendData(Utils::ConnectionId connectionId,
 		return false;
 	}
 
-	{
-		std::lock_guard<std::mutex> lock(mStatsMutex);
-		mStats.totalBytesSent += size;
-	}
+	mTotalBytesSent.fetch_add(size, std::memory_order_relaxed);
 
 	return true;
 }
@@ -193,6 +190,9 @@ INetworkEngine::Statistics BaseNetworkEngine::GetStatistics() const
 {
 	std::lock_guard<std::mutex> lock(mStatsMutex);
 	Statistics stats = mStats;
+	stats.totalBytesSent = mTotalBytesSent.load(std::memory_order_relaxed);
+	stats.totalBytesReceived = mTotalBytesReceived.load(std::memory_order_relaxed);
+	stats.totalConnections = mTotalConnections.load(std::memory_order_relaxed);
 	stats.activeConnections = SessionManager::Instance().GetSessionCount();
 	return stats;
 }
@@ -259,12 +259,9 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 		return;
 	}
 
-	// English: Update stats
-	// 한글: 통계 업데이트
-	{
-		std::lock_guard<std::mutex> lock(mStatsMutex);
-		mStats.totalBytesReceived += bytesReceived;
-	}
+	// English: Update stats (atomic, no lock needed)
+	// 한글: 통계 업데이트 (atomic, 락 불필요)
+	mTotalBytesReceived.fetch_add(bytesReceived, std::memory_order_relaxed);
 
 	// English: Process on logic thread
 	// 한글: 로직 스레드에서 처리
@@ -272,14 +269,19 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 	auto dataCopy = std::make_unique<char[]>(bytesReceived);
 	std::memcpy(dataCopy.get(), data, bytesReceived);
 
-	mLogicThreadPool.Submit(
+	if (!mLogicThreadPool.Submit(
 		[this, sessionCopy, dataPtr = dataCopy.release(), bytesReceived]()
 		{
 			std::unique_ptr<char[]> dataHolder(dataPtr);
-			sessionCopy->OnRecv(dataPtr, bytesReceived);
+			sessionCopy->ProcessRawRecv(dataPtr, bytesReceived);
 			FireEvent(NetworkEvent::DataReceived, sessionCopy->GetId(),
 					  reinterpret_cast<const uint8_t *>(dataPtr), bytesReceived);
-		});
+		}))
+	{
+		Utils::Logger::Warn("Logic queue full - recv dropped, disconnecting Session: " +
+							std::to_string(session->GetId()));
+		SessionManager::Instance().RemoveSession(session);
+	}
 }
 
 void BaseNetworkEngine::ProcessSendCompletion(SessionRef session,

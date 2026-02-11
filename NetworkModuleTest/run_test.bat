@@ -44,7 +44,7 @@ REM 한글: DBServer -> TestServer -> TestClient 순으로 기동
 start "" /D "%BIN%" "%DBEXE%" -p %DB_PORT%
 timeout /t 1 /nobreak >nul
 
-start "" /D "%BIN%" "%SERVEREXE%" -p %SERVER_PORT%
+start "" /D "%BIN%" "%SERVEREXE%" -p %SERVER_PORT% --db-host %HOST% --db-port %DB_PORT%
 timeout /t 1 /nobreak >nul
 
 start "" /D "%BIN%" "%CLIENTEXE%" --host %HOST% --port %SERVER_PORT%
@@ -61,3 +61,5 @@ taskkill /IM TestDBServer.exe /T >nul 2>&1
 
 echo === 테스트 종료 ===
 endlocal
+
+pause

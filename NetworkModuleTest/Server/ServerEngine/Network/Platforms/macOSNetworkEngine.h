@@ -48,6 +48,10 @@ class macOSNetworkEngine : public Core::BaseNetworkEngine
 	// 한글: Listen 소켓 생성
 	bool CreateListenSocket();
 
+	// English: Queue recv for a session
+	// 한글: 세션 수신 등록
+	bool QueueRecv(const Core::SessionRef &session);
+
 	// English: Worker thread function
 	// 한글: 워커 스레드 함수
 	void WorkerThread();
@@ -56,6 +60,10 @@ class macOSNetworkEngine : public Core::BaseNetworkEngine
 	// English: Listen socket
 	// 한글: Listen 소켓
 	int mListenSocket;
+
+	// English: Accept loop backoff (ms) - member to avoid static variable bug
+	// 한글: Accept 루프 백오프 (ms) - static 변수 버그 방지를 위한 멤버 변수
+	int mAcceptBackoffMs;
 
 	// English: Accept thread
 	// 한글: Accept 스레드

@@ -9,6 +9,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 namespace Network
 {
@@ -84,7 +85,8 @@ void EpollAsyncIOProvider::Shutdown()
 		mEpollFd = -1;
 	}
 
-	mPendingOps.clear();
+	mPendingRecvOps.clear();
+	mPendingSendOps.clear();
 	mInitialized = false;
 }
 
@@ -101,11 +103,11 @@ AsyncIOError EpollAsyncIOProvider::AssociateSocket(SocketHandle socket,
 	if (!mInitialized)
 		return AsyncIOError::NotInitialized;
 
-	// English: Register socket with epoll for read events (edge-triggered)
-	// 한글: 소켓을 epoll에 읽기 이벤트로 등록 (엣지 트리거)
+	// English: Register socket with epoll for read + error events
+	// 한글: 소켓을 epoll에 읽기 + 에러 이벤트로 등록
 	struct epoll_event ev;
-	ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-	ev.data.u64 = context;
+	ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+	ev.data.fd = socket;
 
 	if (epoll_ctl(mEpollFd, EPOLL_CTL_ADD, socket, &ev) < 0)
 	{
@@ -157,13 +159,22 @@ AsyncIOError EpollAsyncIOProvider::SendAsync(SocketHandle socket,
 	PendingOperation pending;
 	pending.mContext = context;
 	pending.mType = AsyncIOType::Send;
-	pending.mBuffer = std::make_unique<uint8_t[]>(size);
-	std::memcpy(pending.mBuffer.get(), buffer, size);
+	pending.mSocket = socket;
+	pending.mOwnedBuffer = std::make_unique<uint8_t[]>(size);
+	std::memcpy(pending.mOwnedBuffer.get(), buffer, size);
+	pending.mBuffer = pending.mOwnedBuffer.get();
 	pending.mBufferSize = static_cast<uint32_t>(size);
 
-	mPendingOps[socket] = std::move(pending);
+	mPendingSendOps[socket] = std::move(pending);
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
+
+	// English: Dynamically add EPOLLOUT so we get notified when socket is writable
+	// 한글: 소켓이 쓰기 가능할 때 알림을 받기 위해 EPOLLOUT 동적 추가
+	struct epoll_event ev;
+	ev.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+	ev.data.fd = socket;
+	epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev);
 
 	return AsyncIOError::Success;
 }
@@ -185,10 +196,12 @@ AsyncIOError EpollAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	PendingOperation pending;
 	pending.mContext = context;
 	pending.mType = AsyncIOType::Recv;
-	pending.mBuffer.reset();
+	pending.mSocket = socket;
+	pending.mOwnedBuffer.reset();
+	pending.mBuffer = static_cast<uint8_t*>(buffer);
 	pending.mBufferSize = static_cast<uint32_t>(size);
 
-	mPendingOps[socket] = std::move(pending);
+	mPendingRecvOps[socket] = std::move(pending);
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
 
@@ -240,24 +253,164 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		 i < numEvents && processedCount < static_cast<int>(maxEntries); ++i)
 	{
 		SocketHandle socket = events[i].data.fd;
+		uint32_t evFlags = events[i].events;
 
-		std::lock_guard<std::mutex> lock(mMutex);
-		auto it = mPendingOps.find(socket);
-		if (it != mPendingOps.end())
+		// English: Handle error / hangup events
+		// 한글: 에러 / 연결 끊김 이벤트 처리
+		if (evFlags & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
 		{
-			// English: Fill completion entry
-			// 한글: 완료 항목 채우기
-			CompletionEntry &entry = entries[processedCount];
-			entry.mContext = it->second.mContext;
-			entry.mType = it->second.mType;
-			entry.mResult = static_cast<int32_t>(it->second.mBufferSize);
-			entry.mOsError = 0;
-			entry.mCompletionTime = 0;
+			// English: Find any pending op context for this socket for disconnect reporting
+			// 한글: 연결 해제 보고용 소켓의 대기 중인 작업 컨텍스트 검색
+			std::lock_guard<std::mutex> lock(mMutex);
+			RequestContext ctx = 0;
+			auto rit = mPendingRecvOps.find(socket);
+			if (rit != mPendingRecvOps.end())
+			{
+				ctx = rit->second.mContext;
+				mPendingRecvOps.erase(rit);
+				mStats.mPendingRequests--;
+			}
+			auto sit = mPendingSendOps.find(socket);
+			if (sit != mPendingSendOps.end())
+			{
+				if (ctx == 0) ctx = sit->second.mContext;
+				mPendingSendOps.erase(sit);
+				mStats.mPendingRequests--;
+			}
+			if (ctx != 0)
+			{
+				CompletionEntry &entry = entries[processedCount];
+				entry.mContext = ctx;
+				entry.mType = AsyncIOType::Recv;
+				entry.mResult = -1;
+				entry.mOsError = (evFlags & EPOLLERR) ? EIO : 0;
+				entry.mCompletionTime = 0;
+				mStats.mTotalCompletions++;
+				processedCount++;
+			}
+			continue;
+		}
 
-			mPendingOps.erase(it);
-			mStats.mPendingRequests--;
-			mStats.mTotalCompletions++;
-			processedCount++;
+		// English: Handle EPOLLIN (readable)
+		// 한글: EPOLLIN (읽기 가능) 처리
+		if (evFlags & EPOLLIN)
+		{
+			PendingOperation pending;
+			bool found = false;
+			{
+				std::lock_guard<std::mutex> lock(mMutex);
+				auto it = mPendingRecvOps.find(socket);
+				if (it != mPendingRecvOps.end())
+				{
+					pending = std::move(it->second);
+					mPendingRecvOps.erase(it);
+					mStats.mPendingRequests--;
+					found = true;
+				}
+			}
+
+			if (found)
+			{
+				int32_t result = 0;
+				OSError osError = 0;
+				ssize_t received = ::recv(socket, pending.mBuffer, pending.mBufferSize, 0);
+				if (received >= 0)
+				{
+					result = static_cast<int32_t>(received);
+				}
+				else
+				{
+					if (errno == EAGAIN || errno == EWOULDBLOCK)
+					{
+						std::lock_guard<std::mutex> lock(mMutex);
+						mPendingRecvOps[socket] = std::move(pending);
+						mStats.mPendingRequests++;
+					}
+					else
+					{
+						osError = errno;
+						result = -1;
+						CompletionEntry &entry = entries[processedCount];
+						entry.mContext = pending.mContext;
+						entry.mType = AsyncIOType::Recv;
+						entry.mResult = result;
+						entry.mOsError = osError;
+						entry.mCompletionTime = 0;
+						mStats.mTotalCompletions++;
+						processedCount++;
+					}
+					continue;
+				}
+
+				CompletionEntry &entry = entries[processedCount];
+				entry.mContext = pending.mContext;
+				entry.mType = AsyncIOType::Recv;
+				entry.mResult = result;
+				entry.mOsError = osError;
+				entry.mCompletionTime = 0;
+				mStats.mTotalCompletions++;
+				processedCount++;
+			}
+		}
+
+		// English: Handle EPOLLOUT (writable) - execute send then remove EPOLLOUT
+		// 한글: EPOLLOUT (쓰기 가능) 처리 - 송신 실행 후 EPOLLOUT 제거
+		if ((evFlags & EPOLLOUT) && processedCount < static_cast<int>(maxEntries))
+		{
+			PendingOperation pending;
+			bool found = false;
+			{
+				std::lock_guard<std::mutex> lock(mMutex);
+				auto it = mPendingSendOps.find(socket);
+				if (it != mPendingSendOps.end())
+				{
+					pending = std::move(it->second);
+					mPendingSendOps.erase(it);
+					mStats.mPendingRequests--;
+					found = true;
+				}
+			}
+
+			if (found)
+			{
+				// English: Remove EPOLLOUT after consuming send op
+				// 한글: 송신 작업 소비 후 EPOLLOUT 제거
+				struct epoll_event ev;
+				ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+				ev.data.fd = socket;
+				epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev);
+
+				int32_t result = 0;
+				OSError osError = 0;
+				ssize_t sent = ::send(socket, pending.mBuffer, pending.mBufferSize, 0);
+				if (sent >= 0)
+				{
+					result = static_cast<int32_t>(sent);
+				}
+				else
+				{
+					osError = errno;
+					result = -1;
+				}
+
+				CompletionEntry &entry = entries[processedCount];
+				entry.mContext = pending.mContext;
+				entry.mType = AsyncIOType::Send;
+				entry.mResult = result;
+				entry.mOsError = osError;
+				entry.mCompletionTime = 0;
+				mStats.mTotalCompletions++;
+				processedCount++;
+			}
+			else
+			{
+				// English: No pending send op - remove EPOLLOUT to avoid busy loop
+				// 한글: 대기 중인 송신 작업 없음 - busy loop 방지를 위해 EPOLLOUT 제거
+				struct epoll_event ev;
+				ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+				ev.data.fd = socket;
+				epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev);
+			}
 		}
 	}
 

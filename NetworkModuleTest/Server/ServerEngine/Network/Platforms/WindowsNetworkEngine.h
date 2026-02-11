@@ -79,6 +79,10 @@ class WindowsNetworkEngine : public Core::BaseNetworkEngine
 	// 한글: Listen 소켓
 	SOCKET mListenSocket;
 
+	// English: Accept loop backoff (ms) - member to avoid static variable bug
+	// 한글: Accept 루프 백오프 (ms) - static 변수 버그 방지를 위한 멤버 변수
+	int mAcceptBackoffMs;
+
 	// English: Accept thread
 	// 한글: Accept 스레드
 	std::thread mAcceptThread;

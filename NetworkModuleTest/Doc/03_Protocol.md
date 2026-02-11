@@ -1,8 +1,9 @@
 ﻿# 프로토콜
 
 ## 1. 개요
-- TCP 바이너리 프로토콜: TestClient <-> TestServer
-- 내부 메시지 포맷: TestServer <-> TestDBServer
+- TCP 바이너리 프로토콜: TestClient <-> TestServer (`PacketDefine.h`)
+- 서버 간 패킷: TestServer <-> TestDBServer (`ServerPacketDefine.h`, 부분 구현)
+- 레거시 메시지 포맷: DBServer.cpp의 MessageHandler (실험/레거시)
 
 ## 2. PacketDefine.h (Client <-> TestServer)
 ### 공통 헤더
@@ -32,7 +33,27 @@ struct PacketHeader {
 - PING_INTERVAL_MS = 5000
 - PING_TIMEOUT_MS = 30000
 
-## 3. MessageHandler 포맷 (TestServer <-> TestDBServer)
+## 3. ServerPacketDefine.h (TestServer <-> TestDBServer, 부분 구현)
+
+### 공통 헤더
+```cpp
+struct ServerPacketHeader {
+    uint16_t size;      // 전체 크기
+    uint16_t id;        // ServerPacketType
+    uint32_t sequence;  // 시퀀스
+};
+```
+
+### ServerPacketType
+- ServerPingReq (1000), ServerPongRes (1001)
+- DBSavePingTimeReq (2000), DBSavePingTimeRes (2001)
+- DBQueryReq (2002), DBQueryRes (2003)
+
+### 비고
+- TestServer는 `DBServerPacketHandler`를 통해 Ping/DBSave 요청을 생성
+- TestDBServer는 현재 수신 로그 중심이며 실제 처리 경로 보강 필요
+
+## 4. MessageHandler 포맷 (레거시, DBServer.cpp)
 ```
 [type(uint32)][connection_id(uint64)][timestamp(uint64)][payload]
 ```
@@ -42,6 +63,6 @@ struct PacketHeader {
 - Pong = 2
 - CustomStart = 1000
 
-## 4. Protobuf
-PingPongHandler는 HAS_PROTOBUF 정의 시 protobuf 메시지를 사용합니다.
-기본 빌드는 바이너리 포맷을 사용합니다.
+## 5. Protobuf (테스트)
+- `ServerEngine/Tests/Protocols/PingPong.*`에서 HAS_PROTOBUF 정의 시 protobuf 메시지 사용
+- 기본 빌드는 바이너리 포맷 사용

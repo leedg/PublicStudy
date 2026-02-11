@@ -418,13 +418,14 @@ mCondition.wait(lock, [this] { return !mQueue.empty() || mShutdown; });
 
 ---
 
-### 5️⃣ IOCPNetworkEngine
+### 5️⃣ NetworkEngine (Windows 경로)
 
-**파일**: `Server/ServerEngine/Network/Core/IOCPNetworkEngine.cpp`
+**파일**: `Server/ServerEngine/Network/Platforms/WindowsNetworkEngine.cpp`,  
+`Server/ServerEngine/Network/Core/BaseNetworkEngine.cpp`
 
-#### ✅ **양호: IOCP 완료 포트 사용**
+#### ✅ **양호: IOCP/RIO 완료 처리**
 
-IOCP는 Windows의 고성능 비동기 I/O 메커니즘으로, 대부분의 동기화가 커널 레벨에서 처리됩니다.
+Windows 경로는 IOCP/RIO 기반으로 완료 처리를 수행하며, 대부분의 동기화가 커널 레벨에서 처리됩니다.
 
 **장점**:
 - ✅ User-level Lock 최소화

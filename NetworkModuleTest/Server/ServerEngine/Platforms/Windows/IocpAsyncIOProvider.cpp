@@ -88,7 +88,8 @@ void IocpAsyncIOProvider::Shutdown()
 	}
 
 	std::lock_guard<std::mutex> lock(mMutex);
-	mPendingOps.clear();
+	mPendingRecvOps.clear();
+	mPendingSendOps.clear();
 
 	mInitialized = false;
 }
@@ -208,7 +209,7 @@ AsyncIOError IocpAsyncIOProvider::SendAsync(SocketHandle socket,
 
 	{
 		std::lock_guard<std::mutex> lock(mMutex);
-		mPendingOps[socket] = std::move(op);
+		mPendingSendOps[socket] = std::move(op);
 		mStats.mTotalRequests++;
 		mStats.mPendingRequests++;
 	}
@@ -259,7 +260,7 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 	{
 		std::lock_guard<std::mutex> lock(mMutex);
-		mPendingOps[socket] = std::move(op);
+		mPendingRecvOps[socket] = std::move(op);
 		mStats.mTotalRequests++;
 		mStats.mPendingRequests++;
 	}
@@ -325,14 +326,29 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			auto *candidate = reinterpret_cast<PendingOperation *>(pOverlapped);
 
 			std::lock_guard<std::mutex> lock(mMutex);
-			for (auto it = mPendingOps.begin(); it != mPendingOps.end(); ++it)
+			// English: Search recv map first, then send map
+			// 한글: 수신 맵 먼저 검색, 그 다음 송신 맵 검색
+			for (auto it = mPendingRecvOps.begin(); it != mPendingRecvOps.end(); ++it)
 			{
 				if (it->second.get() == candidate)
 				{
 					op = std::move(it->second);
-					mPendingOps.erase(it);
+					mPendingRecvOps.erase(it);
 					mStats.mPendingRequests--;
 					break;
+				}
+			}
+			if (!op)
+			{
+				for (auto it = mPendingSendOps.begin(); it != mPendingSendOps.end(); ++it)
+				{
+					if (it->second.get() == candidate)
+					{
+						op = std::move(it->second);
+						mPendingSendOps.erase(it);
+						mStats.mPendingRequests--;
+						break;
+					}
 				}
 			}
 		}

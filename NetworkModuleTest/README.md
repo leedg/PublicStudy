@@ -2,7 +2,7 @@
 
 **프로젝트**: 고성능 멀티플랫폼 네트워크 엔진 및 게임 서버
 **언어**: C++17
-**플랫폼**: Windows, Linux, macOS
+**플랫폼**: Windows (주 개발/테스트), Linux/macOS (스캐폴딩/실험)
 
 ---
 
@@ -13,25 +13,12 @@
 ### 🎯 빠른 링크
 - [프로젝트 개요](./Doc/01_ProjectOverview.md) - 프로젝트 소개 및 목표
 - [전체 아키텍처](./Doc/02_Architecture.md) - 시스템 구조
+- [코드-문서 통합 시각화](./Doc/07_VisualMap.md) - 구조/흐름 다이어그램
 - [개발 가이드](./Doc/05_DevelopmentGuide.md) - 빌드 및 실행 방법
 - [API 문서](./Doc/04_API.md) - API 사용법
 
-### 🏗️ 주요 문서
-
-#### 아키텍처
-- [멀티플랫폼 엔진](./Doc/Architecture/MultiplatformEngine.md) - Windows/Linux/macOS 지원
-- [서버 마이그레이션](./Doc/Architecture/ServerMigration.md) - IOCP → 멀티플랫폼 전환
-- [비동기 DB](./Doc/Architecture/AsyncDB.md) - 논블로킹 DB 아키텍처
-- [네트워크 구조](./Doc/Architecture/NetworkArchitecture.md) - 네트워크 엔진 상세
-
-#### 성능 최적화
-- [Lock 경합 분석](./Doc/Performance/LockContentionAnalysis.md) - P0-P3 최적화
-- [벤치마킹 가이드](./Doc/Performance/Benchmarking.md) - 성능 측정 방법
-
-#### 개발 문서
-- [네이밍 규칙](./Doc/Development/NamingConventions.md) - 코딩 컨벤션
-- [유닛 테스트](./Doc/Development/UnitTesting.md) - 테스트 전략
-- [CMake 빌드](./Doc/Development/CMakeBuild.md) - 크로스플랫폼 빌드
+### 🏗️ 심화 문서
+- 상세/분석 문서는 [Doc/README.md](./Doc/README.md)에서 확인 (일부 문서 업데이트 필요)
 
 ---
 
@@ -72,6 +59,7 @@ NetworkModuleTest/
 ├── Doc/                       # 📚 문서 폴더
 │   ├── 01_ProjectOverview.md
 │   ├── 02_Architecture.md
+│   ├── 07_VisualMap.md
 │   ├── Architecture/          # 아키텍처 상세
 │   ├── Performance/           # 성능 최적화
 │   ├── Database/              # DB 문서
@@ -87,14 +75,14 @@ NetworkModuleTest/
 ## 🎯 주요 기능
 
 ### 멀티플랫폼 네트워크 엔진
-- ✅ **Windows**: IOCP, RIO (자동 감지)
-- ✅ **Linux**: epoll, io_uring (자동 감지)
-- ✅ **macOS**: kqueue
+- ✅ **Windows**: IOCP, RIO (자동 감지, 주 개발/테스트)
+- ⚠️ **Linux**: epoll, io_uring (기본 send/recv 구현, 테스트 필요)
+- ⚠️ **macOS**: kqueue (기본 send/recv 구현, 테스트 필요)
 
 ### 비동기 DB 아키텍처
-- ✅ **논블로킹**: GameSession과 DB 처리 완전 분리
+- ✅ **논블로킹**: GameSession과 DB 처리 분리
 - ✅ **작업 큐**: Producer-Consumer 패턴
-- ✅ **워커 풀**: 멀티 스레드 병렬 처리
+- ⚠️ **DB 저장**: 현재는 로깅/플레이스홀더 중심 (실DB 연동은 TODO)
 
 ### 성능 최적화
 - ✅ **Lock-Free**: Atomic 연산 활용
@@ -103,7 +91,7 @@ NetworkModuleTest/
 
 ---
 
-## 📊 성능 특성
+## 📊 성능 특성 (목표/가정)
 
 ### 처리량
 - **동시 접속**: 1,000+ 동시 연결
@@ -117,6 +105,17 @@ NetworkModuleTest/
 ---
 
 ## 🔧 최근 업데이트
+
+### 2026-02-10
+- ✅ TestServer ↔ TestDBServer 패킷 연결 경로 추가
+- ✅ Linux/macOS 기본 send/recv 경로 보강
+- ✅ 문서 심화 영역 최신화
+- ✅ 코드-문서 통합 시각화 문서 추가 (`Doc/07_VisualMap.md`)
+
+### 2026-02-09
+- ✅ 문서-코드 정합성 점검 및 주요 문서 정리
+- ✅ TestDBServer 기본 포트/옵션 정보 갱신
+- ✅ 멀티플랫폼 지원 상태 명시 (Windows 중심, Linux/macOS 스캐폴딩)
 
 ### 2026-02-06
 - ✅ 문서 구조 대대적 개편 (Doc/ 폴더로 통합)
@@ -176,6 +175,6 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
 ---
 
-**마지막 업데이트**: 2026-02-06
+**마지막 업데이트**: 2026-02-10
 **버전**: 2.0.0 (문서 구조 개편)
 **빌드 환경**: Visual Studio 2022, Windows 10, x64

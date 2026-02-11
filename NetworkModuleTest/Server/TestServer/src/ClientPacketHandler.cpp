@@ -50,6 +50,12 @@ namespace Network::TestServer
 
         const PacketHeader* header = reinterpret_cast<const PacketHeader*>(data);
 
+        if (header->size < sizeof(PacketHeader) || header->size > MAX_PACKET_SIZE)
+        {
+            Logger::Warn("Packet size out of range: " + std::to_string(header->size));
+            return;
+        }
+
         if (header->size > size)
         {
             Logger::Warn("Incomplete packet - expected: " + std::to_string(header->size) +

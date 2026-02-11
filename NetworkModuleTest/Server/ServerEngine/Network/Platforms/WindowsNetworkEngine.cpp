@@ -17,7 +17,7 @@ namespace Network::Platforms
 {
 
 WindowsNetworkEngine::WindowsNetworkEngine(Mode mode)
-	: mMode(mode), mListenSocket(INVALID_SOCKET)
+	: mMode(mode), mListenSocket(INVALID_SOCKET), mAcceptBackoffMs(10)
 {
 	Utils::Logger::Info("WindowsNetworkEngine created with mode: " +
 						std::string(mode == Mode::IOCP ? "IOCP" : "RIO"));
@@ -147,14 +147,14 @@ void WindowsNetworkEngine::AcceptLoop()
 			}
 
 			Utils::Logger::Error("Accept failed: " + std::to_string(error));
-			static int backoffMs = 10;
-			std::this_thread::sleep_for(std::chrono::milliseconds(backoffMs));
-			backoffMs = (std::min)(backoffMs * 2, 1000);
+			std::this_thread::sleep_for(std::chrono::milliseconds(mAcceptBackoffMs));
+			mAcceptBackoffMs = (std::min)(mAcceptBackoffMs * 2, 1000);
 			continue;
 		}
 
-		static int backoffMs = 10;
-		(void)backoffMs;
+		// English: Reset backoff on success
+		// 한글: 성공 시 백오프 리셋
+		mAcceptBackoffMs = 10;
 
 		Core::SessionRef session =
 			Core::SessionManager::Instance().CreateSession(clientSocket);
@@ -183,10 +183,7 @@ void WindowsNetworkEngine::AcceptLoop()
 			session->SetAsyncProvider(mProvider.get());
 		}
 
-		{
-			std::lock_guard<std::mutex> lock(mStatsMutex);
-			mStats.totalConnections++;
-		}
+		mTotalConnections.fetch_add(1, std::memory_order_relaxed);
 
 		auto sessionCopy = session;
 		mLogicThreadPool.Submit(

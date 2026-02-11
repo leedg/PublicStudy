@@ -23,10 +23,10 @@ Session::Session()
 #endif
 				  ),
 		  mState(SessionState::None), mConnectTime(0), mLastPingTime(0),
-		  mPingSequence(0), mIsSending(false), mSendQueueSize(0)
+		  mPingSequence(0), mIsSending(false), mSendQueueSize(0),
+		  mAsyncProvider(nullptr)
 #ifdef _WIN32
 		  ,
-		  mAsyncProvider(nullptr),
 		  mRecvContext(IOType::Recv),
 		  mSendContext(IOType::Send)
 #endif
@@ -39,30 +39,29 @@ void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 {
 	mId = id;
 	mSocket = socket;
-	mState = SessionState::Connected;
+	mState.store(SessionState::Connected, std::memory_order_release);
 	mConnectTime = Utils::Timer::GetCurrentTimestamp();
 	mLastPingTime = mConnectTime;
 	mPingSequence = 0;
 	mIsSending = false;
 	mSendQueueSize.store(0, std::memory_order_relaxed);
-#ifdef _WIN32
 	mAsyncProvider = nullptr;
-#endif
+	mRecvAccumBuffer.clear();
 
 	Utils::Logger::Info("Session initialized - ID: " + std::to_string(mId));
 }
 
 void Session::Close()
 {
-	if (mState == SessionState::Disconnected)
+	// English: Atomic exchange prevents TOCTOU double-close race
+	// 한글: atomic exchange로 TOCTOU 이중 닫기 경쟁 방지
+	SessionState prev = mState.exchange(SessionState::Disconnected, std::memory_order_acq_rel);
+	if (prev == SessionState::Disconnected)
 	{
 		return;
 	}
 
-	mState = SessionState::Disconnected;
-#ifdef _WIN32
 	mAsyncProvider = nullptr;
-#endif
 
 	if (mSocket !=
 #ifdef _WIN32
@@ -97,61 +96,38 @@ void Session::Close()
 
 void Session::Send(const void *data, uint32_t size)
 {
-#ifndef _WIN32
 	if (!IsConnected() || data == nullptr || size == 0)
 	{
 		return;
 	}
 
-	const char *ptr = static_cast<const char *>(data);
-	uint32_t remaining = size;
-	int flags = 0;
-#ifdef MSG_NOSIGNAL
-	flags = MSG_NOSIGNAL;
-#endif
-
-	while (remaining > 0)
-	{
-		ssize_t sent = ::send(mSocket, ptr, remaining, flags);
-		if (sent > 0)
-		{
-			remaining -= static_cast<uint32_t>(sent);
-			ptr += sent;
-			continue;
-		}
-
-		if (sent < 0 && errno == EINTR)
-		{
-			continue;
-		}
-
-		Utils::Logger::Error("send failed - errno: " + std::to_string(errno));
-		break;
-	}
-
-	return;
-#else
-	if (!IsConnected() || data == nullptr || size == 0)
-	{
-		return;
-	}
-
+#ifdef _WIN32
 	if (mAsyncProvider)
 	{
+		// English: RIO path - delegate directly to async provider
+		// 한글: RIO 경로 - 비동기 공급자에 직접 위임
 		auto error = mAsyncProvider->SendAsync(
 			mSocket, data, size, static_cast<AsyncIO::RequestContext>(mId));
 		if (error != AsyncIO::AsyncIOError::Success)
 		{
 			Utils::Logger::Error(
 				"RIO send failed - Session: " + std::to_string(mId) +
-				", Socket: " +
-				std::to_string(static_cast<unsigned long long>(mSocket)) +
 				", Error: " + std::string(mAsyncProvider->GetLastError()));
 		}
 		else
 		{
 			(void)mAsyncProvider->FlushRequests();
 		}
+		return;
+	}
+#endif
+
+	// English: Back-pressure: drop packet if send queue is full
+	// 한글: 백압력: 송신 큐가 가득 찬 경우 패킷 드롭
+	if (mSendQueueSize.load(std::memory_order_relaxed) >= MAX_SEND_QUEUE_DEPTH)
+	{
+		Utils::Logger::Warn("Send queue full - packet dropped (Session: " +
+							std::to_string(mId) + ")");
 		return;
 	}
 
@@ -188,7 +164,6 @@ void Session::Send(const void *data, uint32_t size)
 	// English: Always try to flush (CAS inside will prevent double send)
 	// ?쒓?: ??긽 ?뚮윭???쒕룄 (?대? CAS媛 以묐났 ?꾩넚 諛⑹?)
 	FlushSendQueue();
-#endif
 }
 
 void Session::FlushSendQueue()
@@ -206,9 +181,8 @@ void Session::FlushSendQueue()
 
 bool Session::PostSend()
 {
-#ifdef _WIN32
-	// English: Fast path - acquire load pairs with release store in Send()
-	//          so we see all enqueued items before deciding queue is empty
+	// English: Fast path - check queue size before acquiring lock
+	// 한글: Fast path - 락 획득 전 큐 크기 확인
 	// ?쒓?: Fast path - Send()??release store? ?띿쓣 ?대（??acquire load濡?
 	//       ?먭? 鍮꾩뼱?덈떎怨??먮떒?섍린 ?꾩뿉 ?명걧??紐⑤뱺 ??ぉ??蹂????덉쓬
 	if (mSendQueueSize.load(std::memory_order_acquire) == 0)
@@ -242,6 +216,7 @@ bool Session::PostSend()
 		mSendQueueSize.fetch_sub(1, std::memory_order_release);
 	}
 
+#ifdef _WIN32
 	mSendContext.Reset();
 	std::memcpy(mSendContext.buffer, dataToSend.data(), dataToSend.size());
 	mSendContext.wsaBuf.buf = mSendContext.buffer;
@@ -258,19 +233,40 @@ bool Session::PostSend()
 		{
 			Utils::Logger::Error("WSASend failed - Error: " +
 								 std::to_string(error));
-			// English: Release flag atomically on error
+			// English: Socket error - release flag then close session
+			// 한글: 소켓 오류 - 플래그 해제 후 세션 종료
 			// ?쒓?: ?먮윭 ??atomic?쇰줈 ?뚮옒洹??댁젣
 			mIsSending.store(false, std::memory_order_release);
+			Close();
 			return false;
 		}
 	}
 
 	return true;
 #else
-	// English: Linux/macOS implementation (placeholder)
-	// ?쒓?: Linux/macOS 援ы쁽 (?뚮젅?댁뒪???
-	mIsSending.store(false, std::memory_order_release);
-	return false;
+	// English: Linux/macOS - use async provider for non-blocking send
+	if (!mAsyncProvider)
+	{
+		mIsSending.store(false, std::memory_order_release);
+		return false;
+	}
+
+	auto sendError = mAsyncProvider->SendAsync(
+		mSocket, dataToSend.data(), dataToSend.size(),
+		static_cast<AsyncIO::RequestContext>(mId));
+
+	if (sendError != AsyncIO::AsyncIOError::Success)
+	{
+		Utils::Logger::Error(
+			"SendAsync failed - Session: " + std::to_string(mId) +
+			", Error: " + std::string(mAsyncProvider->GetLastError()));
+		mIsSending.store(false, std::memory_order_release);
+		Close();
+		return false;
+	}
+
+	// mIsSending stays true until send completion fires ProcessSendCompletion
+	return true;
 #endif
 }
 
@@ -334,6 +330,44 @@ size_t Session::GetRecvBufferSize() const
 #else
 	return mRecvBuffer.size();
 #endif
+}
+
+void Session::ProcessRawRecv(const char *data, uint32_t size)
+{
+	// English: Guard against oversized accumulation (defense against slow attacks)
+	// 한글: 과도한 누적 방어 (느린 공격 방어)
+	if (mRecvAccumBuffer.size() + size > MAX_PACKET_SIZE)
+	{
+		Utils::Logger::Warn("Recv accumulation buffer overflow, resetting stream - Session: " +
+							std::to_string(mId));
+		mRecvAccumBuffer.clear();
+	}
+
+	mRecvAccumBuffer.insert(mRecvAccumBuffer.end(), data, data + size);
+
+	while (mRecvAccumBuffer.size() >= sizeof(PacketHeader))
+	{
+		const auto *hdr = reinterpret_cast<const PacketHeader *>(mRecvAccumBuffer.data());
+
+		// English: Validate packet size bounds
+		// 한글: 패킷 크기 경계 검증
+		if (hdr->size < sizeof(PacketHeader) || hdr->size > MAX_PACKET_SIZE)
+		{
+			Utils::Logger::Warn("Invalid packet size " + std::to_string(hdr->size) +
+								", resetting stream - Session: " + std::to_string(mId));
+			mRecvAccumBuffer.clear();
+			break;
+		}
+
+		if (mRecvAccumBuffer.size() < hdr->size)
+		{
+			break; // English: Partial packet, wait for more data / 한글: 불완전한 패킷, 추가 데이터 대기
+		}
+
+		OnRecv(mRecvAccumBuffer.data(), hdr->size);
+		mRecvAccumBuffer.erase(mRecvAccumBuffer.begin(),
+							   mRecvAccumBuffer.begin() + hdr->size);
+	}
 }
 
 } // namespace Network::Core

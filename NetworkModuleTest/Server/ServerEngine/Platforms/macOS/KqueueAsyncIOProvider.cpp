@@ -7,6 +7,8 @@
 #include "PlatformDetect.h"
 #include <cstring>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <errno.h>
 
 namespace Network
 {
@@ -78,7 +80,8 @@ void KqueueAsyncIOProvider::Shutdown()
 		mKqueueFd = -1;
 	}
 
-	mPendingOps.clear();
+	mPendingRecvOps.clear();
+	mPendingSendOps.clear();
 	mRegisteredSockets.clear();
 	mInitialized = false;
 }
@@ -150,13 +153,20 @@ AsyncIOError KqueueAsyncIOProvider::SendAsync(SocketHandle socket,
 	pending.mContext = context;
 	pending.mType = AsyncIOType::Send;
 	pending.mSocket = socket;
-	pending.mBuffer = std::make_unique<uint8_t[]>(size);
-	std::memcpy(pending.mBuffer.get(), buffer, size);
+	pending.mOwnedBuffer = std::make_unique<uint8_t[]>(size);
+	std::memcpy(pending.mOwnedBuffer.get(), buffer, size);
+	pending.mBuffer = pending.mOwnedBuffer.get();
 	pending.mBufferSize = static_cast<uint32_t>(size);
 
-	mPendingOps[socket] = std::move(pending);
+	mPendingSendOps[socket] = std::move(pending);
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
+
+	// English: Dynamically add EVFILT_WRITE so we get notified when socket is writable
+	// 한글: 소켓이 쓰기 가능할 때 알림을 받기 위해 EVFILT_WRITE 동적 추가
+	struct kevent ev;
+	EV_SET(&ev, socket, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, nullptr);
+	kevent(mKqueueFd, &ev, 1, nullptr, 0, nullptr);
 
 	return AsyncIOError::Success;
 }
@@ -177,10 +187,11 @@ AsyncIOError KqueueAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	pending.mContext = context;
 	pending.mType = AsyncIOType::Recv;
 	pending.mSocket = socket;
-	pending.mBuffer = nullptr;
+	pending.mOwnedBuffer.reset();
+	pending.mBuffer = static_cast<uint8_t*>(buffer);
 	pending.mBufferSize = static_cast<uint32_t>(size);
 
-	mPendingOps[socket] = std::move(pending);
+	mPendingRecvOps[socket] = std::move(pending);
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
 
@@ -239,34 +250,132 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		struct kevent &event = events[i];
 		SocketHandle socket = static_cast<SocketHandle>(event.ident);
 
-		std::lock_guard<std::mutex> lock(mMutex);
-		auto it = mPendingOps.find(socket);
-		if (it != mPendingOps.end())
+		// English: Handle errors/EOF
+		// 한글: 에러/EOF 처리
+		if (event.flags & EV_ERROR)
 		{
-			// English: Match event type with operation type
-			// 한글: 이벤트 타입과 작업 타입 매칭
-			if ((event.filter == EVFILT_READ &&
-				 it->second.mType == AsyncIOType::Recv) ||
-				(event.filter == EVFILT_WRITE &&
-				 it->second.mType == AsyncIOType::Send))
+			std::lock_guard<std::mutex> lock(mMutex);
+			RequestContext ctx = 0;
+			auto rit = mPendingRecvOps.find(socket);
+			if (rit != mPendingRecvOps.end())
+			{
+				ctx = rit->second.mContext;
+				mPendingRecvOps.erase(rit);
+				mStats.mPendingRequests--;
+			}
+			auto sit = mPendingSendOps.find(socket);
+			if (sit != mPendingSendOps.end())
+			{
+				if (ctx == 0) ctx = sit->second.mContext;
+				mPendingSendOps.erase(sit);
+				mStats.mPendingRequests--;
+			}
+			if (ctx != 0)
 			{
 				CompletionEntry &entry = entries[processedCount];
-				entry.mContext = it->second.mContext;
-				entry.mType = it->second.mType;
-				entry.mResult =
-					(event.data > 0)
-						? static_cast<int32_t>(event.data)
-						: static_cast<int32_t>(it->second.mBufferSize);
-				entry.mOsError = (event.flags & EV_ERROR)
-									 ? static_cast<OSError>(event.data)
-									 : 0;
+				entry.mContext = ctx;
+				entry.mType = AsyncIOType::Recv;
+				entry.mResult = -1;
+				entry.mOsError = static_cast<OSError>(event.data);
 				entry.mCompletionTime = 0;
-
-				mPendingOps.erase(it);
-				mStats.mPendingRequests--;
 				mStats.mTotalCompletions++;
 				processedCount++;
 			}
+			continue;
+		}
+
+		if (event.filter == EVFILT_READ)
+		{
+			PendingOperation pending;
+			bool found = false;
+			{
+				std::lock_guard<std::mutex> lock(mMutex);
+				auto it = mPendingRecvOps.find(socket);
+				if (it != mPendingRecvOps.end())
+				{
+					pending = std::move(it->second);
+					mPendingRecvOps.erase(it);
+					mStats.mPendingRequests--;
+					found = true;
+				}
+			}
+
+			if (!found) continue;
+
+			int32_t result = 0;
+			OSError osError = 0;
+			ssize_t received = ::recv(socket, pending.mBuffer, pending.mBufferSize, 0);
+			if (received >= 0)
+			{
+				result = static_cast<int32_t>(received);
+			}
+			else
+			{
+				if (errno == EAGAIN || errno == EWOULDBLOCK)
+				{
+					std::lock_guard<std::mutex> lock(mMutex);
+					mPendingRecvOps[socket] = std::move(pending);
+					mStats.mPendingRequests++;
+					continue;
+				}
+				osError = errno;
+				result = -1;
+			}
+
+			CompletionEntry &entry = entries[processedCount];
+			entry.mContext = pending.mContext;
+			entry.mType = AsyncIOType::Recv;
+			entry.mResult = result;
+			entry.mOsError = osError;
+			entry.mCompletionTime = 0;
+			mStats.mTotalCompletions++;
+			processedCount++;
+		}
+		else if (event.filter == EVFILT_WRITE)
+		{
+			PendingOperation pending;
+			bool found = false;
+			{
+				std::lock_guard<std::mutex> lock(mMutex);
+				auto it = mPendingSendOps.find(socket);
+				if (it != mPendingSendOps.end())
+				{
+					pending = std::move(it->second);
+					mPendingSendOps.erase(it);
+					mStats.mPendingRequests--;
+					found = true;
+				}
+			}
+
+			// English: Remove EVFILT_WRITE after consuming send op (or if none found)
+			// 한글: 송신 작업 소비 후 (또는 없을 경우) EVFILT_WRITE 제거
+			struct kevent delev;
+			EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+			kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
+
+			if (!found) continue;
+
+			int32_t result = 0;
+			OSError osError = 0;
+			ssize_t sent = ::send(socket, pending.mBuffer, pending.mBufferSize, 0);
+			if (sent >= 0)
+			{
+				result = static_cast<int32_t>(sent);
+			}
+			else
+			{
+				osError = errno;
+				result = -1;
+			}
+
+			CompletionEntry &entry = entries[processedCount];
+			entry.mContext = pending.mContext;
+			entry.mType = AsyncIOType::Send;
+			entry.mResult = result;
+			entry.mOsError = osError;
+			entry.mCompletionTime = 0;
+			mStats.mTotalCompletions++;
+			processedCount++;
 		}
 	}
 
@@ -280,13 +389,12 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 
 bool KqueueAsyncIOProvider::RegisterSocketEvents(SocketHandle socket)
 {
-	// English: Register for both read and write events
-	// 한글: 읽기 및 쓰기 이벤트 등록
-	struct kevent events[2];
-	EV_SET(&events[0], socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, nullptr);
-	EV_SET(&events[1], socket, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, nullptr);
+	// English: Register for read events only; EVFILT_WRITE added dynamically on SendAsync
+	// 한글: 읽기 이벤트만 등록; EVFILT_WRITE는 SendAsync 시 동적으로 추가
+	struct kevent ev;
+	EV_SET(&ev, socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, nullptr);
 
-	return kevent(mKqueueFd, events, 2, nullptr, 0, nullptr) >= 0;
+	return kevent(mKqueueFd, &ev, 1, nullptr, 0, nullptr) >= 0;
 }
 
 bool KqueueAsyncIOProvider::UnregisterSocketEvents(SocketHandle socket)

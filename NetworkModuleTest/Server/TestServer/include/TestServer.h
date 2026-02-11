@@ -11,6 +11,9 @@
 #include "Utils/NetworkUtils.h"
 #include <memory>
 #include <atomic>
+#include <thread>
+#include <mutex>
+#include <vector>
 
 namespace Network::TestServer
 {
@@ -49,6 +52,13 @@ namespace Network::TestServer
         // 한글: 게임 클라이언트용 세션 팩토리
         static Core::SessionRef CreateGameSession();
 
+        // English: DB server helpers
+        // 한글: DB 서버 연결 헬퍼
+        void DisconnectFromDBServer();
+        bool SendDBPacket(const void* data, uint32_t size);
+        void DBRecvLoop();
+        void DBPingLoop();
+
     private:
         // English: Client connection engine (multi-platform support)
         // 한글: 클라이언트 연결 엔진 (멀티플랫폼 지원)
@@ -68,6 +78,21 @@ namespace Network::TestServer
         std::atomic<bool>                           mIsRunning;
         uint16_t                                    mPort;
         std::string                                 mDbConnectionString;
+
+#ifdef _WIN32
+        // English: DB server connection state (Windows-only for now)
+        // 한글: DB 서버 연결 상태 (현재 Windows 전용)
+        SocketHandle                                mDBServerSocket;
+        std::atomic<bool>                           mDBRunning;
+        std::atomic<uint32_t>                       mDBPingSequence;
+        std::thread                                 mDBRecvThread;
+        std::thread                                 mDBPingThread;
+        std::mutex                                  mDBSendMutex;
+        std::vector<char>                           mDBRecvBuffer;
+        // English: Read offset for O(1) buffer consumption (avoids O(n) erase)
+        // 한글: O(1) 버퍼 소비를 위한 읽기 오프셋 (O(n) erase 방지)
+        size_t                                      mDBRecvOffset = 0;
+#endif
     };
 
 } // namespace Network::TestServer

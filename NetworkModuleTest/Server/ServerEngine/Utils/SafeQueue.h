@@ -19,40 +19,53 @@ template <typename T>
 class SafeQueue
 {
 public:
-	// English: Push an item to the queue (copy) and notify waiting threads
-	// 한글: 큐에 항목 추가 (복사) 및 대기 중인 스레드에 알림
-	void Push(const T &item)
+	// English: Constructor - optionally limit queue capacity (0 = unlimited)
+	// 한글: 생성자 - 선택적으로 큐 최대 크기 제한 (0 = 무제한)
+	explicit SafeQueue(size_t maxSize = 0) : mMaxSize(maxSize) {}
+
+	// English: Push an item to the queue (copy) - returns false if queue is full
+	// 한글: 큐에 항목 추가 (복사) - 큐가 가득 찬 경우 false 반환
+	bool Push(const T &item)
 	{
 		{
 			std::lock_guard<std::mutex> lock(mMutex);
+			if (mMaxSize > 0 && mQueue.size() >= mMaxSize)
+				return false;
 			mQueue.push(item);
 		}
 		// English: Notify outside lock to avoid waking thread while holding lock
 		// 한글: 락을 잡은 채로 스레드를 깨우는 것을 방지하기 위해 락 밖에서 알림
 		mCondition.notify_one();
+		return true;
 	}
 
-	// English: Push an item to the queue (move) and notify waiting threads
-	// 한글: 큐에 항목 추가 (이동) 및 대기 중인 스레드에 알림
-	void Push(T &&item)
+	// English: Push an item to the queue (move) - returns false if queue is full
+	// 한글: 큐에 항목 추가 (이동) - 큐가 가득 찬 경우 false 반환
+	bool Push(T &&item)
 	{
 		{
 			std::lock_guard<std::mutex> lock(mMutex);
+			if (mMaxSize > 0 && mQueue.size() >= mMaxSize)
+				return false;
 			mQueue.push(std::move(item));
 		}
 		mCondition.notify_one();
+		return true;
 	}
 
-	// English: Emplace an item directly in the queue and notify waiting threads
-	// 한글: 큐에 항목 직접 생성 및 대기 중인 스레드에 알림
+	// English: Emplace an item directly in the queue - returns false if queue is full
+	// 한글: 큐에 항목 직접 생성 - 큐가 가득 찬 경우 false 반환
 	template<typename... Args>
-	void Emplace(Args&&... args)
+	bool Emplace(Args&&... args)
 	{
 		{
 			std::lock_guard<std::mutex> lock(mMutex);
+			if (mMaxSize > 0 && mQueue.size() >= mMaxSize)
+				return false;
 			mQueue.emplace(std::forward<Args>(args)...);
 		}
 		mCondition.notify_one();
+		return true;
 	}
 
 	// English: Pop an item from the queue (blocking)
@@ -121,6 +134,7 @@ private:
 	mutable std::mutex mMutex;
 	std::condition_variable mCondition;
 	bool mShutdown = false;
+	size_t mMaxSize = 0;
 };
 
 } // namespace Network::Utils

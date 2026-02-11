@@ -153,4 +153,7 @@ constexpr uint32_t SEND_BUFFER_SIZE = 8192;
 constexpr uint32_t PING_INTERVAL_MS = 5000;
 constexpr uint32_t PING_TIMEOUT_MS = 30000;
 
+constexpr size_t MAX_SEND_QUEUE_DEPTH = 1000;
+constexpr size_t MAX_LOGIC_QUEUE_DEPTH = 10000;
+
 } // namespace Network::Core
