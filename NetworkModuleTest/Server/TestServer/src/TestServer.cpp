@@ -132,8 +132,8 @@ namespace Network::TestServer
 
         mIsRunning.store(false);
 
-        // English: Shutdown DB task queue first (wait for pending tasks)
-        // Korean: DB 작업 큐를 먼저 종료 (대기 중인 작업 완료 대기)
+        // English: Step 1 - Flush DB task queue (complete pending tasks while DB connection is still alive)
+        // Korean: 1단계 - DB 태스크 큐 드레인 (DB 연결이 살아있는 동안 대기 중인 작업 완료)
         if (mDBTaskQueue)
         {
             Logger::Info("Shutting down DB task queue...");
@@ -143,14 +143,20 @@ namespace Network::TestServer
                         ", Failed: " + std::to_string(mDBTaskQueue->GetFailedCount()));
         }
 
+        // English: Step 2 - Disconnect from DB server BEFORE mClientEngine->Stop()
+        //          mClientEngine->Stop() calls WSACleanup() which invalidates mDBServerSocket.
+        //          Closing DB socket after WSACleanup causes WSAECONNRESET(10054) in DBRecvLoop.
+        // Korean: 2단계 - mClientEngine->Stop() 전에 DB 서버 연결 해제
+        //         mClientEngine->Stop()은 WSACleanup()을 호출해 mDBServerSocket을 무효화함.
+        //         WSACleanup 후 DB 소켓 종료 시 DBRecvLoop에서 WSAECONNRESET(10054) 발생.
+        DisconnectFromDBServer();
+
+        // English: Step 3 - Stop client network engine (closes IOCP/RIO, calls WSACleanup)
+        // Korean: 3단계 - 클라이언트 네트워크 엔진 종료 (IOCP/RIO 종료, WSACleanup 호출)
         if (mClientEngine)
         {
             mClientEngine->Stop();
         }
-
-        // English: Disconnect from DB server
-        // Korean: DB 서버 연결 해제
-        DisconnectFromDBServer();
 
         Logger::Info("TestServer stopped");
     }

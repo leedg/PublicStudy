@@ -4,6 +4,10 @@
 #include "../include/DBTaskQueue.h"
 #include "Utils/Logger.h"
 #include <chrono>
+#include <cstdio>
+#include <fstream>
+#include <sstream>
+#include <unordered_map>
 #include <vector>
 
 #ifdef ENABLE_DATABASE_SUPPORT
@@ -37,7 +41,8 @@ namespace Network::TestServer
         }
     }
 
-    bool DBTaskQueue::Initialize(size_t workerThreadCount)
+    bool DBTaskQueue::Initialize(size_t workerThreadCount,
+                                 const std::string& walPath)
     {
         if (mIsRunning.load())
         {
@@ -55,14 +60,19 @@ namespace Network::TestServer
                          "Consider using OrderedTaskQueue for ordered processing.");
         }
 
+        // English: Start workers BEFORE WAL recovery so EnqueueTask() accepts recovered tasks
+        // 한글: WAL 복구 전에 워커 시작 - EnqueueTask()가 복구된 태스크를 받을 수 있도록
         mIsRunning.store(true);
 
-        // English: Start worker threads
-        // 한글: 워커 스레드 시작
         for (size_t i = 0; i < workerThreadCount; ++i)
         {
             mWorkerThreads.emplace_back(&DBTaskQueue::WorkerThreadFunc, this);
         }
+
+        // English: Set WAL path and re-enqueue tasks from previous crash (if any)
+        // 한글: WAL 경로 설정 및 이전 크래시 미완료 태스크 복구 재인큐
+        mWalPath = walPath;
+        WalRecover();
 
         Logger::Info("DBTaskQueue initialized successfully");
         return true;
@@ -151,6 +161,14 @@ namespace Network::TestServer
                 task.callback(false, "DBTaskQueue not running");
             }
             return;
+        }
+
+        // English: WAL - record pending task before queueing (crash-safe)
+        // 한글: WAL - 큐에 넣기 전에 대기 태스크 기록 (크래시 안전)
+        if (task.walSeq == 0)  // 복구된 태스크는 이미 WAL에 있으므로 재기록 안 함
+        {
+            task.walSeq = WalNextSeq();
+            WalWritePending(task, task.walSeq);
         }
 
         {
@@ -252,6 +270,13 @@ namespace Network::TestServer
             if (hasTask)
             {
                 ProcessTask(task);
+
+                // English: WAL - mark task as done after successful processing
+                // 한글: WAL - 처리 완료 후 태스크 완료 마킹
+                if (task.walSeq != 0)
+                {
+                    WalWriteDone(task.walSeq);
+                }
             }
         }
 
@@ -379,6 +404,182 @@ namespace Network::TestServer
         result = "DB support disabled";
         return true;
 #endif
+    }
+
+    // =============================================================================
+    // English: WAL (Write-Ahead Log) crash recovery implementation
+    // 한글: WAL 크래시 복구 구현
+    //
+    // Format per line: <STATUS>|<TYPE>|<SESSIONID>|<SEQ>|<DATA>
+    //   P = Pending (written before enqueue)
+    //   D = Done    (written after successful ProcessTask)
+    // =============================================================================
+
+    uint64_t DBTaskQueue::WalNextSeq()
+    {
+        // English: Monotonically increasing, unique sequence number
+        // 한글: 단조 증가 고유 시퀀스 번호
+        return mWalSeq.fetch_add(1, std::memory_order_relaxed) + 1;
+    }
+
+    void DBTaskQueue::WalWritePending(const DBTask& task, uint64_t seq)
+    {
+        if (mWalPath.empty())
+        {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(mWalMutex);
+
+        if (!mWalFile.is_open())
+        {
+            mWalFile.open(mWalPath, std::ios::app | std::ios::out);
+            if (!mWalFile.is_open())
+            {
+                Logger::Warn("WAL: Failed to open WAL file: " + mWalPath);
+                return;
+            }
+        }
+
+        // English: Escape '|' in data field to avoid parse ambiguity
+        // 한글: 데이터 필드의 '|' 이스케이프 처리 (파싱 모호성 방지)
+        std::string escapedData = task.data;
+        for (auto& c : escapedData)
+        {
+            if (c == '|') c = '\x01'; // substitute char
+        }
+
+        // P|<type>|<sessionId>|<seq>|<data>
+        mWalFile << "P|" << static_cast<int>(task.type)
+                 << "|" << task.sessionId
+                 << "|" << seq
+                 << "|" << escapedData
+                 << "\n";
+        mWalFile.flush();
+    }
+
+    void DBTaskQueue::WalWriteDone(uint64_t seq)
+    {
+        if (mWalPath.empty())
+        {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(mWalMutex);
+
+        if (!mWalFile.is_open())
+        {
+            mWalFile.open(mWalPath, std::ios::app | std::ios::out);
+            if (!mWalFile.is_open())
+            {
+                return;
+            }
+        }
+
+        // D|<seq>
+        mWalFile << "D|" << seq << "\n";
+        mWalFile.flush();
+    }
+
+    void DBTaskQueue::WalRecover()
+    {
+        if (mWalPath.empty())
+        {
+            return;
+        }
+
+        std::ifstream inFile(mWalPath);
+        if (!inFile.is_open())
+        {
+            // English: No WAL file = clean startup
+            // 한글: WAL 파일 없음 = 정상 시작
+            return;
+        }
+
+        // English: Parse WAL to find PENDING tasks that have no matching DONE
+        // 한글: WAL 파싱하여 완료 마킹 없는 PENDING 태스크 찾기
+        struct WalEntry
+        {
+            DBTaskType type;
+            ConnectionId sessionId;
+            std::string data;
+        };
+
+        std::unordered_map<uint64_t, WalEntry> pendingMap;
+        std::string line;
+        size_t recoveredCount = 0;
+
+        while (std::getline(inFile, line))
+        {
+            if (line.empty()) continue;
+
+            std::istringstream ss(line);
+            std::string status, typeStr, sessionStr, seqStr, data;
+
+            if (!std::getline(ss, status, '|')) continue;
+            if (!std::getline(ss, typeStr, '|')) continue;
+            if (!std::getline(ss, sessionStr, '|')) continue;
+            if (!std::getline(ss, seqStr, '|')) continue;
+            std::getline(ss, data);  // remainder = data (may be empty)
+
+            uint64_t seq = 0;
+            try { seq = std::stoull(seqStr); } catch (...) { continue; }
+
+            if (status == "P")
+            {
+                // English: Unescape substituted characters
+                // 한글: 대체 문자 복원
+                for (auto& c : data)
+                {
+                    if (c == '\x01') c = '|';
+                }
+
+                int typeInt = 0;
+                try { typeInt = std::stoi(typeStr); } catch (...) { continue; }
+
+                ConnectionId sessionId = 0;
+                try { sessionId = static_cast<ConnectionId>(std::stoull(sessionStr)); } catch (...) { continue; }
+
+                WalEntry entry;
+                entry.type = static_cast<DBTaskType>(typeInt);
+                entry.sessionId = sessionId;
+                entry.data = data;
+                pendingMap[seq] = std::move(entry);
+            }
+            else if (status == "D")
+            {
+                pendingMap.erase(seq);
+            }
+        }
+        inFile.close();
+
+        if (pendingMap.empty())
+        {
+            // English: All tasks completed - clean up WAL file
+            // 한글: 모든 태스크 완료 - WAL 파일 정리
+            std::remove(mWalPath.c_str());
+            Logger::Info("WAL: Clean startup (no pending tasks to recover)");
+            return;
+        }
+
+        Logger::Warn("WAL: Recovering " + std::to_string(pendingMap.size()) +
+                     " unfinished task(s) from previous crash");
+
+        // English: Remove old WAL file - a fresh WAL will be created as recovered tasks are re-enqueued
+        // 한글: 기존 WAL 파일 제거 - 복구된 태스크 재인큐 시 새 WAL 파일 생성됨
+        std::remove(mWalPath.c_str());
+
+        for (auto& [seq, entry] : pendingMap)
+        {
+            // English: Re-enqueue recovered task (walSeq=0 so it gets a new WAL entry)
+            // 한글: 복구된 태스크 재인큐 (walSeq=0이면 새 WAL 항목 생성)
+            DBTask task(entry.type, entry.sessionId, entry.data);
+            // Note: callback is not recoverable - run without callback
+            EnqueueTask(std::move(task));
+            ++recoveredCount;
+        }
+
+        Logger::Info("WAL: Recovered and re-queued " + std::to_string(recoveredCount) + " task(s)");
     }
 
 } // namespace Network::TestServer
