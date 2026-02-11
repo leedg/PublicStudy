@@ -285,6 +285,10 @@ namespace Network::TestServer
 
         mDBRunning.store(false);
 
+        // English: Wake up DBPingLoop immediately (avoids up to 5s sleep wait)
+        // 한글: DBPingLoop 즉시 깨우기 (최대 5초 sleep 대기 방지)
+        mDBShutdownCV.notify_all();
+
         if (mDBServerSocket != INVALID_SOCKET)
         {
             shutdown(mDBServerSocket, SD_BOTH);
@@ -437,17 +441,19 @@ namespace Network::TestServer
                 Core::PKT_DBSavePingTimeReq savePacket;
                 savePacket.serverId = 1;
                 savePacket.timestamp = Timer::GetCurrentTimestamp();
-#ifdef _WIN32
                 strncpy_s(savePacket.serverName, sizeof(savePacket.serverName),
                           "TestServer", _TRUNCATE);
-#else
-                strncpy(savePacket.serverName, "TestServer", sizeof(savePacket.serverName) - 1);
-                savePacket.serverName[sizeof(savePacket.serverName) - 1] = '\0';
-#endif
                 SendDBPacket(&savePacket, sizeof(savePacket));
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(kPingIntervalMs));
+            // English: Use condition variable wait instead of sleep_for so that
+            //          DisconnectFromDBServer() can wake this thread immediately
+            // 한글: DisconnectFromDBServer()가 즉시 깨울 수 있도록 sleep_for 대신
+            //       조건 변수 wait 사용
+            std::unique_lock<std::mutex> lock(mDBShutdownMutex);
+            mDBShutdownCV.wait_for(lock,
+                std::chrono::milliseconds(kPingIntervalMs),
+                [this] { return !mDBRunning.load(); });
         }
 #endif
     }

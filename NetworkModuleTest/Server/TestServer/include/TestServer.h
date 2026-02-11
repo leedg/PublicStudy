@@ -9,10 +9,11 @@
 #include "Network/Core/NetworkEngine.h"
 #include "Network/Core/SessionManager.h"
 #include "Utils/NetworkUtils.h"
-#include <memory>
 #include <atomic>
-#include <thread>
+#include <condition_variable>
+#include <memory>
 #include <mutex>
+#include <thread>
 #include <vector>
 
 namespace Network::TestServer
@@ -88,6 +89,10 @@ namespace Network::TestServer
         std::thread                                 mDBRecvThread;
         std::thread                                 mDBPingThread;
         std::mutex                                  mDBSendMutex;
+        // English: Condition variable to interrupt DBPingLoop sleep on shutdown
+        // 한글: 종료 시 DBPingLoop sleep 즉시 깨우기 위한 조건 변수
+        std::condition_variable                     mDBShutdownCV;
+        std::mutex                                  mDBShutdownMutex;
         std::vector<char>                           mDBRecvBuffer;
         // English: Read offset for O(1) buffer consumption (avoids O(n) erase)
         // 한글: O(1) 버퍼 소비를 위한 읽기 오프셋 (O(n) erase 방지)

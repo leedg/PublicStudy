@@ -10,6 +10,32 @@ $binDir   = 'E:\MyGitHub\PublicStudy\NetworkModuleTest\x64\Debug'
 $logDir   = 'E:\MyGitHub\PublicStudy\NetworkModuleTest\crash_logs'
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
+# Named Event 를 통한 TestServer 정상 종료 신호
+# GenerateConsoleCtrlEvent 는 콘솔 없는 환경에서 불안정하므로
+# TestServer가 대기하는 Named Event("TestServer_GracefulShutdown")를 Set하여 종료
+$shutdownEventCode = @"
+using System;
+using System.Runtime.InteropServices;
+public static class ShutdownSignal {
+    [DllImport("kernel32.dll", SetLastError=true)]
+    public static extern IntPtr OpenEvent(uint dwDesiredAccess, bool bInheritHandle, string lpName);
+    [DllImport("kernel32.dll", SetLastError=true)]
+    public static extern bool SetEvent(IntPtr hEvent);
+    [DllImport("kernel32.dll", SetLastError=true)]
+    public static extern bool CloseHandle(IntPtr hObject);
+
+    // EVENT_MODIFY_STATE = 0x0002
+    public static bool Send() {
+        IntPtr h = OpenEvent(0x0002, false, "TestServer_GracefulShutdown");
+        if (h == IntPtr.Zero) return false;
+        bool ok = SetEvent(h);
+        CloseHandle(h);
+        return ok;
+    }
+}
+"@
+Add-Type -TypeDefinition $shutdownEventCode -Language CSharp -ErrorAction SilentlyContinue
+
 function Run-Scenario {
     param([string]$Name, [bool]$ForceKill)
 
@@ -24,6 +50,13 @@ function Run-Scenario {
     $dbErr  = "$logDir\${Name}_dbserver.err"
     $srvErr = "$logDir\${Name}_server.err"
     $cliErr = "$logDir\${Name}_client.err"
+
+    # 이전 실행의 WAL 파일 정리 (누적 방지 - forced 시나리오만 WAL 복구 테스트)
+    $walFile = "$binDir\db_tasks.wal"
+    if ($Name -ne "forced" -and (Test-Path $walFile)) {
+        Remove-Item $walFile -Force
+        Write-Host "  [*] 이전 WAL 파일 정리 완료"
+    }
 
     # DBServer 시작
     $dbProc = Start-Process -FilePath "$binDir\TestDBServer.exe" `
@@ -57,10 +90,22 @@ function Run-Scenario {
         Write-Host "  [*] 크래시 후 DBServer 상태 관찰 (3s)..."
         Start-Sleep -Seconds 3
     } else {
-        # TestServer에 SIGTERM 전달 (정상 종료)
-        Write-Host "  [*] TestServer 정상 종료 (SIGTERM)..." -ForegroundColor Green
-        taskkill /PID $srvProc.Id /T 2>&1 | Out-Null
-        Start-Sleep -Seconds 3
+        # Named Event 로 TestServer 정상 종료 신호 전달
+        # TestServer 메인 루프가 "TestServer_GracefulShutdown" Named Event를 대기 중
+        Write-Host "  [*] TestServer 정상 종료 (Named Event via SetEvent)..." -ForegroundColor Green
+        $ok = [ShutdownSignal]::Send()
+        Write-Host "  [*] Shutdown event sent: $ok - server.Stop() 완료 대기 (12s)..."
+        # server.Stop() 이 최대 12s 안에 완료됨 (DBTaskQueue drain + WSACleanup)
+        $waited = 0
+        while (-not $srvProc.HasExited -and $waited -lt 120) {
+            Start-Sleep -Milliseconds 100
+            $waited++
+        }
+        if (-not $srvProc.HasExited) {
+            Write-Host "  [WARN] server.Stop() 시간 초과 - 강제 종료" -ForegroundColor Red
+            $srvProc.Kill()
+        }
+        Start-Sleep -Milliseconds 500
     }
 
     # 나머지 프로세스 종료

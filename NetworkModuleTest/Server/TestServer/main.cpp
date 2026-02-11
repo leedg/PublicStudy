@@ -21,14 +21,43 @@
 // 한글: 시그널 처리용 전역 서버 인스턴스
 static Network::TestServer::TestServer *g_pServer = nullptr;
 static std::atomic<bool> g_Running{true};
+static std::atomic<bool> g_ShutdownComplete{false};
 
-// English: Signal handler for graceful shutdown
-// 한글: 정상 종료를 위한 시그널 핸들러
+// English: Signal handler for graceful shutdown (SIGINT/SIGTERM)
+// 한글: 정상 종료를 위한 시그널 핸들러 (SIGINT/SIGTERM)
 void SignalHandler(int signum)
 {
 	Network::Utils::Logger::Info("Signal received: " + std::to_string(signum));
 	g_Running = false;
 }
+
+#ifdef _WIN32
+// English: Console ctrl handler - catches CTRL_CLOSE_EVENT from taskkill/window close
+//          so that server.Stop() (DisconnectFromDBServer) runs before process exits,
+//          preventing WSAECONNRESET(10054) on the DB socket.
+// 한글: 콘솔 컨트롤 핸들러 - taskkill/창 닫기의 CTRL_CLOSE_EVENT 처리
+//       프로세스 종료 전에 server.Stop()이 호출되도록 보장하여
+//       DB 소켓의 WSAECONNRESET(10054) 방지
+static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
+{
+	switch (ctrlType)
+	{
+	case CTRL_CLOSE_EVENT:
+	case CTRL_LOGOFF_EVENT:
+	case CTRL_SHUTDOWN_EVENT:
+		Network::Utils::Logger::Info("Console shutdown event received (" +
+		                             std::to_string(ctrlType) + "), stopping server...");
+		g_Running = false;
+		// English: Wait up to 8s for main thread to finish server.Stop()
+		// 한글: 메인 스레드가 server.Stop()을 완료할 때까지 최대 8초 대기
+		for (int i = 0; i < 80 && !g_ShutdownComplete.load(); ++i)
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		return TRUE;
+	default:
+		return FALSE;  // CTRL_C_EVENT/CTRL_BREAK_EVENT: let std::signal handle
+	}
+}
+#endif
 
 // English: Print usage information
 // 한글: 사용법 출력
@@ -143,6 +172,9 @@ int main(int argc, char *argv[])
 #ifdef SIGBREAK
 	std::signal(SIGBREAK, SignalHandler);
 #endif
+	// English: Catch CTRL_CLOSE_EVENT (taskkill /T, window close) for graceful shutdown
+	// 한글: CTRL_CLOSE_EVENT (taskkill /T, 창 닫기) 처리하여 정상 종료
+	SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
 #endif
 
 	// English: Create and initialize server
@@ -177,18 +209,38 @@ int main(int argc, char *argv[])
 
 	Network::Utils::Logger::Info("Server is running. Press Ctrl+C to stop.");
 
-	// English: Main loop - wait for shutdown signal
-	// 한글: 메인 루프 - 종료 시그널 대기
+	// English: Main loop - wait for shutdown signal (signal or named event)
+	// 한글: 메인 루프 - 종료 시그널 또는 Named Event 대기
+#ifdef _WIN32
+	// English: Named event allows external tools (e.g. test scripts) to trigger
+	//          graceful shutdown without console manipulation
+	// 한글: Named Event로 테스트 스크립트 등 외부 도구가 콘솔 없이도 정상 종료 가능
+	HANDLE hShutdownEvent = CreateEventA(nullptr, FALSE, FALSE, "TestServer_GracefulShutdown");
+	while (g_Running && server.IsRunning())
+	{
+		if (hShutdownEvent && WaitForSingleObject(hShutdownEvent, 100) == WAIT_OBJECT_0)
+		{
+			Network::Utils::Logger::Info("Shutdown event signaled - stopping server");
+			g_Running = false;
+		}
+	}
+	if (hShutdownEvent) CloseHandle(hShutdownEvent);
+#else
 	while (g_Running && server.IsRunning())
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
+#endif
 
 	// English: Graceful shutdown
 	// 한글: 정상 종료
 	Network::Utils::Logger::Info("Shutting down server...");
 	server.Stop();
 	g_pServer = nullptr;
+
+	// English: Signal ConsoleCtrlHandler (if waiting) that cleanup is done
+	// 한글: 정리 완료를 ConsoleCtrlHandler에 알림 (대기 중인 경우)
+	g_ShutdownComplete.store(true);
 
 	Network::Utils::Logger::Info("Server stopped.");
 	std::cout << "Server shutdown complete." << std::endl;
