@@ -144,53 +144,90 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	Logger::Info("Connecting to " + host + ":" + std::to_string(port) + "...");
+	// English: Reconnect loop - retries on connection loss with exponential backoff
+	// 한글: 재연결 루프 - 연결 끊김 시 지수 백오프로 재시도
+	constexpr int kMaxReconnectAttempts = 10;
+	constexpr uint32_t kMaxReconnectDelayMs = 30000;
+	int reconnectAttempt = 0;
+	uint32_t reconnectDelay = 1000;
 
-	if (!client.Connect(host, port))
+	while (!client.IsStopRequested())
 	{
-		Logger::Error("Failed to connect to server");
-		client.Shutdown();
-		return 1;
-	}
-
-	if (!client.Start())
-	{
-		Logger::Error("Failed to start network worker");
-		client.Shutdown();
-		return 1;
-	}
-
-	std::cout << std::endl;
-	std::cout << "Connected! Press 'q' to quit, 's' for statistics."
-				  << std::endl;
-	std::cout << std::endl;
-
-	// English: Main loop - user input handling (cross-platform)
-	// 한글: 메인 루프 - 사용자 입력 처리 (크로스 플랫폼)
-	while (!client.IsStopRequested() && client.IsConnected())
-	{
-		if (HasKeyInput())
+		// ── 연결 (재연결 포함) ─────────────────────────────────────────
+		if (!client.IsConnected())
 		{
-			char ch = ReadKeyChar();
-			if (ch == 'q' || ch == 'Q')
+			if (reconnectAttempt > 0)
 			{
-				Logger::Info("Quit requested by user");
-				client.RequestStop();
+				Logger::Info("Reconnecting... attempt #" + std::to_string(reconnectAttempt) +
+				             " (delay: " + std::to_string(reconnectDelay) + "ms)");
+				std::this_thread::sleep_for(std::chrono::milliseconds(reconnectDelay));
+				reconnectDelay = std::min(reconnectDelay * 2, kMaxReconnectDelayMs);
+
+				if (client.IsStopRequested()) break;
+			}
+			else
+			{
+				Logger::Info("Connecting to " + host + ":" + std::to_string(port) + "...");
+			}
+
+			if (!client.Connect(host, port))
+			{
+				++reconnectAttempt;
+				if (reconnectAttempt >= kMaxReconnectAttempts)
+				{
+					Logger::Error("Max reconnect attempts reached, giving up");
+					break;
+				}
+				continue;
+			}
+
+			if (!client.Start())
+			{
+				Logger::Error("Failed to start network worker");
 				break;
 			}
-			else if (ch == 's' || ch == 'S')
+
+			reconnectAttempt = 0;
+			reconnectDelay = 1000;
+
+			std::cout << std::endl;
+			std::cout << "Connected! Press 'q' to quit, 's' for statistics." << std::endl;
+			std::cout << std::endl;
+		}
+
+		// ── 메인 루프 ──────────────────────────────────────────────────
+		while (!client.IsStopRequested() && client.IsConnected())
+		{
+			if (HasKeyInput())
 			{
-				PrintStats(client);
+				char ch = ReadKeyChar();
+				if (ch == 'q' || ch == 'Q')
+				{
+					Logger::Info("Quit requested by user");
+					client.RequestStop();
+					break;
+				}
+				else if (ch == 's' || ch == 'S')
+				{
+					PrintStats(client);
+				}
+			}
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}
+
+		// English: If connection dropped without user request, prepare to reconnect
+		// 한글: 사용자 요청 없이 연결이 끊겼으면 재연결 준비
+		if (!client.IsStopRequested() && !client.IsConnected())
+		{
+			Logger::Warn("Connection lost - will reconnect");
+			client.Disconnect();
+			++reconnectAttempt;
+			if (reconnectAttempt >= kMaxReconnectAttempts)
+			{
+				Logger::Error("Max reconnect attempts reached");
+				break;
 			}
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	}
-
-	// English: Check if disconnected unexpectedly
-	// 한글: 예기치 않은 연결 해제 확인
-	if (!client.IsConnected() && !client.IsStopRequested())
-	{
-		Logger::Warn("Connection lost");
 	}
 
 	// English: Print final stats

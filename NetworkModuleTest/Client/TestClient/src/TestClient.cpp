@@ -63,6 +63,10 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 		return false;
 	}
 
+	// English: Reset stop flag so reconnect works after a previous session ended
+	// 한글: 이전 세션 종료 후 재연결이 동작하도록 stop 플래그 리셋
+	mStopRequested.store(false);
+
 	mHost = host;
 	mPort = port;
 	mState.store(ClientState::Connecting);

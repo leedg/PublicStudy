@@ -59,6 +59,7 @@ namespace Network::TestServer
         bool SendDBPacket(const void* data, uint32_t size);
         void DBRecvLoop();
         void DBPingLoop();
+        void DBReconnectLoop();
 
     private:
         // English: Client connection engine (multi-platform support)
@@ -97,6 +98,12 @@ namespace Network::TestServer
         // English: Read offset for O(1) buffer consumption (avoids O(n) erase)
         // 한글: O(1) 버퍼 소비를 위한 읽기 오프셋 (O(n) erase 방지)
         size_t                                      mDBRecvOffset = 0;
+        // English: Stored endpoint for DB reconnect
+        // 한글: DB 재연결용 엔드포인트 저장
+        std::string                                 mDBHost;
+        uint16_t                                    mDBPort = 0;
+        std::thread                                 mDBReconnectThread;
+        std::atomic<bool>                           mDBReconnectRunning;
 #endif
     };
 

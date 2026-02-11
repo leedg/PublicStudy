@@ -32,6 +32,7 @@ namespace Network::TestServer
         , mDBServerSocket(INVALID_SOCKET)
         , mDBRunning(false)
         , mDBPingSequence(0)
+        , mDBReconnectRunning(false)
 #endif
     {
 #ifdef _WIN32
@@ -132,6 +133,15 @@ namespace Network::TestServer
 
         mIsRunning.store(false);
 
+        // English: Wake reconnect loop immediately (if waiting in backoff sleep)
+        // 한글: 재연결 루프가 백오프 대기 중이면 즉시 깨움
+        mDBShutdownCV.notify_all();
+
+        if (mDBReconnectThread.joinable())
+        {
+            mDBReconnectThread.join();
+        }
+
         // English: Step 1 - Flush DB task queue (complete pending tasks while DB connection is still alive)
         // Korean: 1단계 - DB 태스크 큐 드레인 (DB 연결이 살아있는 동안 대기 중인 작업 완료)
         if (mDBTaskQueue)
@@ -171,11 +181,21 @@ namespace Network::TestServer
         Logger::Info("Connecting to DB server at " + host + ":" + std::to_string(port));
 
 #ifdef _WIN32
+        // English: Store endpoint for reconnect loop
+        // 한글: 재연결 루프용 엔드포인트 저장
+        mDBHost = host;
+        mDBPort = port;
+
         if (mDBRunning.load())
         {
             Logger::Warn("DB server connection already running");
             return true;
         }
+
+        // English: Join previous recv/ping threads before reusing (reconnect path)
+        // 한글: 재연결 경로에서 재사용 전 이전 스레드 join
+        if (mDBRecvThread.joinable()) mDBRecvThread.join();
+        if (mDBPingThread.joinable()) mDBPingThread.join();
 
         // English: Initialize Winsock exactly once (thread-safe via call_once)
         // 한글: Winsock을 정확히 한 번 초기화 (call_once로 스레드 안전)
@@ -420,6 +440,15 @@ namespace Network::TestServer
         }
 
         mDBRunning.store(false);
+
+        // English: If server is still running and no reconnect is active, start one
+        // 한글: 서버가 아직 실행 중이고 재연결 스레드가 없으면 시작
+        if (mIsRunning.load() && !mDBReconnectRunning.load())
+        {
+            mDBReconnectRunning.store(true);
+            if (mDBReconnectThread.joinable()) mDBReconnectThread.join();
+            mDBReconnectThread = std::thread(&TestServer::DBReconnectLoop, this);
+        }
 #endif
     }
 
@@ -455,6 +484,46 @@ namespace Network::TestServer
                 std::chrono::milliseconds(kPingIntervalMs),
                 [this] { return !mDBRunning.load(); });
         }
+#endif
+    }
+
+    void TestServer::DBReconnectLoop()
+    {
+#ifdef _WIN32
+        // English: Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
+        // 한글: 지수 백오프: 1초, 2초, 4초, 8초, 16초, 최대 30초
+        constexpr uint32_t kMaxDelayMs = 30000;
+        uint32_t delayMs = 1000;
+        int attempt = 0;
+
+        while (mIsRunning.load() && !mDBRunning.load())
+        {
+            ++attempt;
+            Logger::Info("DB reconnect attempt #" + std::to_string(attempt) +
+                         " in " + std::to_string(delayMs) + "ms...");
+
+            // English: Wait with CV so Stop() can interrupt immediately
+            // 한글: Stop()이 즉시 중단할 수 있도록 CV로 대기
+            {
+                std::unique_lock<std::mutex> lock(mDBShutdownMutex);
+                mDBShutdownCV.wait_for(lock,
+                    std::chrono::milliseconds(delayMs),
+                    [this] { return !mIsRunning.load(); });
+            }
+
+            if (!mIsRunning.load()) break;
+
+            if (ConnectToDBServer(mDBHost, mDBPort))
+            {
+                Logger::Info("DB reconnected successfully after " +
+                             std::to_string(attempt) + " attempt(s)");
+                break;
+            }
+
+            delayMs = std::min(delayMs * 2, kMaxDelayMs);
+        }
+
+        mDBReconnectRunning.store(false);
 #endif
     }
 
