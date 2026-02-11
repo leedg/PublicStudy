@@ -496,31 +496,41 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 
 	// RIO 이벤트 알림 활성화 (dequeue 전에 반드시 호출해야 함)
 	// Arm RIO event notification (must be called before dequeue to avoid missed wakeups)
-	if (!mPfnRIONotify(mCompletionQueue))
+	bool notifyOk = (mPfnRIONotify(mCompletionQueue) != FALSE);
+	if (!notifyOk)
 	{
-		DWORD err = GetLastError();
-		mLastError = "RIONotify failed: " + std::to_string(err);
-		std::lock_guard<std::mutex> lock(mMutex);
-		mStats.mErrorCount++;
-		return static_cast<int>(AsyncIOError::OperationFailed);
+		DWORD err = ::GetLastError();
+		if (err != 0)
+		{
+			// 실제 오류인 경우에만 에러 처리
+			// Only treat as error when GetLastError is non-zero
+			mLastError = "RIONotify failed: " + std::to_string(err);
+			std::lock_guard<std::mutex> lock(mMutex);
+			mStats.mErrorCount++;
+			return static_cast<int>(AsyncIOError::OperationFailed);
+		}
+		// err == 0: 이미 알림이 대기 중이거나 이벤트가 이미 설정됨 → 즉시 dequeue
+		// err == 0: notification already pending or event already set → dequeue immediately
+	}
+	else
+	{
+		// 완료 이벤트가 신호될 때까지 블로킹 대기 (timeoutMs 기반)
+		// Block until completion event is signaled (timeoutMs-based)
+		DWORD waitMs = (timeoutMs < 0) ? INFINITE : static_cast<DWORD>(timeoutMs);
+		DWORD waitResult = WaitForSingleObject(mCompletionEvent, waitMs);
+		if (waitResult == WAIT_TIMEOUT)
+		{
+			return 0;
+		}
+		if (waitResult != WAIT_OBJECT_0)
+		{
+			mLastError = "WaitForSingleObject failed: " + std::to_string(::GetLastError());
+			return static_cast<int>(AsyncIOError::OperationFailed);
+		}
 	}
 
-	// 완료 이벤트가 신호될 때까지 블로킹 대기 (timeoutMs 기반)
-	// Block until completion event is signaled (timeoutMs-based)
-	DWORD waitMs = (timeoutMs < 0) ? INFINITE : static_cast<DWORD>(timeoutMs);
-	DWORD waitResult = WaitForSingleObject(mCompletionEvent, waitMs);
-	if (waitResult == WAIT_TIMEOUT)
-	{
-		return 0;
-	}
-	if (waitResult != WAIT_OBJECT_0)
-	{
-		mLastError = "WaitForSingleObject failed: " + std::to_string(GetLastError());
-		return static_cast<int>(AsyncIOError::OperationFailed);
-	}
-
-	// 이벤트 수신 후 완료 항목 dequeue
-	// Dequeue completions after event signaled
+	// 이벤트 수신(또는 기존 완료 감지) 후 항목 dequeue
+	// Dequeue completions after event signaled (or existing completions detected)
 	std::vector<RIORESULT> rioResults(maxEntries);
 	ULONG numResults = mPfnRIODequeueCompletion(
 		mCompletionQueue, rioResults.data(), static_cast<ULONG>(maxEntries));
