@@ -180,7 +180,6 @@ void WindowsNetworkEngine::AcceptLoop()
 
 		if (mMode == Mode::RIO)
 		{
-			session->SetUseSynchronousSend(true);
 			session->SetAsyncProvider(mProvider.get());
 		}
 

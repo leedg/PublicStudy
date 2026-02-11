@@ -118,14 +118,6 @@ class Session : public std::enable_shared_from_this<Session>
 	void IncrementPingSequence() { ++mPingSequence; }
 
 #ifdef _WIN32
-	void SetUseSynchronousSend(bool enable)
-	{
-		mUseSynchronousSend.store(enable, std::memory_order_relaxed);
-	}
-	bool IsUsingSynchronousSend() const
-	{
-		return mUseSynchronousSend.load(std::memory_order_relaxed);
-	}
 	void SetAsyncProvider(AsyncIO::AsyncIOProvider *provider)
 	{
 		mAsyncProvider = provider;
@@ -190,7 +182,6 @@ class Session : public std::enable_shared_from_this<Session>
 	// 癲ル슢?꾤땟?? ??? ????룹젂???源낃도 ??좊읈????묐빝???亦껋꼨援?キ???mutex lock ???⑤베猷?
 	std::atomic<size_t> mSendQueueSize;
 #ifdef _WIN32
-	std::atomic<bool> mUseSynchronousSend;
 	AsyncIO::AsyncIOProvider *mAsyncProvider;
 #endif
 };

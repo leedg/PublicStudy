@@ -26,7 +26,7 @@ Session::Session()
 		  mPingSequence(0), mIsSending(false), mSendQueueSize(0)
 #ifdef _WIN32
 		  ,
-		  mUseSynchronousSend(false), mAsyncProvider(nullptr),
+		  mAsyncProvider(nullptr),
 		  mRecvContext(IOType::Recv),
 		  mSendContext(IOType::Send)
 #endif
@@ -46,7 +46,6 @@ void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 	mIsSending = false;
 	mSendQueueSize.store(0, std::memory_order_relaxed);
 #ifdef _WIN32
-	mUseSynchronousSend.store(false, std::memory_order_relaxed);
 	mAsyncProvider = nullptr;
 #endif
 
@@ -62,7 +61,6 @@ void Session::Close()
 
 	mState = SessionState::Disconnected;
 #ifdef _WIN32
-	mUseSynchronousSend.store(false, std::memory_order_relaxed);
 	mAsyncProvider = nullptr;
 #endif
 
@@ -138,57 +136,21 @@ void Session::Send(const void *data, uint32_t size)
 		return;
 	}
 
-	if (mUseSynchronousSend.load(std::memory_order_relaxed))
+	if (mAsyncProvider)
 	{
-		if (mAsyncProvider)
+		auto error = mAsyncProvider->SendAsync(
+			mSocket, data, size, static_cast<AsyncIO::RequestContext>(mId));
+		if (error != AsyncIO::AsyncIOError::Success)
 		{
-			auto error = mAsyncProvider->SendAsync(
-				mSocket, data, size, static_cast<AsyncIO::RequestContext>(mId));
-			if (error != AsyncIO::AsyncIOError::Success)
-			{
-				Utils::Logger::Error(
-					"RIO send failed - Session: " + std::to_string(mId) +
-					", Socket: " +
-					std::to_string(static_cast<unsigned long long>(mSocket)) +
-					", Error: " + std::string(mAsyncProvider->GetLastError()));
-			}
-			else
-			{
-				(void)mAsyncProvider->FlushRequests();
-			}
-			return;
-		}
-
-		const char *ptr = static_cast<const char *>(data);
-		uint32_t remaining = size;
-
-		while (remaining > 0)
-		{
-			WSABUF wsaBuf;
-			wsaBuf.buf = const_cast<char *>(ptr);
-			wsaBuf.len = static_cast<ULONG>(remaining);
-
-			DWORD bytesSent = 0;
-			int result = WSASend(mSocket, &wsaBuf, 1, &bytesSent, 0, nullptr,
-								 nullptr);
-			if (result == 0 && bytesSent > 0)
-			{
-				remaining -= static_cast<uint32_t>(bytesSent);
-				ptr += bytesSent;
-				continue;
-			}
-
-			int error = WSAGetLastError();
-			if (error == WSAEINTR)
-			{
-				continue;
-			}
-
 			Utils::Logger::Error(
-				"send failed - Error: " + std::to_string(error) +
-				", Session: " + std::to_string(mId) + ", Socket: " +
-				std::to_string(static_cast<unsigned long long>(mSocket)));
-			break;
+				"RIO send failed - Session: " + std::to_string(mId) +
+				", Socket: " +
+				std::to_string(static_cast<unsigned long long>(mSocket)) +
+				", Error: " + std::string(mAsyncProvider->GetLastError()));
+		}
+		else
+		{
+			(void)mAsyncProvider->FlushRequests();
 		}
 		return;
 	}
