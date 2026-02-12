@@ -31,7 +31,7 @@ IOCP, RIO, epoll, io_uring, kqueue를 추상화한 2계층 비동기 I/O 아키�
 
 | 대상 | 규칙 | 예 |
 |------|------|----|
-| 클래스/구조체 | PascalCase | `SessionManager`, `GameSession` |
+| 클래스/구조체 | PascalCase | `SessionManager`, `ClientSession` |
 | 함수/메서드 | PascalCase | `Initialize()`, `OnConnected()` |
 | 로컬 변수 | camelCase | `clientVersion`, `sessionId` |
 | 멤버 변수 | `m` + PascalCase | `mSessions`, `mDBTaskQueue` |
@@ -59,7 +59,7 @@ void Initialize(int id)
     }
 }
 
-class GameSession : public Session
+class ClientSession : public Session
 {
 public:
     void OnConnected() override;
@@ -81,7 +81,7 @@ void Initialize(int id) {
 namespace Network {
     namespace Core { ... }       // Session, SessionManager
     namespace Utils { ... }      // Logger, Timer, SafeQueue
-    namespace TestServer { ... } // GameSession, PacketHandler
+    namespace TestServer { ... } // ClientSession, ServerSession, DBServerSession, PacketHandler
 }
 ```
 
@@ -118,13 +118,29 @@ if (!session->Initialize(id, socket))
 
 ---
 
+## 세션 계층 (TestServer)
+
+```
+Core::Session
+├── ClientSession     — 게임 클라이언트. 암호화 인터페이스(Encrypt/Decrypt) 보유 (현재 no-op)
+└── ServerSession     — 서버간 통신 공통 베이스. 재연결 콜백 인터페이스.
+    └── DBServerSession — DB 서버 전용. DBServerPacketHandler 소유.
+```
+
+- `ClientSession`이 `GameSession`을 대체. `sDBTaskQueue` 의존성 주입 유지.
+- `DBServerSession`이 raw `Core::Session` 직접 사용을 대체.
+- 연결 생명주기(소켓, recv/ping 스레드) 관리는 `TestServer`가 담당.
+
+---
+
 ## 핵심 설계 원칙 (유지 필수)
 
-1. **논블로킹 세션**: `GameSession`에서 DB 작업은 `DBTaskQueue`를 통해 비동기 처리
+1. **논블로킹 세션**: `ClientSession`에서 DB 작업은 `DBTaskQueue`를 통해 비동기 처리
 2. **스레드 안전**: `SafeQueue`, `std::atomic`, `std::mutex` 기반 동기화
 3. **팩토리 패턴**: `CreateNetworkEngine()`, `CreateAsyncIOProvider()`로 런타임 선택
 4. **Graceful Shutdown**: 세션 전부 종료 → 큐 드레인 → 스레드 Join 순서 엄수
 5. **자동 재연결**: 서버↔서버, 클라이언트↔서버 연결 끊김 시 재연결 로직 유지
+6. **재연결 에러 구분**: `WSAECONNREFUSED`(서버 종료/재기동 중) → 1s 고정 간격; 그 외 → 지수 백오프(최대 30s)
 
 ---
 
