@@ -3,8 +3,8 @@
 // English: TestServer main header - game server using NetworkEngine (multi-platform)
 // 한글: TestServer 메인 헤더 - NetworkEngine 사용 게임 서버 (멀티플랫폼)
 
-#include "GameSession.h"
-#include "DBServerPacketHandler.h"
+#include "ClientSession.h"
+#include "DBServerSession.h"
 #include "DBTaskQueue.h"
 #include "Network/Core/NetworkEngine.h"
 #include "Network/Core/SessionManager.h"
@@ -51,7 +51,7 @@ namespace Network::TestServer
 
         // English: Session factory for game clients
         // 한글: 게임 클라이언트용 세션 팩토리
-        static Core::SessionRef CreateGameSession();
+        static Core::SessionRef CreateClientSession();
 
         // English: DB server helpers
         // 한글: DB 서버 연결 헬퍼
@@ -66,10 +66,9 @@ namespace Network::TestServer
         // 한글: 클라이언트 연결 엔진 (멀티플랫폼 지원)
         std::unique_ptr<Core::INetworkEngine>       mClientEngine;
 
-        // English: DB Server connection
-        // 한글: DB 서버 연결
-        Core::SessionRef                             mDBServerSession;
-        std::unique_ptr<DBServerPacketHandler>      mDBPacketHandler;
+        // English: DB Server connection (typed session replaces raw Core::SessionRef)
+        // 한글: DB 서버 연결 (raw Core::SessionRef 대신 타입화된 세션 사용)
+        DBServerSessionRef                           mDBServerSession;
 
         // English: Asynchronous DB task queue (independent of game logic)
         // 한글: 비동기 DB 작업 큐 (게임 로직과 독립적)
@@ -104,6 +103,11 @@ namespace Network::TestServer
         uint16_t                                    mDBPort = 0;
         std::thread                                 mDBReconnectThread;
         std::atomic<bool>                           mDBReconnectRunning;
+        // English: Last WSA error from ConnectToDBServer() — used to distinguish
+        //          WSAECONNREFUSED (server shutting down) from other failures
+        // 한글: ConnectToDBServer() 실패 시 마지막 WSA 에러 코드
+        //       WSAECONNREFUSED(서버 종료 중)와 기타 오류 구분에 사용
+        std::atomic<int>                            mLastDBConnectError{0};
 #endif
     };
 
