@@ -1,4 +1,4 @@
-# NetworkModuleTest — CLAUDE.md
+# NetworkModuleTest — AGENTS.md
 
 ## 프로젝트 개요
 
@@ -69,6 +69,37 @@ namespace Network {
 // English: Initialize the session
 // 한글: 세션 초기화
 ```
+
+### 중괄호 스타일 (Allman Style)
+모든 중괄호는 새 줄에 단독으로 위치한다.
+```cpp
+// ✅ 올바른 예
+void Initialize(int id)
+{
+    if (id > 0)
+    {
+        mId = id;
+    }
+    else
+    {
+        Logger::Warn("Invalid id");
+    }
+}
+
+class GameSession : public Session
+{
+public:
+    void OnConnected() override;
+};
+
+// ❌ 잘못된 예 (K&R / Egyptian style)
+void Initialize(int id) {
+    if (id > 0) {
+        mId = id;
+    }
+}
+```
+적용 범위: 함수, 클래스, 구조체, if/else, for, while, switch, namespace 등 모든 블록.
 
 ### 파일 구조
 - 헤더: `#pragma once`, 전방 선언, 클래스 선언, 타입 정의
