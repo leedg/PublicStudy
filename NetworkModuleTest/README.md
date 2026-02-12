@@ -80,7 +80,7 @@ NetworkModuleTest/
 - ⚠️ **macOS**: kqueue (기본 send/recv 구현, 테스트 필요)
 
 ### 비동기 DB 아키텍처
-- ✅ **논블로킹**: GameSession과 DB 처리 분리
+- ✅ **논블로킹**: ClientSession과 DB 처리 분리
 - ✅ **작업 큐**: Producer-Consumer 패턴
 - ⚠️ **DB 저장**: 현재는 로깅/플레이스홀더 중심 (실DB 연동은 TODO)
 

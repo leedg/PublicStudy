@@ -1,7 +1,7 @@
 # 🎯 비동기 DB 아키텍처 완성 보고서
 
-**날짜**: 2026-02-05
-**목표**: GameSession과 DB 처리를 완전히 분리하여 독립적으로 실행
+**날짜**: 2026-02-05 (2026-02-12 세션 계층 리팩토링 반영)
+**목표**: ClientSession과 DB 처리를 완전히 분리하여 독립적으로 실행
 **결과**: ✅ 성공 - 비동기 작업 큐 패턴 구현 완료
 
 ---
@@ -10,23 +10,23 @@
 
 ### **변경 전 (동기 처리)**
 ```
-GameSession → DB 직접 호출 → 블로킹 대기
+ClientSession → DB 직접 호출 → 블로킹 대기
    (게임 로직 중단)
 ```
 
 **문제점**:
-- ❌ GameSession이 DB 응답을 기다리는 동안 블로킹
+- ❌ ClientSession이 DB 응답을 기다리는 동안 블로킹
 - ❌ DB 작업이 느리면 게임 로직 전체가 지연
 - ❌ 게임 로직과 DB 로직이 강하게 결합됨
 
 ### **변경 후 (비동기 처리)**
 ```
-GameSession → DBTaskQueue → WorkerThreads → Database
+ClientSession → DBTaskQueue → WorkerThreads → Database
    (즉시 반환)    (큐잉)       (비동기 처리)    (독립 실행)
 ```
 
 **장점**:
-- ✅ GameSession은 즉시 반환 (논블로킹)
+- ✅ ClientSession은 즉시 반환 (논블로킹)
 - ✅ DB 작업은 별도 워커 스레드에서 처리
 - ✅ 게임 로직과 DB 로직 완전 분리
 - ✅ DB 장애 시에도 게임 로직 정상 동작
@@ -90,13 +90,13 @@ struct DBTask
 
 ---
 
-### 2. **GameSession** (수정됨)
+### 2. **ClientSession** (수정됨)
 
 #### 변경 사항
 
 **Before**:
 ```cpp
-void GameSession::RecordConnectTimeToDB()
+void ClientSession::RecordConnectTimeToDB()
 {
     // 동기 DB 호출 - 블로킹!
     ScopedDBConnection dbConn;
@@ -106,7 +106,7 @@ void GameSession::RecordConnectTimeToDB()
 
 **After**:
 ```cpp
-void GameSession::AsyncRecordConnectTime()
+void ClientSession::AsyncRecordConnectTime()
 {
     // 비동기 작업 제출 - 즉시 반환!
     if (sDBTaskQueue && sDBTaskQueue->IsRunning())
@@ -119,14 +119,14 @@ void GameSession::AsyncRecordConnectTime()
 
 #### 의존성 주입 패턴
 ```cpp
-class GameSession
+class ClientSession
 {
 public:
     // 정적 메서드로 DBTaskQueue 설정 (전역 접근)
     static void SetDBTaskQueue(DBTaskQueue* queue);
 
 private:
-    static DBTaskQueue* sDBTaskQueue;  // 모든 GameSession이 공유
+    static DBTaskQueue* sDBTaskQueue;  // 모든 ClientSession이 공유
 };
 ```
 
@@ -142,8 +142,8 @@ bool TestServer::Initialize(uint16_t port, const std::string& dbConnectionString
     mDBTaskQueue = std::make_unique<DBTaskQueue>();
     mDBTaskQueue->Initialize(2);  // 2개 워커 스레드
 
-    // 2. GameSession에 DBTaskQueue 주입
-    GameSession::SetDBTaskQueue(mDBTaskQueue.get());
+    // 2. ClientSession에 DBTaskQueue 주입
+    ClientSession::SetDBTaskQueue(mDBTaskQueue.get());
 
     // 3. 네트워크 엔진 초기화
     mClientEngine = CreateNetworkEngine("auto");
@@ -186,13 +186,13 @@ void TestServer::Stop()
 ```
 1. 클라이언트 연결
    ↓
-2. GameSession::OnConnected() 호출
+2. ClientSession::OnConnected() 호출
    ↓
 3. AsyncRecordConnectTime() 호출
    ↓
 4. DBTaskQueue::RecordConnectTime(sessionId, timestamp)
    ├─ 작업을 큐에 추가
-   └─ 즉시 반환 ✅ (GameSession은 계속 진행)
+   └─ 즉시 반환 ✅ (ClientSession은 계속 진행)
    ↓
 5. [별도 워커 스레드에서]
    ├─ 큐에서 작업 꺼내기
@@ -206,7 +206,7 @@ void TestServer::Stop()
 ```
 1. 클라이언트 연결 종료
    ↓
-2. GameSession::OnDisconnected() 호출
+2. ClientSession::OnDisconnected() 호출
    ↓
 3. AsyncRecordDisconnectTime() 호출
    ↓
@@ -224,7 +224,7 @@ void TestServer::Stop()
 
 ### **논블로킹 동작**
 ```
-GameSession 스레드 타임라인:
+ClientSession 스레드 타임라인:
 
 [동기 방식]
 OnConnected() ──█████████ DB 대기 █████████──→ 게임 로직 (100ms+ 지연)
@@ -273,7 +273,7 @@ bool DBTaskQueue::HandleRecordConnectTime(const DBTask& task, std::string& resul
 ```
 
 **장점**:
-- GameSession은 DB 장애와 무관하게 동작
+- ClientSession은 DB 장애와 무관하게 동작
 - 실패한 작업은 로그에 기록
 - 통계를 통해 DB 상태 모니터링 가능
 
@@ -366,9 +366,9 @@ if (!success && task.retryCount < task.maxRetries)
 ### **기본 사용**
 ```cpp
 // TestServer 초기화 시 자동으로 설정됨
-// GameSession에서는 그냥 사용만 하면 됨
+// ClientSession에서는 그냥 사용만 하면 됨
 
-void GameSession::OnConnected()
+void ClientSession::OnConnected()
 {
     AsyncRecordConnectTime();  // 논블로킹, 즉시 반환
 
@@ -380,7 +380,7 @@ void GameSession::OnConnected()
 
 ### **콜백이 필요한 경우**
 ```cpp
-void GameSession::SavePlayerProgress(const std::string& progressData)
+void ClientSession::SavePlayerProgress(const std::string& progressData)
 {
     if (sDBTaskQueue && sDBTaskQueue->IsRunning())
     {
@@ -414,12 +414,16 @@ mDBTaskQueue->EnqueueTask(std::move(customTask));
 Server/TestServer/
 ├── include/
 │   ├── DBTaskQueue.h           ✅ 새로 추가됨
-│   ├── GameSession.h           ✅ 수정됨 (DBTaskQueue 사용)
-│   └── TestServer.h            ✅ 수정됨 (DBTaskQueue 소유)
+│   ├── ClientSession.h         ✅ (GameSession 대체, DBTaskQueue 사용)
+│   ├── ServerSession.h         ✅ 새로 추가됨 (서버간 통신 베이스)
+│   ├── DBServerSession.h       ✅ 새로 추가됨 (DB 서버 전용)
+│   └── TestServer.h            ✅ 수정됨 (DBTaskQueue 소유, DBServerSessionRef)
 ├── src/
 │   ├── DBTaskQueue.cpp         ✅ 새로 추가됨
-│   ├── GameSession.cpp         ✅ 수정됨 (비동기 처리)
-│   └── TestServer.cpp          ✅ 수정됨 (DBTaskQueue 초기화)
+│   ├── ClientSession.cpp       ✅ (GameSession 대체, 비동기 처리)
+│   ├── ServerSession.cpp       ✅ 새로 추가됨
+│   ├── DBServerSession.cpp     ✅ 새로 추가됨
+│   └── TestServer.cpp          ✅ 수정됨 (DBTaskQueue 초기화, WSAECONNREFUSED 처리)
 └── TestServer.vcxproj          ✅ 수정됨 (새 파일 추가)
 ```
 
@@ -429,11 +433,13 @@ Server/TestServer/
 
 - [x] DBTaskQueue 클래스 설계 및 구현
 - [x] 워커 스레드 풀 구현
-- [x] GameSession에서 비동기 호출로 변경
+- [x] ClientSession에서 비동기 호출로 변경 (GameSession → ClientSession 리팩토링)
+- [x] ClientSession / ServerSession / DBServerSession 계층 도입
 - [x] TestServer에서 DBTaskQueue 초기화
 - [x] 의존성 주입 패턴 적용
 - [x] 에러 처리 및 로깅
 - [x] 통계 수집 기능
+- [x] WSAECONNREFUSED 재연결 간격 최적화
 - [x] 프로젝트 파일 업데이트
 - [x] 한글/영어 이중 주석
 - [x] 문서화 완료
@@ -443,7 +449,7 @@ Server/TestServer/
 ## 🎯 핵심 이점
 
 ### **1. 성능**
-- ⚡ GameSession은 DB 대기 없이 즉시 진행
+- ⚡ ClientSession은 DB 대기 없이 즉시 진행
 - ⚡ 다중 워커 스레드로 병렬 처리
 - ⚡ 작업 큐잉으로 부하 분산
 
@@ -482,12 +488,14 @@ Server/TestServer/
 
 ## 🎉 결론
 
-**GameSession과 DB 처리가 완전히 분리되어 독립적으로 실행됩니다!**
+**ClientSession과 DB 처리가 완전히 분리되어 독립적으로 실행됩니다!**
 
-- ✅ **논블로킹**: GameSession은 DB 대기 없이 즉시 진행
+- ✅ **논블로킹**: ClientSession은 DB 대기 없이 즉시 진행
 - ✅ **비동기**: 별도 워커 스레드에서 DB 작업 처리
 - ✅ **독립성**: DB 장애 시에도 게임 로직 정상 동작
 - ✅ **확장성**: 새 작업 타입 추가 및 성능 튜닝 용이
 - ✅ **깔끔한 아키텍처**: 의존성 주입 패턴으로 결합도 최소화
+- ✅ **세션 계층**: ClientSession / ServerSession / DBServerSession 3계층 구조
+- ✅ **재연결 최적화**: WSAECONNREFUSED 시 1s 고정 간격으로 빠른 재기동 감지
 
 이제 고성능, 고가용성 게임 서버 아키텍처가 완성되었습니다! 🚀

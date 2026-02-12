@@ -102,7 +102,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["GameSession::OnConnected/OnDisconnected"] --> B["DBTaskQueue::EnqueueTask"]
+    A["ClientSession::OnConnected/OnDisconnected"] --> B["DBTaskQueue::EnqueueTask"]
     B --> C["Worker Threads"]
     C --> D["HandleRecord* / HandleUpdate*"]
     D --> E["현재: 로그/플레이스홀더 or ENABLE_DATABASE_SUPPORT 경로"]
