@@ -35,3 +35,11 @@ obj/
 *.tmp
 *.temp
 *.log
+
+# Build output logs
+build_out.txt
+build_err.txt
+
+# Test artifacts
+crash_logs/
+temp.txt
