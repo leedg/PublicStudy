@@ -55,11 +55,7 @@ namespace Network::TestServer
 
         // English: Set Session factory for game clients
         // Korean: 게임 클라이언트용 세션 팩토리 설정
-        Core::SessionManager::Instance().Initialize(&TestServer::CreateGameSession);
-
-        // English: Initialize DB packet handler for server-to-server communication
-        // Korean: 서버 간 통신을 위한 DB 패킷 핸들러 초기화
-        mDBPacketHandler = std::make_unique<DBServerPacketHandler>();
+        Core::SessionManager::Instance().Initialize(&TestServer::CreateClientSession);
 
         // English: Initialize asynchronous DB task queue (independent worker threads)
         // Korean: 비동기 DB 작업 큐 초기화 (독립 워커 스레드)
@@ -70,9 +66,9 @@ namespace Network::TestServer
             return false;
         }
 
-        // English: Inject DB task queue into GameSession (dependency injection)
-        // Korean: GameSession에 DB 작업 큐 주입 (의존성 주입)
-        GameSession::SetDBTaskQueue(mDBTaskQueue.get());
+        // English: Inject DB task queue into ClientSession (dependency injection)
+        // Korean: ClientSession에 DB 작업 큐 주입 (의존성 주입)
+        ClientSession::SetDBTaskQueue(mDBTaskQueue.get());
 
         // English: Create and initialize client network engine using factory (auto-detect best backend)
         // Korean: 팩토리를 사용하여 클라이언트 네트워크 엔진 생성 및 초기화 (최적 백엔드 자동 감지)
@@ -216,7 +212,8 @@ namespace Network::TestServer
         SOCKET clientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (clientSocket == INVALID_SOCKET)
         {
-            Logger::Error("Failed to create client socket: " + std::to_string(WSAGetLastError()));
+            mLastDBConnectError.store(WSAGetLastError());
+            Logger::Error("Failed to create client socket: " + std::to_string(mLastDBConnectError.load()));
             return false;
         }
 
@@ -225,7 +222,7 @@ namespace Network::TestServer
         sockaddr_in serverAddr{};
         serverAddr.sin_family = AF_INET;
         serverAddr.sin_port = htons(port);
-        
+
         // English: Convert host string to address
         // 한글: 호스트 문자열을 주소로 변환
         if (inet_pton(AF_INET, host.c_str(), &serverAddr.sin_addr) <= 0)
@@ -239,14 +236,19 @@ namespace Network::TestServer
         // 한글: DB 서버에 연결
         if (connect(clientSocket, reinterpret_cast<sockaddr*>(&serverAddr), sizeof(serverAddr)) == SOCKET_ERROR)
         {
-            Logger::Error("Failed to connect to DB server: " + std::to_string(WSAGetLastError()));
+            mLastDBConnectError.store(WSAGetLastError());
+            Logger::Error("Failed to connect to DB server: " + std::to_string(mLastDBConnectError.load()));
             closesocket(clientSocket);
             return false;
         }
 
-        // English: Create and initialize session for DB server connection
-        // 한글: DB 서버 연결을 위한 세션 생성 및 초기화
-        mDBServerSession = std::make_shared<Core::Session>();
+        // English: Reset last error on success
+        // 한글: 성공 시 마지막 에러 초기화
+        mLastDBConnectError.store(0);
+
+        // English: Create and initialize DBServerSession for DB connection
+        // 한글: DB 연결을 위한 DBServerSession 생성 및 초기화
+        mDBServerSession = std::make_shared<DBServerSession>();
         mDBServerSession->Initialize(static_cast<uint64_t>(clientSocket), clientSocket);
 
         mDBServerSocket = clientSocket;
@@ -256,13 +258,6 @@ namespace Network::TestServer
         // 한글: DB 수신/핑 스레드 시작
         mDBRecvThread = std::thread(&TestServer::DBRecvLoop, this);
         mDBPingThread = std::thread(&TestServer::DBPingLoop, this);
-        
-        // English: Initialize packet handler for DB server
-        // 한글: DB 서버용 패킷 핸들러 초기화
-        if (!mDBPacketHandler)
-        {
-            mDBPacketHandler = std::make_unique<DBServerPacketHandler>();
-        }
 
         Logger::Info("Successfully connected to DB server at " + host + ":" + std::to_string(port));
         return true;
@@ -290,9 +285,9 @@ namespace Network::TestServer
             " bytes from client Connection: " + std::to_string(eventData.connectionId));
     }
 
-    SessionRef TestServer::CreateGameSession()
+    SessionRef TestServer::CreateClientSession()
     {
-        return std::make_shared<GameSession>();
+        return std::make_shared<ClientSession>();
     }
 
     void TestServer::DisconnectFromDBServer()
@@ -402,10 +397,9 @@ namespace Network::TestServer
                         break;
                     }
 
-                    if (mDBPacketHandler && mDBServerSession)
+                    if (mDBServerSession)
                     {
-                        mDBPacketHandler->ProcessPacket(
-                            mDBServerSession.get(),
+                        mDBServerSession->OnRecv(
                             mDBRecvBuffer.data() + mDBRecvOffset,
                             header->size);
                     }
@@ -491,8 +485,13 @@ namespace Network::TestServer
     {
 #ifdef _WIN32
         // English: Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
+        //          Exception: WSAECONNREFUSED (server shutting down / starting up)
+        //          → short fixed 1s interval to catch fast restarts
         // 한글: 지수 백오프: 1초, 2초, 4초, 8초, 16초, 최대 30초
+        //       예외: WSAECONNREFUSED (서버 종료 중 / 기동 중)
+        //       → 빠른 재기동을 놓치지 않도록 1초 고정 간격 유지
         constexpr uint32_t kMaxDelayMs = 30000;
+        constexpr uint32_t kConnRefusedDelayMs = 1000;
         uint32_t delayMs = 1000;
         int attempt = 0;
 
@@ -520,7 +519,24 @@ namespace Network::TestServer
                 break;
             }
 
-            delayMs = std::min(delayMs * 2, kMaxDelayMs);
+            // English: Distinguish WSAECONNREFUSED from other errors:
+            //   WSAECONNREFUSED(10061): DB server is shutting down or starting up
+            //   → Use short fixed interval (no backoff growth) to catch fast restarts
+            //   Other errors: Apply standard exponential backoff
+            // 한글: WSAECONNREFUSED와 기타 에러 구분:
+            //   WSAECONNREFUSED(10061): DB 서버가 종료 중이거나 기동 중
+            //   → 빠른 재기동 감지를 위해 짧은 고정 간격 유지 (백오프 증가 없음)
+            //   기타 에러: 표준 지수 백오프 적용
+            int lastError = mLastDBConnectError.load();
+            if (lastError == WSAECONNREFUSED)
+            {
+                delayMs = kConnRefusedDelayMs;
+                Logger::Info("DB server is shutting down or starting up (CONNREFUSED), retrying in 1s...");
+            }
+            else
+            {
+                delayMs = std::min(delayMs * 2, kMaxDelayMs);
+            }
         }
 
         mDBReconnectRunning.store(false);

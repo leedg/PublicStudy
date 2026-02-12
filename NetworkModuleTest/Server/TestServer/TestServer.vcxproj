@@ -144,7 +144,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="src\GameSession.cpp" />
+    <ClCompile Include="src\ClientSession.cpp" />
+    <ClCompile Include="src\ServerSession.cpp" />
+    <ClCompile Include="src\DBServerSession.cpp" />
     <ClCompile Include="src\ClientPacketHandler.cpp" />
     <ClCompile Include="src\DBServerPacketHandler.cpp" />
     <ClCompile Include="src\DBTaskQueue.cpp" />
@@ -153,7 +155,9 @@
     <ClCompile Include="src\TestDatabaseManager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\GameSession.h" />
+    <ClInclude Include="include\ClientSession.h" />
+    <ClInclude Include="include\ServerSession.h" />
+    <ClInclude Include="include\DBServerSession.h" />
     <ClInclude Include="include\ClientPacketHandler.h" />
     <ClInclude Include="include\DBServerPacketHandler.h" />
     <ClInclude Include="include\DBTaskQueue.h" />

@@ -1,7 +1,7 @@
-// English: GameSession implementation with asynchronous DB operations
-// 한글: 비동기 DB 작업을 사용하는 GameSession 구현
+// English: ClientSession implementation with asynchronous DB operations
+// 한글: 비동기 DB 작업을 사용하는 ClientSession 구현
 
-#include "../include/GameSession.h"
+#include "../include/ClientSession.h"
 #include "../include/DBTaskQueue.h"
 #include "Utils/NetworkUtils.h"
 #include <chrono>
@@ -15,32 +15,32 @@ namespace Network::TestServer
 
     // English: Static member initialization
     // 한글: 정적 멤버 초기화
-    DBTaskQueue* GameSession::sDBTaskQueue = nullptr;
+    DBTaskQueue* ClientSession::sDBTaskQueue = nullptr;
 
     // =============================================================================
-    // English: GameSession implementation
-    // 한글: GameSession 구현
+    // English: ClientSession implementation
+    // 한글: ClientSession 구현
     // =============================================================================
 
-    GameSession::GameSession()
+    ClientSession::ClientSession()
         : mConnectionRecorded(false)
         , mPacketHandler(std::make_unique<ClientPacketHandler>())
     {
     }
 
-    GameSession::~GameSession()
+    ClientSession::~ClientSession()
     {
     }
 
-    void GameSession::SetDBTaskQueue(DBTaskQueue* queue)
+    void ClientSession::SetDBTaskQueue(DBTaskQueue* queue)
     {
         sDBTaskQueue = queue;
-        Logger::Info("GameSession: DBTaskQueue set");
+        Logger::Info("ClientSession: DBTaskQueue set");
     }
 
-    void GameSession::OnConnected()
+    void ClientSession::OnConnected()
     {
-        Logger::Info("GameSession connected - ID: " + std::to_string(GetId()));
+        Logger::Info("ClientSession connected - ID: " + std::to_string(GetId()));
 
         // English: Record connect time asynchronously (non-blocking)
         // 한글: 접속 시간을 비동기로 기록 (논블로킹)
@@ -51,16 +51,16 @@ namespace Network::TestServer
         }
     }
 
-    void GameSession::OnDisconnected()
+    void ClientSession::OnDisconnected()
     {
-        Logger::Info("GameSession disconnected - ID: " + std::to_string(GetId()));
+        Logger::Info("ClientSession disconnected - ID: " + std::to_string(GetId()));
 
         // English: Record disconnect time asynchronously (non-blocking)
         // 한글: 접속 종료 시간을 비동기로 기록 (논블로킹)
         AsyncRecordDisconnectTime();
     }
 
-    void GameSession::OnRecv(const char* data, uint32_t size)
+    void ClientSession::OnRecv(const char* data, uint32_t size)
     {
         if (mPacketHandler)
         {
@@ -68,7 +68,21 @@ namespace Network::TestServer
         }
     }
 
-    void GameSession::AsyncRecordConnectTime()
+    std::vector<char> ClientSession::Encrypt(const char* data, uint32_t size)
+    {
+        // English: No-op placeholder — copy data as-is
+        // 한글: no-op 플레이스홀더 — 데이터를 그대로 복사
+        return std::vector<char>(data, data + size);
+    }
+
+    std::vector<char> ClientSession::Decrypt(const char* data, uint32_t size)
+    {
+        // English: No-op placeholder — copy data as-is
+        // 한글: no-op 플레이스홀더 — 데이터를 그대로 복사
+        return std::vector<char>(data, data + size);
+    }
+
+    void ClientSession::AsyncRecordConnectTime()
     {
         // English: Get current time string
         // 한글: 현재 시간 문자열 조회
@@ -100,7 +114,7 @@ namespace Network::TestServer
         }
     }
 
-    void GameSession::AsyncRecordDisconnectTime()
+    void ClientSession::AsyncRecordDisconnectTime()
     {
         // English: Get current time string
         // 한글: 현재 시간 문자열 조회
