@@ -334,13 +334,25 @@ size_t Session::GetRecvBufferSize() const
 
 void Session::ProcessRawRecv(const char *data, uint32_t size)
 {
-	// English: Guard against oversized accumulation (defense against slow attacks)
-	// 한글: 과도한 누적 방어 (느린 공격 방어)
-	if (mRecvAccumBuffer.size() + size > MAX_PACKET_SIZE)
+	// English: Guard against oversized accumulation (slow-loris / flood defense).
+	//          Threshold must be > (MAX_PACKET_SIZE - 1) + RECV_BUFFER_SIZE so that
+	//          a legitimate partial packet tail + one full recv never triggers a false reset.
+	//          MAX_PACKET_SIZE (4096) alone is too small: RECV_BUFFER_SIZE (8192) exceeds it,
+	//          so a single large recv on a non-empty buffer would corrupt the stream.
+	// 한글: 과도한 누적 방어 (느린 공격 / 플러드 방어).
+	//       임계값은 (MAX_PACKET_SIZE - 1) + RECV_BUFFER_SIZE 보다 커야 함.
+	//       부분 패킷 꼬리 + 단일 recv 최대치가 정상 범위를 벗어나지 않도록.
+	//       MAX_PACKET_SIZE(4096) 단독 사용 시: RECV_BUFFER_SIZE(8192)가 이를 초과하므로
+	//       빈 버퍼에서도 단일 recv가 가드를 발동시켜 스트림을 오염시킬 수 있음.
+	constexpr size_t kMaxAccumSize = MAX_PACKET_SIZE * 4;  // 16KB — safely above 4095 + 8192
+	if (mRecvAccumBuffer.size() + size > kMaxAccumSize)
 	{
-		Utils::Logger::Warn("Recv accumulation buffer overflow, resetting stream - Session: " +
+		Utils::Logger::Warn("Recv accumulation buffer overflow, closing session - Session: " +
 							std::to_string(mId));
 		mRecvAccumBuffer.clear();
+		Close();  // English: Stream state is unrecoverable without a full reconnect
+				  // 한글: 재연결 없이는 스트림 상태 복구 불가 — 세션 강제 종료
+		return;
 	}
 
 	mRecvAccumBuffer.insert(mRecvAccumBuffer.end(), data, data + size);

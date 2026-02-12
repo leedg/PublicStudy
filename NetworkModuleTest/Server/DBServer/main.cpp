@@ -3,6 +3,7 @@
 
 #include "include/TestDBServer.h"
 #include "Utils/NetworkUtils.h"
+#include "Utils/CrashDump.h"
 #include <iostream>
 #include <string>
 #include <csignal>
@@ -59,6 +60,10 @@ int main(int argc, char* argv[])
     // Korean: 한글 출력을 위해 콘솔 코드 페이지를 UTF-8로 설정
     SetConsoleCP(65001);
     SetConsoleOutputCP(65001);
+
+    // English: Install crash dump handler — writes .dmp + .crash on unhandled exception
+    // 한글: 크래시 덤프 핸들러 설치 — 미처리 예외 발생 시 .dmp + .crash 파일 기록
+    Network::Utils::CrashDump::Initialize("./dumps/");
 #endif
 
     std::cout << "====================================" << std::endl;
