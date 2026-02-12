@@ -210,7 +210,9 @@
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\ThreadPool.h" />
     <ClInclude Include="Utils\Timer.h" />
+    <ClInclude Include="Utils\CrashDump.h" />
     <ClCompile Include="Utils\LockProfiling.cpp" />
+    <ClCompile Include="Utils\CrashDump.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
