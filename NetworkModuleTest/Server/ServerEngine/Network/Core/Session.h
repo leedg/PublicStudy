@@ -188,9 +188,16 @@ class Session : public std::enable_shared_from_this<Session>
 	// 한글: 비동기 I/O 공급자 (크로스플랫폼)
 	AsyncIO::AsyncIOProvider *mAsyncProvider;
 
-	// English: TCP reassembly accumulation buffer
-	// 한글: TCP 재조립 누적 버퍼
+	// English: TCP reassembly accumulation buffer + mutex
+	//          mRecvMutex serializes concurrent ProcessRawRecv calls that can arrive
+	//          when PostRecv() is re-issued immediately after a completion and a second
+	//          recv completes before the first has been processed by the logic thread pool.
+	// 한글: TCP 재조립 누적 버퍼 + 뮤텍스
+	//       ProcessRecvCompletion이 LogicThreadPool에 submit 후 즉시 PostRecv()를 재발행하면
+	//       두 번째 recv가 먼저 완료될 수 있어 서로 다른 스레드에서 ProcessRawRecv가 동시에
+	//       호출된다. mRecvMutex로 직렬화하여 mRecvAccumBuffer race condition 방지.
 	std::vector<char> mRecvAccumBuffer;
+	std::mutex        mRecvMutex;
 };
 
 using SessionRef = std::shared_ptr<Session>;

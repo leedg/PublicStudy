@@ -334,6 +334,18 @@ size_t Session::GetRecvBufferSize() const
 
 void Session::ProcessRawRecv(const char *data, uint32_t size)
 {
+	// English: Serialize concurrent calls — PostRecv() is re-issued immediately after each
+	//          completion, so a second recv can complete before the first is processed by the
+	//          logic thread pool, causing two workers to run here simultaneously.
+	//          Without this lock, mRecvAccumBuffer would be accessed from two threads
+	//          concurrently, corrupting the buffer and making hdr a dangling pointer
+	//          (manifests as hdr->size = 0xDDDD, the MSVC freed-memory fill pattern).
+	// 한글: 동시 호출 직렬화 — PostRecv()가 완료 즉시 재호출되므로 두 번째 recv가
+	//       첫 번째보다 먼저 LogicThreadPool에서 실행될 수 있음.
+	//       이 락 없이는 mRecvAccumBuffer에 두 스레드가 동시 접근하여 hdr 댕글링 포인터
+	//       (hdr->size = 0xDDDD) 크래시 발생.
+	std::lock_guard<std::mutex> recvLock(mRecvMutex);
+
 	// English: Guard against oversized accumulation (slow-loris / flood defense).
 	//          Threshold must be > (MAX_PACKET_SIZE - 1) + RECV_BUFFER_SIZE so that
 	//          a legitimate partial packet tail + one full recv never triggers a false reset.
@@ -376,9 +388,15 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 			break; // English: Partial packet, wait for more data / 한글: 불완전한 패킷, 추가 데이터 대기
 		}
 
-		OnRecv(mRecvAccumBuffer.data(), hdr->size);
+		// English: Capture size before OnRecv() — hdr points into mRecvAccumBuffer.data()
+		//          and OnRecv() must not touch mRecvAccumBuffer (lock is held), but capturing
+		//          the size up-front makes the intent explicit and guards against future changes.
+		// 한글: OnRecv() 호출 전 size 캡처 — hdr는 mRecvAccumBuffer.data() 내부를 가리키며,
+		//       OnRecv() 중 버퍼가 수정되지 않도록 락이 보호하지만, 명시적 캡처로 안전성 강화.
+		const uint16_t packetSize = hdr->size;
+		OnRecv(mRecvAccumBuffer.data(), packetSize);
 		mRecvAccumBuffer.erase(mRecvAccumBuffer.begin(),
-							   mRecvAccumBuffer.begin() + hdr->size);
+							   mRecvAccumBuffer.begin() + packetSize);
 	}
 }
 
