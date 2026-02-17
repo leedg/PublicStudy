@@ -1,11 +1,17 @@
 #pragma once
 
 // English: io_uring-based AsyncIOProvider implementation for Linux kernel 5.1+
+//          Requires liburing-dev (apt install liburing-dev / dnf install liburing-devel).
+//          Enabled only when HAVE_LIBURING is defined by the build system (CMake find_library check).
+//          If liburing is unavailable the factory falls back to epoll automatically.
 // 한글: Linux 커널 5.1+ 용 io_uring 기반 AsyncIOProvider 구현
+//       liburing-dev 패키지 필요 (apt install liburing-dev / dnf install liburing-devel).
+//       빌드 시스템(CMake find_library)이 HAVE_LIBURING을 정의한 경우에만 활성화.
+//       liburing이 없으면 팩토리가 자동으로 epoll로 폴백.
 
 #include "AsyncIOProvider.h"
 
-#ifdef __linux__
+#if defined(__linux__) && defined(HAVE_LIBURING)
 #include <liburing.h>
 #include <map>
 #include <memory>
@@ -167,4 +173,4 @@ class IOUringAsyncIOProvider : public AsyncIOProvider
 } // namespace AsyncIO
 } // namespace Network
 
-#endif // __linux__
+#endif // defined(__linux__) && defined(HAVE_LIBURING)

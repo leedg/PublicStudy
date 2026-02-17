@@ -1,7 +1,9 @@
 // English: io_uring-based AsyncIOProvider implementation
+//          Compiled only when HAVE_LIBURING is defined (CMake find_library check).
 // 한글: io_uring 기반 AsyncIOProvider 구현
+//       HAVE_LIBURING이 정의된 경우에만 컴파일 (CMake find_library 검사).
 
-#ifdef __linux__
+#if defined(__linux__) && defined(HAVE_LIBURING)
 
 #include "IOUringAsyncIOProvider.h"
 #include "PlatformDetect.h"
@@ -389,4 +391,4 @@ std::unique_ptr<AsyncIOProvider> CreateIOUringProvider()
 } // namespace AsyncIO
 } // namespace Network
 
-#endif // __linux__
+#endif // defined(__linux__) && defined(HAVE_LIBURING)

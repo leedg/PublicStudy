@@ -88,6 +88,19 @@ elseif(PLATFORM_LINUX)
         Platforms/Linux/IOUringAsyncIOProvider.h
         Platforms/Linux/IOUringAsyncIOProvider.cpp
     )
+    # English: io_uring requires liburing-dev. Check availability and enable conditionally.
+    #          Without liburing the factory silently falls back to epoll.
+    # 한글: io_uring은 liburing-dev 필요. 가용성 검사 후 조건부 활성화.
+    #       없으면 팩토리가 자동으로 epoll로 폴백.
+    find_library(LIBURING_LIB NAMES uring liburing)
+    find_path(LIBURING_INCLUDE NAMES liburing.h)
+    if(LIBURING_LIB AND LIBURING_INCLUDE)
+        message(STATUS "liburing found: ${LIBURING_LIB} — io_uring backend enabled")
+        set(HAVE_LIBURING ON)
+    else()
+        message(WARNING "liburing not found (apt install liburing-dev) — io_uring backend disabled, using epoll only")
+        set(HAVE_LIBURING OFF)
+    endif()
 elseif(PLATFORM_MACOS)
     list(APPEND ASYNCIO_SOURCES
         Platforms/macOS/KqueueAsyncIOProvider.h
@@ -141,11 +154,19 @@ elseif(PLATFORM_LINUX)
     target_compile_options(AsyncIOLib PRIVATE
         -fPIC
     )
-    target_link_libraries(AsyncIOLib PUBLIC
-        uring       # io_uring library
-        pthread     # POSIX threads
-        protobuf::libprotobuf
-    )
+    if(HAVE_LIBURING)
+        target_compile_definitions(AsyncIOLib PRIVATE HAVE_LIBURING)
+        target_link_libraries(AsyncIOLib PUBLIC
+            ${LIBURING_LIB}  # io_uring library (liburing-dev)
+            pthread           # POSIX threads
+            protobuf::libprotobuf
+        )
+    else()
+        target_link_libraries(AsyncIOLib PUBLIC
+            pthread           # POSIX threads (epoll-only mode)
+            protobuf::libprotobuf
+        )
+    endif()
 elseif(PLATFORM_MACOS)
     target_compile_options(AsyncIOLib PRIVATE
         -fPIC

@@ -159,17 +159,17 @@ int main(int argc, char *argv[])
 	std::signal(SIGINT, SignalHandler);
 	std::signal(SIGTERM, SignalHandler);
 #ifdef _WIN32
+	// English: SIGBREAK is Windows-specific (Ctrl+Break console event)
+	// 한글: SIGBREAK는 Windows 전용 (Ctrl+Break 콘솔 이벤트)
 #ifdef SIGBREAK
 	std::signal(SIGBREAK, SignalHandler);
 #endif
-	// English: Catch CTRL_CLOSE_EVENT for graceful shutdown
-	// 한글: CTRL_CLOSE_EVENT 처리로 정상 종료
+	// English: Catch CTRL_CLOSE_EVENT for graceful shutdown on window close / taskkill
+	// 한글: 창 닫기 / taskkill 시 정상 종료를 위한 ConsoleCtrlHandler 등록
 	SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
-#else
-#ifdef SIGBREAK
-	std::signal(SIGBREAK, SignalHandler);
 #endif
-#endif
+	// English: On Linux/macOS SIGINT/SIGTERM are sufficient; SIGBREAK does not exist.
+	// 한글: Linux/macOS에서는 SIGINT/SIGTERM으로 충분. SIGBREAK는 존재하지 않음.
 
 	// English: Create and run client
 	// 한글: 클라이언트 생성 및 실행
