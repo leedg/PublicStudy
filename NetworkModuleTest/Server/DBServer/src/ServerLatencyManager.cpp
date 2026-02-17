@@ -130,9 +130,9 @@ namespace Network::DBServer
                      ", Max: " + std::to_string(updatedInfo.maxRttMs) + "ms" +
                      ", Count: " + std::to_string(updatedInfo.pingCount));
 
-        // English: Persist to database (outside lock to minimize contention)
-        // 한글: 데이터베이스에 저장 (경합 최소화를 위해 락 밖에서 실행)
-        std::string query = BuildInsertQuery(
+        // English: Persist RTT stats to database (outside lock to minimize contention)
+        // 한글: RTT 통계를 데이터베이스에 저장 (경합 최소화를 위해 락 밖에서 실행)
+        const std::string query = BuildLatencyInsertQuery(
             serverId, serverName, rttMs,
             updatedInfo.avgRttMs, updatedInfo.minRttMs, updatedInfo.maxRttMs,
             updatedInfo.pingCount, timestamp);
@@ -158,13 +158,48 @@ namespace Network::DBServer
         return mLatencyMap;  // Copy
     }
 
-    std::string ServerLatencyManager::BuildInsertQuery(uint32_t serverId, const std::string& serverName,
-                                                        uint64_t rttMs, double avgRttMs,
-                                                        uint64_t minRttMs, uint64_t maxRttMs,
-                                                        uint64_t pingCount, uint64_t timestamp)
-    {
-        std::string gmtTimeStr = FormatTimestamp(timestamp);
+    // ── Ping timestamp (merged from DBPingTimeManager) ───────────────────────
 
+    bool ServerLatencyManager::SavePingTime(uint32_t serverId,
+                                             const std::string& serverName,
+                                             uint64_t timestamp)
+    {
+        if (!mInitialized.load(std::memory_order_acquire))
+        {
+            Logger::Error("ServerLatencyManager::SavePingTime — not initialized");
+            return false;
+        }
+
+        // English: Build and execute PingTimeLog INSERT (no in-memory state needed;
+        //          lastMeasuredTime is already updated by RecordLatency).
+        // 한글: PingTimeLog INSERT 실행 (메모리 상태 불필요;
+        //       lastMeasuredTime은 RecordLatency가 이미 갱신).
+        const std::string query = BuildPingTimeInsertQuery(serverId, serverName, timestamp);
+
+        Logger::Debug("SavePingTime - ServerId: " + std::to_string(serverId) +
+                      ", ServerName: " + serverName +
+                      ", GMT: " + FormatTimestamp(timestamp));
+
+        return ExecuteQuery(query);
+    }
+
+    uint64_t ServerLatencyManager::GetLastPingTime(uint32_t serverId) const
+    {
+        // English: Read last measured time from in-memory map (O(1), no DB round-trip)
+        // 한글: 메모리 맵에서 마지막 측정 시간 읽기 (O(1), DB 조회 없음)
+        std::lock_guard<std::mutex> lock(mLatencyMutex);
+        auto it = mLatencyMap.find(serverId);
+        return (it != mLatencyMap.end()) ? it->second.lastMeasuredTime : 0;
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    std::string ServerLatencyManager::BuildLatencyInsertQuery(uint32_t serverId,
+                                                               const std::string& serverName,
+                                                               uint64_t rttMs, double avgRttMs,
+                                                               uint64_t minRttMs, uint64_t maxRttMs,
+                                                               uint64_t pingCount, uint64_t timestamp)
+    {
         std::ostringstream query;
         query << "INSERT INTO ServerLatencyLog "
               << "(ServerId, ServerName, RttMs, AvgRttMs, MinRttMs, MaxRttMs, PingCount, "
@@ -177,18 +212,30 @@ namespace Network::DBServer
               << maxRttMs << ", "
               << pingCount << ", "
               << timestamp << ", '"
-              << gmtTimeStr << "')";
-
+              << FormatTimestamp(timestamp) << "')";
         return query.str();
     }
 
-    std::string ServerLatencyManager::FormatTimestamp(uint64_t timestamp)
+    std::string ServerLatencyManager::BuildPingTimeInsertQuery(uint32_t serverId,
+                                                                const std::string& serverName,
+                                                                uint64_t timestamp)
     {
-        // English: Convert milliseconds to seconds for time_t
-        // 한글: 밀리초를 time_t용 초로 변환
-        time_t seconds = static_cast<time_t>(timestamp / 1000);
+        std::ostringstream query;
+        query << "INSERT INTO PingTimeLog (ServerId, ServerName, PingTimestamp, PingTimeGMT) VALUES ("
+              << serverId << ", '"
+              << serverName << "', "
+              << timestamp << ", '"
+              << FormatTimestamp(timestamp) << "')";
+        return query.str();
+    }
 
-        std::tm gmtTime;
+    std::string ServerLatencyManager::FormatTimestamp(uint64_t timestampMs) const
+    {
+        // English: Convert milliseconds → time_t seconds, then format as "YYYY-MM-DD HH:MM:SS GMT"
+        // 한글: 밀리초 → time_t 초 변환 후 "YYYY-MM-DD HH:MM:SS GMT" 포맷
+        time_t seconds = static_cast<time_t>(timestampMs / 1000);
+
+        std::tm gmtTime{};
 #ifdef _WIN32
         gmtime_s(&gmtTime, &seconds);
 #else
@@ -196,20 +243,16 @@ namespace Network::DBServer
 #endif
 
         std::ostringstream oss;
-        oss << std::put_time(&gmtTime, "%Y-%m-%d %H:%M:%S");
-        oss << " GMT";
-
+        oss << std::put_time(&gmtTime, "%Y-%m-%d %H:%M:%S") << " GMT";
         return oss.str();
     }
 
     bool ServerLatencyManager::ExecuteQuery(const std::string& query)
     {
-        // English: Placeholder for actual database query execution
-        // 한글: 실제 데이터베이스 쿼리 실행을 위한 placeholder
-
-        Logger::Debug("[DB Latency Query] " + query);
-
-        // TODO: Implement actual database query execution
+        // English: Placeholder — replace with actual DB driver call (ODBC / OLEDB / custom)
+        // 한글: Placeholder — 실제 DB 드라이버 호출로 대체 (ODBC / OLEDB / custom)
+        Logger::Debug("[DB Query] " + query);
+        // TODO: call real DB backend here
         return true;
     }
 

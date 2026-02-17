@@ -4,6 +4,8 @@
 #include "../include/ServerPacketHandler.h"
 #include "../include/OrderedTaskQueue.h"
 #include "Utils/PingPongConfig.h"
+// English: DBPingTimeManager include removed — functionality merged into ServerLatencyManager
+// 한글: DBPingTimeManager include 제거 — 기능이 ServerLatencyManager에 통합됨
 #include <cstring>
 
 namespace Network::DBServer
@@ -12,12 +14,11 @@ namespace Network::DBServer
     using namespace Network::Utils;
 
     ServerPacketHandler::ServerPacketHandler()
-        : mDBPingTimeManager(nullptr)
-        , mLatencyManager(nullptr)
+        : mLatencyManager(nullptr)
         , mOrderedTaskQueue(nullptr)
     {
-        // English: Register all packet handlers
-        // 한글: 모든 패킷 핸들러 등록
+        // English: Register all packet handlers at construction time
+        // 한글: 생성 시 모든 패킷 핸들러 등록
         RegisterHandlers();
     }
 
@@ -25,11 +26,13 @@ namespace Network::DBServer
     {
     }
 
-    void ServerPacketHandler::Initialize(DBPingTimeManager* dbPingTimeManager,
-                                          ServerLatencyManager* latencyManager,
+    void ServerPacketHandler::Initialize(ServerLatencyManager* latencyManager,
                                           OrderedTaskQueue* orderedTaskQueue)
     {
-        mDBPingTimeManager = dbPingTimeManager;
+        // English: DBPingTimeManager is no longer a separate dependency —
+        //          its functionality is now in ServerLatencyManager.
+        // 한글: DBPingTimeManager는 더 이상 별도 의존성이 아님 —
+        //       기능이 ServerLatencyManager에 통합됨.
         mLatencyManager = latencyManager;
         mOrderedTaskQueue = orderedTaskQueue;
     }
@@ -125,51 +128,38 @@ namespace Network::DBServer
         // 한글: 서버별 추적을 위해 세션의 연결 ID에서 serverId 유도
         uint32_t serverId = static_cast<uint32_t>(session->GetId());
 
-        // English: Record latency via OrderedTaskQueue for ordering guarantee per serverId,
-        //          or fall back to direct call if queue not available
-        // 한글: serverId별 순서 보장을 위해 OrderedTaskQueue로 레이턴시 기록,
-        //       큐를 사용할 수 없으면 직접 호출로 폴백
+        // English: Route through OrderedTaskQueue for per-serverId ordering guarantee.
+        //          RecordLatency covers both RTT stats AND ping-time persistence now
+        //          (DBPingTimeManager merged into ServerLatencyManager).
+        //          Fall back to a direct call when the queue is not available.
+        // 한글: serverId별 순서 보장을 위해 OrderedTaskQueue를 통해 라우팅.
+        //       RecordLatency가 RTT 통계와 핑 시간 저장을 모두 처리
+        //       (DBPingTimeManager가 ServerLatencyManager에 통합됨).
+        //       큐를 사용할 수 없으면 직접 호출로 폴백.
         if (mOrderedTaskQueue && mLatencyManager)
         {
-            // English: Capture values for lambda (avoid dangling pointer)
-            // 한글: 람다를 위한 값 캡처 (댕글링 포인터 방지)
             ServerLatencyManager* latencyMgr = mLatencyManager;
-            DBPingTimeManager* pingTimeMgr = mDBPingTimeManager;
-            uint64_t capturedRtt = rttMs;
-            uint64_t capturedTime = receiveTime;
-            uint32_t capturedServerId = serverId;
+            const uint64_t capturedRtt     = rttMs;
+            const uint64_t capturedTime    = receiveTime;
+            const uint32_t capturedServerId = serverId;
 
-            mOrderedTaskQueue->EnqueueTask(serverId, [latencyMgr, pingTimeMgr,
-                                                       capturedServerId, capturedRtt, capturedTime]()
-            {
-                // English: Record latency stats and persist to DB
-                // 한글: 레이턴시 통계 기록 및 DB에 저장
-                if (latencyMgr)
+            mOrderedTaskQueue->EnqueueTask(serverId,
+                [latencyMgr, capturedServerId, capturedRtt, capturedTime]()
                 {
                     latencyMgr->RecordLatency(capturedServerId,
-                                               "Server_" + std::to_string(capturedServerId),
-                                               capturedRtt, capturedTime);
-                }
-
-                // English: Also update ping time record
-                // 한글: 핑 시간 기록도 업데이트
-                if (pingTimeMgr && pingTimeMgr->IsInitialized())
-                {
-                    pingTimeMgr->SavePingTime(capturedServerId,
-                                               "Server_" + std::to_string(capturedServerId),
-                                               capturedTime);
-                }
-            });
+                                              "Server_" + std::to_string(capturedServerId),
+                                              capturedRtt, capturedTime);
+                });
         }
         else
         {
-            // English: Fallback: direct latency recording (no ordering guarantee)
-            // 한글: 폴백: 직접 레이턴시 기록 (순서 보장 없음)
+            // English: Fallback: direct call (no per-serverId ordering guarantee)
+            // 한글: 폴백: 직접 호출 (serverId별 순서 보장 없음)
             if (mLatencyManager)
             {
                 mLatencyManager->RecordLatency(serverId,
-                                                "Server_" + std::to_string(serverId),
-                                                rttMs, receiveTime);
+                                               "Server_" + std::to_string(serverId),
+                                               rttMs, receiveTime);
             }
         }
     }
@@ -190,91 +180,90 @@ namespace Network::DBServer
         PKT_DBSavePingTimeRes response;
         response.serverId = packet->serverId;
 
-        // English: Route through OrderedTaskQueue for per-server ordering guarantee
-        // 한글: 서버별 순서 보장을 위해 OrderedTaskQueue를 통해 라우팅
-        if (mOrderedTaskQueue && mDBPingTimeManager)
+        // English: Route through OrderedTaskQueue for per-serverId ordering guarantee.
+        //          SavePingTime now lives in ServerLatencyManager (DBPingTimeManager merged).
+        //          Fall back to synchronous processing when the queue is not available.
+        // 한글: serverId별 순서 보장을 위해 OrderedTaskQueue를 통해 라우팅.
+        //       SavePingTime은 이제 ServerLatencyManager에 있음 (DBPingTimeManager 통합).
+        //       큐를 사용할 수 없으면 동기 처리로 폴백.
+        if (mOrderedTaskQueue && mLatencyManager)
         {
-            // English: Capture packet fields for async task
-            // 한글: 비동기 작업을 위해 패킷 필드 캡처
-            uint32_t capturedServerId = packet->serverId;
-            std::string capturedServerName(packet->serverName);
-            uint64_t capturedTimestamp = packet->timestamp;
-            DBPingTimeManager* pingTimeMgr = mDBPingTimeManager;
-
-            // English: Use weak_ptr to safely send response after async DB operation
-            // 한글: 비동기 DB 작업 후 안전하게 응답을 보내기 위해 weak_ptr 사용
+            const uint32_t    capturedServerId   = packet->serverId;
+            const std::string capturedServerName(packet->serverName);
+            const uint64_t    capturedTimestamp  = packet->timestamp;
+            ServerLatencyManager* latencyMgr     = mLatencyManager;
             auto sessionRef = session->shared_from_this();
 
             mOrderedTaskQueue->EnqueueTask(capturedServerId,
-                [pingTimeMgr, sessionRef, capturedServerId, capturedServerName, capturedTimestamp]()
-            {
-                PKT_DBSavePingTimeRes asyncResponse;
-                asyncResponse.serverId = capturedServerId;
-
-                if (pingTimeMgr && pingTimeMgr->IsInitialized())
+                [latencyMgr, sessionRef, capturedServerId, capturedServerName, capturedTimestamp]()
                 {
-                    bool success = pingTimeMgr->SavePingTime(
-                        capturedServerId, capturedServerName, capturedTimestamp);
+                    PKT_DBSavePingTimeRes asyncResponse;
+                    asyncResponse.serverId = capturedServerId;
 
-                    if (success)
+                    if (latencyMgr && latencyMgr->IsInitialized())
                     {
-                        asyncResponse.result = 0;
+                        const bool ok = latencyMgr->SavePingTime(
+                            capturedServerId, capturedServerName, capturedTimestamp);
+
+                        if (ok)
+                        {
+                            asyncResponse.result = 0;
 #ifdef _WIN32
-                        strncpy_s(asyncResponse.message, sizeof(asyncResponse.message),
-                                  "Ping time saved successfully", _TRUNCATE);
+                            strncpy_s(asyncResponse.message, sizeof(asyncResponse.message),
+                                      "Ping time saved successfully", _TRUNCATE);
 #else
-                        strncpy(asyncResponse.message, "Ping time saved successfully",
-                                sizeof(asyncResponse.message) - 1);
-                        asyncResponse.message[sizeof(asyncResponse.message) - 1] = '\0';
+                            strncpy(asyncResponse.message, "Ping time saved successfully",
+                                    sizeof(asyncResponse.message) - 1);
+                            asyncResponse.message[sizeof(asyncResponse.message) - 1] = '\0';
 #endif
-                        Logger::Info("Ping time saved for ServerId: " + std::to_string(capturedServerId));
+                            Logger::Info("Ping time saved for ServerId: " +
+                                         std::to_string(capturedServerId));
+                        }
+                        else
+                        {
+                            asyncResponse.result = 1;
+#ifdef _WIN32
+                            strncpy_s(asyncResponse.message, sizeof(asyncResponse.message),
+                                      "Failed to save ping time", _TRUNCATE);
+#else
+                            strncpy(asyncResponse.message, "Failed to save ping time",
+                                    sizeof(asyncResponse.message) - 1);
+                            asyncResponse.message[sizeof(asyncResponse.message) - 1] = '\0';
+#endif
+                            Logger::Error("Failed to save ping time for ServerId: " +
+                                          std::to_string(capturedServerId));
+                        }
                     }
                     else
                     {
-                        asyncResponse.result = 1;
+                        asyncResponse.result = 2;
 #ifdef _WIN32
                         strncpy_s(asyncResponse.message, sizeof(asyncResponse.message),
-                                  "Failed to save ping time", _TRUNCATE);
+                                  "Latency manager not initialized", _TRUNCATE);
 #else
-                        strncpy(asyncResponse.message, "Failed to save ping time",
+                        strncpy(asyncResponse.message, "Latency manager not initialized",
                                 sizeof(asyncResponse.message) - 1);
                         asyncResponse.message[sizeof(asyncResponse.message) - 1] = '\0';
 #endif
-                        Logger::Error("Failed to save ping time for ServerId: " + std::to_string(capturedServerId));
+                        Logger::Error("Latency manager not initialized");
                     }
-                }
-                else
-                {
-                    asyncResponse.result = 2;
-#ifdef _WIN32
-                    strncpy_s(asyncResponse.message, sizeof(asyncResponse.message),
-                              "DB manager not initialized", _TRUNCATE);
-#else
-                    strncpy(asyncResponse.message, "DB manager not initialized",
-                            sizeof(asyncResponse.message) - 1);
-                    asyncResponse.message[sizeof(asyncResponse.message) - 1] = '\0';
-#endif
-                    Logger::Error("DB manager not initialized");
-                }
 
-                // English: Send response back on the captured session
-                // 한글: 캡처된 세션으로 응답 전송
-                if (sessionRef && sessionRef->IsConnected())
-                {
-                    sessionRef->Send(asyncResponse);
-                }
-            });
+                    if (sessionRef && sessionRef->IsConnected())
+                    {
+                        sessionRef->Send(asyncResponse);
+                    }
+                });
         }
         else
         {
-            // English: Fallback: synchronous processing (original behavior)
-            // 한글: 폴백: 동기 처리 (기존 동작)
-            if (mDBPingTimeManager && mDBPingTimeManager->IsInitialized())
+            // English: Fallback: synchronous processing (no queue available)
+            // 한글: 폴백: 동기 처리 (큐 없음)
+            if (mLatencyManager && mLatencyManager->IsInitialized())
             {
-                bool success = mDBPingTimeManager->SavePingTime(
+                const bool ok = mLatencyManager->SavePingTime(
                     packet->serverId, std::string(packet->serverName), packet->timestamp);
 
-                if (success)
+                if (ok)
                 {
                     response.result = 0;
 #ifdef _WIN32
@@ -304,9 +293,9 @@ namespace Network::DBServer
                 response.result = 2;
 #ifdef _WIN32
                 strncpy_s(response.message, sizeof(response.message),
-                          "DB manager not initialized", _TRUNCATE);
+                          "Latency manager not initialized", _TRUNCATE);
 #else
-                strncpy(response.message, "DB manager not initialized",
+                strncpy(response.message, "Latency manager not initialized",
                         sizeof(response.message) - 1);
                 response.message[sizeof(response.message) - 1] = '\0';
 #endif

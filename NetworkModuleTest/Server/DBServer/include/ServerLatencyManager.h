@@ -1,7 +1,24 @@
 #pragma once
 
-// English: ServerLatencyManager - tracks per-server latency from Ping/Pong and persists to DB
-// 한글: ServerLatencyManager - 서버별 Ping/Pong 레이턴시 측정 및 DB 저장
+// English: ServerLatencyManager - unified per-server latency tracker and ping time recorder.
+//
+//   Replaces the two separate classes that were previously responsible for these concerns:
+//     - ServerLatencyManager  : RTT statistics (min / max / avg) + ServerLatencyLog persistence
+//     - DBPingTimeManager     : ping timestamp storage + PingTimeLog persistence  ← MERGED IN
+//
+//   Both managers wrote to different DB tables but shared identical FormatTimestamp /
+//   ExecuteQuery infrastructure, and ServerPacketHandler had to coordinate both in every
+//   async task.  Merging eliminates the duplication and halves the dependency list.
+//
+// 한글: ServerLatencyManager - 통합 서버별 레이턴시 추적기 및 핑 시간 기록기.
+//
+//   기존에 두 개의 별도 클래스가 나눠 맡던 역할을 통합:
+//     - ServerLatencyManager  : RTT 통계 (min/max/avg) + ServerLatencyLog 저장
+//     - DBPingTimeManager     : ping 타임스탬프 저장 + PingTimeLog 저장  ← 통합됨
+//
+//   두 관리자는 서로 다른 DB 테이블에 쓰지만 FormatTimestamp/ExecuteQuery 인프라를 공유했고,
+//   ServerPacketHandler는 매 비동기 작업마다 둘을 모두 조율해야 했음.
+//   통합으로 중복 제거 및 의존성 절반 감소.
 
 #include "Utils/NetworkUtils.h"
 #include <cstdint>
@@ -63,8 +80,12 @@ namespace Network::DBServer
         // 한글: 매니저 종료
         void Shutdown();
 
-        // English: Record a latency measurement for a server
-        // 한글: 서버에 대한 레이턴시 측정값 기록
+        // ── RTT statistics ──────────────────────────────────────────────────────
+
+        // English: Record a latency measurement for a server.
+        //          Updates in-memory RTT stats and persists to ServerLatencyLog.
+        // 한글: 서버에 대한 레이턴시 측정값 기록.
+        //       메모리 RTT 통계 업데이트 및 ServerLatencyLog 저장.
         // @param serverId    - Server identifier (from PKT_ServerPingReq)
         // @param serverName  - Human-readable server name
         // @param rttMs       - Round-trip time in milliseconds
@@ -80,22 +101,48 @@ namespace Network::DBServer
         // 한글: 전체 서버 레이턴시 정보 조회 (스레드 안전 스냅샷)
         std::unordered_map<uint32_t, ServerLatencyInfo> GetAllLatencyInfos() const;
 
+        // ── Ping timestamp (merged from DBPingTimeManager) ───────────────────
+
+        // English: Persist a ping timestamp to PingTimeLog for a server.
+        //          Previously handled by DBPingTimeManager::SavePingTime.
+        // 한글: 서버의 ping 타임스탬프를 PingTimeLog에 저장.
+        //       이전에는 DBPingTimeManager::SavePingTime이 담당.
+        // @param serverId   - Server identifier
+        // @param serverName - Human-readable server name
+        // @param timestamp  - Ping timestamp in milliseconds since epoch (GMT)
+        // @return true if the write succeeded
+        bool SavePingTime(uint32_t serverId, const std::string& serverName,
+                          uint64_t timestamp);
+
+        // English: Return the last ping timestamp for a server (in-memory, O(1)).
+        //          Returns 0 if the server has never been seen.
+        //          Previously handled by DBPingTimeManager::GetLastPingTime.
+        // 한글: 서버의 마지막 ping 타임스탬프 반환 (메모리 내, O(1)).
+        //       한 번도 관측되지 않은 서버는 0 반환.
+        //       이전에는 DBPingTimeManager::GetLastPingTime이 담당.
+        uint64_t GetLastPingTime(uint32_t serverId) const;
+
         bool IsInitialized() const { return mInitialized.load(std::memory_order_acquire); }
 
     private:
-        // English: Format latency data as SQL INSERT query
-        // 한글: 레이턴시 데이터를 SQL INSERT 쿼리로 포맷
-        std::string BuildInsertQuery(uint32_t serverId, const std::string& serverName,
-                                     uint64_t rttMs, double avgRttMs,
-                                     uint64_t minRttMs, uint64_t maxRttMs,
-                                     uint64_t pingCount, uint64_t timestamp);
+        // English: Format latency data as SQL INSERT for ServerLatencyLog
+        // 한글: ServerLatencyLog용 SQL INSERT 포맷
+        std::string BuildLatencyInsertQuery(uint32_t serverId, const std::string& serverName,
+                                            uint64_t rttMs, double avgRttMs,
+                                            uint64_t minRttMs, uint64_t maxRttMs,
+                                            uint64_t pingCount, uint64_t timestamp);
 
-        // English: Format GMT timestamp as string
-        // 한글: GMT 타임스탬프를 문자열로 포맷
-        std::string FormatTimestamp(uint64_t timestamp);
+        // English: Format ping data as SQL INSERT for PingTimeLog (merged from DBPingTimeManager)
+        // 한글: PingTimeLog용 SQL INSERT 포맷 (DBPingTimeManager에서 통합)
+        std::string BuildPingTimeInsertQuery(uint32_t serverId, const std::string& serverName,
+                                             uint64_t timestamp);
 
-        // English: Execute actual database query (placeholder for real implementation)
-        // 한글: 실제 데이터베이스 쿼리 실행 (실제 구현을 위한 placeholder)
+        // English: Format millisecond timestamp as "YYYY-MM-DD HH:MM:SS GMT" string
+        // 한글: 밀리초 타임스탬프를 "YYYY-MM-DD HH:MM:SS GMT" 문자열로 포맷
+        std::string FormatTimestamp(uint64_t timestampMs) const;
+
+        // English: Execute a database query (placeholder — replace with real DB driver call)
+        // 한글: 데이터베이스 쿼리 실행 (placeholder — 실제 DB 드라이버 호출로 대체)
         bool ExecuteQuery(const std::string& query);
 
     private:

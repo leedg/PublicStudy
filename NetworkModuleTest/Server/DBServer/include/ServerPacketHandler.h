@@ -5,8 +5,8 @@
 
 #include "Network/Core/Session.h"
 #include "Network/Core/ServerPacketDefine.h"
-#include "DBPingTimeManager.h"
-#include "ServerLatencyManager.h"
+#include "ServerLatencyManager.h"   // English: unified latency + ping-time manager (DBPingTimeManager merged in)
+                                    // 한글: 통합 레이턴시 + 핑 시간 관리자 (DBPingTimeManager 통합됨)
 #include "Utils/NetworkUtils.h"
 #include <functional>
 #include <unordered_map>
@@ -20,8 +20,21 @@ namespace Network::DBServer
     using Utils::ConnectionId;
 
     // =============================================================================
-    // English: ServerPacketHandler - handles packets from game servers using functor map
-    // 한글: ServerPacketHandler - 펑터 맵을 사용하여 게임 서버 패킷 처리
+    // English: ServerPacketHandler - handles packets from game servers using functor map.
+    //
+    //   Dependencies (all injected, not owned):
+    //     - ServerLatencyManager  : unified RTT stats + ping time persistence
+    //                               (previously required both ServerLatencyManager AND
+    //                                DBPingTimeManager — the latter is now merged in)
+    //     - OrderedTaskQueue      : hash-based thread affinity for per-serverId ordering
+    //
+    // 한글: ServerPacketHandler - 펑터 맵을 사용하여 게임 서버 패킷 처리.
+    //
+    //   의존성 (모두 주입됨, 소유 아님):
+    //     - ServerLatencyManager  : 통합 RTT 통계 + 핑 시간 저장
+    //                               (이전에는 ServerLatencyManager + DBPingTimeManager
+    //                                둘 다 필요했으나 DBPingTimeManager가 통합됨)
+    //     - OrderedTaskQueue      : serverId별 순서 보장을 위한 해시 기반 스레드 친화도
     // =============================================================================
 
     class ServerPacketHandler
@@ -34,10 +47,13 @@ namespace Network::DBServer
         ServerPacketHandler();
         virtual ~ServerPacketHandler();
 
-        // English: Initialize with DB managers and ordered task queue
-        // 한글: DB 관리자 및 순서 보장 작업 큐로 초기화
-        void Initialize(DBPingTimeManager* dbPingTimeManager,
-                        ServerLatencyManager* latencyManager,
+        // English: Initialize with unified latency manager and ordered task queue.
+        //          DBPingTimeManager is no longer a separate parameter — it has been
+        //          merged into ServerLatencyManager.
+        // 한글: 통합 레이턴시 관리자 및 순서 보장 작업 큐로 초기화.
+        //       DBPingTimeManager는 더 이상 별도 매개변수가 아님 —
+        //       ServerLatencyManager에 통합됨.
+        void Initialize(ServerLatencyManager* latencyManager,
                         OrderedTaskQueue* orderedTaskQueue);
 
         // English: Process incoming packet from game server (uses functor dispatch)
@@ -59,9 +75,8 @@ namespace Network::DBServer
         void HandleDBSavePingTimeRequest(Core::Session* session, const Core::PKT_DBSavePingTimeReq* packet);
 
     private:
-        DBPingTimeManager* mDBPingTimeManager;        // Not owned
-        ServerLatencyManager* mLatencyManager;        // Not owned
-        OrderedTaskQueue* mOrderedTaskQueue;          // Not owned
+        ServerLatencyManager* mLatencyManager;        // Not owned — unified RTT + ping time
+        OrderedTaskQueue*     mOrderedTaskQueue;      // Not owned — per-serverId ordering
     };
 
 } // namespace Network::DBServer

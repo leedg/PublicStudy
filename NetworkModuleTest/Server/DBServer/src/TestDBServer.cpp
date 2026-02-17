@@ -69,17 +69,12 @@ namespace Network::DBServer
     {
         mPort = port;
 
-        // English: Initialize DB ping time manager
-        // Korean: DB ping 시간 관리자 초기화
-        mDBPingTimeManager = std::make_unique<DBPingTimeManager>();
-        if (!mDBPingTimeManager->Initialize())
-        {
-            Logger::Error("Failed to initialize DB ping time manager");
-            return false;
-        }
-
-        // English: Initialize per-server latency manager
-        // Korean: 서버별 레이턴시 관리자 초기화
+        // English: Initialize unified latency manager.
+        //          Handles both RTT statistics and ping time persistence —
+        //          the former DBPingTimeManager is now merged into this class.
+        // Korean: 통합 레이턴시 관리자 초기화.
+        //         RTT 통계와 핑 시간 저장을 모두 담당 —
+        //         이전의 DBPingTimeManager가 이 클래스에 통합됨.
         mLatencyManager = std::make_unique<ServerLatencyManager>();
         if (!mLatencyManager->Initialize())
         {
@@ -98,12 +93,11 @@ namespace Network::DBServer
             return false;
         }
 
-        // English: Initialize packet handler with all dependencies
-        // Korean: 모든 의존성을 주입하여 패킷 핸들러 초기화
+        // English: Initialize packet handler — only two dependencies now (DBPingTimeManager merged)
+        // Korean: 패킷 핸들러 초기화 — 이제 의존성이 두 개 (DBPingTimeManager 통합)
         mPacketHandler = std::make_unique<ServerPacketHandler>();
-        mPacketHandler->Initialize(mDBPingTimeManager.get(),
-                                    mLatencyManager.get(),
-                                    mOrderedTaskQueue.get());
+        mPacketHandler->Initialize(mLatencyManager.get(),
+                                   mOrderedTaskQueue.get());
 
         // English: Set session factory for DB server connections
         // Korean: DB 서버 연결용 세션 팩토리 설정
@@ -190,16 +184,11 @@ namespace Network::DBServer
                         ", Processed: " + std::to_string(mOrderedTaskQueue->GetTotalProcessedCount()));
         }
 
-        // English: Shutdown latency manager
-        // Korean: 레이턴시 관리자 종료
+        // English: Shutdown unified latency manager (covers both RTT stats and ping time)
+        // Korean: 통합 레이턴시 관리자 종료 (RTT 통계와 핑 시간 모두 포함)
         if (mLatencyManager)
         {
             mLatencyManager->Shutdown();
-        }
-
-        if (mDBPingTimeManager)
-        {
-            mDBPingTimeManager->Shutdown();
         }
 
         Logger::Info("TestDBServer stopped");

@@ -53,22 +53,33 @@ namespace Network::TestServer
         mPort = port;
         mDbConnectionString = dbConnectionString;
 
-        // English: Set Session factory for game clients
-        // Korean: 게임 클라이언트용 세션 팩토리 설정
-        Core::SessionManager::Instance().Initialize(&TestServer::CreateClientSession);
-
-        // English: Initialize asynchronous DB task queue (independent worker threads)
-        // Korean: 비동기 DB 작업 큐 초기화 (독립 워커 스레드)
+        // English: Initialize asynchronous DB task queue FIRST (needed by session factory).
+        //          1 worker thread is intentional: guarantees per-session task ordering.
+        //          RecordConnectTime / RecordDisconnectTime for the same sessionId must
+        //          execute in submission order. With 2+ workers, tasks for the same session
+        //          can run on different threads simultaneously — breaking ordering.
+        //          Use OrderedTaskQueue (hash-based affinity) if multi-worker throughput
+        //          is required while preserving per-session ordering.
+        // 한글: 비동기 DB 작업 큐를 먼저 초기화 (세션 팩토리에서 필요).
+        //       워커 스레드 1개는 의도적: 세션별 작업 순서를 보장하기 위함.
+        //       같은 sessionId의 RecordConnectTime / RecordDisconnectTime은 제출 순서대로
+        //       실행되어야 함. 2개 이상 워커 시 동일 세션 작업이 서로 다른 스레드에서
+        //       동시 실행될 수 있어 순서가 깨짐.
+        //       멀티워커 처리량이 필요하면 OrderedTaskQueue(해시 기반 친화도)로 전환.
         mDBTaskQueue = std::make_unique<DBTaskQueue>();
-        if (!mDBTaskQueue->Initialize(2))  // 2 worker threads for DB operations
+        if (!mDBTaskQueue->Initialize(1))
         {
             Logger::Error("Failed to initialize DB task queue");
             return false;
         }
 
-        // English: Inject DB task queue into ClientSession (dependency injection)
-        // Korean: ClientSession에 DB 작업 큐 주입 (의존성 주입)
-        ClientSession::SetDBTaskQueue(mDBTaskQueue.get());
+        // English: Set Session factory using a lambda that captures mDBTaskQueue by pointer.
+        //          Constructor injection replaces the previous static class variable —
+        //          each TestServer instance gets its own independent DBTaskQueue reference.
+        // 한글: mDBTaskQueue 포인터를 캡처하는 람다로 세션 팩토리 설정.
+        //       생성자 주입이 이전 static 클래스 변수를 대체 —
+        //       각 TestServer 인스턴스가 독립적인 DBTaskQueue 참조를 보유.
+        Core::SessionManager::Instance().Initialize(MakeClientSessionFactory());
 
         // English: Create and initialize client network engine using factory (auto-detect best backend)
         // Korean: 팩토리를 사용하여 클라이언트 네트워크 엔진 생성 및 초기화 (최적 백엔드 자동 감지)
@@ -285,9 +296,15 @@ namespace Network::TestServer
             " bytes from client Connection: " + std::to_string(eventData.connectionId));
     }
 
-    SessionRef TestServer::CreateClientSession()
+    Core::SessionFactory TestServer::MakeClientSessionFactory()
     {
-        return std::make_shared<ClientSession>();
+        // English: Capture raw pointer — mDBTaskQueue outlives all sessions (destroyed in Stop)
+        // 한글: raw 포인터 캡처 — mDBTaskQueue는 모든 세션보다 오래 살아남 (Stop에서 소멸)
+        DBTaskQueue* dbQueue = mDBTaskQueue.get();
+        return [dbQueue]() -> Core::SessionRef
+        {
+            return std::make_shared<ClientSession>(dbQueue);
+        };
     }
 
     void TestServer::DisconnectFromDBServer()

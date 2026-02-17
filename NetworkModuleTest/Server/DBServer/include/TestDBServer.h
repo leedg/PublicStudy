@@ -3,7 +3,8 @@
 // English: TestDBServer main header - database server using NetworkEngine (multi-platform)
 // Korean: TestDBServer 메인 헤더 - NetworkEngine 사용 데이터베이스 서버 (멀티플랫폼)
 
-#include "DBPingTimeManager.h"
+// English: DBPingTimeManager removed — its functionality is now in ServerLatencyManager
+// 한글: DBPingTimeManager 제거 — 기능이 ServerLatencyManager에 통합됨
 #include "ServerLatencyManager.h"
 #include "ServerPacketHandler.h"
 #include "OrderedTaskQueue.h"
@@ -79,14 +80,13 @@ namespace Network::DBServer
         // Korean: 네트워크 엔진 (멀티플랫폼 지원)
         std::unique_ptr<Core::INetworkEngine>       mEngine;
 
-        // English: Database components
-        // Korean: 데이터베이스 컴포넌트
-        std::unique_ptr<DBPingTimeManager>          mDBPingTimeManager;
-        std::unique_ptr<ServerPacketHandler>        mPacketHandler;
-
-        // English: Per-server latency tracking and DB persistence
-        // Korean: 서버별 레이턴시 추적 및 DB 저장
+        // English: Unified latency manager (handles RTT stats + ping time persistence)
+        //          Previously split across ServerLatencyManager + DBPingTimeManager.
+        // Korean: 통합 레이턴시 관리자 (RTT 통계 + 핑 시간 저장 모두 담당)
+        //         이전에는 ServerLatencyManager + DBPingTimeManager로 분리됐음.
         std::unique_ptr<ServerLatencyManager>       mLatencyManager;
+
+        std::unique_ptr<ServerPacketHandler>        mPacketHandler;
 
         // English: Ordered task queue for per-serverId ordering guarantee
         //          Uses hash-based thread affinity: same serverId -> same worker thread

@@ -13,29 +13,20 @@ namespace Network::TestServer
     using namespace Network::Core;
     using namespace Network::Utils;
 
-    // English: Static member initialization
-    // 한글: 정적 멤버 초기화
-    DBTaskQueue* ClientSession::sDBTaskQueue = nullptr;
-
     // =============================================================================
     // English: ClientSession implementation
     // 한글: ClientSession 구현
     // =============================================================================
 
-    ClientSession::ClientSession()
+    ClientSession::ClientSession(DBTaskQueue* dbTaskQueue)
         : mConnectionRecorded(false)
         , mPacketHandler(std::make_unique<ClientPacketHandler>())
+        , mDBTaskQueue(dbTaskQueue)
     {
     }
 
     ClientSession::~ClientSession()
     {
-    }
-
-    void ClientSession::SetDBTaskQueue(DBTaskQueue* queue)
-    {
-        sDBTaskQueue = queue;
-        Logger::Info("ClientSession: DBTaskQueue set");
     }
 
     void ClientSession::OnConnected()
@@ -101,9 +92,9 @@ namespace Network::TestServer
 
         // English: Submit task to queue (immediate return, processed in background)
         // 한글: 큐에 작업 제출 (즉시 반환, 백그라운드에서 처리)
-        if (sDBTaskQueue && sDBTaskQueue->IsRunning())
+        if (mDBTaskQueue && mDBTaskQueue->IsRunning())
         {
-            sDBTaskQueue->RecordConnectTime(GetId(), timeStr);
+            mDBTaskQueue->RecordConnectTime(GetId(), timeStr);
             Logger::Debug("Async DB task submitted - RecordConnectTime for Session: " +
                          std::to_string(GetId()));
         }
@@ -133,9 +124,9 @@ namespace Network::TestServer
 
         // English: Submit task to queue (immediate return, processed in background)
         // 한글: 큐에 작업 제출 (즉시 반환, 백그라운드에서 처리)
-        if (sDBTaskQueue && sDBTaskQueue->IsRunning())
+        if (mDBTaskQueue && mDBTaskQueue->IsRunning())
         {
-            sDBTaskQueue->RecordDisconnectTime(GetId(), timeStr);
+            mDBTaskQueue->RecordDisconnectTime(GetId(), timeStr);
             Logger::Debug("Async DB task submitted - RecordDisconnectTime for Session: " +
                          std::to_string(GetId()));
         }

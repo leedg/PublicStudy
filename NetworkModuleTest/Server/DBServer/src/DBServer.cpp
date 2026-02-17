@@ -71,8 +71,12 @@ bool DBServer::Initialize(uint16_t port, size_t maxConnections)
     // Create message handler
     mMessageHandler = std::make_unique<MessageHandler>();
     mPingPongHandler = std::make_unique<PingPongHandler>();
-    // 한글: Ping/Pong 시간 기록용 DB 처리 모듈 준비
-    mDbPingTimeManager = std::make_unique<DBPingTimeManager>();
+    // English: Unified latency manager (RTT stats + ping time persistence)
+    //          Replaces the separate DBPingTimeManager that was used here.
+    // 한글: 통합 레이턴시 관리자 (RTT 통계 + 핑 시간 저장)
+    //       이전에 사용하던 별도 DBPingTimeManager를 대체.
+    mLatencyManager = std::make_unique<ServerLatencyManager>();
+    mLatencyManager->Initialize();
 
     // Register message handlers
     mMessageHandler->RegisterHandler(
@@ -197,10 +201,11 @@ void DBServer::OnPingMessage(const Message &message)
         return;
     }
 
-    // 한글: Ping/Pong 시간을 GMT 기준으로 기록한다.
-    if (mDbPingTimeManager)
+    // English: Record ping time via unified latency manager
+    // 한글: 통합 레이턴시 관리자로 핑 시간 기록 (GMT 기준)
+    if (mLatencyManager && mLatencyManager->IsInitialized())
     {
-        mDbPingTimeManager->SavePingTime(
+        mLatencyManager->SavePingTime(
             static_cast<uint32_t>(message.mConnectionId),
             "TestServer",
             mPingPongHandler->GetLastPingTimestamp());

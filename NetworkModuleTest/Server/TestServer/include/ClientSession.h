@@ -14,21 +14,29 @@ namespace Network::TestServer { class DBTaskQueue; }
 namespace Network::TestServer
 {
     // =============================================================================
-    // English: ClientSession - handles communication with game clients
-    //          Holds encryption interface (currently no-op placeholders)
-    // 한글: ClientSession - 게임 클라이언트와의 통신 처리
-    //       암호화 인터페이스 보유 (현재는 no-op 플레이스홀더)
+    // English: ClientSession - handles communication with game clients.
+    //
+    //   DBTaskQueue ownership: NOT owned here.
+    //   The pointer is injected via the constructor (captured in the session factory
+    //   lambda inside TestServer::Initialize).  This eliminates the previous static
+    //   class variable pattern which acted as a hidden global and prevented multiple
+    //   independent TestServer instances from coexisting.
+    //
+    // 한글: ClientSession - 게임 클라이언트와의 통신 처리.
+    //
+    //   DBTaskQueue 소유권: 이 클래스가 소유하지 않음.
+    //   TestServer::Initialize의 세션 팩토리 람다에서 생성자 주입으로 전달.
+    //   이전의 static 클래스 변수(숨겨진 전역 상태)를 제거하여
+    //   여러 TestServer 인스턴스가 독립적으로 공존 가능.
     // =============================================================================
 
     class ClientSession : public Core::Session
     {
     public:
-        ClientSession();
+        // English: Constructor — inject DBTaskQueue pointer (not owned, must outlive this session)
+        // 한글: 생성자 — DBTaskQueue 포인터 주입 (소유권 없음, 세션보다 오래 살아야 함)
+        explicit ClientSession(DBTaskQueue* dbTaskQueue);
         virtual ~ClientSession();
-
-        // English: Set DB task queue for asynchronous DB operations (dependency injection)
-        // 한글: 비동기 DB 작업을 위한 DB 작업 큐 설정 (의존성 주입)
-        static void SetDBTaskQueue(DBTaskQueue* queue);
 
         // English: Session event overrides
         // 한글: 세션 이벤트 오버라이드
@@ -54,9 +62,9 @@ namespace Network::TestServer
         bool mConnectionRecorded;
         std::unique_ptr<ClientPacketHandler> mPacketHandler;
 
-        // English: Shared DB task queue (managed by TestServer)
-        // 한글: 공유 DB 작업 큐 (TestServer가 관리)
-        static DBTaskQueue* sDBTaskQueue;
+        // English: DB task queue — injected via constructor, NOT owned by this class
+        // 한글: DB 작업 큐 — 생성자 주입, 이 클래스가 소유하지 않음
+        DBTaskQueue* mDBTaskQueue;
     };
 
     using ClientSessionRef = std::shared_ptr<ClientSession>;

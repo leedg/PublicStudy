@@ -3,7 +3,9 @@
 // English: Database Server main header
 // ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 筌롫뗄????삳쐭
 
-#include "DBPingTimeManager.h"
+// English: DBPingTimeManager replaced by ServerLatencyManager (merged) — see DBPingTimeManager.h for migration notes
+// 한글: DBPingTimeManager는 ServerLatencyManager로 통합됨 — 마이그레이션 노트는 DBPingTimeManager.h 참조
+#include "ServerLatencyManager.h"
 #include "../ServerEngine/Network/Core/AsyncIOProvider.h"
 #include "../ServerEngine/Tests/Protocols/MessageHandler.h"
 #include "../ServerEngine/Tests/Protocols/PingPong.h"
@@ -166,8 +168,9 @@ class DBServer
 	std::unique_ptr<AsyncIO::AsyncIOProvider> mAsyncIOProvider;
 	std::unique_ptr<Protocols::MessageHandler> mMessageHandler;
 	std::unique_ptr<Protocols::PingPongHandler> mPingPongHandler;
-	// 한글: Ping/Pong 시간 저장을 위한 DB 처리 모듈
-	std::unique_ptr<DBPingTimeManager> mDbPingTimeManager;
+	// 한글: Ping/Pong 레이턴시 + 시간 저장 — ServerLatencyManager로 통합 (이전: DBPingTimeManager)
+	// English: Ping/Pong latency + time persistence — unified into ServerLatencyManager (was: DBPingTimeManager)
+	std::unique_ptr<ServerLatencyManager> mLatencyManager;
 
 	// Server state
 	std::atomic<bool> mIsRunning;

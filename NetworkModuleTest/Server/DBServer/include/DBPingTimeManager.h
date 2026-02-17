@@ -1,5 +1,27 @@
 #pragma once
 
+// =============================================================================
+// English: DEPRECATED — DBPingTimeManager has been merged into ServerLatencyManager.
+//
+//   All functionality previously provided here is now available through
+//   ServerLatencyManager:
+//     SavePingTime(serverId, serverName, timestamp)  ← was DBPingTimeManager::SavePingTime
+//     GetLastPingTime(serverId)                      ← was DBPingTimeManager::GetLastPingTime
+//
+//   This file is retained temporarily to avoid breaking any external include
+//   sites that have not yet been updated.  It will be removed in a future cleanup.
+//   Do NOT add new dependencies on this class.
+//
+// 한글: DEPRECATED — DBPingTimeManager가 ServerLatencyManager에 통합됨.
+//
+//   이 클래스가 제공하던 모든 기능은 이제 ServerLatencyManager를 통해 사용 가능:
+//     SavePingTime(serverId, serverName, timestamp)  ← 이전 DBPingTimeManager::SavePingTime
+//     GetLastPingTime(serverId)                      ← 이전 DBPingTimeManager::GetLastPingTime
+//
+//   외부 include 사이트 업데이트 전까지 임시 보존.
+//   향후 정리 시 삭제 예정. 이 클래스에 새 의존성 추가 금지.
+// =============================================================================
+
 // English: DB Ping Time Manager - handles ping timestamp storage
 // 한글: DB Ping 시간 관리자 - ping 타임스탬프 저장 처리
 
