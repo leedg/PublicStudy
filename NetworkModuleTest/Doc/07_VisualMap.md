@@ -2,7 +2,7 @@
 
 코드 구조와 기존 문서를 함께 볼 수 있도록 만든 통합 시각화 문서입니다.
 
-기준 시점: 2026-02-10  
+기준 시점: 2026-02-16
 기준 코드: `Server/`, `Client/`, `ModuleTest/`, `Doc/`
 
 ---
@@ -102,8 +102,9 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["ClientSession::OnConnected/OnDisconnected"] --> B["DBTaskQueue::EnqueueTask"]
-    B --> C["Worker Threads"]
+    F["TestServer::MakeClientSessionFactory()"] -->|"DBTaskQueue* 캡처 주입"| A
+    A["ClientSession(mDBTaskQueue)::OnConnected/OnDisconnected"] --> B["DBTaskQueue::EnqueueTask"]
+    B --> C["Worker Thread (1개, 순서 보장)"]
     C --> D["HandleRecord* / HandleUpdate*"]
     D --> E["현재: 로그/플레이스홀더 or ENABLE_DATABASE_SUPPORT 경로"]
 ```
@@ -112,8 +113,10 @@ flowchart LR
 flowchart LR
     P["ServerPacketHandler"] --> Q["OrderedTaskQueue(serverId 해시 라우팅)"]
     Q --> R["ServerLatencyManager::RecordLatency"]
-    Q --> S["DBPingTimeManager::SavePingTime"]
+    Q --> S["ServerLatencyManager::SavePingTime (DBPingTimeManager 통합됨)"]
 ```
+
+> **Note**: `DBPingTimeManager`는 `ServerLatencyManager`에 통합됨 — `SavePingTime` / `GetLastPingTime` 메서드가 `ServerLatencyManager`로 이전.
 
 ---
 

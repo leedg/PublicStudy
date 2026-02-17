@@ -52,6 +52,9 @@ NetworkModuleTest/
 - MessageHandler 포맷은 `DBServer.cpp` 실험 경로에서만 사용(기본 실행 경로 아님)
 - TestServer의 DBTaskQueue/DB 풀은 `ENABLE_DATABASE_SUPPORT` 정의 시 활성 (현재는 로그/플레이스홀더)
 - TestDBServer는 Ping/DBSavePingTime 패킷 처리 가능 (DB 저장은 플레이스홀더)
+- `DBPingTimeManager` → `ServerLatencyManager` 통합 완료: `SavePingTime` / `GetLastPingTime` 메서드가 `ServerLatencyManager`로 이전됨
+- `ClientSession` 의존성 주입: `static sDBTaskQueue` 전역 제거 → 생성자 주입(`mDBTaskQueue`), `TestServer::MakeClientSessionFactory()` 람다 패턴
+- `DBTaskQueue` 워커 수: 2 → **1** (같은 세션 RecordConnect/Disconnect 순서 보장)
 
 ## 7. 제약 및 향후 과제
 - Linux/macOS 경로는 기본 send/recv 구현 완료 (테스트/안정성 검증 필요)

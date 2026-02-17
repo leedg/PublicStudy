@@ -127,7 +127,9 @@ Core::Session
     └── DBServerSession — DB 서버 전용. DBServerPacketHandler 소유.
 ```
 
-- `ClientSession`이 `GameSession`을 대체. `sDBTaskQueue` 의존성 주입 유지.
+- `ClientSession`이 `GameSession`을 대체.
+  `DBTaskQueue*`는 **생성자 주입** 방식: `TestServer::MakeClientSessionFactory()`가 반환하는 람다가 캡처 → 주입.
+  `static DBTaskQueue* sDBTaskQueue` 전역 상태 제거 — 여러 `TestServer` 인스턴스가 독립적으로 공존 가능.
 - `DBServerSession`이 raw `Core::Session` 직접 사용을 대체.
 - 연결 생명주기(소켓, recv/ping 스레드) 관리는 `TestServer`가 담당.
 
@@ -141,6 +143,9 @@ Core::Session
 4. **Graceful Shutdown**: 세션 전부 종료 → 큐 드레인 → 스레드 Join 순서 엄수
 5. **자동 재연결**: 서버↔서버, 클라이언트↔서버 연결 끊김 시 재연결 로직 유지
 6. **재연결 에러 구분**: `WSAECONNREFUSED`(서버 종료/재기동 중) → 1s 고정 간격; 그 외 → 지수 백오프(최대 30s)
+7. **DBTaskQueue 워커 1개**: `RecordConnectTime`/`RecordDisconnectTime` 같은 같은 세션 작업의 순서를 보장하기 위해 `Initialize(1)` 유지. 멀티워커 처리량이 필요하면 `OrderedTaskQueue`(해시 기반 친화도)로 전환.
+8. **의존성 주입 우선**: 클래스 `static` 멤버 전역 상태 대신 생성자/팩토리 람다 캡처 방식으로 주입.
+9. **이벤트 일관성**: `OnDisconnected` / `FireEvent`는 항상 `mLogicThreadPool.Submit()`을 통해 실행 (`CloseConnection` 포함).
 
 ---
 

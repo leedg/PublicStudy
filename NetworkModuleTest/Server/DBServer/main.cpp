@@ -22,6 +22,7 @@
 // Korean: 시그널 처리용 전역 서버 인스턴스
 static Network::DBServer::TestDBServer* g_pServer = nullptr;
 static std::atomic<bool> g_Running{ true };
+static std::atomic<bool> g_ShutdownComplete{ false };
 
 // English: Signal handler for graceful shutdown
 // Korean: 정상 종료를 위한 시그널 핸들러
@@ -30,6 +31,30 @@ void SignalHandler(int signum)
     Network::Utils::Logger::Info("Signal received: " + std::to_string(signum));
     g_Running = false;
 }
+
+#ifdef _WIN32
+// English: Console ctrl handler — catches CTRL_CLOSE_EVENT / taskkill so server.Stop() runs.
+// 한글: 콘솔 컨트롤 핸들러 — CTRL_CLOSE_EVENT/창 닫기 시 server.Stop()이 실행되도록 보장.
+static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
+{
+    switch (ctrlType)
+    {
+    case CTRL_CLOSE_EVENT:
+    case CTRL_LOGOFF_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+        Network::Utils::Logger::Info("Console shutdown event received (" +
+                                     std::to_string(ctrlType) + "), stopping DBServer...");
+        g_Running = false;
+        // English: Wait up to 8s for main thread to finish server.Stop()
+        // 한글: 메인 스레드가 server.Stop()을 완료할 때까지 최대 8초 대기
+        for (int i = 0; i < 80 && !g_ShutdownComplete.load(); ++i)
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        return TRUE;
+    default:
+        return FALSE;  // CTRL_C_EVENT / CTRL_BREAK_EVENT: std::signal이 처리
+    }
+}
+#endif
 
 // English: Print usage information
 // Korean: 사용법 출력
@@ -116,6 +141,9 @@ int main(int argc, char* argv[])
     #ifdef SIGBREAK
     std::signal(SIGBREAK, SignalHandler);
     #endif
+    // English: Catch CTRL_CLOSE_EVENT for graceful shutdown on window close / taskkill
+    // 한글: 창 닫기 / taskkill 시 정상 종료를 위한 ConsoleCtrlHandler 등록
+    SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
 #endif
 
     // English: Create and initialize server
@@ -141,18 +169,39 @@ int main(int argc, char* argv[])
 
     Network::Utils::Logger::Info("TestDBServer is running. Press Ctrl+C to stop.");
 
-    // English: Main loop - wait for shutdown signal
-    // Korean: 메인 루프 - 종료 시그널 대기
+    // English: Main loop — waits for SIGINT/SIGTERM, ConsoleCtrlHandler, or Named Event.
+    //          Named event "TestDBServer_GracefulShutdown" allows test scripts to trigger
+    //          graceful shutdown without console manipulation (no TerminateProcess).
+    // 한글: 메인 루프 — SIGINT/SIGTERM, ConsoleCtrlHandler, 또는 Named Event 대기.
+    //       Named Event "TestDBServer_GracefulShutdown"으로 테스트 스크립트가
+    //       콘솔 없이 정상 종료를 트리거할 수 있음 (TerminateProcess 불필요).
+#ifdef _WIN32
+    HANDLE hShutdownEvent = CreateEventA(nullptr, FALSE, FALSE, "TestDBServer_GracefulShutdown");
+    while (g_Running && server.IsRunning())
+    {
+        if (hShutdownEvent && WaitForSingleObject(hShutdownEvent, 100) == WAIT_OBJECT_0)
+        {
+            Network::Utils::Logger::Info("Shutdown event signaled - stopping DBServer");
+            g_Running = false;
+        }
+    }
+    if (hShutdownEvent) CloseHandle(hShutdownEvent);
+#else
     while (g_Running && server.IsRunning())
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+#endif
 
     // English: Graceful shutdown
     // Korean: 정상 종료
     Network::Utils::Logger::Info("Shutting down TestDBServer...");
     server.Stop();
     g_pServer = nullptr;
+
+    // English: Signal ConsoleCtrlHandler (if waiting) that cleanup is done
+    // 한글: 정리 완료를 ConsoleCtrlHandler에 알림
+    g_ShutdownComplete.store(true);
 
     Network::Utils::Logger::Info("TestDBServer stopped.");
     std::cout << "Server shutdown complete." << std::endl;

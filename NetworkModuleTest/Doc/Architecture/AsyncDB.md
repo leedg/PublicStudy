@@ -1,6 +1,6 @@
 # 🎯 비동기 DB 아키텍처 완성 보고서
 
-**날짜**: 2026-02-05 (2026-02-12 세션 계층 리팩토링 반영)
+**날짜**: 2026-02-05 (2026-02-12 세션 계층 리팩토링 반영, 2026-02-16 의존성 주입 + 워커 단일화 반영)
 **목표**: ClientSession과 DB 처리를 완전히 분리하여 독립적으로 실행
 **결과**: ✅ 성공 - 비동기 작업 큐 패턴 구현 완료
 
@@ -109,25 +109,40 @@ void ClientSession::RecordConnectTimeToDB()
 void ClientSession::AsyncRecordConnectTime()
 {
     // 비동기 작업 제출 - 즉시 반환!
-    if (sDBTaskQueue && sDBTaskQueue->IsRunning())
+    // 한글: mDBTaskQueue는 생성자 주입 (정적 전역 아님)
+    if (mDBTaskQueue && mDBTaskQueue->IsRunning())
     {
-        sDBTaskQueue->RecordConnectTime(GetId(), timeStr);
+        mDBTaskQueue->RecordConnectTime(GetId(), timeStr);
         return;  // 즉시 반환, 백그라운드에서 처리
     }
 }
 ```
 
-#### 의존성 주입 패턴
+#### 의존성 주입 패턴 (생성자 주입 방식 — 정적 전역 상태 제거)
 ```cpp
 class ClientSession
 {
 public:
-    // 정적 메서드로 DBTaskQueue 설정 (전역 접근)
-    static void SetDBTaskQueue(DBTaskQueue* queue);
+    // English: Constructor injection — DBTaskQueue is injected at creation time
+    // 한글: 생성자 주입 — DBTaskQueue를 생성 시점에 주입. 전역 상태 없음.
+    explicit ClientSession(DBTaskQueue* dbTaskQueue);
 
 private:
-    static DBTaskQueue* sDBTaskQueue;  // 모든 ClientSession이 공유
+    DBTaskQueue* mDBTaskQueue;  // 소유하지 않음 (TestServer가 소유)
+    // 과거: static DBTaskQueue* sDBTaskQueue — 제거됨 (여러 TestServer 인스턴스 지원)
 };
+```
+
+`TestServer::MakeClientSessionFactory()`가 반환하는 람다가 `DBTaskQueue*`를 캡처하여 각 세션 생성 시 주입한다:</p>
+
+```cpp
+Core::SessionFactory TestServer::MakeClientSessionFactory()
+{
+    DBTaskQueue* dbQueue = mDBTaskQueue.get();
+    return [dbQueue]() -> Core::SessionRef {
+        return std::make_shared<ClientSession>(dbQueue);
+    };
+}
 ```
 
 ---
@@ -138,12 +153,16 @@ private:
 ```cpp
 bool TestServer::Initialize(uint16_t port, const std::string& dbConnectionString)
 {
-    // 1. DB 작업 큐 생성 및 시작
+    // 1. DB 작업 큐 생성 — 워커 1개로 고정 (세션별 순서 보장)
+    //    RecordConnectTime / RecordDisconnectTime이 같은 세션에 대해
+    //    항상 Connect → Disconnect 순으로 처리되어야 하므로 1개 워커 유지.
+    //    멀티워커 처리량이 필요하면 OrderedTaskQueue(해시 기반 친화도)로 전환할 것.
     mDBTaskQueue = std::make_unique<DBTaskQueue>();
-    mDBTaskQueue->Initialize(2);  // 2개 워커 스레드
+    mDBTaskQueue->Initialize(1);  // ← 워커 1개 (과거: 2개)
 
-    // 2. ClientSession에 DBTaskQueue 주입
-    ClientSession::SetDBTaskQueue(mDBTaskQueue.get());
+    // 2. 세션 팩토리 람다 — DBTaskQueue를 캡처하여 각 ClientSession에 주입
+    //    과거: ClientSession::SetDBTaskQueue(mDBTaskQueue.get());  (전역 정적 — 제거됨)
+    Core::SessionManager::Instance().Initialize(MakeClientSessionFactory());
 
     // 3. 네트워크 엔진 초기화
     mClientEngine = CreateNetworkEngine("auto");
@@ -236,9 +255,9 @@ OnConnected() ──█ 큐잉 █──→ 게임 로직 (1ms 미만, 즉시 �
 ```
 
 ### **워커 스레드 풀**
-- 기본 2개 워커 스레드
-- 각 스레드가 독립적으로 작업 처리
-- 높은 처리량 필요 시 워커 수 증가 가능
+- **1개 워커 스레드** (세션 내 작업 순서 보장)
+- `RecordConnectTime` → `RecordDisconnectTime` FIFO 순서 엄수
+- 멀티워커 처리량 확장 시 `OrderedTaskQueue` (serverId 해시 기반 친화도) 전환 필요
 
 ### **작업 큐 특성**
 - **FIFO 순서 보장**: 먼저 제출된 작업이 먼저 처리
@@ -382,9 +401,9 @@ void ClientSession::OnConnected()
 ```cpp
 void ClientSession::SavePlayerProgress(const std::string& progressData)
 {
-    if (sDBTaskQueue && sDBTaskQueue->IsRunning())
+    if (mDBTaskQueue && mDBTaskQueue->IsRunning())
     {
-        sDBTaskQueue->UpdatePlayerData(GetId(), progressData,
+        mDBTaskQueue->UpdatePlayerData(GetId(), progressData,
             [this](bool success, const std::string& result) {
                 if (success) {
                     SendMessage("Progress saved!");
@@ -435,8 +454,8 @@ Server/TestServer/
 - [x] 워커 스레드 풀 구현
 - [x] ClientSession에서 비동기 호출로 변경 (GameSession → ClientSession 리팩토링)
 - [x] ClientSession / ServerSession / DBServerSession 계층 도입
-- [x] TestServer에서 DBTaskQueue 초기화
-- [x] 의존성 주입 패턴 적용
+- [x] TestServer에서 DBTaskQueue 초기화 (`Initialize(1)` — 워커 1개, 순서 보장)
+- [x] 의존성 주입 패턴 적용 (생성자 주입 + 팩토리 람다, `static sDBTaskQueue` 제거)
 - [x] 에러 처리 및 로깅
 - [x] 통계 수집 기능
 - [x] WSAECONNREFUSED 재연결 간격 최적화
@@ -494,7 +513,8 @@ Server/TestServer/
 - ✅ **비동기**: 별도 워커 스레드에서 DB 작업 처리
 - ✅ **독립성**: DB 장애 시에도 게임 로직 정상 동작
 - ✅ **확장성**: 새 작업 타입 추가 및 성능 튜닝 용이
-- ✅ **깔끔한 아키텍처**: 의존성 주입 패턴으로 결합도 최소화
+- ✅ **깔끔한 아키텍처**: 생성자 주입 + 팩토리 람다로 결합도 최소화 (`static sDBTaskQueue` 전역 상태 제거)
+- ✅ **순서 보장**: 워커 1개로 같은 세션의 Connect→Disconnect 순서 엄수
 - ✅ **세션 계층**: ClientSession / ServerSession / DBServerSession 3계층 구조
 - ✅ **재연결 최적화**: WSAECONNREFUSED 시 1s 고정 간격으로 빠른 재기동 감지
 

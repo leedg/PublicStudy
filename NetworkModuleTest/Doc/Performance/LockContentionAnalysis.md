@@ -1,6 +1,6 @@
 # 🔒 Lock 경합(Lock Contention) 분석 보고서
 
-**날짜**: 2026-02-05
+**날짜**: 2026-02-05 (2026-02-16 Session 수신 버퍼 최적화 + mPingSequence 원자화 반영)
 **분석 범위**: NetworkModuleTest 프로젝트 전체
 **목적**: Lock 경합 및 Deadlock 위험 식별, 성능 최적화 권장사항 제시
 
@@ -23,6 +23,14 @@
 2. **DBTaskQueue::GetQueueSize()** - 불필요한 Lock 경합 ⚠️
 3. **Session::Send()** - 높은 빈도 Lock 경합 ⚠️
 4. **SafeQueue::Push()** - 최적화 가능 💡
+
+### 2026-02-16 적용 완료 최적화
+
+| 항목 | 이전 | 이후 | 효과 |
+|------|------|------|------|
+| `ProcessRawRecv` TCP 재조립 | O(n) `erase()` 반복 | O(1) `mRecvAccumOffset` 진행 + 주기적 compact | 고빈도 수신 시 패킷당 O(n) 비용 제거 |
+| `mPingSequence` | `uint32_t` (비원자) | `std::atomic<uint32_t>` | 핑 타이머 스레드 ↔ IO 스레드 경쟁 조건 해소 |
+| `CloseConnection` 이벤트 | 직접 `OnDisconnected()` 호출 | `mLogicThreadPool.Submit()` | 연결 해제 경로 스레드 안전성 통일 |
 
 ---
 
@@ -353,6 +361,57 @@ std::atomic<bool> mIsSending;  // ✅ Send 중복 방지
 **장점**:
 - Lock-free로 전송 중 상태 확인
 - 여러 스레드에서 Send 호출 시 안전
+
+#### ✅ **[2026-02-16 적용] ProcessRawRecv — O(1) 오프셋 기반 TCP 재조립**
+
+**이전 구현 (O(n))**:
+```cpp
+// 패킷 처리 후 앞부분을 매번 erase → O(n) 비용
+mRecvAccumBuffer.erase(
+    mRecvAccumBuffer.begin(),
+    mRecvAccumBuffer.begin() + packetSize);
+```
+
+**현재 구현 (O(1))**:
+```cpp
+// mRecvAccumOffset을 전진시켜 처리된 데이터를 논리적으로 건너뜀
+mRecvAccumOffset += packetSize;
+
+// 버퍼 끝까지 소비되면 O(1) clear
+if (mRecvAccumOffset >= mRecvAccumBuffer.size()) {
+    mRecvAccumBuffer.clear(); mRecvAccumOffset = 0;
+}
+// 절반 이상 소비되면 prefix만 erase (상각 O(1))
+else if (mRecvAccumOffset > mRecvAccumBuffer.size() / 2) {
+    mRecvAccumBuffer.erase(
+        mRecvAccumBuffer.begin(),
+        mRecvAccumBuffer.begin() + static_cast<std::ptrdiff_t>(mRecvAccumOffset));
+    mRecvAccumOffset = 0;
+}
+```
+
+**장점**:
+- ✅ 패킷당 O(n) 메모리 이동 제거
+- ✅ 고빈도 소형 패킷 환경에서 대폭 개선
+- ✅ `DBRecvLoop`의 offset 전략과 동일한 패턴으로 일관성 확보
+
+#### ✅ **[2026-02-16 적용] mPingSequence — `std::atomic<uint32_t>`**
+
+**이전**: `uint32_t mPingSequence` — 핑 타이머 스레드와 IO 완료 스레드에서 비원자 접근
+
+**이후**: `std::atomic<uint32_t> mPingSequence` — 모든 접근 원자 보장
+
+```cpp
+// Session.h
+std::atomic<uint32_t> mPingSequence{0};
+
+uint32_t GetPingSequence() const {
+    return mPingSequence.load(std::memory_order_acquire);
+}
+uint32_t IncrementPingSequence() {
+    return mPingSequence.fetch_add(1, std::memory_order_acq_rel);
+}
+```
 
 ---
 

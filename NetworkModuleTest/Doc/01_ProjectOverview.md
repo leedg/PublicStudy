@@ -22,7 +22,16 @@ DB 연동은 프로토타입(로그/플레이스홀더 중심) 단계입니다.
 | TestClient | 프로토타입 | RTT 통계 포함 |
 | MultiPlatformNetwork | 보관 | 참고 구현 |
 
-## 최근 업데이트
+## 최근 업데이트 (2026-02-16)
+- `ProcessRawRecv` O(n) erase → O(1) 오프셋 기반 누적 버퍼 처리 (mRecvAccumOffset)
+- `mPingSequence` `uint32_t` → `std::atomic<uint32_t>` (핑 타이머-IO 스레드 경쟁 조건 해소)
+- `ClientSession` 의존성 주입: `static sDBTaskQueue` 전역 제거 → 생성자 주입, `MakeClientSessionFactory()` 람다 패턴
+- `DBTaskQueue` 워커 수 2 → 1 (세션별 Connect/Disconnect 작업 순서 보장)
+- `CloseConnection` 이벤트 경로: `mLogicThreadPool.Submit()` 통일 (ProcessRecvCompletion 경로와 일관성)
+- `DBPingTimeManager` → `ServerLatencyManager` 통합 (SavePingTime/GetLastPingTime 이전)
+- `PlatformDetect.h`: `PLATFORM_WINDOWS/LINUX/MACOS` + `DB_BACKEND_ODBC/OLEDB` 컴파일 타임 매크로 추가
+
+## 이전 업데이트
 - TestServer ↔ TestDBServer 패킷 연결 경로 추가
 - Linux/macOS 기본 I/O 경로 보강
 - 문서-코드 정합성 점검 및 기본 포트/옵션 갱신

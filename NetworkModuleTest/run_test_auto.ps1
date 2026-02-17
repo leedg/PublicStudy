@@ -1,9 +1,47 @@
 param([int]$RunSeconds = 5)
 
-$binDir = 'E:\MyGitHub\PublicStudy\NetworkModuleTest\x64\Debug'
-$dbOut   = "$env:TEMP\dbserver_out.txt"
-$srvOut  = "$env:TEMP\server_out.txt"
-$cliOut  = "$env:TEMP\client_out.txt"
+$binDir = 'C:\MyGithub\PublicStudy\NetworkModuleTest\x64\Debug'
+$dbOut  = "$env:TEMP\dbserver_out.txt"
+$srvOut = "$env:TEMP\server_out.txt"
+$cliOut = "$env:TEMP\client_out.txt"
+
+# English: Helper — signal a Named Event for graceful shutdown, then wait with Kill fallback.
+# 한글: Named Event로 정상 종료 신호 → 대기 → 타임아웃 시 Kill 폴백.
+function Stop-Gracefully {
+    param(
+        [System.Diagnostics.Process]$Proc,
+        [string]$EventName,
+        [int]$TimeoutMs = 5000
+    )
+    if (-not $Proc -or $Proc.HasExited) { return }
+
+    $sig = [IntPtr]::Zero
+    try {
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class Win32Event {
+    [DllImport("kernel32.dll", SetLastError=true)]
+    public static extern IntPtr OpenEvent(uint dwDesiredAccess, bool bInheritHandle, string lpName);
+    [DllImport("kernel32.dll", SetLastError=true)]
+    public static extern bool SetEvent(IntPtr hEvent);
+    [DllImport("kernel32.dll", SetLastError=true)]
+    public static extern bool CloseHandle(IntPtr hObject);
+}
+"@ -ErrorAction SilentlyContinue
+
+        $sig = [Win32Event]::OpenEvent(0x0002, $false, $EventName)
+        if ($sig -ne [IntPtr]::Zero) {
+            [Win32Event]::SetEvent($sig) | Out-Null
+            $Proc.WaitForExit($TimeoutMs) | Out-Null
+        }
+    } catch {}
+    finally {
+        if ($sig -ne [IntPtr]::Zero) { [Win32Event]::CloseHandle($sig) | Out-Null }
+    }
+
+    if (-not $Proc.HasExited) { try { $Proc.Kill() } catch {} }
+}
 
 $dbProc = Start-Process -FilePath "$binDir\TestDBServer.exe" `
     -ArgumentList '-p','8002' -WorkingDirectory $binDir -PassThru `
@@ -23,9 +61,11 @@ $clientProc = Start-Process -FilePath "$binDir\TestClient.exe" `
 
 Start-Sleep -Seconds $RunSeconds
 
-foreach ($p in @($clientProc, $serverProc, $dbProc)) {
-    if ($p -and -not $p.HasExited) { try { $p.Kill() } catch {} }
-}
+# English: Graceful shutdown via Named Events (Kill fallback on timeout)
+# 한글: Named Event로 정상 종료 (타임아웃 시 Kill 폴백)
+Stop-Gracefully -Proc $clientProc -EventName "TestClient_GracefulShutdown_$($clientProc.Id)" -TimeoutMs 4000
+Stop-Gracefully -Proc $serverProc -EventName "TestServer_GracefulShutdown"   -TimeoutMs 6000
+Stop-Gracefully -Proc $dbProc     -EventName "TestDBServer_GracefulShutdown" -TimeoutMs 6000
 Start-Sleep -Milliseconds 500
 
 Write-Host "=== DBServer Output ===" -ForegroundColor Cyan

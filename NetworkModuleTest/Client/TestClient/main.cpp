@@ -10,6 +10,13 @@
 #include <string>
 #include <thread>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
+
 using namespace Network::Utils;
 using namespace Network::TestClient;
 
@@ -25,6 +32,28 @@ void SignalHandler(int signum)
 		g_pClient->RequestStop();
 	}
 }
+
+#ifdef _WIN32
+// English: Console ctrl handler — catches CTRL_CLOSE_EVENT so client can disconnect cleanly.
+// 한글: 콘솔 컨트롤 핸들러 — CTRL_CLOSE_EVENT 처리로 클라이언트가 정상 종료.
+static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
+{
+    switch (ctrlType)
+    {
+    case CTRL_CLOSE_EVENT:
+    case CTRL_LOGOFF_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+        if (g_pClient)
+            g_pClient->RequestStop();
+        // English: Give main thread up to 3s to finish Shutdown()
+        // 한글: 메인 스레드가 Shutdown()을 완료할 때까지 최대 3초 대기
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
+#endif
 
 void PrintUsage(const char *programName)
 {
@@ -129,8 +158,17 @@ int main(int argc, char *argv[])
 	// 한글: 시그널 핸들러 등록
 	std::signal(SIGINT, SignalHandler);
 	std::signal(SIGTERM, SignalHandler);
+#ifdef _WIN32
 #ifdef SIGBREAK
 	std::signal(SIGBREAK, SignalHandler);
+#endif
+	// English: Catch CTRL_CLOSE_EVENT for graceful shutdown
+	// 한글: CTRL_CLOSE_EVENT 처리로 정상 종료
+	SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
+#else
+#ifdef SIGBREAK
+	std::signal(SIGBREAK, SignalHandler);
+#endif
 #endif
 
 	// English: Create and run client
@@ -143,6 +181,17 @@ int main(int argc, char *argv[])
 		Logger::Error("Failed to initialize socket platform");
 		return 1;
 	}
+
+#ifdef _WIN32
+	// English: Create a PID-scoped Named Event so test scripts can trigger graceful
+	//          shutdown per-instance: "TestClient_GracefulShutdown_<PID>"
+	// 한글: PID 기반 Named Event 생성 — 테스트 스크립트가 인스턴스별로 정상 종료 트리거 가능
+	//       이름 형식: "TestClient_GracefulShutdown_<PID>"
+	const std::string shutdownEventName =
+	    "TestClient_GracefulShutdown_" + std::to_string(GetCurrentProcessId());
+	HANDLE hShutdownEvent = CreateEventA(nullptr, FALSE, FALSE, shutdownEventName.c_str());
+	Logger::Info("Graceful shutdown event: " + shutdownEventName);
+#endif
 
 	// English: Reconnect loop - retries on connection loss with exponential backoff
 	// 한글: 재연결 루프 - 연결 끊김 시 지수 백오프로 재시도
@@ -198,6 +247,19 @@ int main(int argc, char *argv[])
 		// ── 메인 루프 ──────────────────────────────────────────────────
 		while (!client.IsStopRequested() && client.IsConnected())
 		{
+#ifdef _WIN32
+			// English: Poll Named Event (100ms timeout) — allows test scripts to
+			//          signal graceful shutdown without TerminateProcess.
+			// 한글: Named Event 폴링 (100ms 타임아웃) — 테스트 스크립트가
+			//       TerminateProcess 없이 정상 종료를 트리거할 수 있음.
+			if (hShutdownEvent &&
+			    WaitForSingleObject(hShutdownEvent, 0) == WAIT_OBJECT_0)
+			{
+				Logger::Info("Shutdown event signaled - stopping client");
+				client.RequestStop();
+				break;
+			}
+#endif
 			if (HasKeyInput())
 			{
 				char ch = ReadKeyChar();
@@ -238,6 +300,10 @@ int main(int argc, char *argv[])
 	// 한글: 정상 종료
 	client.Shutdown();
 	g_pClient = nullptr;
+
+#ifdef _WIN32
+	if (hShutdownEvent) CloseHandle(hShutdownEvent);
+#endif
 
 #ifndef _WIN32
 	// English: Restore terminal mode before exit
