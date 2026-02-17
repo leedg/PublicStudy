@@ -42,11 +42,12 @@ void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 	mState.store(SessionState::Connected, std::memory_order_release);
 	mConnectTime = Utils::Timer::GetCurrentTimestamp();
 	mLastPingTime = mConnectTime;
-	mPingSequence = 0;
+	mPingSequence.store(0, std::memory_order_relaxed);
 	mIsSending = false;
 	mSendQueueSize.store(0, std::memory_order_relaxed);
 	mAsyncProvider = nullptr;
 	mRecvAccumBuffer.clear();
+	mRecvAccumOffset = 0;
 
 	Utils::Logger::Info("Session initialized - ID: " + std::to_string(mId));
 }
@@ -80,8 +81,8 @@ void Session::Close()
 #endif
 	}
 
-	// English: Clear send queue
-	// ?쒓?: ?꾩넚 ??鍮꾩슦湲?
+	// English: Clear send queue and recv reassembly state
+	// 한글: 송신 큐와 수신 재조립 상태 초기화
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
 		while (!mSendQueue.empty())
@@ -89,6 +90,11 @@ void Session::Close()
 			mSendQueue.pop();
 		}
 		mSendQueueSize.store(0, std::memory_order_relaxed);
+	}
+	{
+		std::lock_guard<std::mutex> recvLock(mRecvMutex);
+		mRecvAccumBuffer.clear();
+		mRecvAccumOffset = 0;
 	}
 
 	Utils::Logger::Info("Session closed - ID: " + std::to_string(mId));
@@ -334,69 +340,94 @@ size_t Session::GetRecvBufferSize() const
 
 void Session::ProcessRawRecv(const char *data, uint32_t size)
 {
-	// English: Serialize concurrent calls — PostRecv() is re-issued immediately after each
-	//          completion, so a second recv can complete before the first is processed by the
-	//          logic thread pool, causing two workers to run here simultaneously.
-	//          Without this lock, mRecvAccumBuffer would be accessed from two threads
-	//          concurrently, corrupting the buffer and making hdr a dangling pointer
-	//          (manifests as hdr->size = 0xDDDD, the MSVC freed-memory fill pattern).
-	// 한글: 동시 호출 직렬화 — PostRecv()가 완료 즉시 재호출되므로 두 번째 recv가
-	//       첫 번째보다 먼저 LogicThreadPool에서 실행될 수 있음.
-	//       이 락 없이는 mRecvAccumBuffer에 두 스레드가 동시 접근하여 hdr 댕글링 포인터
-	//       (hdr->size = 0xDDDD) 크래시 발생.
+	// English: Serialize concurrent calls.
+	//          PostRecv() is re-issued immediately after each IOCP completion, so a second
+	//          recv can complete before the first is processed by the logic thread pool —
+	//          two workers run here simultaneously. Without this lock, mRecvAccumBuffer
+	//          would be corrupted (manifests as hdr->size = 0xDDDD freed-memory pattern).
+	// 한글: 동시 호출 직렬화.
+	//       PostRecv()가 완료 즉시 재발행되므로 두 번째 recv가 먼저 LogicThreadPool에서
+	//       실행될 수 있음. 이 락 없이는 버퍼 손상(hdr->size = 0xDDDD) 크래시 발생.
 	std::lock_guard<std::mutex> recvLock(mRecvMutex);
 
-	// English: Guard against oversized accumulation (slow-loris / flood defense).
-	//          Threshold must be > (MAX_PACKET_SIZE - 1) + RECV_BUFFER_SIZE so that
-	//          a legitimate partial packet tail + one full recv never triggers a false reset.
-	//          MAX_PACKET_SIZE (4096) alone is too small: RECV_BUFFER_SIZE (8192) exceeds it,
-	//          so a single large recv on a non-empty buffer would corrupt the stream.
-	// 한글: 과도한 누적 방어 (느린 공격 / 플러드 방어).
-	//       임계값은 (MAX_PACKET_SIZE - 1) + RECV_BUFFER_SIZE 보다 커야 함.
-	//       부분 패킷 꼬리 + 단일 recv 최대치가 정상 범위를 벗어나지 않도록.
-	//       MAX_PACKET_SIZE(4096) 단독 사용 시: RECV_BUFFER_SIZE(8192)가 이를 초과하므로
-	//       빈 버퍼에서도 단일 recv가 가드를 발동시켜 스트림을 오염시킬 수 있음.
-	constexpr size_t kMaxAccumSize = MAX_PACKET_SIZE * 4;  // 16KB — safely above 4095 + 8192
-	if (mRecvAccumBuffer.size() + size > kMaxAccumSize)
+	// English: Overflow guard (slow-loris / flood defense).
+	//          Threshold > (MAX_PACKET_SIZE - 1) + RECV_BUFFER_SIZE so that a legitimate
+	//          partial tail + one full recv never triggers a false reset.
+	//          We measure unread bytes (size - offset) + incoming to avoid counting already-
+	//          consumed bytes in the compaction-pending region.
+	// 한글: 오버플로우 방어 (느린 공격 / 플러드 방어).
+	//       미읽은 바이트(size - offset) + 수신량으로 판단해 이미 소비된 영역을 제외.
+	constexpr size_t kMaxAccumSize = MAX_PACKET_SIZE * 4;  // 16 KB — safely above 4095 + 8192
+	const size_t unread = mRecvAccumBuffer.size() - mRecvAccumOffset;
+	if (unread + size > kMaxAccumSize)
 	{
 		Utils::Logger::Warn("Recv accumulation buffer overflow, closing session - Session: " +
 							std::to_string(mId));
 		mRecvAccumBuffer.clear();
-		Close();  // English: Stream state is unrecoverable without a full reconnect
-				  // 한글: 재연결 없이는 스트림 상태 복구 불가 — 세션 강제 종료
+		mRecvAccumOffset = 0;
+		Close();  // English: Stream state unrecoverable without full reconnect
+				  // 한글: 재연결 없이는 스트림 상태 복구 불가
 		return;
 	}
 
 	mRecvAccumBuffer.insert(mRecvAccumBuffer.end(), data, data + size);
 
-	while (mRecvAccumBuffer.size() >= sizeof(PacketHeader))
+	// English: Parse complete packets using O(1) offset advance (position B strategy).
+	//          Instead of erasing after each packet (O(n) memmove), we advance mRecvAccumOffset
+	//          and compact only when the offset exceeds half the buffer — identical to
+	//          TestServer::DBRecvLoop's mDBRecvOffset approach.
+	// 한글: O(1) 오프셋 전진으로 완성된 패킷을 파싱 (position B 전략).
+	//       패킷마다 erase(O(n) memmove) 대신 mRecvAccumOffset만 전진하고,
+	//       오프셋이 버퍼 절반 초과 시 compact — TestServer::DBRecvLoop의 전략과 동일.
+	while (mRecvAccumBuffer.size() - mRecvAccumOffset >= sizeof(PacketHeader))
 	{
-		const auto *hdr = reinterpret_cast<const PacketHeader *>(mRecvAccumBuffer.data());
+		const auto *hdr = reinterpret_cast<const PacketHeader *>(
+			mRecvAccumBuffer.data() + mRecvAccumOffset);
 
-		// English: Validate packet size bounds
-		// 한글: 패킷 크기 경계 검증
+		// English: Validate packet size bounds before reading payload
+		// 한글: 페이로드 읽기 전 패킷 크기 경계 검증
 		if (hdr->size < sizeof(PacketHeader) || hdr->size > MAX_PACKET_SIZE)
 		{
 			Utils::Logger::Warn("Invalid packet size " + std::to_string(hdr->size) +
 								", resetting stream - Session: " + std::to_string(mId));
 			mRecvAccumBuffer.clear();
+			mRecvAccumOffset = 0;
 			break;
 		}
 
-		if (mRecvAccumBuffer.size() < hdr->size)
+		// English: Partial packet — wait for more data
+		// 한글: 불완전한 패킷 — 추가 데이터 대기
+		if (mRecvAccumBuffer.size() - mRecvAccumOffset < hdr->size)
 		{
-			break; // English: Partial packet, wait for more data / 한글: 불완전한 패킷, 추가 데이터 대기
+			break;
 		}
 
-		// English: Capture size before OnRecv() — hdr points into mRecvAccumBuffer.data()
-		//          and OnRecv() must not touch mRecvAccumBuffer (lock is held), but capturing
-		//          the size up-front makes the intent explicit and guards against future changes.
-		// 한글: OnRecv() 호출 전 size 캡처 — hdr는 mRecvAccumBuffer.data() 내부를 가리키며,
-		//       OnRecv() 중 버퍼가 수정되지 않도록 락이 보호하지만, 명시적 캡처로 안전성 강화.
+		// English: Capture packetSize before OnRecv() — hdr points into mRecvAccumBuffer
+		//          and must not be touched during or after OnRecv() dispatch.
+		// 한글: OnRecv() 호출 전 packetSize 캡처 — hdr는 mRecvAccumBuffer 내부 포인터.
 		const uint16_t packetSize = hdr->size;
-		OnRecv(mRecvAccumBuffer.data(), packetSize);
+		OnRecv(mRecvAccumBuffer.data() + mRecvAccumOffset, packetSize);
+		mRecvAccumOffset += packetSize;
+	}
+
+	// English: Compact: slide unread bytes to front when offset exceeds half the buffer.
+	//          If all bytes were consumed, fast-clear without memmove.
+	// 한글: Compact: 오프셋이 버퍼 절반 초과 시 미읽은 바이트를 앞으로 이동.
+	//       모든 바이트가 소비된 경우 memmove 없이 빠르게 clear.
+	if (mRecvAccumOffset >= mRecvAccumBuffer.size())
+	{
+		// English: Entire buffer consumed — O(1) fast reset
+		// 한글: 버퍼 전체 소비 — O(1) 빠른 리셋
+		mRecvAccumBuffer.clear();
+		mRecvAccumOffset = 0;
+	}
+	else if (mRecvAccumOffset > mRecvAccumBuffer.size() / 2)
+	{
+		// English: Compact: erase consumed prefix to reclaim memory
+		// 한글: Compact: 소비된 앞부분 제거로 메모리 회수
 		mRecvAccumBuffer.erase(mRecvAccumBuffer.begin(),
-							   mRecvAccumBuffer.begin() + packetSize);
+							   mRecvAccumBuffer.begin() + static_cast<std::ptrdiff_t>(mRecvAccumOffset));
+		mRecvAccumOffset = 0;
 	}
 }
 

@@ -160,17 +160,26 @@ void BaseNetworkEngine::CloseConnection(Utils::ConnectionId connectionId)
 		return;
 	}
 
-	// English: Call OnDisconnected callback
-	// 한글: OnDisconnected 콜백 호출
-	session->OnDisconnected();
+	// English: Submit OnDisconnected + FireEvent to the logic thread pool.
+	//          This matches ProcessRecvCompletion's disconnect path so that all
+	//          OnDisconnected callbacks always execute on the same thread pool —
+	//          callers never need to worry about which thread invoked CloseConnection.
+	//          The session shared_ptr keeps the object alive until the task runs.
+	// 한글: OnDisconnected + FireEvent를 로직 스레드풀에 제출.
+	//       ProcessRecvCompletion의 연결 종료 경로와 동일하게 처리하여
+	//       OnDisconnected 콜백이 항상 같은 스레드풀에서 실행되도록 보장.
+	//       세션 shared_ptr이 작업 실행 전까지 객체를 살아있게 유지.
+	auto sessionCopy = session;
+	mLogicThreadPool.Submit(
+		[this, sessionCopy, connectionId]()
+		{
+			sessionCopy->OnDisconnected();
+			FireEvent(NetworkEvent::Disconnected, connectionId);
+		});
 
-	// English: RemoveSession will close the session internally
-	// 한글: RemoveSession이 내부적으로 세션을 닫음
+	// English: Remove from manager immediately (caller's thread) — same as ProcessRecvCompletion
+	// 한글: 호출 스레드에서 즉시 매니저에서 제거 — ProcessRecvCompletion과 동일한 패턴
 	SessionManager::Instance().RemoveSession(session);
-
-	// English: Fire disconnection event
-	// 한글: 연결 해제 이벤트 발생
-	FireEvent(NetworkEvent::Disconnected, connectionId);
 }
 
 std::string

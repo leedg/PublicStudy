@@ -114,8 +114,17 @@ class Session : public std::enable_shared_from_this<Session>
 	Utils::Timestamp GetConnectTime() const { return mConnectTime; }
 	Utils::Timestamp GetLastPingTime() const { return mLastPingTime; }
 	void SetLastPingTime(Utils::Timestamp time) { mLastPingTime = time; }
-	uint32_t GetPingSequence() const { return mPingSequence; }
-	void IncrementPingSequence() { ++mPingSequence; }
+
+	// English: Ping sequence — atomic to prevent race between ping timer thread and I/O thread
+	// 한글: 핑 시퀀스 — 핑 타이머 스레드와 I/O 스레드 간 race 방지를 위해 atomic 사용
+	uint32_t GetPingSequence() const
+	{
+		return mPingSequence.load(std::memory_order_relaxed);
+	}
+	void IncrementPingSequence()
+	{
+		mPingSequence.fetch_add(1, std::memory_order_relaxed);
+	}
 
 	void SetAsyncProvider(AsyncIO::AsyncIOProvider *provider)
 	{
@@ -156,10 +165,10 @@ class Session : public std::enable_shared_from_this<Session>
 	std::atomic<SessionState> mState;
 
 	// English: Time tracking
-	// ???: ??癰?????⑤베毓??
+	// 한글: 시간 추적
 	Utils::Timestamp mConnectTime;
 	Utils::Timestamp mLastPingTime;
-	uint32_t mPingSequence;
+	std::atomic<uint32_t> mPingSequence;
 
 	// English: IO contexts (Windows IOCP)
 	// ???: IO ???爾?????덉쉐 (Windows IOCP)
@@ -188,15 +197,29 @@ class Session : public std::enable_shared_from_this<Session>
 	// 한글: 비동기 I/O 공급자 (크로스플랫폼)
 	AsyncIO::AsyncIOProvider *mAsyncProvider;
 
-	// English: TCP reassembly accumulation buffer + mutex
-	//          mRecvMutex serializes concurrent ProcessRawRecv calls that can arrive
-	//          when PostRecv() is re-issued immediately after a completion and a second
-	//          recv completes before the first has been processed by the logic thread pool.
-	// 한글: TCP 재조립 누적 버퍼 + 뮤텍스
-	//       ProcessRecvCompletion이 LogicThreadPool에 submit 후 즉시 PostRecv()를 재발행하면
-	//       두 번째 recv가 먼저 완료될 수 있어 서로 다른 스레드에서 ProcessRawRecv가 동시에
-	//       호출된다. mRecvMutex로 직렬화하여 mRecvAccumBuffer race condition 방지.
+	// English: TCP reassembly accumulation buffer + mutex + read offset
+	//
+	//   mRecvMutex  — serializes concurrent ProcessRawRecv calls.
+	//                 PostRecv() is re-issued immediately after each completion, so a
+	//                 second recv can complete before the first is processed by the logic
+	//                 thread pool. Without this lock, two workers would race on the buffer.
+	//
+	//   mRecvAccumOffset — O(1) read pointer (position B pattern).
+	//                      Instead of erasing (O(n) memmove) after every packet, we advance
+	//                      an offset and compact only when the offset exceeds half the buffer.
+	//                      Matches the same strategy used in TestServer::DBRecvLoop.
+	//
+	// 한글: TCP 재조립 누적 버퍼 + 뮤텍스 + 읽기 오프셋
+	//
+	//   mRecvMutex  — 동시 ProcessRawRecv 호출 직렬화.
+	//                 PostRecv() 즉시 재발행으로 두 번째 recv가 먼저 완료될 수 있음.
+	//
+	//   mRecvAccumOffset — O(1) 읽기 포인터.
+	//                      패킷마다 erase(O(n) memmove) 대신 오프셋만 전진하고,
+	//                      오프셋이 버퍼 절반을 초과하면 compact.
+	//                      TestServer::DBRecvLoop의 mDBRecvOffset 전략과 동일.
 	std::vector<char> mRecvAccumBuffer;
+	size_t            mRecvAccumOffset{0};
 	std::mutex        mRecvMutex;
 };
 
