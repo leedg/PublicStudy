@@ -6,13 +6,17 @@
 #include <chrono>
 #include <cstdio>
 #include <fstream>
+#include <map>
 #include <sstream>
-#include <unordered_map>
 #include <vector>
+
+// English: IDatabase interface always available for runtime injection
+// 한글: 런타임 주입을 위해 IDatabase 인터페이스는 항상 포함
+#include "Interfaces/IDatabase.h"
+#include "Interfaces/IStatement.h"
 
 #ifdef ENABLE_DATABASE_SUPPORT
 #include "Database/DatabaseModule.h"
-using namespace Network::Database;
 #endif
 
 namespace Network::TestServer
@@ -42,7 +46,8 @@ namespace Network::TestServer
     }
 
     bool DBTaskQueue::Initialize(size_t workerThreadCount,
-                                 const std::string& walPath)
+                                 const std::string& walPath,
+                                 Network::Database::IDatabase* db)
     {
         if (mIsRunning.load())
         {
@@ -58,6 +63,44 @@ namespace Network::TestServer
         {
             Logger::Warn("DBTaskQueue: workerThreadCount > 1 - per-sessionId task ordering is NOT guaranteed. "
                          "Consider using OrderedTaskQueue for ordered processing.");
+        }
+
+        // English: Store injected database reference and create tables if DB available
+        // 한글: 주입된 데이터베이스 저장 및 DB 사용 가능 시 테이블 생성
+        mDatabase = db;
+        if (mDatabase != nullptr && mDatabase->IsConnected())
+        {
+            static const char* kCreateTableSQLs[] = {
+                "CREATE TABLE IF NOT EXISTS SessionConnectLog ("
+                "  id          INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "  session_id  INTEGER NOT NULL,"
+                "  connect_time TEXT NOT NULL"
+                ")",
+                "CREATE TABLE IF NOT EXISTS SessionDisconnectLog ("
+                "  id             INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "  session_id     INTEGER NOT NULL,"
+                "  disconnect_time TEXT NOT NULL"
+                ")",
+                "CREATE TABLE IF NOT EXISTS PlayerData ("
+                "  session_id INTEGER PRIMARY KEY,"
+                "  data       TEXT"
+                ")"
+            };
+
+            for (const char* sql : kCreateTableSQLs)
+            {
+                try
+                {
+                    auto stmt = mDatabase->CreateStatement();
+                    stmt->SetQuery(sql);
+                    stmt->Execute();
+                }
+                catch (const std::exception& e)
+                {
+                    Logger::Warn("DBTaskQueue: Failed to create table: " + std::string(e.what()));
+                }
+            }
+            Logger::Info("DBTaskQueue: DB tables ensured (SessionConnectLog, SessionDisconnectLog, PlayerData)");
         }
 
         // English: Start workers BEFORE WAL recovery so EnqueueTask() accepts recovered tasks
@@ -129,6 +172,15 @@ namespace Network::TestServer
                 try
                 {
                     ProcessTask(task);
+
+                    // English: Keep WAL semantics identical to worker path:
+                    //          once processed during drain, mark as done.
+                    // 한글: 워커 경로와 동일한 WAL 의미를 유지:
+                    //       drain에서 처리된 태스크도 done 마킹.
+                    if (task.walSeq != 0)
+                    {
+                        WalWriteDone(task.walSeq);
+                    }
                 }
                 catch (const std::exception& e)
                 {
@@ -165,7 +217,7 @@ namespace Network::TestServer
 
         // English: WAL - record pending task before queueing (crash-safe)
         // 한글: WAL - 큐에 넣기 전에 대기 태스크 기록 (크래시 안전)
-        if (task.walSeq == 0)  // 복구된 태스크는 이미 WAL에 있으므로 재기록 안 함
+        if (task.walSeq == 0)  // 새로운/복구 태스크 모두 신규 WAL 시퀀스로 기록
         {
             task.walSeq = WalNextSeq();
             WalWritePending(task, task.walSeq);
@@ -337,73 +389,100 @@ namespace Network::TestServer
 
     bool DBTaskQueue::HandleRecordConnectTime(const DBTask& task, std::string& result)
     {
-#ifdef ENABLE_DATABASE_SUPPORT
-        try
+        if (mDatabase != nullptr && mDatabase->IsConnected())
         {
-            // TODO: Use actual ConnectionPool when available
-            // For now, just log the operation
-            Logger::Info("DB: Record connect time for Session " +
-                        std::to_string(task.sessionId) + " at " + task.data);
+            try
+            {
+                auto stmt = mDatabase->CreateStatement();
+                stmt->SetQuery(
+                    "INSERT INTO SessionConnectLog (session_id, connect_time) VALUES (?, ?)");
+                stmt->BindParameter(1, static_cast<long long>(task.sessionId));
+                stmt->BindParameter(2, task.data);
+                stmt->ExecuteUpdate();
 
-            result = "Connect time recorded (simulated)";
-            return true;
+                Logger::Info("DB INSERT SessionConnectLog - Session: " +
+                             std::to_string(task.sessionId) + " at " + task.data);
+                result = "Connect time recorded to DB";
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                result = std::string("DB error: ") + e.what();
+                Logger::Error("HandleRecordConnectTime failed: " + result);
+                return false;
+            }
+        }
 
-            /* Example with actual DB:
-            ConnectionPool& pool = GetGlobalConnectionPool();
-            auto conn = pool.getConnection();
-            auto stmt = conn->createStatement();
-            stmt->setQuery("INSERT INTO SessionLog (SessionId, ConnectTime) VALUES (?, ?)");
-            stmt->bindParameter(1, static_cast<int>(task.sessionId));
-            stmt->bindParameter(2, task.data);
-            int rows = stmt->executeUpdate();
-            pool.returnConnection(conn);
-            return rows > 0;
-            */
-        }
-        catch (const std::exception& e)
-        {
-            result = std::string("DB error: ") + e.what();
-            Logger::Error("Failed to record connect time: " + result);
-            return false;
-        }
-#else
-        Logger::Info("Database support disabled - Session " +
-                    std::to_string(task.sessionId) + " connected at " + task.data);
-        result = "DB support disabled";
+        // English: Fallback — log only (no DB connected)
+        // 한글: Fallback — DB 미연결 시 로그만 출력
+        Logger::Info("Session " + std::to_string(task.sessionId) + " connected at " + task.data);
+        result = "Connect time logged (no DB)";
         return true;
-#endif
     }
 
     bool DBTaskQueue::HandleRecordDisconnectTime(const DBTask& task, std::string& result)
     {
-#ifdef ENABLE_DATABASE_SUPPORT
-        Logger::Info("DB: Record disconnect time for Session " +
-                    std::to_string(task.sessionId) + " at " + task.data);
+        if (mDatabase != nullptr && mDatabase->IsConnected())
+        {
+            try
+            {
+                auto stmt = mDatabase->CreateStatement();
+                stmt->SetQuery(
+                    "INSERT INTO SessionDisconnectLog (session_id, disconnect_time) VALUES (?, ?)");
+                stmt->BindParameter(1, static_cast<long long>(task.sessionId));
+                stmt->BindParameter(2, task.data);
+                stmt->ExecuteUpdate();
 
-        result = "Disconnect time recorded (simulated)";
+                Logger::Info("DB INSERT SessionDisconnectLog - Session: " +
+                             std::to_string(task.sessionId) + " at " + task.data);
+                result = "Disconnect time recorded to DB";
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                result = std::string("DB error: ") + e.what();
+                Logger::Error("HandleRecordDisconnectTime failed: " + result);
+                return false;
+            }
+        }
+
+        Logger::Info("Session " + std::to_string(task.sessionId) + " disconnected at " + task.data);
+        result = "Disconnect time logged (no DB)";
         return true;
-#else
-        Logger::Info("Database support disabled - Session " +
-                    std::to_string(task.sessionId) + " disconnected at " + task.data);
-        result = "DB support disabled";
-        return true;
-#endif
     }
 
     bool DBTaskQueue::HandleUpdatePlayerData(const DBTask& task, std::string& result)
     {
-#ifdef ENABLE_DATABASE_SUPPORT
-        Logger::Info("DB: Update player data for Session " +
-                    std::to_string(task.sessionId) + " - Data: " + task.data);
+        if (mDatabase != nullptr && mDatabase->IsConnected())
+        {
+            try
+            {
+                auto stmt = mDatabase->CreateStatement();
+                // English: Upsert — insert or replace player data
+                // 한글: Upsert — 플레이어 데이터 삽입 또는 교체
+                stmt->SetQuery(
+                    "INSERT OR REPLACE INTO PlayerData (session_id, data) VALUES (?, ?)");
+                stmt->BindParameter(1, static_cast<long long>(task.sessionId));
+                stmt->BindParameter(2, task.data);
+                stmt->ExecuteUpdate();
 
-        result = "Player data updated (simulated)";
+                Logger::Info("DB UPSERT PlayerData - Session: " +
+                             std::to_string(task.sessionId));
+                result = "Player data updated to DB";
+                return true;
+            }
+            catch (const std::exception& e)
+            {
+                result = std::string("DB error: ") + e.what();
+                Logger::Error("HandleUpdatePlayerData failed: " + result);
+                return false;
+            }
+        }
+
+        Logger::Info("Player data for Session " + std::to_string(task.sessionId) +
+                     " (no DB): " + task.data);
+        result = "Player data logged (no DB)";
         return true;
-#else
-        Logger::Info("Database support disabled - Player data for Session " +
-                    std::to_string(task.sessionId));
-        result = "DB support disabled";
-        return true;
-#endif
     }
 
     // =============================================================================
@@ -505,28 +584,34 @@ namespace Network::TestServer
             std::string data;
         };
 
-        std::unordered_map<uint64_t, WalEntry> pendingMap;
+        // English: Keep pending tasks ordered by sequence for deterministic replay.
+        // 한글: 복구 재실행 순서를 고정하기 위해 시퀀스 순 정렬 유지.
+        std::map<uint64_t, WalEntry> pendingMap;
         std::string line;
         size_t recoveredCount = 0;
+        uint64_t maxSeenSeq = 0;
 
         while (std::getline(inFile, line))
         {
             if (line.empty()) continue;
 
             std::istringstream ss(line);
-            std::string status, typeStr, sessionStr, seqStr, data;
+            std::string status;
 
             if (!std::getline(ss, status, '|')) continue;
-            if (!std::getline(ss, typeStr, '|')) continue;
-            if (!std::getline(ss, sessionStr, '|')) continue;
-            if (!std::getline(ss, seqStr, '|')) continue;
-            std::getline(ss, data);  // remainder = data (may be empty)
-
-            uint64_t seq = 0;
-            try { seq = std::stoull(seqStr); } catch (...) { continue; }
 
             if (status == "P")
             {
+                std::string typeStr, sessionStr, seqStr, data;
+                if (!std::getline(ss, typeStr, '|')) continue;
+                if (!std::getline(ss, sessionStr, '|')) continue;
+                if (!std::getline(ss, seqStr, '|')) continue;
+                std::getline(ss, data);  // remainder = data (may be empty)
+
+                uint64_t seq = 0;
+                try { seq = std::stoull(seqStr); } catch (...) { continue; }
+                if (seq > maxSeenSeq) maxSeenSeq = seq;
+
                 // English: Unescape substituted characters
                 // 한글: 대체 문자 복원
                 for (auto& c : data)
@@ -548,10 +633,25 @@ namespace Network::TestServer
             }
             else if (status == "D")
             {
+                // English: Done record format is "D|<SEQ>".
+                // 한글: Done 레코드 포맷은 "D|<SEQ>".
+                std::string seqStr;
+                if (!std::getline(ss, seqStr, '|'))
+                {
+                    continue;
+                }
+
+                uint64_t seq = 0;
+                try { seq = std::stoull(seqStr); } catch (...) { continue; }
+                if (seq > maxSeenSeq) maxSeenSeq = seq;
                 pendingMap.erase(seq);
             }
         }
         inFile.close();
+
+        // English: Keep sequence monotonic after restart.
+        // 한글: 재시작 후에도 시퀀스 단조 증가 유지.
+        mWalSeq.store(maxSeenSeq, std::memory_order_relaxed);
 
         if (pendingMap.empty())
         {

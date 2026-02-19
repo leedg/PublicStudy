@@ -4,8 +4,10 @@
 #include "DatabaseFactory.h"
 #include "../Interfaces/DatabaseException.h"
 #include "../Interfaces/DatabaseUtils.h"
+#include "MockDatabase.h"
 #include "ODBCDatabase.h"
 #include "OLEDBDatabase.h"
+#include "SQLiteDatabase.h"
 #include <map>
 #include <stdexcept>
 
@@ -22,6 +24,10 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateDatabase(DatabaseType type)
 		return CreateODBCDatabase();
 	case DatabaseType::OLEDB:
 		return CreateOLEDBDatabase();
+	case DatabaseType::Mock:
+		return CreateMockDatabase();
+	case DatabaseType::SQLite:
+		return CreateSQLiteDatabase();
 	default:
 		throw DatabaseException("Unsupported database type");
 	}
@@ -35,6 +41,16 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateODBCDatabase()
 std::unique_ptr<IDatabase> DatabaseFactory::CreateOLEDBDatabase()
 {
 	return std::make_unique<OLEDBDatabase>();
+}
+
+std::unique_ptr<IDatabase> DatabaseFactory::CreateMockDatabase()
+{
+	return std::make_unique<MockDatabase>();
+}
+
+std::unique_ptr<IDatabase> DatabaseFactory::CreateSQLiteDatabase()
+{
+	return std::make_unique<SQLiteDatabase>();
 }
 
 namespace Utils

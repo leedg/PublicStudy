@@ -64,8 +64,10 @@
 #include "../Interfaces/IStatement.h"
 
 // Database implementations
+#include "MockDatabase.h"
 #include "ODBCDatabase.h"
 #include "OLEDBDatabase.h"
+#include "SQLiteDatabase.h"
 
 // Factory and utilities
 #include "ConnectionPool.h"
@@ -102,12 +104,12 @@ createConnectionPool(const DatabaseConfig &config)
 }
 
 /**
- * Helper function to create a database instance
+ * Helper function to create a database instance.
+ * The database type is read from config.mType — no separate type argument needed.
  */
-inline std::unique_ptr<IDatabase> createDatabase(DatabaseType type,
-												 const DatabaseConfig &config)
+inline std::unique_ptr<IDatabase> createDatabase(const DatabaseConfig &config)
 {
-	auto db = DatabaseFactory::CreateDatabase(type);
+	auto db = DatabaseFactory::CreateDatabase(config.mType);
 	if (db)
 	{
 		db->Connect(config);

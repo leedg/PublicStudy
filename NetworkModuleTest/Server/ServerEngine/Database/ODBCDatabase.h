@@ -172,11 +172,21 @@ class ODBCStatement : public IStatement
 	void BindParameters();
 
   private:
+	// English: Batch entry — snapshot of parameters for one batch item
+	// 한글: 배치 항목 — 배치 아이템 하나의 파라미터 스냅샷
+	struct BatchEntry
+	{
+		std::vector<std::string> parameters;
+		std::vector<SQLLEN> parameterLengths;
+	};
+
+  private:
 	SQLHSTMT mStatement;
 	SQLHDBC mConnection;
 	std::string mQuery;
 	std::vector<std::string> mParameters;
 	std::vector<SQLLEN> mParameterLengths;
+	std::vector<BatchEntry> mBatches;
 	bool mPrepared;
 	int mTimeout;
 };

@@ -50,10 +50,39 @@ namespace Network::TestServer
 
         const ServerPacketHeader* header = reinterpret_cast<const ServerPacketHeader*>(data);
 
+        if (header->size < sizeof(ServerPacketHeader) || header->size > 4096)
+        {
+            Logger::Warn("DB server packet size out of range: " + std::to_string(header->size));
+            return;
+        }
+
         if (header->size > size)
         {
             Logger::Warn("Incomplete DB server packet - expected: " + std::to_string(header->size) +
                 ", received: " + std::to_string(size));
+            return;
+        }
+
+        // English: Validate minimal packet size per server packet id.
+        // 한글: 서버 패킷 ID별 최소 길이 검증.
+        uint32_t requiredSize = sizeof(ServerPacketHeader);
+        switch (static_cast<ServerPacketType>(header->id))
+        {
+        case ServerPacketType::ServerPongRes:
+            requiredSize = sizeof(PKT_ServerPongRes);
+            break;
+        case ServerPacketType::DBSavePingTimeRes:
+            requiredSize = sizeof(PKT_DBSavePingTimeRes);
+            break;
+        default:
+            break;
+        }
+
+        if (header->size < requiredSize)
+        {
+            Logger::Warn("DB server packet too small for id " + std::to_string(header->id) +
+                " - expected at least: " + std::to_string(requiredSize) +
+                ", actual: " + std::to_string(header->size));
             return;
         }
 

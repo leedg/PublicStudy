@@ -48,20 +48,23 @@ std::unique_ptr<IStatement> OLEDBDatabase::CreateStatement()
 
 void OLEDBDatabase::BeginTransaction()
 {
-	// English: OLEDB transaction implementation
-	// 한글: OLEDB 트랜잭션 구현
+	// English: OLEDB transaction — toggle in-transaction flag
+	// 한글: OLEDB 트랜잭션 — 트랜잭션 상태 플래그 토글
+	mInTransaction = true;
 }
 
 void OLEDBDatabase::CommitTransaction()
 {
-	// English: OLEDB commit implementation
-	// 한글: OLEDB 커밋 구현
+	// English: OLEDB commit — clear in-transaction flag
+	// 한글: OLEDB 커밋 — 트랜잭션 상태 플래그 초기화
+	mInTransaction = false;
 }
 
 void OLEDBDatabase::RollbackTransaction()
 {
-	// English: OLEDB rollback implementation
-	// 한글: OLEDB 롤백 구현
+	// English: OLEDB rollback — clear in-transaction flag
+	// 한글: OLEDB 롤백 — 트랜잭션 상태 플래그 초기화
+	mInTransaction = false;
 }
 
 // =============================================================================
@@ -100,20 +103,23 @@ std::unique_ptr<IStatement> OLEDBConnection::CreateStatement()
 
 void OLEDBConnection::BeginTransaction()
 {
-	// English: OLEDB transaction implementation
-	// 한글: OLEDB 트랜잭션 구현
+	// English: OLEDB connection transaction — toggle in-transaction flag
+	// 한글: OLEDB 커넥션 트랜잭션 — 트랜잭션 상태 플래그 토글
+	mInTransaction = true;
 }
 
 void OLEDBConnection::CommitTransaction()
 {
-	// English: OLEDB commit implementation
-	// 한글: OLEDB 커밋 구현
+	// English: OLEDB connection commit — clear in-transaction flag
+	// 한글: OLEDB 커넥션 커밋 — 트랜잭션 상태 플래그 초기화
+	mInTransaction = false;
 }
 
 void OLEDBConnection::RollbackTransaction()
 {
-	// English: OLEDB rollback implementation
-	// 한글: OLEDB 롤백 구현
+	// English: OLEDB connection rollback — clear in-transaction flag
+	// 한글: OLEDB 커넥션 롤백 — 트랜잭션 상태 플래그 초기화
+	mInTransaction = false;
 }
 
 // =============================================================================
