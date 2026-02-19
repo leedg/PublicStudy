@@ -1,11 +1,19 @@
 #pragma once
 
 // English: Database Server main header
-// ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 筌롫뗄????삳쐭
+// 한글: 데이터베이스 서버 메인 헤더
 
 // English: DBPingTimeManager replaced by ServerLatencyManager (merged) — see DBPingTimeManager.h for migration notes
 // 한글: DBPingTimeManager는 ServerLatencyManager로 통합됨 — 마이그레이션 노트는 DBPingTimeManager.h 참조
 #include "ServerLatencyManager.h"
+
+// English: Forward-declare IDatabase; full definition included in DBServer.cpp
+// 한글: IDatabase 전방 선언; DBServer.cpp에서 전체 정의 포함
+namespace Network { namespace Database { class IDatabase; } }
+
+// English: DatabaseType for local config
+// 한글: 로컬 config용 DatabaseType
+#include "../ServerEngine/Interfaces/DatabaseType_enum.h"
 #include "../ServerEngine/Network/Core/AsyncIOProvider.h"
 #include "../ServerEngine/Tests/Protocols/MessageHandler.h"
 #include "../ServerEngine/Tests/Protocols/PingPong.h"
@@ -186,7 +194,14 @@ class DBServer
 		std::string database = "networkdb";
 		std::string username = "postgres";
 		std::string password = "password";
+		// English: Default to Mock so the server works out-of-the-box without an external DB
+		// 한글: 외부 DB 없이 바로 동작하도록 기본값을 Mock으로 설정
+		Network::Database::DatabaseType type = Network::Database::DatabaseType::Mock;
 	} mDbConfig;
+
+	// English: Owned database instance (created by ConnectToDatabase)
+	// 한글: ConnectToDatabase가 생성하는 소유 데이터베이스 인스턴스
+	std::unique_ptr<Network::Database::IDatabase> mDatabase;
 
 	// Worker thread
 	std::thread mWorkerThread;

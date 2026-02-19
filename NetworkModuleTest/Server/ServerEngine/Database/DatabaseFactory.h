@@ -32,6 +32,8 @@ class DatabaseFactory
 	// 한글: 편의 메서드
 	static std::unique_ptr<IDatabase> CreateODBCDatabase();
 	static std::unique_ptr<IDatabase> CreateOLEDBDatabase();
+	static std::unique_ptr<IDatabase> CreateMockDatabase();
+	static std::unique_ptr<IDatabase> CreateSQLiteDatabase();
 };
 
 } // namespace Database

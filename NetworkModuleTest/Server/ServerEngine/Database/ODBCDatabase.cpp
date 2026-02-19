@@ -386,15 +386,60 @@ bool ODBCStatement::Execute()
 
 void ODBCStatement::AddBatch()
 {
-	// English: ODBC batch implementation - simplified
-	// 한글: ODBC 배치 구현 - 단순화
+	// English: Snapshot current query+parameters as one batch entry, then reset for next item
+	// 한글: 현재 쿼리+파라미터를 배치 항목으로 저장 후 다음 항목을 위해 초기화
+	if (!mQuery.empty())
+	{
+		BatchEntry entry;
+		entry.parameters = mParameters;
+		entry.parameterLengths = mParameterLengths;
+		mBatches.push_back(std::move(entry));
+		mParameters.clear();
+		mParameterLengths.clear();
+		mPrepared = false;
+	}
 }
 
 std::vector<int> ODBCStatement::ExecuteBatch()
 {
-	// English: ODBC batch execution implementation - simplified
-	// 한글: ODBC 배치 실행 구현 - 단순화
-	return std::vector<int>();
+	// English: Execute each batch entry sequentially via SQLExecDirectA, collect row counts
+	// 한글: SQLExecDirectA로 각 배치 항목을 순서대로 실행하고 행 수 수집
+	std::vector<int> results;
+	results.reserve(mBatches.size());
+
+	for (auto &entry : mBatches)
+	{
+		// English: Restore batch parameters to mParameters/mParameterLengths for BindParameters()
+		// 한글: BindParameters() 호출을 위해 배치 파라미터를 mParameters로 복원
+		mParameters = entry.parameters;
+		mParameterLengths = entry.parameterLengths;
+		mPrepared = false;
+
+		BindParameters();
+		SQLRETURN ret =
+			SQLExecDirectA(mStatement, (SQLCHAR *)mQuery.c_str(), SQL_NTS);
+
+		if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO)
+		{
+			SQLLEN rowCount = 0;
+			SQLRowCount(mStatement, &rowCount);
+			results.push_back(static_cast<int>(rowCount));
+		}
+		else
+		{
+			results.push_back(-1);
+		}
+
+		// English: Close cursor / reset statement state for the next batch item
+		// 한글: 다음 배치 항목을 위해 커서/구문 상태 초기화
+		SQLFreeStmt(mStatement, SQL_CLOSE);
+	}
+
+	mBatches.clear();
+	mParameters.clear();
+	mParameterLengths.clear();
+	mPrepared = false;
+	return results;
 }
 
 void ODBCStatement::ClearParameters()

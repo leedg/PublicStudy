@@ -80,17 +80,21 @@ void ConnectionPool::Shutdown()
 							[this] { return mActiveConnections.load() == 0; });
 	}
 
-	// English: Close all connections
-	// 한글: 모든 연결 닫기
-	std::lock_guard<std::mutex> lock(mMutex);
-	Clear();
-
-	// English: Disconnect database
-	// 한글: 데이터베이스 연결 해제
-	if (mDatabase)
+	// English: Close all connections and disconnect database under a single lock.
+	//          Call ClearLocked() (not Clear()) to avoid re-locking the non-recursive
+	//          mutex — re-locking std::mutex is undefined behaviour (typically deadlocks).
+	// 한글: 단일 락 아래 모든 연결 닫기 및 데이터베이스 연결 해제.
+	//       비재귀 mutex 재락킹(UB, 통상 데드락)을 피하기 위해
+	//       Clear() 대신 ClearLocked() 호출.
 	{
-		mDatabase->Disconnect();
-		mDatabase.reset();
+		std::lock_guard<std::mutex> lock(mMutex);
+		ClearLocked();
+
+		if (mDatabase)
+		{
+			mDatabase->Disconnect();
+			mDatabase.reset();
+		}
 	}
 
 	mInitialized.store(false);
@@ -198,12 +202,10 @@ void ConnectionPool::ReturnConnection(std::shared_ptr<IConnection> pConnection)
 	}
 }
 
-void ConnectionPool::Clear()
+void ConnectionPool::ClearLocked()
 {
-	std::lock_guard<std::mutex> lock(mMutex);
-
-	// English: Close all connections that are not in use
-	// 한글: 사용 중이 아닌 모든 연결 닫기
+	// English: Caller must already hold mMutex — no lock acquired here.
+	// 한글: 호출자가 이미 mMutex를 보유해야 함 — 여기서 락 획득 안 함.
 	for (auto it = mConnections.begin(); it != mConnections.end();)
 	{
 		if (!it->mInUse)
@@ -216,6 +218,12 @@ void ConnectionPool::Clear()
 			++it;
 		}
 	}
+}
+
+void ConnectionPool::Clear()
+{
+	std::lock_guard<std::mutex> lock(mMutex);
+	ClearLocked();
 }
 
 size_t ConnectionPool::GetActiveConnections() const

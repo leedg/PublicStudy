@@ -8,6 +8,22 @@
 #include <ctime>
 #include <algorithm>
 
+// English: Include IDatabase / IStatement for real DB execution
+// 한글: 실제 DB 실행을 위한 IDatabase / IStatement 포함
+#ifdef _MSC_VER
+// English: Suppress min/max macro collision with algorithm
+// 한글: algorithm의 min/max 매크로 충돌 억제
+#pragma warning(push)
+#pragma warning(disable: 4005)
+#endif
+// English: Path resolves via include dirs that contain ServerEngine/
+// 한글: ServerEngine/을 포함하는 include 경로로 해석
+#include "../../ServerEngine/Interfaces/IDatabase.h"
+#include "../../ServerEngine/Interfaces/IStatement.h"
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 namespace Network::DBServer
 {
     using namespace Network::Utils;
@@ -35,29 +51,69 @@ namespace Network::DBServer
 
         Logger::Info("Initializing ServerLatencyManager...");
 
-        // English: Create latency log table if not exists (placeholder)
-        // 한글: 레이턴시 로그 테이블이 없으면 생성 (placeholder)
-        std::string createTableQuery = R"(
-            CREATE TABLE IF NOT EXISTS ServerLatencyLog (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ServerId INTEGER NOT NULL,
-                ServerName VARCHAR(32),
-                RttMs BIGINT NOT NULL,
-                AvgRttMs DOUBLE NOT NULL,
-                MinRttMs BIGINT NOT NULL,
-                MaxRttMs BIGINT NOT NULL,
-                PingCount BIGINT NOT NULL,
-                MeasuredTimestamp BIGINT NOT NULL,
-                MeasuredTimeGMT VARCHAR(32) NOT NULL,
-                CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        )";
-
-        // ExecuteQuery(createTableQuery);  // Placeholder call
+        // English: Create tables now only if a database was already injected before Initialize().
+        //          If the database is injected after (via SetDatabase), EnsureTables() is called there.
+        // 한글: Initialize() 이전에 DB가 이미 주입된 경우에만 지금 테이블 생성.
+        //       이후에 SetDatabase()로 주입되면 거기서 EnsureTables() 호출.
+        EnsureTables();
 
         mInitialized.store(true, std::memory_order_release);
         Logger::Info("ServerLatencyManager initialized successfully");
         return true;
+    }
+
+    void ServerLatencyManager::SetDatabase(Network::Database::IDatabase* db)
+    {
+        mDatabase = db;
+
+        // English: If already initialized, ensure tables exist now that a DB is available.
+        // 한글: 이미 초기화된 상태라면 DB가 주입된 지금 테이블을 보장한다.
+        if (mInitialized.load(std::memory_order_acquire))
+        {
+            EnsureTables();
+        }
+    }
+
+    void ServerLatencyManager::EnsureTables()
+    {
+        if (mDatabase == nullptr || !mDatabase->IsConnected())
+            return;
+
+        static const char* kCreateTableSQLs[] = {
+            "CREATE TABLE IF NOT EXISTS ServerLatencyLog ("
+            "  id           INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "  server_id    INTEGER NOT NULL,"
+            "  server_name  TEXT NOT NULL,"
+            "  rtt_ms       INTEGER NOT NULL,"
+            "  avg_rtt_ms   REAL,"
+            "  min_rtt_ms   INTEGER,"
+            "  max_rtt_ms   INTEGER,"
+            "  ping_count   INTEGER,"
+            "  measured_time TEXT NOT NULL"
+            ")",
+            "CREATE TABLE IF NOT EXISTS PingTimeLog ("
+            "  id          INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "  server_id   INTEGER NOT NULL,"
+            "  server_name TEXT NOT NULL,"
+            "  ping_time   TEXT NOT NULL"
+            ")"
+        };
+
+        for (const char* sql : kCreateTableSQLs)
+        {
+            try
+            {
+                auto stmt = mDatabase->CreateStatement();
+                stmt->SetQuery(sql);
+                stmt->Execute();
+            }
+            catch (const std::exception& e)
+            {
+                Logger::Warn("ServerLatencyManager: Failed to create table: " +
+                             std::string(e.what()));
+            }
+        }
+        Logger::Info("ServerLatencyManager: DB tables ensured (ServerLatencyLog, PingTimeLog)");
     }
 
     void ServerLatencyManager::Shutdown()
@@ -170,10 +226,13 @@ namespace Network::DBServer
             return false;
         }
 
-        // English: Build and execute PingTimeLog INSERT (no in-memory state needed;
-        //          lastMeasuredTime is already updated by RecordLatency).
-        // 한글: PingTimeLog INSERT 실행 (메모리 상태 불필요;
-        //       lastMeasuredTime은 RecordLatency가 이미 갱신).
+        // English: Update in-memory last-ping-time map (O(1) lookup for GetLastPingTime)
+        // 한글: 메모리 내 마지막 Ping 시간 맵 갱신 (GetLastPingTime O(1) 조회용)
+        {
+            std::lock_guard<std::mutex> lock(mPingTimeMutex);
+            mLastPingTimeMap[serverId] = timestamp;
+        }
+
         const std::string query = BuildPingTimeInsertQuery(serverId, serverName, timestamp);
 
         Logger::Debug("SavePingTime - ServerId: " + std::to_string(serverId) +
@@ -185,11 +244,11 @@ namespace Network::DBServer
 
     uint64_t ServerLatencyManager::GetLastPingTime(uint32_t serverId) const
     {
-        // English: Read last measured time from in-memory map (O(1), no DB round-trip)
-        // 한글: 메모리 맵에서 마지막 측정 시간 읽기 (O(1), DB 조회 없음)
-        std::lock_guard<std::mutex> lock(mLatencyMutex);
-        auto it = mLatencyMap.find(serverId);
-        return (it != mLatencyMap.end()) ? it->second.lastMeasuredTime : 0;
+        // English: O(1) in-memory lookup — no DB round-trip needed
+        // 한글: O(1) 메모리 조회 — DB 왕복 불필요
+        std::lock_guard<std::mutex> lock(mPingTimeMutex);
+        auto it = mLastPingTimeMap.find(serverId);
+        return (it != mLastPingTimeMap.end()) ? it->second : 0;
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -200,18 +259,19 @@ namespace Network::DBServer
                                                                uint64_t minRttMs, uint64_t maxRttMs,
                                                                uint64_t pingCount, uint64_t timestamp)
     {
+        // English: Column names match the CREATE TABLE in Initialize()
+        // 한글: Initialize()의 CREATE TABLE 컬럼명과 일치
         std::ostringstream query;
         query << "INSERT INTO ServerLatencyLog "
-              << "(ServerId, ServerName, RttMs, AvgRttMs, MinRttMs, MaxRttMs, PingCount, "
-              << "MeasuredTimestamp, MeasuredTimeGMT) VALUES ("
+              << "(server_id, server_name, rtt_ms, avg_rtt_ms, min_rtt_ms, max_rtt_ms, "
+              << "ping_count, measured_time) VALUES ("
               << serverId << ", '"
               << serverName << "', "
               << rttMs << ", "
               << std::fixed << std::setprecision(2) << avgRttMs << ", "
               << minRttMs << ", "
               << maxRttMs << ", "
-              << pingCount << ", "
-              << timestamp << ", '"
+              << pingCount << ", '"
               << FormatTimestamp(timestamp) << "')";
         return query.str();
     }
@@ -220,11 +280,12 @@ namespace Network::DBServer
                                                                 const std::string& serverName,
                                                                 uint64_t timestamp)
     {
+        // English: Column names match the CREATE TABLE in Initialize()
+        // 한글: Initialize()의 CREATE TABLE 컬럼명과 일치
         std::ostringstream query;
-        query << "INSERT INTO PingTimeLog (ServerId, ServerName, PingTimestamp, PingTimeGMT) VALUES ("
+        query << "INSERT INTO PingTimeLog (server_id, server_name, ping_time) VALUES ("
               << serverId << ", '"
-              << serverName << "', "
-              << timestamp << ", '"
+              << serverName << "', '"
               << FormatTimestamp(timestamp) << "')";
         return query.str();
     }
@@ -249,11 +310,27 @@ namespace Network::DBServer
 
     bool ServerLatencyManager::ExecuteQuery(const std::string& query)
     {
-        // English: Placeholder — replace with actual DB driver call (ODBC / OLEDB / custom)
-        // 한글: Placeholder — 실제 DB 드라이버 호출로 대체 (ODBC / OLEDB / custom)
         Logger::Debug("[DB Query] " + query);
-        // TODO: call real DB backend here
-        return true;
+
+        if (mDatabase == nullptr || !mDatabase->IsConnected())
+        {
+            // English: No database injected — log only
+            // 한글: DB 미주입 — 로그만 출력
+            return true;
+        }
+
+        try
+        {
+            auto stmt = mDatabase->CreateStatement();
+            stmt->SetQuery(query);
+            stmt->ExecuteUpdate();
+            return true;
+        }
+        catch (const std::exception& e)
+        {
+            Logger::Error("ServerLatencyManager ExecuteQuery failed: " + std::string(e.what()));
+            return false;
+        }
     }
 
 } // namespace Network::DBServer

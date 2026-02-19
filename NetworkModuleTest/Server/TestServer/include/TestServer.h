@@ -3,6 +3,10 @@
 // English: TestServer main header - game server using NetworkEngine (multi-platform)
 // 한글: TestServer 메인 헤더 - NetworkEngine 사용 게임 서버 (멀티플랫폼)
 
+// English: Forward-declare IDatabase so we can own the local DB without including ServerEngine headers here
+// 한글: 여기에 ServerEngine 헤더를 포함하지 않고 로컬 DB를 소유하기 위한 IDatabase 전방 선언
+namespace Network { namespace Database { class IDatabase; } }
+
 #include "ClientSession.h"
 #include "DBServerSession.h"
 #include "DBTaskQueue.h"
@@ -75,6 +79,14 @@ namespace Network::TestServer
         // English: Asynchronous DB task queue (independent of game logic)
         // 한글: 비동기 DB 작업 큐 (게임 로직과 독립적)
         std::unique_ptr<DBTaskQueue>                mDBTaskQueue;
+
+        // English: Local database owned by TestServer, injected into DBTaskQueue.
+        //          MockDatabase if dbConnectionString is empty; SQLiteDatabase otherwise.
+        //          Outlives mDBTaskQueue (declared first, destroyed last — reversed destruction order).
+        // 한글: TestServer가 소유하는 로컬 DB, DBTaskQueue에 주입.
+        //       dbConnectionString이 빈 문자열이면 MockDatabase, 아니면 SQLiteDatabase.
+        //       mDBTaskQueue보다 오래 살아야 하므로 이 멤버를 먼저 선언(역순 파괴).
+        std::unique_ptr<Network::Database::IDatabase> mLocalDatabase;
 
         // English: Server state
         // 한글: 서버 상태

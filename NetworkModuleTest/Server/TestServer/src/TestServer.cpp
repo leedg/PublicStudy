@@ -3,11 +3,16 @@
 
 #include "../include/TestServer.h"
 #include "Network/Core/ServerPacketDefine.h"
+// English: Full IDatabase + DatabaseFactory definitions needed to create the local database instance
+// 한글: 로컬 DB 인스턴스 생성에 필요한 IDatabase / DatabaseFactory 전체 정의
+#include "Interfaces/IDatabase.h"
+#include "Database/DatabaseFactory.h"
 #include <iostream>
 #include <mutex>
 #include <thread>
 #include <chrono>
 #include <cstring>
+#include <ctime>
 
 #ifdef _WIN32
 #include <WinSock2.h>
@@ -66,8 +71,35 @@ namespace Network::TestServer
         //       실행되어야 함. 2개 이상 워커 시 동일 세션 작업이 서로 다른 스레드에서
         //       동시 실행될 수 있어 순서가 깨짐.
         //       멀티워커 처리량이 필요하면 OrderedTaskQueue(해시 기반 친화도)로 전환.
+        // English: Create local database — SQLite when a path is given, Mock otherwise.
+        //          The owned instance is injected into DBTaskQueue so it can persist
+        //          connect/disconnect/player-data records without a separate DB server.
+        // 한글: 로컬 DB 생성 — 경로가 있으면 SQLite, 없으면 Mock.
+        //       소유 인스턴스를 DBTaskQueue에 주입하여 접속/해제/플레이어 데이터를
+        //       별도 DB 서버 없이 저장할 수 있도록 한다.
+        {
+            using namespace Network::Database;
+            if (mDbConnectionString.empty())
+            {
+                mLocalDatabase = DatabaseFactory::CreateMockDatabase();
+                DatabaseConfig cfg;
+                cfg.mType = DatabaseType::Mock;
+                mLocalDatabase->Connect(cfg);
+                Logger::Info("TestServer: using MockDatabase for DBTaskQueue");
+            }
+            else
+            {
+                mLocalDatabase = DatabaseFactory::CreateSQLiteDatabase();
+                DatabaseConfig cfg;
+                cfg.mType = DatabaseType::SQLite;
+                cfg.mConnectionString = mDbConnectionString;
+                mLocalDatabase->Connect(cfg);
+                Logger::Info("TestServer: using SQLiteDatabase (" + mDbConnectionString + ") for DBTaskQueue");
+            }
+        }
+
         mDBTaskQueue = std::make_unique<DBTaskQueue>();
-        if (!mDBTaskQueue->Initialize(1))
+        if (!mDBTaskQueue->Initialize(1, "db_tasks.wal", mLocalDatabase.get()))
         {
             Logger::Error("Failed to initialize DB task queue");
             return false;
@@ -149,6 +181,44 @@ namespace Network::TestServer
             mDBReconnectThread.join();
         }
 
+        // English: Record disconnect events for still-connected sessions before
+        //          shutting down DBTaskQueue so Stop() does not lose terminal records.
+        // 한글: Stop() 중 마지막 disconnect 기록이 누락되지 않도록 DBTaskQueue 종료 전에
+        //       아직 연결된 세션들의 종료 기록을 먼저 큐잉.
+        if (mDBTaskQueue && mDBTaskQueue->IsRunning())
+        {
+            std::tm localTime{};
+            std::time_t rawNow = std::time(nullptr);
+#ifdef _WIN32
+            localtime_s(&localTime, &rawNow);
+#else
+            localtime_r(&rawNow, &localTime);
+#endif
+
+            char timeStr[64] = {0};
+            std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &localTime);
+            const std::string shutdownTime(timeStr);
+
+            size_t queuedDisconnectCount = 0;
+            Core::SessionManager::Instance().ForEachSession(
+                [this, &shutdownTime, &queuedDisconnectCount](Core::SessionRef session)
+                {
+                    if (!session || !session->IsConnected())
+                    {
+                        return;
+                    }
+
+                    mDBTaskQueue->RecordDisconnectTime(session->GetId(), shutdownTime);
+                    ++queuedDisconnectCount;
+                });
+
+            if (queuedDisconnectCount > 0)
+            {
+                Logger::Info("Queued disconnect records during shutdown: " +
+                             std::to_string(queuedDisconnectCount));
+            }
+        }
+
         // English: Step 1 - Flush DB task queue (complete pending tasks while DB connection is still alive)
         // Korean: 1단계 - DB 태스크 큐 드레인 (DB 연결이 살아있는 동안 대기 중인 작업 완료)
         if (mDBTaskQueue)
@@ -158,6 +228,15 @@ namespace Network::TestServer
             Logger::Info("DB task queue statistics - Processed: " +
                         std::to_string(mDBTaskQueue->GetProcessedCount()) +
                         ", Failed: " + std::to_string(mDBTaskQueue->GetFailedCount()));
+        }
+
+        // English: Disconnect local database after the queue is fully drained.
+        // 한글: 큐가 완전히 드레인된 후 로컬 DB 연결 해제.
+        if (mLocalDatabase)
+        {
+            mLocalDatabase->Disconnect();
+            mLocalDatabase.reset();
+            Logger::Info("TestServer: local database disconnected");
         }
 
         // English: Step 2 - Disconnect from DB server BEFORE mClientEngine->Stop()

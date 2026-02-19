@@ -7,6 +7,10 @@
 #include <cstring>
 #include <iostream>
 #include "../include/DBServer.h"
+// English: Full IDatabase + DatabaseFactory definitions needed for ConnectToDatabase
+// 한글: ConnectToDatabase를 위한 IDatabase / DatabaseFactory 전체 정의 필요
+#include "../../ServerEngine/Interfaces/IDatabase.h"
+#include "../../ServerEngine/Database/DatabaseFactory.h"
 // 한글: AsyncIOProvider 정의는 ServerEngine 경로의 헤더로 통일한다.
 
 using namespace Network::AsyncIO;
@@ -241,22 +245,67 @@ void DBServer::OnPongMessage(const Message &message)
 
 bool DBServer::ConnectToDatabase()
 {
-    // For now, just print connection info
-    // In real implementation, connect to actual database
-    std::cout << "Connecting to database:" << std::endl;
-    std::cout << "  Host: " << mDbConfig.host << std::endl;
-    std::cout << "  Port: " << mDbConfig.port << std::endl;
-    std::cout << "  Database: " << mDbConfig.database << std::endl;
-    std::cout << "  Username: " << mDbConfig.username << std::endl;
+    using namespace Network::Database;
 
-    // Simulate successful connection for now
-    return true;
+    std::cout << "Connecting to database (type=" <<
+        static_cast<int>(mDbConfig.type) << ")..." << std::endl;
+
+    try
+    {
+        mDatabase = DatabaseFactory::CreateDatabase(mDbConfig.type);
+
+        if (mDbConfig.type != DatabaseType::Mock)
+        {
+            // English: Build a connection string for non-mock backends
+            // 한글: Mock 외 백엔드를 위한 연결 문자열 구성
+            Network::Database::DatabaseConfig dbConfig;
+            dbConfig.mType = mDbConfig.type;
+            dbConfig.mConnectionString = mDbConfig.database; // SQLite uses file path
+            mDatabase->Connect(dbConfig);
+        }
+        else
+        {
+            // English: MockDatabase — just call Connect() with a default config
+            // 한글: MockDatabase — 기본 config로 Connect() 호출
+            Network::Database::DatabaseConfig dbConfig;
+            dbConfig.mType = DatabaseType::Mock;
+            mDatabase->Connect(dbConfig);
+        }
+
+        std::cout << "Database connected successfully" << std::endl;
+
+        // English: Inject DB into latency manager so it can persist to tables
+        // 한글: 레이턴시 관리자에 DB 주입하여 테이블 저장 활성화
+        if (mLatencyManager)
+        {
+            mLatencyManager->SetDatabase(mDatabase.get());
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Failed to connect to database: " << e.what() << std::endl;
+        mDatabase.reset();
+        return false;
+    }
 }
 
 void DBServer::DisconnectFromDatabase()
 {
-    std::cout << "Disconnecting from database" << std::endl;
-    // In real implementation, close database connection
+    if (mDatabase)
+    {
+        // English: Remove DB reference from latency manager before disconnecting
+        // 한글: 연결 해제 전 레이턴시 관리자에서 DB 참조 제거
+        if (mLatencyManager)
+        {
+            mLatencyManager->SetDatabase(nullptr);
+        }
+
+        mDatabase->Disconnect();
+        mDatabase.reset();
+        std::cout << "Database disconnected" << std::endl;
+    }
 }
 
 std::string DBServer::ExecuteQuery(const std::string &query)

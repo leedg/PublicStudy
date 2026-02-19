@@ -3,6 +3,10 @@
 // English: Asynchronous DB task queue - separates game logic from database operations
 // 한글: 비동기 DB 작업 큐 - 게임 로직과 데이터베이스 작업 분리
 
+// English: Forward-declare IDatabase to avoid pulling in ServerEngine headers here
+// 한글: ServerEngine 헤더 전이 방지를 위한 IDatabase 전방 선언
+namespace Network { namespace Database { class IDatabase; } }
+
 #include "Utils/NetworkUtils.h"
 #include <atomic>
 #include <condition_variable>
@@ -84,7 +88,8 @@ namespace Network::TestServer
         // English: Lifecycle
         // 한글: 생명주기
         bool Initialize(size_t workerThreadCount = 1,
-                        const std::string& walPath = "db_tasks.wal");
+                        const std::string& walPath = "db_tasks.wal",
+                        Network::Database::IDatabase* db = nullptr);
         void Shutdown();
         bool IsRunning() const;
 
@@ -124,7 +129,9 @@ namespace Network::TestServer
         // English: WAL (Write-Ahead Log) for crash recovery
         // 한글: 크래시 복구를 위한 WAL (Write-Ahead Log)
         //
-        // Format per line: <STATUS>|<TYPE>|<SESSIONID>|<SEQ>|<DATA>
+        // Format per line:
+        //   P|<TYPE>|<SESSIONID>|<SEQ>|<DATA>   (Pending)
+        //   D|<SEQ>                             (Done)
         //   STATUS: P(Pending) or D(Done)
         //   TYPE: DBTaskType as integer
         //   SEQ: monotonic sequence number for matching P/D pairs
@@ -162,10 +169,9 @@ namespace Network::TestServer
         mutable std::mutex              mWalMutex;      // WAL 파일 쓰기 직렬화
         std::atomic<uint64_t>           mWalSeq{0};     // 단조 증가 시퀀스 번호
 
-        // English: Database connection pool reference (TODO: inject externally)
-        // 한글: 데이터베이스 연결 풀 참조 (TODO: 외부에서 주입)
-        // Note: For now, we'll manage DB operations internally
-        // 참고: 현재는 DB 작업을 내부에서 관리
+        // English: Injected database (non-owning); nullptr = log-only mode
+        // 한글: 주입된 데이터베이스 (non-owning); nullptr이면 로그만 출력
+        Network::Database::IDatabase* mDatabase = nullptr;
     };
 
 } // namespace Network::TestServer

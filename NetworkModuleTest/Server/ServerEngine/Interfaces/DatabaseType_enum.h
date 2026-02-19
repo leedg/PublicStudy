@@ -37,7 +37,11 @@ enum class DatabaseType
 
 	// English: SQLite
 	// 한글: SQLite
-	SQLite
+	SQLite,
+
+	// English: Mock (in-memory, no external dependency, for testing)
+	// 한글: Mock (인메모리, 외부 의존성 없음, 테스트용)
+	Mock
 };
 
 } // namespace Database

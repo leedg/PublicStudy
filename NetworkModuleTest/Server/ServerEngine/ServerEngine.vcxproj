@@ -182,12 +182,16 @@
     <!-- Implementation Layer - Database -->
     <ClInclude Include="Database\DatabaseFactory.h" />
     <ClInclude Include="Database\DatabaseModule.h" />
+    <ClInclude Include="Database\MockDatabase.h" />
     <ClInclude Include="Database\ODBCDatabase.h" />
     <ClInclude Include="Database\OLEDBDatabase.h" />
+    <ClInclude Include="Database\SQLiteDatabase.h" />
     <ClInclude Include="Database\ConnectionPool.h" />
     <ClCompile Include="Database\DatabaseFactory.cpp" />
+    <ClCompile Include="Database\MockDatabase.cpp" />
     <ClCompile Include="Database\ODBCDatabase.cpp" />
     <ClCompile Include="Database\OLEDBDatabase.cpp" />
+    <ClCompile Include="Database\SQLiteDatabase.cpp" />
     <ClCompile Include="Database\ConnectionPool.cpp" />
   </ItemGroup>
   <ItemGroup>

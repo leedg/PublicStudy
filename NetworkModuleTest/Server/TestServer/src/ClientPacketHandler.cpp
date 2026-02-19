@@ -63,6 +63,29 @@ namespace Network::TestServer
             return;
         }
 
+        // English: Validate minimal payload size per packet id before reinterpret_cast in handlers.
+        // 한글: 핸들러 내부 reinterpret_cast 전에 패킷 ID별 최소 길이 검증.
+        uint32_t requiredSize = sizeof(PacketHeader);
+        switch (static_cast<PacketType>(header->id))
+        {
+        case PacketType::SessionConnectReq:
+            requiredSize = sizeof(PKT_SessionConnectReq);
+            break;
+        case PacketType::PingReq:
+            requiredSize = sizeof(PKT_PingReq);
+            break;
+        default:
+            break;
+        }
+
+        if (header->size < requiredSize)
+        {
+            Logger::Warn("Packet too small for id " + std::to_string(header->id) +
+                " - expected at least: " + std::to_string(requiredSize) +
+                ", actual: " + std::to_string(header->size));
+            return;
+        }
+
         // English: Dispatch to handler using functor map
         // 한글: 펑터 맵을 사용하여 핸들러로 디스패치
         auto it = mHandlers.find(header->id);

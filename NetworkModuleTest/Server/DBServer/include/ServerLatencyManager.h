@@ -1,5 +1,9 @@
 #pragma once
 
+// English: Forward-declare IDatabase to avoid pulling in ServerEngine headers
+// 한글: ServerEngine 헤더 전이 방지를 위한 IDatabase 전방 선언
+namespace Network { namespace Database { class IDatabase; } }
+
 // English: ServerLatencyManager - unified per-server latency tracker and ping time recorder.
 //
 //   Replaces the two separate classes that were previously responsible for these concerns:
@@ -124,6 +128,10 @@ namespace Network::DBServer
 
         bool IsInitialized() const { return mInitialized.load(std::memory_order_acquire); }
 
+        // English: Inject a database connection for persistent storage (non-owning)
+        // 한글: 영속 저장을 위한 데이터베이스 주입 (non-owning)
+        void SetDatabase(Network::Database::IDatabase* db);
+
     private:
         // English: Format latency data as SQL INSERT for ServerLatencyLog
         // 한글: ServerLatencyLog용 SQL INSERT 포맷
@@ -141,17 +149,34 @@ namespace Network::DBServer
         // 한글: 밀리초 타임스탬프를 "YYYY-MM-DD HH:MM:SS GMT" 문자열로 포맷
         std::string FormatTimestamp(uint64_t timestampMs) const;
 
-        // English: Execute a database query (placeholder — replace with real DB driver call)
-        // 한글: 데이터베이스 쿼리 실행 (placeholder — 실제 DB 드라이버 호출로 대체)
+        // English: Execute a database query
+        // 한글: 데이터베이스 쿼리 실행
         bool ExecuteQuery(const std::string& query);
+
+        // English: Create persistent tables if a live database is available.
+        //          Called from both Initialize() and SetDatabase() so that tables are
+        //          always created regardless of injection order.
+        // 한글: 활성 DB가 있을 때 영속 테이블 생성.
+        //       Initialize()와 SetDatabase() 양쪽에서 호출해 주입 순서와 무관하게
+        //       항상 테이블이 생성되도록 한다.
+        void EnsureTables();
 
     private:
         std::atomic<bool> mInitialized;
+
+        // English: Injected database (non-owning); nullptr = log-only mode
+        // 한글: 주입된 데이터베이스 (non-owning); nullptr이면 로그만 출력
+        Network::Database::IDatabase* mDatabase = nullptr;
 
         // English: Per-server latency map, guarded by mutex
         // 한글: 서버별 레이턴시 맵, mutex로 보호
         mutable std::mutex mLatencyMutex;
         std::unordered_map<uint32_t, ServerLatencyInfo> mLatencyMap;
+
+        // English: Last ping timestamp per server (for GetLastPingTime O(1))
+        // 한글: 서버별 마지막 Ping 타임스탬프 (GetLastPingTime O(1) 조회용)
+        mutable std::mutex mPingTimeMutex;
+        std::unordered_map<uint32_t, uint64_t> mLastPingTimeMap;
     };
 
 } // namespace Network::DBServer
