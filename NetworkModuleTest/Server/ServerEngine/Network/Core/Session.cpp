@@ -5,6 +5,7 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
 #ifndef _WIN32
 #include <errno.h>
 #include <sys/socket.h>
@@ -13,6 +14,14 @@
 
 namespace Network::Core
 {
+
+#ifdef _WIN32
+namespace
+{
+std::mutex gIOTypeRegistryMutex;
+std::unordered_map<const OVERLAPPED *, IOType> gIOTypeRegistry;
+}
+#endif
 
 Session::Session()
 	: mId(0), mSocket(
@@ -31,9 +40,44 @@ Session::Session()
 		  mSendContext(IOType::Send)
 #endif
 {
+#ifdef _WIN32
+	std::lock_guard<std::mutex> lock(gIOTypeRegistryMutex);
+	gIOTypeRegistry[static_cast<const OVERLAPPED *>(&mRecvContext)] = IOType::Recv;
+	gIOTypeRegistry[static_cast<const OVERLAPPED *>(&mSendContext)] = IOType::Send;
+#endif
 }
 
-Session::~Session() { Close(); }
+Session::~Session()
+{
+#ifdef _WIN32
+	{
+		std::lock_guard<std::mutex> lock(gIOTypeRegistryMutex);
+		gIOTypeRegistry.erase(static_cast<const OVERLAPPED *>(&mRecvContext));
+		gIOTypeRegistry.erase(static_cast<const OVERLAPPED *>(&mSendContext));
+	}
+#endif
+	Close();
+}
+
+#ifdef _WIN32
+bool Session::TryResolveIOType(const OVERLAPPED *overlapped, IOType &outType)
+{
+	if (overlapped == nullptr)
+	{
+		return false;
+	}
+
+	std::lock_guard<std::mutex> lock(gIOTypeRegistryMutex);
+	const auto it = gIOTypeRegistry.find(overlapped);
+	if (it == gIOTypeRegistry.end())
+	{
+		return false;
+	}
+
+	outType = it->second;
+	return true;
+}
+#endif
 
 void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 {
@@ -108,6 +152,13 @@ void Session::Send(const void *data, uint32_t size)
 {
 	if (!IsConnected() || data == nullptr || size == 0)
 	{
+		return;
+	}
+
+	if (size > SEND_BUFFER_SIZE)
+	{
+		Utils::Logger::Warn("Send size exceeds SEND_BUFFER_SIZE - packet dropped (Session: " +
+							std::to_string(mId) + ", Size: " + std::to_string(size) + ")");
 		return;
 	}
 
@@ -236,6 +287,16 @@ bool Session::PostSend()
 
 #ifdef _WIN32
 	mSendContext.Reset();
+	if (dataToSend.size() > sizeof(mSendContext.buffer))
+	{
+		Utils::Logger::Error("Send buffer overflow risk detected - closing session (Session: " +
+							 std::to_string(mId) + ", Size: " +
+							 std::to_string(dataToSend.size()) + ")");
+		mIsSending.store(false, std::memory_order_release);
+		Close();
+		return false;
+	}
+
 	std::memcpy(mSendContext.buffer, dataToSend.data(), dataToSend.size());
 	mSendContext.wsaBuf.buf = mSendContext.buffer;
 	mSendContext.wsaBuf.len = static_cast<ULONG>(dataToSend.size());

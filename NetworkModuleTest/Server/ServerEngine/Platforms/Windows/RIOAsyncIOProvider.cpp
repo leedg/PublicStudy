@@ -344,7 +344,9 @@ AsyncIOError RIOAsyncIOProvider::SendAsync(SocketHandle socket,
 	rioBuffer.Offset = 0;
 	rioBuffer.Length = static_cast<ULONG>(size);
 
-	void *opKey = op.get();
+	uintptr_t opKey = static_cast<uintptr_t>(
+		mNextOpId.fetch_add(1, std::memory_order_relaxed));
+	op->mOpId = opKey;
 	{
 		std::lock_guard<std::mutex> lock(mMutex);
 		mPendingOps.emplace(opKey, std::move(op));
@@ -423,7 +425,9 @@ AsyncIOError RIOAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	rioBuffer.Offset = 0;
 	rioBuffer.Length = static_cast<ULONG>(size);
 
-	void *opKey = op.get();
+	uintptr_t opKey = static_cast<uintptr_t>(
+		mNextOpId.fetch_add(1, std::memory_order_relaxed));
+	op->mOpId = opKey;
 	{
 		std::lock_guard<std::mutex> lock(mMutex);
 		mPendingOps.emplace(opKey, std::move(op));
@@ -547,8 +551,7 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 	for (ULONG i = 0; i < numResults && completionCount < static_cast<int>(maxEntries);
 		 ++i)
 	{
-		void *opKey = reinterpret_cast<void *>(
-			static_cast<uintptr_t>(rioResults[i].RequestContext));
+		uintptr_t opKey = static_cast<uintptr_t>(rioResults[i].RequestContext);
 		std::unique_ptr<PendingOperation> op;
 		{
 			std::lock_guard<std::mutex> lock(mMutex);
