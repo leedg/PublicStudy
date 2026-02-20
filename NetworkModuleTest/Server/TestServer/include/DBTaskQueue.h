@@ -117,7 +117,7 @@ namespace Network::TestServer
 
         // English: Process individual task
         // 한글: 개별 작업 처리
-        void ProcessTask(const DBTask& task);
+        bool ProcessTask(const DBTask& task);
 
         // English: Specific task handlers
         // 한글: 특정 작업 핸들러

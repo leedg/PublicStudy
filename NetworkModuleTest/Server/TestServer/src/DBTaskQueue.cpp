@@ -171,13 +171,13 @@ namespace Network::TestServer
             {
                 try
                 {
-                    ProcessTask(task);
+                    const bool success = ProcessTask(task);
 
                     // English: Keep WAL semantics identical to worker path:
                     //          once processed during drain, mark as done.
                     // 한글: 워커 경로와 동일한 WAL 의미를 유지:
                     //       drain에서 처리된 태스크도 done 마킹.
-                    if (task.walSeq != 0)
+                    if (success && task.walSeq != 0)
                     {
                         WalWriteDone(task.walSeq);
                     }
@@ -321,11 +321,11 @@ namespace Network::TestServer
             // 한글: 락 외부에서 작업 처리
             if (hasTask)
             {
-                ProcessTask(task);
+                const bool success = ProcessTask(task);
 
                 // English: WAL - mark task as done after successful processing
                 // 한글: WAL - 처리 완료 후 태스크 완료 마킹
-                if (task.walSeq != 0)
+                if (success && task.walSeq != 0)
                 {
                     WalWriteDone(task.walSeq);
                 }
@@ -335,7 +335,7 @@ namespace Network::TestServer
         Logger::Info("DBTaskQueue worker thread stopped");
     }
 
-    void DBTaskQueue::ProcessTask(const DBTask& task)
+    bool DBTaskQueue::ProcessTask(const DBTask& task)
     {
         bool success = false;
         std::string result;
@@ -385,6 +385,8 @@ namespace Network::TestServer
         {
             task.callback(success, result);
         }
+
+        return success;
     }
 
     bool DBTaskQueue::HandleRecordConnectTime(const DBTask& task, std::string& result)

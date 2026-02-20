@@ -141,6 +141,12 @@ class Session : public std::enable_shared_from_this<Session>
 #ifdef _WIN32
 	IOContext &GetRecvContext() { return mRecvContext; }
 	IOContext &GetSendContext() { return mSendContext; }
+
+	// English: Resolve IO type by OVERLAPPED pointer without dereferencing it.
+	//          Used by IOCP completion path to avoid touching freed memory.
+	// 한국어: OVERLAPPED 포인터 역참조 없이 IO 타입을 조회.
+	//       IOCP 완료 경로에서 해제된 메모리 접근을 피하기 위해 사용.
+	static bool TryResolveIOType(const OVERLAPPED *overlapped, IOType &outType);
 #endif
 
 	// English: Virtual event handlers (override in derived classes)

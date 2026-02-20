@@ -174,7 +174,6 @@ void WindowsNetworkEngine::AcceptLoop()
 				std::to_string(session->GetId()) + ": " +
 				std::string(mProvider->GetLastError()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			closesocket(clientSocket);
 			continue;
 		}
 
@@ -217,7 +216,6 @@ void WindowsNetworkEngine::AcceptLoop()
 				std::to_string(session->GetId()) + ": " +
 				std::string(mProvider->GetLastError()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			closesocket(clientSocket);
 			continue;
 		}
 

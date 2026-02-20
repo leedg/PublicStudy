@@ -156,9 +156,9 @@ class IocpAsyncIOProvider : public AsyncIOProvider
 
 	HANDLE mCompletionPort; // English: IOCP completion port handle / 한글: IOCP
 							// 완료 포트 핸들
-	std::unordered_map<SocketHandle, std::unique_ptr<PendingOperation>>
+	std::unordered_map<OVERLAPPED *, std::unique_ptr<PendingOperation>>
 		mPendingRecvOps; // English: Pending recv ops / 한글: 대기 수신 작업
-	std::unordered_map<SocketHandle, std::unique_ptr<PendingOperation>>
+	std::unordered_map<OVERLAPPED *, std::unique_ptr<PendingOperation>>
 		mPendingSendOps; // English: Pending send ops / 한글: 대기 송신 작업
 	mutable std::mutex
 		mMutex; // English: Thread safety mutex / 한글: 스레드 안전성 뮤텍스

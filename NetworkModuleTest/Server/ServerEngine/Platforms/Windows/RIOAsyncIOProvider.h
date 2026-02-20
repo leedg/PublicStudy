@@ -6,6 +6,7 @@
 #include "Network/Core/AsyncIOProvider.h"
 
 #ifdef _WIN32
+#include <atomic>
 #include <memory>
 #include <mswsock.h>
 #include <mutex>
@@ -90,6 +91,7 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	struct PendingOperation
 	{
 		RequestContext mContext = 0;
+		uintptr_t mOpId = 0;
 		SocketHandle mSocket = INVALID_SOCKET;
 		AsyncIOType mType = AsyncIOType::Recv;
 		RIO_BUFFERID mRioBufferId = RIO_INVALID_BUFFERID;
@@ -101,7 +103,7 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	RIO_CQ mCompletionQueue;
 	std::unordered_map<SocketHandle, RIO_RQ> mRequestQueues;           // English: O(1) request queue lookup / 한글: O(1) 요청 큐 탐색
 	std::unordered_map<int64_t, RegisteredBufferEntry> mRegisteredBuffers; // English: O(1) buffer lookup / 한글: O(1) 버퍼 탐색
-	std::unordered_map<void *, std::unique_ptr<PendingOperation>> mPendingOps; // English: O(1) pending op lookup / 한글: O(1) 대기 작업 탐색
+	std::unordered_map<uintptr_t, std::unique_ptr<PendingOperation>> mPendingOps; // English: O(1) pending op lookup / 한글: O(1) 대기 작업 탐색
 	mutable std::mutex mMutex;
 
 	PfnRIOCloseCompletionQueue mPfnRIOCloseCompletionQueue;
@@ -122,6 +124,7 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	std::string mLastError;
 	size_t mMaxConcurrentOps;
 	int64_t mNextBufferId;
+	std::atomic<uint64_t> mNextOpId{1};
 	bool mInitialized;
 
 	bool LoadRIOFunctions();

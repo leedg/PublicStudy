@@ -216,9 +216,18 @@ void BaseNetworkEngine::FireEvent(NetworkEvent eventType,
 									  const uint8_t *data, size_t dataSize,
 									  OSError errorCode)
 {
-	std::lock_guard<std::mutex> lock(mCallbackMutex);
-	auto it = mCallbacks.find(eventType);
-	if (it == mCallbacks.end())
+	NetworkEventCallback callback;
+	{
+		std::lock_guard<std::mutex> lock(mCallbackMutex);
+		auto it = mCallbacks.find(eventType);
+		if (it == mCallbacks.end())
+		{
+			return;
+		}
+		callback = it->second;
+	}
+
+	if (!callback)
 	{
 		return;
 	}
@@ -240,7 +249,7 @@ void BaseNetworkEngine::FireEvent(NetworkEvent eventType,
 
 	// English: Call callback
 	// 한글: 콜백 호출
-	it->second(eventData);
+	callback(eventData);
 }
 
 void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
@@ -275,16 +284,17 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 	// English: Process on logic thread
 	// 한글: 로직 스레드에서 처리
 	auto sessionCopy = session;
-	auto dataCopy = std::make_unique<char[]>(bytesReceived);
-	std::memcpy(dataCopy.get(), data, bytesReceived);
+	auto dataCopy = std::make_shared<std::vector<char>>(
+		static_cast<size_t>(bytesReceived));
+	std::memcpy(dataCopy->data(), data, static_cast<size_t>(bytesReceived));
 
 	if (!mLogicThreadPool.Submit(
-		[this, sessionCopy, dataPtr = dataCopy.release(), bytesReceived]()
+		[this, sessionCopy, dataCopy, bytesReceived]()
 		{
-			std::unique_ptr<char[]> dataHolder(dataPtr);
-			sessionCopy->ProcessRawRecv(dataPtr, bytesReceived);
+			const char *recvData = dataCopy->data();
+			sessionCopy->ProcessRawRecv(recvData, bytesReceived);
 			FireEvent(NetworkEvent::DataReceived, sessionCopy->GetId(),
-					  reinterpret_cast<const uint8_t *>(dataPtr), bytesReceived);
+					  reinterpret_cast<const uint8_t *>(recvData), bytesReceived);
 		}))
 	{
 		Utils::Logger::Warn("Logic queue full - recv dropped, disconnecting Session: " +

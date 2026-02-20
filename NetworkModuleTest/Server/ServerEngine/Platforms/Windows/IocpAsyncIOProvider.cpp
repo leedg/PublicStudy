@@ -178,41 +178,61 @@ AsyncIOError IocpAsyncIOProvider::SendAsync(SocketHandle socket,
 	}
 
 	// English: Create pending operation
-	// 한글: 대기 작업 생성
+	// ???: ??????? ???
 	auto op = std::make_unique<PendingOperation>();
 	std::memset(&op->mOverlapped, 0, sizeof(OVERLAPPED));
 
 	op->mBuffer = std::make_unique<uint8_t[]>(size);
 	std::memcpy(op->mBuffer.get(), buffer, size);
 
-	op->mWsaBuffer.buf = reinterpret_cast<char*>(op->mBuffer.get());
+	op->mWsaBuffer.buf = reinterpret_cast<char *>(op->mBuffer.get());
 	op->mWsaBuffer.len = static_cast<ULONG>(size);
 	op->mContext = context;
 	op->mType = AsyncIOType::Send;
 	op->mSocket = socket;
 
+	OVERLAPPED *opKey = &op->mOverlapped;
+	PendingOperation *rawOp = op.get();
+
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+		auto [it, inserted] = mPendingSendOps.emplace(opKey, std::move(op));
+		if (!inserted)
+		{
+			mLastError = "Duplicate pending send OVERLAPPED key";
+			mStats.mErrorCount++;
+			return AsyncIOError::OperationFailed;
+		}
+		mStats.mTotalRequests++;
+		mStats.mPendingRequests++;
+	}
+
 	// English: Issue WSASend
-	// 한글: WSASend 발행
+	// ???: WSASend ???
 	DWORD bytesSent = 0;
-	int result = WSASend(socket, &op->mWsaBuffer, 1, &bytesSent, 0,
-						 &op->mOverlapped, nullptr);
+	int result = WSASend(socket, &rawOp->mWsaBuffer, 1, &bytesSent, 0,
+								opKey, nullptr);
 
 	if (result == SOCKET_ERROR)
 	{
 		int errorCode = WSAGetLastError();
 		if (errorCode != WSA_IO_PENDING)
 		{
-			mLastError = "WSASend failed: " + std::to_string(errorCode);
+			std::lock_guard<std::mutex> lock(mMutex);
+			auto it = mPendingSendOps.find(opKey);
+			if (it != mPendingSendOps.end())
+			{
+				mPendingSendOps.erase(it);
+			}
+			if (mStats.mPendingRequests > 0)
+			{
+				mStats.mPendingRequests--;
+			}
 			mStats.mErrorCount++;
+
+			mLastError = "WSASend failed: " + std::to_string(errorCode);
 			return AsyncIOError::OperationFailed;
 		}
-	}
-
-	{
-		std::lock_guard<std::mutex> lock(mMutex);
-		mPendingSendOps[socket] = std::move(op);
-		mStats.mTotalRequests++;
-		mStats.mPendingRequests++;
 	}
 
 	return AsyncIOError::Success;
@@ -238,33 +258,53 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	std::memset(&op->mOverlapped, 0, sizeof(OVERLAPPED));
 
 	op->mBuffer = std::make_unique<uint8_t[]>(size);
-	op->mWsaBuffer.buf = reinterpret_cast<char*>(op->mBuffer.get());
+	op->mWsaBuffer.buf = reinterpret_cast<char *>(op->mBuffer.get());
 	op->mWsaBuffer.len = static_cast<ULONG>(size);
 	op->mContext = context;
 	op->mType = AsyncIOType::Recv;
 	op->mSocket = socket;
 
+	OVERLAPPED *opKey = &op->mOverlapped;
+	PendingOperation *rawOp = op.get();
+
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+		auto [it, inserted] = mPendingRecvOps.emplace(opKey, std::move(op));
+		if (!inserted)
+		{
+			mLastError = "Duplicate pending recv OVERLAPPED key";
+			mStats.mErrorCount++;
+			return AsyncIOError::OperationFailed;
+		}
+		mStats.mTotalRequests++;
+		mStats.mPendingRequests++;
+	}
+
 	DWORD bytesRecv = 0;
 	DWORD dwFlags = 0;
-	int result = WSARecv(socket, &op->mWsaBuffer, 1, &bytesRecv, &dwFlags,
-						 &op->mOverlapped, nullptr);
+	int result = WSARecv(socket, &rawOp->mWsaBuffer, 1, &bytesRecv, &dwFlags,
+								opKey, nullptr);
 
 	if (result == SOCKET_ERROR)
 	{
 		int errorCode = WSAGetLastError();
 		if (errorCode != WSA_IO_PENDING)
 		{
-			mLastError = "WSARecv failed: " + std::to_string(errorCode);
+			std::lock_guard<std::mutex> lock(mMutex);
+			auto it = mPendingRecvOps.find(opKey);
+			if (it != mPendingRecvOps.end())
+			{
+				mPendingRecvOps.erase(it);
+			}
+			if (mStats.mPendingRequests > 0)
+			{
+				mStats.mPendingRequests--;
+			}
 			mStats.mErrorCount++;
+
+			mLastError = "WSARecv failed: " + std::to_string(errorCode);
 			return AsyncIOError::OperationFailed;
 		}
-	}
-
-	{
-		std::lock_guard<std::mutex> lock(mMutex);
-		mPendingRecvOps[socket] = std::move(op);
-		mStats.mTotalRequests++;
-		mStats.mPendingRequests++;
 	}
 
 	return AsyncIOError::Success;
@@ -308,92 +348,79 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		OVERLAPPED *pOverlapped = nullptr;
 
 		BOOL result = GetQueuedCompletionStatus(mCompletionPort, &bytesTransferred,
-												&completionKey, &pOverlapped, timeout);
+											&completionKey, &pOverlapped, timeout);
 
 		if (!result && !pOverlapped)
 		{
 			break;
 		}
 
-		// English: pOverlapped points to PendingOperation::mOverlapped (first member).
-		//          Cast to PendingOperation* and use mSocket for O(1) map lookup.
-		// 한글: pOverlapped는 PendingOperation::mOverlapped(첫 번째 멤버)를 가리킴.
-		//       PendingOperation*로 캐스트 후 mSocket으로 O(1) 맵 탐색.
 		std::unique_ptr<PendingOperation> op;
 		if (pOverlapped)
 		{
-			// English: Cast OVERLAPPED* to PendingOperation* (mOverlapped is first member)
-			// 한글: mOverlapped가 첫 번째 멤버이므로 OVERLAPPED* -> PendingOperation* 캐스트
-			auto *candidate = reinterpret_cast<PendingOperation *>(pOverlapped);
-
 			std::lock_guard<std::mutex> lock(mMutex);
-			// English: O(1) lookup using mSocket key, verify pointer to guard against stale ops
-			// 한글: mSocket 키로 O(1) 탐색, 포인터 확인으로 오래된 작업 방지
-			auto recvIt = mPendingRecvOps.find(candidate->mSocket);
-			if (recvIt != mPendingRecvOps.end() && recvIt->second.get() == candidate)
+			auto recvIt = mPendingRecvOps.find(pOverlapped);
+			if (recvIt != mPendingRecvOps.end())
 			{
 				op = std::move(recvIt->second);
 				mPendingRecvOps.erase(recvIt);
-				mStats.mPendingRequests--;
+				if (mStats.mPendingRequests > 0)
+				{
+					mStats.mPendingRequests--;
+				}
 			}
 			else
 			{
-				auto sendIt = mPendingSendOps.find(candidate->mSocket);
-				if (sendIt != mPendingSendOps.end() && sendIt->second.get() == candidate)
+				auto sendIt = mPendingSendOps.find(pOverlapped);
+				if (sendIt != mPendingSendOps.end())
 				{
 					op = std::move(sendIt->second);
 					mPendingSendOps.erase(sendIt);
-					mStats.mPendingRequests--;
+					if (mStats.mPendingRequests > 0)
+					{
+						mStats.mPendingRequests--;
+					}
 				}
 			}
 		}
 
 		if (op)
 		{
-			// English: Matched a PendingOperation from Provider's RecvAsync/SendAsync
-			// 한글: Provider의 RecvAsync/SendAsync에서 생성된 PendingOperation 매칭됨
 			entries[completionCount].mContext = op->mContext;
 			entries[completionCount].mType = op->mType;
 		}
-		else if (pOverlapped && completionKey != 0)
+		else if (pOverlapped)
 		{
-			// English: No matching PendingOperation - this completion came from
-			// Session::PostRecv/PostSend which directly calls WSARecv/WSASend
-			// using Session's own IOContext (inherits OVERLAPPED).
-			// IOContext has OVERLAPPED as its base class, so the cast is valid.
-			// Use completionKey (= ConnectionId) as context.
-			//
-			// 한글: 매칭되는 PendingOperation 없음 - Session::PostRecv/PostSend가
-			// 직접 WSARecv/WSASend를 호출하여 Session 자체의 IOContext
-			// (OVERLAPPED를 상속)를 사용한 완료입니다.
-			// IOContext는 OVERLAPPED를 기반 클래스로 가지므로 캐스트가 유효합니다.
-			// completionKey(= ConnectionId)를 context로 사용합니다.
-			auto *ioCtx = reinterpret_cast<Network::Core::IOContext *>(pOverlapped);
+			Network::Core::IOType ioType = Network::Core::IOType::Recv;
+			if (!Network::Core::Session::TryResolveIOType(pOverlapped, ioType))
+			{
+				timeout = 0;
+				continue;
+			}
 
 			entries[completionCount].mContext = static_cast<RequestContext>(completionKey);
 			entries[completionCount].mType =
-				(ioCtx->type == Network::Core::IOType::Recv)
-					? AsyncIOType::Recv
-					: AsyncIOType::Send;
+				(ioType == Network::Core::IOType::Recv) ? AsyncIOType::Recv
+												 : AsyncIOType::Send;
 		}
 		else
 		{
-			// English: Unknown completion - skip
-			// 한글: 알 수 없는 완료 - 건너뜀
 			timeout = 0;
 			continue;
 		}
 
-		entries[completionCount].mResult = result ? static_cast<int32_t>(bytesTransferred) : -1;
-		entries[completionCount].mOsError = static_cast<OSError>(result ? 0 : ::GetLastError());
+		entries[completionCount].mResult =
+			result ? static_cast<int32_t>(bytesTransferred) : -1;
+		entries[completionCount].mOsError =
+			static_cast<OSError>(result ? 0 : ::GetLastError());
 
 		auto endTime = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
+		auto duration =
+			std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
 		entries[completionCount].mCompletionTime = duration.count();
 
 		mStats.mTotalCompletions++;
 		completionCount++;
-
 		timeout = 0;
 	}
 
