@@ -11,6 +11,8 @@
 // Forward declaration
 namespace Network::TestServer { class DBTaskQueue; }
 
+#include <memory>
+
 namespace Network::TestServer
 {
     // =============================================================================
@@ -33,9 +35,16 @@ namespace Network::TestServer
     class ClientSession : public Core::Session
     {
     public:
-        // English: Constructor — inject DBTaskQueue pointer (not owned, must outlive this session)
-        // 한글: 생성자 — DBTaskQueue 포인터 주입 (소유권 없음, 세션보다 오래 살아야 함)
-        explicit ClientSession(DBTaskQueue* dbTaskQueue);
+        // English: Constructor — inject weak_ptr to DBTaskQueue.
+        //          Using weak_ptr instead of a raw pointer prevents use-after-free when
+        //          IOCP completion callbacks fire after TestServer begins teardown.
+        //          lock() before every use; if the queue is already destroyed, lock() returns
+        //          nullptr and the callback safely skips the enqueue.
+        // 한글: 생성자 — DBTaskQueue의 weak_ptr 주입.
+        //       raw 포인터 대신 weak_ptr을 사용하면 TestServer 소멸 이후에 발생하는
+        //       IOCP 완료 콜백에서의 use-after-free를 방지한다.
+        //       매 사용 전 lock() 호출; 큐가 이미 소멸되면 nullptr을 반환하고 안전하게 건너뜀.
+        explicit ClientSession(std::weak_ptr<DBTaskQueue> dbTaskQueue);
         virtual ~ClientSession();
 
         // English: Session event overrides
@@ -62,9 +71,11 @@ namespace Network::TestServer
         bool mConnectionRecorded;
         std::unique_ptr<ClientPacketHandler> mPacketHandler;
 
-        // English: DB task queue — injected via constructor, NOT owned by this class
-        // 한글: DB 작업 큐 — 생성자 주입, 이 클래스가 소유하지 않음
-        DBTaskQueue* mDBTaskQueue;
+        // English: DB task queue — weak_ptr so sessions do not extend the queue's lifetime.
+        //          lock() before every access; nullptr means queue is already shut down.
+        // 한글: DB 작업 큐 — weak_ptr로 세션이 큐의 수명을 연장하지 않도록 함.
+        //       매 접근 전 lock(); nullptr이면 큐가 이미 종료됨.
+        std::weak_ptr<DBTaskQueue> mDBTaskQueue;
     };
 
     using ClientSessionRef = std::shared_ptr<ClientSession>;

@@ -98,7 +98,7 @@ namespace Network::TestServer
             }
         }
 
-        mDBTaskQueue = std::make_unique<DBTaskQueue>();
+        mDBTaskQueue = std::make_shared<DBTaskQueue>();
         if (!mDBTaskQueue->Initialize(1, "db_tasks.wal", mLocalDatabase.get()))
         {
             Logger::Error("Failed to initialize DB task queue");
@@ -377,12 +377,16 @@ namespace Network::TestServer
 
     Core::SessionFactory TestServer::MakeClientSessionFactory()
     {
-        // English: Capture raw pointer — mDBTaskQueue outlives all sessions (destroyed in Stop)
-        // 한글: raw 포인터 캡처 — mDBTaskQueue는 모든 세션보다 오래 살아남 (Stop에서 소멸)
-        DBTaskQueue* dbQueue = mDBTaskQueue.get();
-        return [dbQueue]() -> Core::SessionRef
+        // English: Capture a weak_ptr — if mDBTaskQueue is destroyed before a late IOCP
+        //          completion fires, weak_ptr::lock() in ClientSession returns nullptr and
+        //          the callback skips the enqueue safely (prevents use-after-free).
+        // 한글: weak_ptr 캡처 — 늦은 IOCP 완료 이전에 mDBTaskQueue가 소멸되어도
+        //       ClientSession::weak_ptr::lock()이 nullptr을 반환하고 안전하게 건너뜀
+        //       (use-after-free 방지).
+        std::weak_ptr<DBTaskQueue> weakQueue = mDBTaskQueue;
+        return [weakQueue]() -> Core::SessionRef
         {
-            return std::make_shared<ClientSession>(dbQueue);
+            return std::make_shared<ClientSession>(weakQueue);
         };
     }
 

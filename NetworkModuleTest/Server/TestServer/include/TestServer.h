@@ -76,9 +76,15 @@ namespace Network::TestServer
         // 한글: DB 서버 연결 (raw Core::SessionRef 대신 타입화된 세션 사용)
         DBServerSessionRef                           mDBServerSession;
 
-        // English: Asynchronous DB task queue (independent of game logic)
-        // 한글: 비동기 DB 작업 큐 (게임 로직과 독립적)
-        std::unique_ptr<DBTaskQueue>                mDBTaskQueue;
+        // English: Asynchronous DB task queue — shared_ptr so MakeClientSessionFactory can
+        //          capture a weak_ptr.  Sessions observe the queue via weak_ptr::lock();
+        //          if the queue is destroyed before a late IOCP completion fires, lock()
+        //          returns nullptr and the callback skips the enqueue safely (no UAF).
+        // 한글: 비동기 DB 작업 큐 — MakeClientSessionFactory에서 weak_ptr 캡처를 위해
+        //       shared_ptr 사용. 세션은 weak_ptr::lock()으로 큐에 접근하며,
+        //       늦은 IOCP 완료 시 큐가 이미 소멸되면 lock()이 nullptr을 반환하고
+        //       콜백이 안전하게 건너뜀 (use-after-free 없음).
+        std::shared_ptr<DBTaskQueue>                mDBTaskQueue;
 
         // English: Local database owned by TestServer, injected into DBTaskQueue.
         //          MockDatabase if dbConnectionString is empty; SQLiteDatabase otherwise.
