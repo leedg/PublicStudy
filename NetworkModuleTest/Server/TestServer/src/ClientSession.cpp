@@ -18,10 +18,10 @@ namespace Network::TestServer
     // 한글: ClientSession 구현
     // =============================================================================
 
-    ClientSession::ClientSession(DBTaskQueue* dbTaskQueue)
+    ClientSession::ClientSession(std::weak_ptr<DBTaskQueue> dbTaskQueue)
         : mConnectionRecorded(false)
         , mPacketHandler(std::make_unique<ClientPacketHandler>())
-        , mDBTaskQueue(dbTaskQueue)
+        , mDBTaskQueue(std::move(dbTaskQueue))
     {
     }
 
@@ -90,13 +90,19 @@ namespace Network::TestServer
         char timeStr[64];
         std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &localTime);
 
-        // English: Submit task to queue (immediate return, processed in background)
-        // 한글: 큐에 작업 제출 (즉시 반환, 백그라운드에서 처리)
-        if (mDBTaskQueue && mDBTaskQueue->IsRunning())
+        // English: Submit task to queue (immediate return, processed in background).
+        //          lock() the weak_ptr — if the queue is already destroyed (late IOCP
+        //          completion after Stop()), lock() returns nullptr and we skip safely.
+        // 한글: 큐에 작업 제출 (즉시 반환, 백그라운드 처리).
+        //       weak_ptr을 lock() — Stop() 이후 늦은 IOCP 완료 시 nullptr 반환, 안전하게 건너뜀.
+        if (auto queue = mDBTaskQueue.lock())
         {
-            mDBTaskQueue->RecordConnectTime(GetId(), timeStr);
-            Logger::Debug("Async DB task submitted - RecordConnectTime for Session: " +
-                         std::to_string(GetId()));
+            if (queue->IsRunning())
+            {
+                queue->RecordConnectTime(GetId(), timeStr);
+                Logger::Debug("Async DB task submitted - RecordConnectTime for Session: " +
+                             std::to_string(GetId()));
+            }
         }
         else
         {
@@ -122,13 +128,16 @@ namespace Network::TestServer
         char timeStr[64];
         std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &localTime);
 
-        // English: Submit task to queue (immediate return, processed in background)
-        // 한글: 큐에 작업 제출 (즉시 반환, 백그라운드에서 처리)
-        if (mDBTaskQueue && mDBTaskQueue->IsRunning())
+        // English: lock() weak_ptr for the same reason as in AsyncRecordConnectTime.
+        // 한글: AsyncRecordConnectTime과 동일한 이유로 weak_ptr lock().
+        if (auto queue = mDBTaskQueue.lock())
         {
-            mDBTaskQueue->RecordDisconnectTime(GetId(), timeStr);
-            Logger::Debug("Async DB task submitted - RecordDisconnectTime for Session: " +
-                         std::to_string(GetId()));
+            if (queue->IsRunning())
+            {
+                queue->RecordDisconnectTime(GetId(), timeStr);
+                Logger::Debug("Async DB task submitted - RecordDisconnectTime for Session: " +
+                             std::to_string(GetId()));
+            }
         }
         else
         {

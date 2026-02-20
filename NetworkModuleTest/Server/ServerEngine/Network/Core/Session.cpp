@@ -45,7 +45,7 @@ void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 	mPingSequence.store(0, std::memory_order_relaxed);
 	mIsSending = false;
 	mSendQueueSize.store(0, std::memory_order_relaxed);
-	mAsyncProvider = nullptr;
+	mAsyncProvider.store(nullptr, std::memory_order_relaxed);
 	mRecvAccumBuffer.clear();
 	mRecvAccumOffset = 0;
 
@@ -62,7 +62,11 @@ void Session::Close()
 		return;
 	}
 
-	mAsyncProvider = nullptr;
+	// English: Release-store nullptr so any concurrent Send() acquire-load sees it before
+	//          the socket is closed below — prevents use of a closed/reassigned socket.
+	// 한글: 아래 소켓 닫기 전에 concurrent Send()의 acquire-load가 nullptr을 볼 수 있도록
+	//       release-store로 nullptr 설정.
+	mAsyncProvider.store(nullptr, std::memory_order_release);
 
 	if (mSocket !=
 #ifdef _WIN32
@@ -108,23 +112,31 @@ void Session::Send(const void *data, uint32_t size)
 	}
 
 #ifdef _WIN32
-	if (mAsyncProvider)
 	{
-		// English: RIO path - delegate directly to async provider
-		// 한글: RIO 경로 - 비동기 공급자에 직접 위임
-		auto error = mAsyncProvider->SendAsync(
-			mSocket, data, size, static_cast<AsyncIO::RequestContext>(mId));
-		if (error != AsyncIO::AsyncIOError::Success)
+		// English: Acquire-load into a local snapshot so we avoid a race where
+		//          Close() stores nullptr (release) between our IsConnected() check
+		//          and the actual use of the pointer.
+		// 한글: IsConnected() 체크와 실제 사용 사이에 Close()가 nullptr을 store하는
+		//       race를 막기 위해 acquire-load로 로컬 스냅샷을 만든다.
+		auto* provider = mAsyncProvider.load(std::memory_order_acquire);
+		if (provider)
 		{
-			Utils::Logger::Error(
-				"RIO send failed - Session: " + std::to_string(mId) +
-				", Error: " + std::string(mAsyncProvider->GetLastError()));
+			// English: RIO path - delegate directly to async provider
+			// 한글: RIO 경로 - 비동기 공급자에 직접 위임
+			auto error = provider->SendAsync(
+				mSocket, data, size, static_cast<AsyncIO::RequestContext>(mId));
+			if (error != AsyncIO::AsyncIOError::Success)
+			{
+				Utils::Logger::Error(
+					"RIO send failed - Session: " + std::to_string(mId) +
+					", Error: " + std::string(provider->GetLastError()));
+			}
+			else
+			{
+				(void)provider->FlushRequests();
+			}
+			return;
 		}
-		else
-		{
-			(void)mAsyncProvider->FlushRequests();
-		}
-		return;
 	}
 #endif
 
@@ -250,14 +262,16 @@ bool Session::PostSend()
 
 	return true;
 #else
-	// English: Linux/macOS - use async provider for non-blocking send
-	if (!mAsyncProvider)
+	// English: Linux/macOS - acquire-load into local to avoid race with Close()
+	// 한글: Close()와의 race 방지를 위해 acquire-load로 로컬 스냅샷 사용
+	auto* provider = mAsyncProvider.load(std::memory_order_acquire);
+	if (!provider)
 	{
 		mIsSending.store(false, std::memory_order_release);
 		return false;
 	}
 
-	auto sendError = mAsyncProvider->SendAsync(
+	auto sendError = provider->SendAsync(
 		mSocket, dataToSend.data(), dataToSend.size(),
 		static_cast<AsyncIO::RequestContext>(mId));
 
@@ -265,7 +279,7 @@ bool Session::PostSend()
 	{
 		Utils::Logger::Error(
 			"SendAsync failed - Session: " + std::to_string(mId) +
-			", Error: " + std::string(mAsyncProvider->GetLastError()));
+			", Error: " + std::string(provider->GetLastError()));
 		mIsSending.store(false, std::memory_order_release);
 		Close();
 		return false;

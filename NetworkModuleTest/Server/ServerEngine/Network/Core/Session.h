@@ -128,7 +128,7 @@ class Session : public std::enable_shared_from_this<Session>
 
 	void SetAsyncProvider(AsyncIO::AsyncIOProvider *provider)
 	{
-		mAsyncProvider = provider;
+		mAsyncProvider.store(provider, std::memory_order_release);
 	}
 	// English: Cross-platform recv buffer access
 	// ???: ??繞??????????筌뚯슜堉??類???????쒋닪??
@@ -193,9 +193,12 @@ class Session : public std::enable_shared_from_this<Session>
 	// 癲ル슢?꾤땟?? ??? ????룹젂???源낃도 ??좊읈????묐빝???亦껋꼨援?キ???mutex lock ???⑤베猷?
 	std::atomic<size_t> mSendQueueSize;
 
-	// English: Async I/O provider (cross-platform)
-	// 한글: 비동기 I/O 공급자 (크로스플랫폼)
-	AsyncIO::AsyncIOProvider *mAsyncProvider;
+	// English: Async I/O provider — atomic pointer so Close() (any thread) and
+	//          Send() (I/O thread) can race safely without a dedicated lock.
+	//          Stored with release on set/clear and loaded with acquire before use.
+	// 한글: 비동기 I/O 공급자 — Close()(임의 스레드)와 Send()(I/O 스레드) 간
+	//       전용 락 없이 안전하게 경쟁하도록 atomic 포인터로 선언.
+	std::atomic<AsyncIO::AsyncIOProvider*> mAsyncProvider;
 
 	// English: TCP reassembly accumulation buffer + mutex + read offset
 	//

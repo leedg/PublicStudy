@@ -567,16 +567,8 @@ namespace Network::TestServer
             return;
         }
 
-        std::ifstream inFile(mWalPath);
-        if (!inFile.is_open())
-        {
-            // English: No WAL file = clean startup
-            // 한글: WAL 파일 없음 = 정상 시작
-            return;
-        }
-
-        // English: Parse WAL to find PENDING tasks that have no matching DONE
-        // 한글: WAL 파싱하여 완료 마킹 없는 PENDING 태스크 찾기
+        // English: WAL entry struct (used for both primary and backup file parsing).
+        // 한글: 기본 WAL 및 백업 파일 파싱에 모두 사용되는 WAL 항목 구조체.
         struct WalEntry
         {
             DBTaskType type;
@@ -591,63 +583,76 @@ namespace Network::TestServer
         size_t recoveredCount = 0;
         uint64_t maxSeenSeq = 0;
 
-        while (std::getline(inFile, line))
+        // English: Helper lambda — parse one WAL file (primary or .bak) into pendingMap.
+        //          Called for both files so that a crash during rename-and-re-enqueue does
+        //          not permanently lose tasks that only appear in the backup.
+        // 한글: 단일 WAL 파일(기본 또는 .bak)을 pendingMap으로 파싱하는 헬퍼 람다.
+        //       rename+재인큐 도중 크래시 시 백업 파일에만 남은 태스크도 손실 없이 복구.
+        auto parseWalFile = [&](const std::string& path)
         {
-            if (line.empty()) continue;
+            std::ifstream f(path);
+            if (!f.is_open()) return;
 
-            std::istringstream ss(line);
-            std::string status;
-
-            if (!std::getline(ss, status, '|')) continue;
-
-            if (status == "P")
+            while (std::getline(f, line))
             {
-                std::string typeStr, sessionStr, seqStr, data;
-                if (!std::getline(ss, typeStr, '|')) continue;
-                if (!std::getline(ss, sessionStr, '|')) continue;
-                if (!std::getline(ss, seqStr, '|')) continue;
-                std::getline(ss, data);  // remainder = data (may be empty)
+                if (line.empty()) continue;
 
-                uint64_t seq = 0;
-                try { seq = std::stoull(seqStr); } catch (...) { continue; }
-                if (seq > maxSeenSeq) maxSeenSeq = seq;
+                std::istringstream ss(line);
+                std::string status;
+                if (!std::getline(ss, status, '|')) continue;
 
-                // English: Unescape substituted characters
-                // 한글: 대체 문자 복원
-                for (auto& c : data)
+                if (status == "P")
                 {
-                    if (c == '\x01') c = '|';
+                    std::string typeStr, sessionStr, seqStr, data;
+                    if (!std::getline(ss, typeStr, '|')) continue;
+                    if (!std::getline(ss, sessionStr, '|')) continue;
+                    if (!std::getline(ss, seqStr, '|')) continue;
+                    std::getline(ss, data);
+
+                    uint64_t seq = 0;
+                    try { seq = std::stoull(seqStr); } catch (...) { continue; }
+                    if (seq > maxSeenSeq) maxSeenSeq = seq;
+
+                    for (auto& c : data) { if (c == '\x01') c = '|'; }
+
+                    int typeInt = 0;
+                    try { typeInt = std::stoi(typeStr); } catch (...) { continue; }
+                    ConnectionId sessionId = 0;
+                    try { sessionId = static_cast<ConnectionId>(std::stoull(sessionStr)); } catch (...) { continue; }
+
+                    WalEntry entry;
+                    entry.type  = static_cast<DBTaskType>(typeInt);
+                    entry.sessionId = sessionId;
+                    entry.data  = data;
+                    // English: Higher-seq entry wins if both files have the same seq.
+                    // 한글: 동일 seq가 양 파일에 존재하면 높은 seq(신규 파일) 우선.
+                    pendingMap.emplace(seq, std::move(entry));
                 }
-
-                int typeInt = 0;
-                try { typeInt = std::stoi(typeStr); } catch (...) { continue; }
-
-                ConnectionId sessionId = 0;
-                try { sessionId = static_cast<ConnectionId>(std::stoull(sessionStr)); } catch (...) { continue; }
-
-                WalEntry entry;
-                entry.type = static_cast<DBTaskType>(typeInt);
-                entry.sessionId = sessionId;
-                entry.data = data;
-                pendingMap[seq] = std::move(entry);
-            }
-            else if (status == "D")
-            {
-                // English: Done record format is "D|<SEQ>".
-                // 한글: Done 레코드 포맷은 "D|<SEQ>".
-                std::string seqStr;
-                if (!std::getline(ss, seqStr, '|'))
+                else if (status == "D")
                 {
-                    continue;
+                    std::string seqStr;
+                    if (!std::getline(ss, seqStr, '|')) continue;
+                    uint64_t seq = 0;
+                    try { seq = std::stoull(seqStr); } catch (...) { continue; }
+                    if (seq > maxSeenSeq) maxSeenSeq = seq;
+                    pendingMap.erase(seq);
                 }
-
-                uint64_t seq = 0;
-                try { seq = std::stoull(seqStr); } catch (...) { continue; }
-                if (seq > maxSeenSeq) maxSeenSeq = seq;
-                pendingMap.erase(seq);
             }
+        };
+
+        // English: Read primary WAL and backup (if present) so we never lose tasks
+        //          regardless of which crash scenario occurred.
+        // 한글: 어떤 크래시 시나리오에서도 태스크 손실이 없도록 기본 WAL과 백업 모두 읽기.
+        const std::string kBackupSuffixEarly = ".bak";
+        parseWalFile(mWalPath);
+        parseWalFile(mWalPath + kBackupSuffixEarly);
+
+        if (pendingMap.empty() && maxSeenSeq == 0)
+        {
+            // English: No WAL file found at all = clean startup
+            // 한글: WAL 파일 없음 = 정상 시작
+            return;
         }
-        inFile.close();
 
         // English: Keep sequence monotonic after restart.
         // 한글: 재시작 후에도 시퀀스 단조 증가 유지.
@@ -655,9 +660,10 @@ namespace Network::TestServer
 
         if (pendingMap.empty())
         {
-            // English: All tasks completed - clean up WAL file
-            // 한글: 모든 태스크 완료 - WAL 파일 정리
+            // English: WAL existed but all tasks were completed — remove it (and backup if any).
+            // 한글: WAL은 있었지만 모든 태스크 완료 — 기본 및 백업 파일 정리.
             std::remove(mWalPath.c_str());
+            std::remove((mWalPath + kBackupSuffixEarly).c_str());
             Logger::Info("WAL: Clean startup (no pending tasks to recover)");
             return;
         }
@@ -665,9 +671,38 @@ namespace Network::TestServer
         Logger::Warn("WAL: Recovering " + std::to_string(pendingMap.size()) +
                      " unfinished task(s) from previous crash");
 
-        // English: Remove old WAL file - a fresh WAL will be created as recovered tasks are re-enqueued
-        // 한글: 기존 WAL 파일 제거 - 복구된 태스크 재인큐 시 새 WAL 파일 생성됨
-        std::remove(mWalPath.c_str());
+        // English: WAL crash-safe recovery order:
+        //   1. Rename old WAL → backup  (atomic; preserves data if we crash mid-recovery)
+        //   2. Re-enqueue each task      (WalWritePending appends PENDING to fresh mWalPath)
+        //   3. Delete backup             (only after all tasks have new WAL entries)
+        //
+        //   On restart after a crash between steps 1 and 2: mWalPath is missing so the
+        //   backup is checked first and tasks are recovered from it.
+        //   On restart after a crash during step 2: mWalPath has the partial new entries;
+        //   the backup is also read and merged so no task is permanently lost.
+        //
+        // 한글: WAL 크래시 안전 복구 순서:
+        //   1. 기존 WAL → 백업 파일로 원자적 rename (복구 중 크래시 시 데이터 보존)
+        //   2. 각 태스크 재인큐 (WalWritePending이 새 mWalPath에 PENDING 추가)
+        //   3. 백업 파일 삭제 (모든 태스크에 새 WAL 항목이 생긴 후)
+        //
+        //   1~2 사이 크래시 후 재시작: mWalPath 없음 → 백업 파일에서 복구.
+        //   2 도중 크래시 후 재시작: mWalPath에 부분 새 항목 + 백업 파일 병합으로 손실 없음.
+        const std::string kBackupSuffix = ".bak";
+        const std::string backupPath = mWalPath + kBackupSuffix;
+
+        // English: Remove stale backup from a previous interrupted recovery, if any.
+        // 한글: 이전 복구가 중단되어 남은 스테일 백업 파일 제거.
+        std::remove(backupPath.c_str());
+
+        if (std::rename(mWalPath.c_str(), backupPath.c_str()) != 0)
+        {
+            // English: rename() failed (e.g. cross-device) — fall back to delete-first.
+            //          This is the pre-fix behaviour; acceptable since rename failure is rare.
+            // 한글: rename() 실패(예: 크로스 디바이스) — 기존 삭제 우선 방식으로 폴백.
+            Logger::Warn("WAL: rename to backup failed, falling back to delete-first recovery");
+            std::remove(mWalPath.c_str());
+        }
 
         for (auto& [seq, entry] : pendingMap)
         {
@@ -678,6 +713,10 @@ namespace Network::TestServer
             EnqueueTask(std::move(task));
             ++recoveredCount;
         }
+
+        // English: All recovered tasks now have fresh WAL entries in mWalPath — safe to drop backup.
+        // 한글: 복구된 태스크 전부 새 WAL 항목 보유 확인 후 백업 삭제.
+        std::remove(backupPath.c_str());
 
         Logger::Info("WAL: Recovered and re-queued " + std::to_string(recoveredCount) + " task(s)");
     }
