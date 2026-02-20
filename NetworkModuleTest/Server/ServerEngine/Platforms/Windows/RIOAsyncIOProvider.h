@@ -103,7 +103,7 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	RIO_CQ mCompletionQueue;
 	std::unordered_map<SocketHandle, RIO_RQ> mRequestQueues;           // English: O(1) request queue lookup / 한글: O(1) 요청 큐 탐색
 	std::unordered_map<int64_t, RegisteredBufferEntry> mRegisteredBuffers; // English: O(1) buffer lookup / 한글: O(1) 버퍼 탐색
-	std::unordered_map<uintptr_t, std::unique_ptr<PendingOperation>> mPendingOps; // English: O(1) pending op lookup / 한글: O(1) 대기 작업 탐색
+	std::unordered_map<uintptr_t, std::shared_ptr<PendingOperation>> mPendingOps; // English: O(1) pending op lookup / 한글: O(1) 대기 작업 탐색
 	mutable std::mutex mMutex;
 
 	PfnRIOCloseCompletionQueue mPfnRIOCloseCompletionQueue;
@@ -125,12 +125,13 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	size_t mMaxConcurrentOps;
 	int64_t mNextBufferId;
 	std::atomic<uint64_t> mNextOpId{1};
-	bool mInitialized;
+	std::atomic<bool> mInitialized;
+	std::atomic<bool> mShuttingDown{false};
 
 	bool LoadRIOFunctions();
 	AsyncIOError GetOrCreateRequestQueue(SocketHandle socket, RIO_RQ &outQueue,
 									 RequestContext contextForSocket);
-	void CleanupPendingOperation(std::unique_ptr<PendingOperation> &op);
+	void CleanupPendingOperation(PendingOperation &op);
 };
 
 } // namespace Windows

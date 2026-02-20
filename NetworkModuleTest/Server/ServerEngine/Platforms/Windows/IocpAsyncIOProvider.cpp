@@ -21,7 +21,7 @@ namespace Windows
 
 IocpAsyncIOProvider::IocpAsyncIOProvider()
 	: mCompletionPort(INVALID_HANDLE_VALUE), mMaxConcurrentOps(0),
-	  mInitialized(false)
+	  mInitialized(false), mShuttingDown(false)
 {
 	std::memset(&mInfo, 0, sizeof(mInfo));
 	std::memset(&mStats, 0, sizeof(mStats));
@@ -47,11 +47,13 @@ IocpAsyncIOProvider::~IocpAsyncIOProvider()
 AsyncIOError IocpAsyncIOProvider::Initialize(size_t queueDepth,
 											 size_t maxConcurrent)
 {
-	if (mInitialized)
+	if (mInitialized.load(std::memory_order_acquire))
 	{
 		mLastError = "Already initialized";
 		return AsyncIOError::AlreadyInitialized;
 	}
+
+	mShuttingDown.store(false, std::memory_order_release);
 
 	// English: Create IOCP
 	// 한글: IOCP 생성
@@ -69,17 +71,20 @@ AsyncIOError IocpAsyncIOProvider::Initialize(size_t queueDepth,
 	mMaxConcurrentOps = maxConcurrent;
 	mInfo.mMaxQueueDepth = queueDepth;
 	mInfo.mMaxConcurrentReq = maxConcurrent;
-	mInitialized = true;
+	mInitialized.store(true, std::memory_order_release);
 
 	return AsyncIOError::Success;
 }
 
 void IocpAsyncIOProvider::Shutdown()
 {
-	if (!mInitialized)
+	bool expected = true;
+	if (!mInitialized.compare_exchange_strong(
+			expected, false, std::memory_order_acq_rel))
 	{
 		return;
 	}
+	mShuttingDown.store(true, std::memory_order_release);
 
 	if (mCompletionPort && mCompletionPort != INVALID_HANDLE_VALUE)
 	{
@@ -91,12 +96,11 @@ void IocpAsyncIOProvider::Shutdown()
 	mPendingRecvOps.clear();
 	mPendingSendOps.clear();
 
-	mInitialized = false;
 }
 
 bool IocpAsyncIOProvider::IsInitialized() const
 {
-	return mInitialized;
+	return mInitialized.load(std::memory_order_acquire);
 }
 
 // =============================================================================
@@ -107,7 +111,8 @@ bool IocpAsyncIOProvider::IsInitialized() const
 AsyncIOError IocpAsyncIOProvider::AssociateSocket(SocketHandle socket,
 												  RequestContext context)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
 		mLastError = "Not initialized";
 		return AsyncIOError::NotInitialized;
@@ -165,7 +170,9 @@ AsyncIOError IocpAsyncIOProvider::SendAsync(SocketHandle socket,
 											RequestContext context,
 											uint32_t flags)
 {
-	if (!mInitialized)
+	(void)flags;
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
 		mLastError = "Not initialized";
 		return AsyncIOError::NotInitialized;
@@ -177,59 +184,50 @@ AsyncIOError IocpAsyncIOProvider::SendAsync(SocketHandle socket,
 		return AsyncIOError::InvalidBuffer;
 	}
 
-	// English: Create pending operation
-	// ???: ??????? ???
 	auto op = std::make_unique<PendingOperation>();
 	std::memset(&op->mOverlapped, 0, sizeof(OVERLAPPED));
-
 	op->mBuffer = std::make_unique<uint8_t[]>(size);
 	std::memcpy(op->mBuffer.get(), buffer, size);
-
 	op->mWsaBuffer.buf = reinterpret_cast<char *>(op->mBuffer.get());
 	op->mWsaBuffer.len = static_cast<ULONG>(size);
 	op->mContext = context;
 	op->mType = AsyncIOType::Send;
 	op->mSocket = socket;
-
 	OVERLAPPED *opKey = &op->mOverlapped;
-	PendingOperation *rawOp = op.get();
 
+	std::lock_guard<std::mutex> lock(mMutex);
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
-		std::lock_guard<std::mutex> lock(mMutex);
-		auto [it, inserted] = mPendingSendOps.emplace(opKey, std::move(op));
-		if (!inserted)
-		{
-			mLastError = "Duplicate pending send OVERLAPPED key";
-			mStats.mErrorCount++;
-			return AsyncIOError::OperationFailed;
-		}
-		mStats.mTotalRequests++;
-		mStats.mPendingRequests++;
+		mLastError = "Provider is shutting down";
+		return AsyncIOError::NotInitialized;
 	}
 
-	// English: Issue WSASend
-	// ???: WSASend ???
-	DWORD bytesSent = 0;
-	int result = WSASend(socket, &rawOp->mWsaBuffer, 1, &bytesSent, 0,
-								opKey, nullptr);
+	auto [it, inserted] = mPendingSendOps.emplace(opKey, std::move(op));
+	if (!inserted)
+	{
+		mLastError = "Duplicate pending send OVERLAPPED key";
+		mStats.mErrorCount++;
+		return AsyncIOError::OperationFailed;
+	}
 
+	mStats.mTotalRequests++;
+	mStats.mPendingRequests++;
+
+	DWORD bytesSent = 0;
+	int result = WSASend(socket, &it->second->mWsaBuffer, 1, &bytesSent, 0,
+								opKey, nullptr);
 	if (result == SOCKET_ERROR)
 	{
-		int errorCode = WSAGetLastError();
+		const int errorCode = WSAGetLastError();
 		if (errorCode != WSA_IO_PENDING)
 		{
-			std::lock_guard<std::mutex> lock(mMutex);
-			auto it = mPendingSendOps.find(opKey);
-			if (it != mPendingSendOps.end())
-			{
-				mPendingSendOps.erase(it);
-			}
+			mPendingSendOps.erase(it);
 			if (mStats.mPendingRequests > 0)
 			{
 				mStats.mPendingRequests--;
 			}
 			mStats.mErrorCount++;
-
 			mLastError = "WSASend failed: " + std::to_string(errorCode);
 			return AsyncIOError::OperationFailed;
 		}
@@ -242,7 +240,9 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 											size_t size, RequestContext context,
 											uint32_t flags)
 {
-	if (!mInitialized)
+	(void)flags;
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
 		mLastError = "Not initialized";
 		return AsyncIOError::NotInitialized;
@@ -256,52 +256,48 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 	auto op = std::make_unique<PendingOperation>();
 	std::memset(&op->mOverlapped, 0, sizeof(OVERLAPPED));
-
 	op->mBuffer = std::make_unique<uint8_t[]>(size);
 	op->mWsaBuffer.buf = reinterpret_cast<char *>(op->mBuffer.get());
 	op->mWsaBuffer.len = static_cast<ULONG>(size);
 	op->mContext = context;
 	op->mType = AsyncIOType::Recv;
 	op->mSocket = socket;
-
 	OVERLAPPED *opKey = &op->mOverlapped;
-	PendingOperation *rawOp = op.get();
 
+	std::lock_guard<std::mutex> lock(mMutex);
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
-		std::lock_guard<std::mutex> lock(mMutex);
-		auto [it, inserted] = mPendingRecvOps.emplace(opKey, std::move(op));
-		if (!inserted)
-		{
-			mLastError = "Duplicate pending recv OVERLAPPED key";
-			mStats.mErrorCount++;
-			return AsyncIOError::OperationFailed;
-		}
-		mStats.mTotalRequests++;
-		mStats.mPendingRequests++;
+		mLastError = "Provider is shutting down";
+		return AsyncIOError::NotInitialized;
 	}
+
+	auto [it, inserted] = mPendingRecvOps.emplace(opKey, std::move(op));
+	if (!inserted)
+	{
+		mLastError = "Duplicate pending recv OVERLAPPED key";
+		mStats.mErrorCount++;
+		return AsyncIOError::OperationFailed;
+	}
+
+	mStats.mTotalRequests++;
+	mStats.mPendingRequests++;
 
 	DWORD bytesRecv = 0;
 	DWORD dwFlags = 0;
-	int result = WSARecv(socket, &rawOp->mWsaBuffer, 1, &bytesRecv, &dwFlags,
+	int result = WSARecv(socket, &it->second->mWsaBuffer, 1, &bytesRecv, &dwFlags,
 								opKey, nullptr);
-
 	if (result == SOCKET_ERROR)
 	{
-		int errorCode = WSAGetLastError();
+		const int errorCode = WSAGetLastError();
 		if (errorCode != WSA_IO_PENDING)
 		{
-			std::lock_guard<std::mutex> lock(mMutex);
-			auto it = mPendingRecvOps.find(opKey);
-			if (it != mPendingRecvOps.end())
-			{
-				mPendingRecvOps.erase(it);
-			}
+			mPendingRecvOps.erase(it);
 			if (mStats.mPendingRequests > 0)
 			{
 				mStats.mPendingRequests--;
 			}
 			mStats.mErrorCount++;
-
 			mLastError = "WSARecv failed: " + std::to_string(errorCode);
 			return AsyncIOError::OperationFailed;
 		}
@@ -325,7 +321,7 @@ AsyncIOError IocpAsyncIOProvider::FlushRequests()
 int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 											size_t maxEntries, int timeoutMs)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 	{
 		mLastError = "Not initialized";
 		return static_cast<int>(AsyncIOError::NotInitialized);
@@ -419,7 +415,10 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
 		entries[completionCount].mCompletionTime = duration.count();
 
-		mStats.mTotalCompletions++;
+		{
+			std::lock_guard<std::mutex> lock(mMutex);
+			mStats.mTotalCompletions++;
+		}
 		completionCount++;
 		timeout = 0;
 	}
