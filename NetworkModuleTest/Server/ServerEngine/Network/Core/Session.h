@@ -107,7 +107,7 @@ class Session : public std::enable_shared_from_this<Session>
 	// English: Accessors
 	// ???: ???쒋닪???
 	Utils::ConnectionId GetId() const { return mId; }
-	SocketHandle GetSocket() const { return mSocket; }
+	SocketHandle GetSocket() const { return mSocket.load(std::memory_order_acquire); }
 	SessionState GetState() const { return mState.load(std::memory_order_acquire); }
 	bool IsConnected() const { return mState.load(std::memory_order_acquire) == SessionState::Connected; }
 
@@ -164,10 +164,11 @@ class Session : public std::enable_shared_from_this<Session>
 	// ???: ???? ??ш끽維뽬땻?癲ル슪?ｇ몭??
 	void FlushSendQueue();
 	bool PostSend();
+	SocketHandle GetInvalidSocket() const;
 
   private:
 	Utils::ConnectionId mId;
-	SocketHandle mSocket;
+	std::atomic<SocketHandle> mSocket;
 	std::atomic<SessionState> mState;
 
 	// English: Time tracking
@@ -204,7 +205,7 @@ class Session : public std::enable_shared_from_this<Session>
 	//          Stored with release on set/clear and loaded with acquire before use.
 	// 한글: 비동기 I/O 공급자 — Close()(임의 스레드)와 Send()(I/O 스레드) 간
 	//       전용 락 없이 안전하게 경쟁하도록 atomic 포인터로 선언.
-	std::atomic<AsyncIO::AsyncIOProvider*> mAsyncProvider;
+	std::atomic<AsyncIO::AsyncIOProvider *> mAsyncProvider;
 
 	// English: TCP reassembly accumulation buffer + mutex + read offset
 	//

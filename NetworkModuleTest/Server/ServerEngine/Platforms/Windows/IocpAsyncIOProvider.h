@@ -41,6 +41,7 @@
 #include "Network/Core/AsyncIOProvider.h"
 
 #ifdef _WIN32
+#include <atomic>
 #include <unordered_map>
 #include <memory>
 #include <mutex>
@@ -168,7 +169,8 @@ class IocpAsyncIOProvider : public AsyncIOProvider
 		mLastError; // English: Last error message / 한글: 마지막 에러 메시지
 	size_t mMaxConcurrentOps; // English: Max concurrent ops / 한글: 최대 동시
 								  // 작업 수
-	bool mInitialized; // English: Initialization flag / 한글: 초기화 플래그
+	std::atomic<bool> mInitialized;
+	std::atomic<bool> mShuttingDown{false}; // English: Initialization flag / 한글: 초기화 플래그
 };
 
 } // namespace Windows

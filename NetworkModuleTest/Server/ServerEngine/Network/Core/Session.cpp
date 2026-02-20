@@ -79,10 +79,19 @@ bool Session::TryResolveIOType(const OVERLAPPED *overlapped, IOType &outType)
 }
 #endif
 
+SocketHandle Session::GetInvalidSocket() const
+{
+#ifdef _WIN32
+	return INVALID_SOCKET;
+#else
+	return -1;
+#endif
+}
+
 void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 {
 	mId = id;
-	mSocket = socket;
+	mSocket.store(socket, std::memory_order_release);
 	mState.store(SessionState::Connected, std::memory_order_release);
 	mConnectTime = Utils::Timer::GetCurrentTimestamp();
 	mLastPingTime = mConnectTime;
@@ -112,20 +121,15 @@ void Session::Close()
 	//       release-store로 nullptr 설정.
 	mAsyncProvider.store(nullptr, std::memory_order_release);
 
-	if (mSocket !=
-#ifdef _WIN32
-		INVALID_SOCKET
-#else
-		-1
-#endif
-	)
+	const SocketHandle socketToClose =
+		mSocket.exchange(GetInvalidSocket(), std::memory_order_acq_rel);
+
+	if (socketToClose != GetInvalidSocket())
 	{
 #ifdef _WIN32
-		closesocket(mSocket);
-		mSocket = INVALID_SOCKET;
+		closesocket(socketToClose);
 #else
-		close(mSocket);
-		mSocket = -1;
+		close(socketToClose);
 #endif
 	}
 
@@ -164,6 +168,12 @@ void Session::Send(const void *data, uint32_t size)
 
 #ifdef _WIN32
 	{
+		const SocketHandle socket = mSocket.load(std::memory_order_acquire);
+		if (socket == GetInvalidSocket())
+		{
+			return;
+		}
+
 		// English: Acquire-load into a local snapshot so we avoid a race where
 		//          Close() stores nullptr (release) between our IsConnected() check
 		//          and the actual use of the pointer.
@@ -175,7 +185,7 @@ void Session::Send(const void *data, uint32_t size)
 			// English: RIO path - delegate directly to async provider
 			// 한글: RIO 경로 - 비동기 공급자에 직접 위임
 			auto error = provider->SendAsync(
-				mSocket, data, size, static_cast<AsyncIO::RequestContext>(mId));
+				socket, data, size, static_cast<AsyncIO::RequestContext>(mId));
 			if (error != AsyncIO::AsyncIOError::Success)
 			{
 				Utils::Logger::Error(
@@ -286,6 +296,13 @@ bool Session::PostSend()
 	}
 
 #ifdef _WIN32
+	const SocketHandle socket = mSocket.load(std::memory_order_acquire);
+	if (socket == GetInvalidSocket())
+	{
+		mIsSending.store(false, std::memory_order_release);
+		return false;
+	}
+
 	mSendContext.Reset();
 	if (dataToSend.size() > sizeof(mSendContext.buffer))
 	{
@@ -302,7 +319,7 @@ bool Session::PostSend()
 	mSendContext.wsaBuf.len = static_cast<ULONG>(dataToSend.size());
 
 	DWORD bytesSent = 0;
-	int result = WSASend(mSocket, &mSendContext.wsaBuf, 1, &bytesSent, 0,
+	int result = WSASend(socket, &mSendContext.wsaBuf, 1, &bytesSent, 0,
 						 &mSendContext, nullptr);
 
 	if (result == SOCKET_ERROR)
@@ -333,7 +350,7 @@ bool Session::PostSend()
 	}
 
 	auto sendError = provider->SendAsync(
-		mSocket, dataToSend.data(), dataToSend.size(),
+		mSocket.load(std::memory_order_acquire), dataToSend.data(), dataToSend.size(),
 		static_cast<AsyncIO::RequestContext>(mId));
 
 	if (sendError != AsyncIO::AsyncIOError::Success)
@@ -359,6 +376,12 @@ bool Session::PostRecv()
 		return false;
 	}
 
+	const SocketHandle socket = mSocket.load(std::memory_order_acquire);
+	if (socket == GetInvalidSocket())
+	{
+		return false;
+	}
+
 	mRecvContext.Reset();
 	mRecvContext.wsaBuf.buf = mRecvContext.buffer;
 	mRecvContext.wsaBuf.len = sizeof(mRecvContext.buffer);
@@ -366,7 +389,7 @@ bool Session::PostRecv()
 	DWORD bytesReceived = 0;
 	DWORD flags = 0;
 
-	int result = WSARecv(mSocket, &mRecvContext.wsaBuf, 1, &bytesReceived,
+	int result = WSARecv(socket, &mRecvContext.wsaBuf, 1, &bytesReceived,
 						 &flags, &mRecvContext, nullptr);
 
 	if (result == SOCKET_ERROR)
@@ -415,95 +438,81 @@ size_t Session::GetRecvBufferSize() const
 
 void Session::ProcessRawRecv(const char *data, uint32_t size)
 {
-	// English: Serialize concurrent calls.
-	//          PostRecv() is re-issued immediately after each IOCP completion, so a second
-	//          recv can complete before the first is processed by the logic thread pool —
-	//          two workers run here simultaneously. Without this lock, mRecvAccumBuffer
-	//          would be corrupted (manifests as hdr->size = 0xDDDD freed-memory pattern).
-	// 한글: 동시 호출 직렬화.
-	//       PostRecv()가 완료 즉시 재발행되므로 두 번째 recv가 먼저 LogicThreadPool에서
-	//       실행될 수 있음. 이 락 없이는 버퍼 손상(hdr->size = 0xDDDD) 크래시 발생.
-	std::lock_guard<std::mutex> recvLock(mRecvMutex);
+	std::vector<std::vector<char>> completePackets;
+	bool shouldClose = false;
 
-	// English: Overflow guard (slow-loris / flood defense).
-	//          Threshold > (MAX_PACKET_SIZE - 1) + RECV_BUFFER_SIZE so that a legitimate
-	//          partial tail + one full recv never triggers a false reset.
-	//          We measure unread bytes (size - offset) + incoming to avoid counting already-
-	//          consumed bytes in the compaction-pending region.
-	// 한글: 오버플로우 방어 (느린 공격 / 플러드 방어).
-	//       미읽은 바이트(size - offset) + 수신량으로 판단해 이미 소비된 영역을 제외.
-	constexpr size_t kMaxAccumSize = MAX_PACKET_SIZE * 4;  // 16 KB — safely above 4095 + 8192
-	const size_t unread = mRecvAccumBuffer.size() - mRecvAccumOffset;
-	if (unread + size > kMaxAccumSize)
 	{
-		Utils::Logger::Warn("Recv accumulation buffer overflow, closing session - Session: " +
+		std::lock_guard<std::mutex> recvLock(mRecvMutex);
+
+		// English: Overflow guard (slow-loris / flood defense).
+		// ???: ??????????? (??? ??? / ????????).
+		constexpr size_t kMaxAccumSize = MAX_PACKET_SIZE * 4;
+		const size_t unread = mRecvAccumBuffer.size() - mRecvAccumOffset;
+		if (unread + size > kMaxAccumSize)
+		{
+			Utils::Logger::Warn("Recv accumulation buffer overflow - Session: " +
 							std::to_string(mId));
-		mRecvAccumBuffer.clear();
-		mRecvAccumOffset = 0;
-		Close();  // English: Stream state unrecoverable without full reconnect
-				  // 한글: 재연결 없이는 스트림 상태 복구 불가
+			mRecvAccumBuffer.clear();
+			mRecvAccumOffset = 0;
+			shouldClose = true;
+		}
+		else
+		{
+			mRecvAccumBuffer.insert(mRecvAccumBuffer.end(), data, data + size);
+
+			while (mRecvAccumBuffer.size() - mRecvAccumOffset >= sizeof(PacketHeader))
+			{
+				const auto *hdr = reinterpret_cast<const PacketHeader *>(
+					mRecvAccumBuffer.data() + mRecvAccumOffset);
+
+				if (hdr->size < sizeof(PacketHeader) || hdr->size > MAX_PACKET_SIZE)
+				{
+					Utils::Logger::Warn("Invalid packet size " + std::to_string(hdr->size) +
+								", resetting stream - Session: " + std::to_string(mId));
+					mRecvAccumBuffer.clear();
+					mRecvAccumOffset = 0;
+					shouldClose = true;
+					break;
+				}
+
+				if (mRecvAccumBuffer.size() - mRecvAccumOffset < hdr->size)
+				{
+					break;
+				}
+
+				const uint16_t packetSize = hdr->size;
+				completePackets.emplace_back(
+					mRecvAccumBuffer.begin() + static_cast<std::ptrdiff_t>(mRecvAccumOffset),
+					mRecvAccumBuffer.begin() + static_cast<std::ptrdiff_t>(mRecvAccumOffset + packetSize));
+				mRecvAccumOffset += packetSize;
+			}
+
+			if (mRecvAccumOffset >= mRecvAccumBuffer.size())
+			{
+				mRecvAccumBuffer.clear();
+				mRecvAccumOffset = 0;
+			}
+			else if (mRecvAccumOffset > mRecvAccumBuffer.size() / 2)
+			{
+				mRecvAccumBuffer.erase(
+					mRecvAccumBuffer.begin(),
+					mRecvAccumBuffer.begin() + static_cast<std::ptrdiff_t>(mRecvAccumOffset));
+				mRecvAccumOffset = 0;
+			}
+		}
+	}
+
+	if (shouldClose)
+	{
+		Close();
 		return;
 	}
 
-	mRecvAccumBuffer.insert(mRecvAccumBuffer.end(), data, data + size);
-
-	// English: Parse complete packets using O(1) offset advance (position B strategy).
-	//          Instead of erasing after each packet (O(n) memmove), we advance mRecvAccumOffset
-	//          and compact only when the offset exceeds half the buffer — identical to
-	//          TestServer::DBRecvLoop's mDBRecvOffset approach.
-	// 한글: O(1) 오프셋 전진으로 완성된 패킷을 파싱 (position B 전략).
-	//       패킷마다 erase(O(n) memmove) 대신 mRecvAccumOffset만 전진하고,
-	//       오프셋이 버퍼 절반 초과 시 compact — TestServer::DBRecvLoop의 전략과 동일.
-	while (mRecvAccumBuffer.size() - mRecvAccumOffset >= sizeof(PacketHeader))
+	for (const auto &packet : completePackets)
 	{
-		const auto *hdr = reinterpret_cast<const PacketHeader *>(
-			mRecvAccumBuffer.data() + mRecvAccumOffset);
-
-		// English: Validate packet size bounds before reading payload
-		// 한글: 페이로드 읽기 전 패킷 크기 경계 검증
-		if (hdr->size < sizeof(PacketHeader) || hdr->size > MAX_PACKET_SIZE)
-		{
-			Utils::Logger::Warn("Invalid packet size " + std::to_string(hdr->size) +
-								", resetting stream - Session: " + std::to_string(mId));
-			mRecvAccumBuffer.clear();
-			mRecvAccumOffset = 0;
-			break;
-		}
-
-		// English: Partial packet — wait for more data
-		// 한글: 불완전한 패킷 — 추가 데이터 대기
-		if (mRecvAccumBuffer.size() - mRecvAccumOffset < hdr->size)
-		{
-			break;
-		}
-
-		// English: Capture packetSize before OnRecv() — hdr points into mRecvAccumBuffer
-		//          and must not be touched during or after OnRecv() dispatch.
-		// 한글: OnRecv() 호출 전 packetSize 캡처 — hdr는 mRecvAccumBuffer 내부 포인터.
-		const uint16_t packetSize = hdr->size;
-		OnRecv(mRecvAccumBuffer.data() + mRecvAccumOffset, packetSize);
-		mRecvAccumOffset += packetSize;
-	}
-
-	// English: Compact: slide unread bytes to front when offset exceeds half the buffer.
-	//          If all bytes were consumed, fast-clear without memmove.
-	// 한글: Compact: 오프셋이 버퍼 절반 초과 시 미읽은 바이트를 앞으로 이동.
-	//       모든 바이트가 소비된 경우 memmove 없이 빠르게 clear.
-	if (mRecvAccumOffset >= mRecvAccumBuffer.size())
-	{
-		// English: Entire buffer consumed — O(1) fast reset
-		// 한글: 버퍼 전체 소비 — O(1) 빠른 리셋
-		mRecvAccumBuffer.clear();
-		mRecvAccumOffset = 0;
-	}
-	else if (mRecvAccumOffset > mRecvAccumBuffer.size() / 2)
-	{
-		// English: Compact: erase consumed prefix to reclaim memory
-		// 한글: Compact: 소비된 앞부분 제거로 메모리 회수
-		mRecvAccumBuffer.erase(mRecvAccumBuffer.begin(),
-							   mRecvAccumBuffer.begin() + static_cast<std::ptrdiff_t>(mRecvAccumOffset));
-		mRecvAccumOffset = 0;
+		OnRecv(packet.data(), static_cast<uint32_t>(packet.size()));
 	}
 }
+
 
 } // namespace Network::Core

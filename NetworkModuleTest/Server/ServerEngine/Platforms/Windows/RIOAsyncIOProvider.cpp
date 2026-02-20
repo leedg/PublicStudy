@@ -17,7 +17,8 @@ namespace Windows
 
 RIOAsyncIOProvider::RIOAsyncIOProvider()
 	: mCompletionQueue(RIO_INVALID_CQ), mCompletionEvent(nullptr),
-	  mMaxConcurrentOps(0), mNextBufferId(1), mInitialized(false)
+	  mMaxConcurrentOps(0), mNextBufferId(1), mInitialized(false),
+	  mShuttingDown(false)
 {
 	std::memset(&mInfo, 0, sizeof(mInfo));
 	std::memset(&mStats, 0, sizeof(mStats));
@@ -88,11 +89,12 @@ bool RIOAsyncIOProvider::LoadRIOFunctions()
 AsyncIOError RIOAsyncIOProvider::Initialize(size_t queueDepth,
 									 size_t maxConcurrent)
 {
-	if (mInitialized)
+	if (mInitialized.load(std::memory_order_acquire))
 	{
 		mLastError = "Already initialized";
 		return AsyncIOError::AlreadyInitialized;
 	}
+	mShuttingDown.store(false, std::memory_order_release);
 
 	if (!LoadRIOFunctions())
 	{
@@ -126,41 +128,39 @@ AsyncIOError RIOAsyncIOProvider::Initialize(size_t queueDepth,
 	mMaxConcurrentOps = (maxConcurrent > 0) ? maxConcurrent : 128;
 	mInfo.mMaxQueueDepth = queueDepth;
 	mInfo.mMaxConcurrentReq = mMaxConcurrentOps;
-	mInitialized = true;
+	mInitialized.store(true, std::memory_order_release);
 
 	return AsyncIOError::Success;
 }
 
-void RIOAsyncIOProvider::CleanupPendingOperation(
-	std::unique_ptr<PendingOperation> &op)
+void RIOAsyncIOProvider::CleanupPendingOperation(PendingOperation &op)
 {
-	if (!op)
+	if (op.mRioBufferId != RIO_INVALID_BUFFERID && mPfnRIODeregisterBuffer)
 	{
-		return;
+		mPfnRIODeregisterBuffer(op.mRioBufferId);
+		op.mRioBufferId = RIO_INVALID_BUFFERID;
 	}
-
-	if (op->mRioBufferId != RIO_INVALID_BUFFERID && mPfnRIODeregisterBuffer)
-	{
-		mPfnRIODeregisterBuffer(op->mRioBufferId);
-		op->mRioBufferId = RIO_INVALID_BUFFERID;
-	}
-
-	op.reset();
 }
 
 void RIOAsyncIOProvider::Shutdown()
 {
-	if (!mInitialized)
+	bool expected = true;
+	if (!mInitialized.compare_exchange_strong(
+			expected, false, std::memory_order_acq_rel))
 	{
 		return;
 	}
+	mShuttingDown.store(true, std::memory_order_release);
 
 	{
 		std::lock_guard<std::mutex> lock(mMutex);
 
 		for (auto &kv : mPendingOps)
 		{
-			CleanupPendingOperation(kv.second);
+			if (kv.second)
+			{
+				CleanupPendingOperation(*kv.second);
+			}
 		}
 		mPendingOps.clear();
 
@@ -188,18 +188,18 @@ void RIOAsyncIOProvider::Shutdown()
 		mCompletionEvent = nullptr;
 	}
 
-	mInitialized = false;
 }
 
 bool RIOAsyncIOProvider::IsInitialized() const
 {
-	return mInitialized;
+	return mInitialized.load(std::memory_order_acquire);
 }
 
 AsyncIOError RIOAsyncIOProvider::GetOrCreateRequestQueue(
 	SocketHandle socket, RIO_RQ &outQueue, RequestContext contextForSocket)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
 		return AsyncIOError::NotInitialized;
 	}
@@ -249,7 +249,8 @@ AsyncIOError RIOAsyncIOProvider::AssociateSocket(SocketHandle socket,
 
 int64_t RIOAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 {
-	if (!mInitialized || !ptr || size == 0)
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire) || !ptr || size == 0)
 	{
 		return -1;
 	}
@@ -275,7 +276,8 @@ int64_t RIOAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 
 AsyncIOError RIOAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
 		return AsyncIOError::NotInitialized;
 	}
@@ -302,7 +304,8 @@ AsyncIOError RIOAsyncIOProvider::SendAsync(SocketHandle socket,
 									  RequestContext context,
 									  uint32_t flags)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
 		mLastError = "Not initialized";
 		return AsyncIOError::NotInitialized;
@@ -321,7 +324,7 @@ AsyncIOError RIOAsyncIOProvider::SendAsync(SocketHandle socket,
 		return queueResult;
 	}
 
-	auto op = std::make_unique<PendingOperation>();
+	auto op = std::make_shared<PendingOperation>();
 	op->mContext = context;
 	op->mSocket = socket;
 	op->mType = AsyncIOType::Send;
@@ -335,6 +338,7 @@ AsyncIOError RIOAsyncIOProvider::SendAsync(SocketHandle socket,
 	if (op->mRioBufferId == RIO_INVALID_BUFFERID)
 	{
 		mLastError = "Failed to register send buffer";
+		std::lock_guard<std::mutex> lock(mMutex);
 		mStats.mErrorCount++;
 		return AsyncIOError::OperationFailed;
 	}
@@ -344,37 +348,35 @@ AsyncIOError RIOAsyncIOProvider::SendAsync(SocketHandle socket,
 	rioBuffer.Offset = 0;
 	rioBuffer.Length = static_cast<ULONG>(size);
 
-	uintptr_t opKey = static_cast<uintptr_t>(
+	const uintptr_t opKey = static_cast<uintptr_t>(
 		mNextOpId.fetch_add(1, std::memory_order_relaxed));
 	op->mOpId = opKey;
+
+	std::lock_guard<std::mutex> lock(mMutex);
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
-		std::lock_guard<std::mutex> lock(mMutex);
-		mPendingOps.emplace(opKey, std::move(op));
+		CleanupPendingOperation(*op);
+		mLastError = "Provider is shutting down";
+		return AsyncIOError::NotInitialized;
 	}
+
+	mPendingOps.emplace(opKey, op);
+	mStats.mTotalRequests++;
+	mStats.mPendingRequests++;
 
 	if (!mPfnRIOSend(requestQueue, &rioBuffer, 1, flags,
 					 reinterpret_cast<void *>(opKey)))
 	{
-		std::unique_ptr<PendingOperation> failedOp;
+		mPendingOps.erase(opKey);
+		if (mStats.mPendingRequests > 0)
 		{
-			std::lock_guard<std::mutex> lock(mMutex);
-			auto it = mPendingOps.find(opKey);
-			if (it != mPendingOps.end())
-			{
-				failedOp = std::move(it->second);
-				mPendingOps.erase(it);
-			}
-			mStats.mErrorCount++;
+			mStats.mPendingRequests--;
 		}
-		CleanupPendingOperation(failedOp);
+		mStats.mErrorCount++;
+		CleanupPendingOperation(*op);
 		mLastError = "RIOSend failed";
 		return AsyncIOError::OperationFailed;
-	}
-
-	{
-		std::lock_guard<std::mutex> lock(mMutex);
-		mStats.mTotalRequests++;
-		mStats.mPendingRequests++;
 	}
 
 	return AsyncIOError::Success;
@@ -385,7 +387,8 @@ AsyncIOError RIOAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 									  RequestContext context,
 									  uint32_t flags)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
 		mLastError = "Not initialized";
 		return AsyncIOError::NotInitialized;
@@ -404,7 +407,7 @@ AsyncIOError RIOAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 		return queueResult;
 	}
 
-	auto op = std::make_unique<PendingOperation>();
+	auto op = std::make_shared<PendingOperation>();
 	op->mContext = context;
 	op->mSocket = socket;
 	op->mType = AsyncIOType::Recv;
@@ -416,6 +419,7 @@ AsyncIOError RIOAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	if (op->mRioBufferId == RIO_INVALID_BUFFERID)
 	{
 		mLastError = "Failed to register recv buffer";
+		std::lock_guard<std::mutex> lock(mMutex);
 		mStats.mErrorCount++;
 		return AsyncIOError::OperationFailed;
 	}
@@ -425,37 +429,35 @@ AsyncIOError RIOAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	rioBuffer.Offset = 0;
 	rioBuffer.Length = static_cast<ULONG>(size);
 
-	uintptr_t opKey = static_cast<uintptr_t>(
+	const uintptr_t opKey = static_cast<uintptr_t>(
 		mNextOpId.fetch_add(1, std::memory_order_relaxed));
 	op->mOpId = opKey;
+
+	std::lock_guard<std::mutex> lock(mMutex);
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
-		std::lock_guard<std::mutex> lock(mMutex);
-		mPendingOps.emplace(opKey, std::move(op));
+		CleanupPendingOperation(*op);
+		mLastError = "Provider is shutting down";
+		return AsyncIOError::NotInitialized;
 	}
+
+	mPendingOps.emplace(opKey, op);
+	mStats.mTotalRequests++;
+	mStats.mPendingRequests++;
 
 	if (!mPfnRIORecv(requestQueue, &rioBuffer, 1, flags,
 					 reinterpret_cast<void *>(opKey)))
 	{
-		std::unique_ptr<PendingOperation> failedOp;
+		mPendingOps.erase(opKey);
+		if (mStats.mPendingRequests > 0)
 		{
-			std::lock_guard<std::mutex> lock(mMutex);
-			auto it = mPendingOps.find(opKey);
-			if (it != mPendingOps.end())
-			{
-				failedOp = std::move(it->second);
-				mPendingOps.erase(it);
-			}
-			mStats.mErrorCount++;
+			mStats.mPendingRequests--;
 		}
-		CleanupPendingOperation(failedOp);
+		mStats.mErrorCount++;
+		CleanupPendingOperation(*op);
 		mLastError = "RIORecv failed";
 		return AsyncIOError::OperationFailed;
-	}
-
-	{
-		std::lock_guard<std::mutex> lock(mMutex);
-		mStats.mTotalRequests++;
-		mStats.mPendingRequests++;
 	}
 
 	return AsyncIOError::Success;
@@ -463,7 +465,7 @@ AsyncIOError RIOAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 AsyncIOError RIOAsyncIOProvider::FlushRequests()
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 	{
 		return AsyncIOError::NotInitialized;
 	}
@@ -475,7 +477,7 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 									 size_t maxEntries,
 									 int timeoutMs)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 	{
 		mLastError = "Not initialized";
 		return static_cast<int>(AsyncIOError::NotInitialized);
@@ -552,13 +554,13 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		 ++i)
 	{
 		uintptr_t opKey = static_cast<uintptr_t>(rioResults[i].RequestContext);
-		std::unique_ptr<PendingOperation> op;
+		std::shared_ptr<PendingOperation> op;
 		{
 			std::lock_guard<std::mutex> lock(mMutex);
 			auto it = mPendingOps.find(opKey);
 			if (it != mPendingOps.end())
 			{
-				op = std::move(it->second);
+				op = it->second;
 				mPendingOps.erase(it);
 			}
 		}
@@ -581,7 +583,7 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			entries[completionCount].mResult = -1;
 		}
 
-		CleanupPendingOperation(op);
+		CleanupPendingOperation(*op);
 
 		{
 			std::lock_guard<std::mutex> lock(mMutex);

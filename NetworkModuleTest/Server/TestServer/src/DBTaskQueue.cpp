@@ -205,7 +205,7 @@ namespace Network::TestServer
 
     void DBTaskQueue::EnqueueTask(DBTask&& task)
     {
-        if (!mIsRunning.load())
+        if (!mIsRunning.load(std::memory_order_acquire))
         {
             Logger::Error("Cannot enqueue task - DBTaskQueue not running");
             if (task.callback)
@@ -223,13 +223,45 @@ namespace Network::TestServer
             WalWritePending(task, task.walSeq);
         }
 
+        bool accepted = false;
+        bool shouldWriteDone = false;
+        uint64_t canceledWalSeq = 0;
         {
             std::lock_guard<std::mutex> lock(mQueueMutex);
-            mTaskQueue.push(std::move(task));
 
-            // English: Increment queue size atomically (enables lock-free GetQueueSize)
-            // 한글: Atomic으로 큐 크기 증가 (lock-free GetQueueSize 가능)
-            mQueueSize.fetch_add(1, std::memory_order_relaxed);
+            // English: Re-check under queue lock to close the Shutdown() race window.
+            // 한글: Shutdown()와 경쟁하는 구간을 차단하기 위해 락 안에서 재검증
+            if (mIsRunning.load(std::memory_order_acquire))
+            {
+                mTaskQueue.push(std::move(task));
+
+                // English: Increment queue size atomically (enables lock-free GetQueueSize)
+                // 한글: Atomic으로 큐 크기 증가 (lock-free GetQueueSize 가능)
+                mQueueSize.fetch_add(1, std::memory_order_relaxed);
+                accepted = true;
+            }
+            else if (task.walSeq != 0)
+            {
+                // English: Task was WAL-pended but never queued. Mark done to avoid replay.
+                // 한글: WAL PENDING만 기록되고 큐에는 못 들어간 태스크의 재생 방지
+                shouldWriteDone = true;
+                canceledWalSeq = task.walSeq;
+            }
+        }
+
+        if (!accepted)
+        {
+            if (shouldWriteDone)
+            {
+                WalWriteDone(canceledWalSeq);
+            }
+
+            Logger::Error("Cannot enqueue task - DBTaskQueue shutting down");
+            if (task.callback)
+            {
+                task.callback(false, "DBTaskQueue shutting down");
+            }
+            return;
         }
 
         // English: Notify one worker thread
