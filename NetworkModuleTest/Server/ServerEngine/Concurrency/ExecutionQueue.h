@@ -304,14 +304,9 @@ class ExecutionQueue
 			return false;
 		}
 
-		if (TryPushLockFree(std::move(value)))
-		{
-			return true;
-		}
-
 		if (timeoutMs == 0)
 		{
-			return false;
+			return TryPushLockFree(std::move(value));
 		}
 
 		const auto deadline =
@@ -320,8 +315,20 @@ class ExecutionQueue
 				: (std::chrono::steady_clock::now() +
 				   std::chrono::milliseconds(timeoutMs));
 
+		// English: Retain value until enqueue succeeds; do not move before confirmed success.
+		// 한글: enqueue 성공 전까지 value를 보유. move는 성공 직전 한 번만 수행.
 		while (!mShutdown.load(std::memory_order_acquire))
 		{
+			if (TryPushLockFree(std::move(value)))
+			{
+				return true;
+			}
+
+			if (timeoutMs >= 0 && std::chrono::steady_clock::now() >= deadline)
+			{
+				return false;
+			}
+
 			std::unique_lock<std::mutex> lock(mWaitMutex);
 			if (timeoutMs < 0)
 			{
@@ -339,16 +346,6 @@ class ExecutionQueue
 				{
 					return false;
 				}
-			}
-
-			if (TryPushLockFree(std::move(value)))
-			{
-				return true;
-			}
-
-			if (timeoutMs >= 0 && std::chrono::steady_clock::now() >= deadline)
-			{
-				return false;
 			}
 		}
 
@@ -392,6 +389,13 @@ class ExecutionQueue
 
 	ExecutionQueueOptions<T> mOptions;
 	std::atomic<bool> mShutdown;
+	// English: mSize is a best-effort approximation for the lock-free backend.
+	//          fetch_add/fetch_sub are not atomic with TryEnqueue/TryDequeue,
+	//          so Size() may transiently deviate by ±1 under high concurrency.
+	//          Do not use for correctness decisions; use for monitoring only.
+	// 한글: lock-free 백엔드에서 mSize는 최선 근사값(best-effort).
+	//       TryEnqueue/TryDequeue와 fetch_add/fetch_sub 간 원자성이 없으므로
+	//       고경합 시 ±1 오차 발생 가능. 모니터링 용도로만 사용.
 	std::atomic<size_t> mSize;
 
 	// English: Mutex backend state.

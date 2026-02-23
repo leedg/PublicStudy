@@ -138,7 +138,9 @@ class BoundedLockFreeQueue
 	}
 
   private:
-	struct Cell
+	// English: Each cell is cache-line aligned to prevent false sharing between adjacent slots.
+	// 한글: 인접 슬롯 간 false sharing 방지를 위해 셀마다 캐시라인 정렬.
+	struct alignas(64) Cell
 	{
 		std::atomic<size_t> mSequence;
 		std::optional<T> mData;

@@ -99,6 +99,13 @@ namespace Network::DBServer
             return;
         }
 
+        // English: mTotalProcessed / mTotalFailed are tracked here in the wrapper.
+        //          KeyedDispatcher::WorkerThreadFunc also tracks mCompleted/mFailed
+        //          independently — use GetStats() for dispatcher-level metrics,
+        //          GetTotalProcessedCount() for OrderedTaskQueue-level metrics.
+        // 한글: mTotalProcessed / mTotalFailed는 이 래퍼에서만 집계.
+        //       KeyedDispatcher 내부의 mCompleted/mFailed는 별도 dispatcher 수준 메트릭.
+        //       dispatcher 수준은 GetStats(), 큐 수준은 GetTotalProcessedCount() 사용.
         bool queued = mDispatcher.Dispatch(
             key,
             [this, workerKey = key, task = std::move(taskFunc)]() mutable {

@@ -97,7 +97,10 @@ class AsyncScope
 		const size_t prev = mInFlight.fetch_sub(1, std::memory_order_acq_rel);
 		if (prev == 1)
 		{
-			std::lock_guard<std::mutex> lock(mDrainMutex);
+			// English: notify_all does not require the mutex to be held.
+			//          Acquiring it here would add unnecessary contention with WaitForDrain.
+			// 한글: notify_all은 mutex를 보유할 필요가 없음.
+			//       lock을 잡으면 WaitForDrain과 불필요한 contention 발생.
 			mDrainCV.notify_all();
 		}
 	}
