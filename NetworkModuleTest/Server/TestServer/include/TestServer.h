@@ -53,10 +53,10 @@ namespace Network::TestServer
         void OnClientConnectionClosed(const Core::NetworkEventData& eventData);
         void OnClientDataReceived(const Core::NetworkEventData& eventData);
 
-        // English: Session factory for game clients — returns lambda capturing mDBTaskQueue
-        //          (avoids static class variable; each TestServer instance is independent)
-        // 한글: 게임 클라이언트용 세션 팩토리 — mDBTaskQueue를 캡처하는 람다 반환
-        //       (static 클래스 변수 없음; 각 TestServer 인스턴스가 독립적)
+        // English: Session factory for game clients — returns a lambda capturing
+        //          a weak_ptr to mDBTaskQueue (constructor injection, no static global state).
+        // 한글: 게임 클라이언트용 세션 팩토리 — mDBTaskQueue의 weak_ptr을 캡처한 람다 반환
+        //       (생성자 주입, static 전역 상태 없음).
         Core::SessionFactory MakeClientSessionFactory();
 
         // English: DB server helpers

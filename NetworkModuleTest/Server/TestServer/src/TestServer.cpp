@@ -105,12 +105,11 @@ namespace Network::TestServer
             return false;
         }
 
-        // English: Set Session factory using a lambda that captures mDBTaskQueue by pointer.
-        //          Constructor injection replaces the previous static class variable —
-        //          each TestServer instance gets its own independent DBTaskQueue reference.
-        // 한글: mDBTaskQueue 포인터를 캡처하는 람다로 세션 팩토리 설정.
-        //       생성자 주입이 이전 static 클래스 변수를 대체 —
-        //       각 TestServer 인스턴스가 독립적인 DBTaskQueue 참조를 보유.
+        // English: Set Session factory. MakeClientSessionFactory() captures a weak_ptr
+        //          to mDBTaskQueue for constructor injection, replacing the previous
+        //          static class variable pattern (hidden global state).
+        // 한글: 세션 팩토리 설정. MakeClientSessionFactory()가 mDBTaskQueue의 weak_ptr을
+        //       캡처해 생성자 주입을 수행하며, 이전 static 클래스 변수(숨겨진 전역 상태)를 대체.
         Core::SessionManager::Instance().Initialize(MakeClientSessionFactory());
 
         // English: Create and initialize client network engine using factory (auto-detect best backend)

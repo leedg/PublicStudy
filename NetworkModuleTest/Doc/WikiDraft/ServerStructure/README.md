@@ -47,4 +47,14 @@ PowerShell:
 - `Doc/03_Protocol.md`
 - `Doc/Architecture/AsyncDB.md`
 
+## 동기화 검증 테스트
+PowerShell:
+
+```powershell
+.\ModuleTest\ServerStructureSync\validate_server_structure_sync.ps1
+```
+
+`run_test_auto.ps1`는 기본적으로 위 검증을 먼저 수행합니다.
+생략이 필요하면 `-SkipStructureSyncCheck` 옵션을 사용합니다.
+
 검증일: 2026-02-20
