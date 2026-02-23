@@ -203,6 +203,15 @@
     <None Include="Tests\AsyncIOTest.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Concurrency Runtime -->
+    <ClInclude Include="Concurrency\ConcurrencyRuntime.h" />
+    <ClInclude Include="Concurrency\BoundedLockFreeQueue.h" />
+    <ClInclude Include="Concurrency\ExecutionQueue.h" />
+    <ClInclude Include="Concurrency\Channel.h" />
+    <ClInclude Include="Concurrency\KeyedDispatcher.h" />
+    <ClInclude Include="Concurrency\AsyncScope.h" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- Utility Source Files -->
     <ClInclude Include="Utils\BufferManager.h" />
     <ClInclude Include="Utils\ConfigManager.h" />
