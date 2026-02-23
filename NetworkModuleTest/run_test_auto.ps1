@@ -1,9 +1,30 @@
-param([int]$RunSeconds = 5)
+param(
+    [int]$RunSeconds = 5,
+    [switch]$SkipStructureSyncCheck
+)
 
 $binDir = 'C:\MyGithub\PublicStudy\NetworkModuleTest\x64\Debug'
 $dbOut  = "$env:TEMP\dbserver_out.txt"
 $srvOut = "$env:TEMP\server_out.txt"
 $cliOut = "$env:TEMP\client_out.txt"
+
+if (-not $SkipStructureSyncCheck)
+{
+    $syncCheckScript = Join-Path $PSScriptRoot "ModuleTest\ServerStructureSync\validate_server_structure_sync.ps1"
+    if (Test-Path $syncCheckScript)
+    {
+        Write-Host "=== Server Structure Sync Check ===" -ForegroundColor Cyan
+        & $syncCheckScript
+        if (-not $?)
+        {
+            throw "Server structure sync check failed. Fix docs/comments/tests before runtime test."
+        }
+    }
+    else
+    {
+        Write-Host "[WARN] Sync check script not found: $syncCheckScript" -ForegroundColor Yellow
+    }
+}
 
 # English: Helper — signal a Named Event for graceful shutdown, then wait with Kill fallback.
 # 한글: Named Event로 정상 종료 신호 → 대기 → 타임아웃 시 Kill 폴백.

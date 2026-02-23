@@ -31,4 +31,11 @@
 - TestServer/TestDBServer/TestClient는 `-l` 옵션 제공
 
 ## 7. 테스트
+- 구조 동기화 정적 검증:
+  - `.\ModuleTest\ServerStructureSync\validate_server_structure_sync.ps1`
+  - 검증 항목: DBTaskQueue 워커 정책, weak_ptr 주입, Stop() 종료 순서, 재연결 정책, Wiki 초안 반영
+- 자동 통합 테스트:
+  - `.\run_test_auto.ps1 -RunSeconds 5`
+  - 기본 동작: 실행 전 서버 구조 동기화 검증을 먼저 수행
+  - 동기화 검증 생략: `.\run_test_auto.ps1 -RunSeconds 5 -SkipStructureSyncCheck`
 - AsyncIOProvider 테스트는 GTest 연동 시 사용 가능
