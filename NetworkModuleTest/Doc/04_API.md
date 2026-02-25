@@ -28,7 +28,7 @@
 - -l <level> (DEBUG/INFO/WARN/ERROR)
 - -h (도움말)
 
-> 참고: `run_test.ps1` 기본값은 `-p 8002`로 실행합니다.
+> 참고: 실행 스크립트(`run_dbServer.ps1` 등)의 기본값은 `-p 8002`입니다.
 
 ### TestClient
 - --host <addr> (기본 127.0.0.1)
