@@ -1,9 +1,15 @@
 ﻿# 크로스 플랫폼 아키텍처
 
-**작성일**: 2026-01-27  
-**버전**: 1.0  
-**대상**: RAON Network Module AsyncIO 통일 인터페이스  
+**작성일**: 2026-01-27
+**버전**: 1.0
+**대상**: RAON Network Module AsyncIO 통일 인터페이스
 **목표**: Windows (IOCP/RIO) + Linux (epoll/io_uring) 크로스 플랫폼 설계
+
+> ⚠️ **참고 문서 안내**
+> 이 문서는 RAON Network Module 설계 분석을 기반으로 작성된 **설계 참고 문서**입니다.
+> `GameServer`, `ServiceCoordinator`, `IocpCore` 등 일부 클래스/구조는
+> **NetworkModuleTest의 실제 구현과 직접 대응하지 않습니다.**
+> 실제 구현은 `Doc/02_Architecture.md` 및 `Doc/Architecture/NetworkArchitecture.md`를 참조하세요.
 
 ---
 
