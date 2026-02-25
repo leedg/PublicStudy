@@ -15,7 +15,7 @@
 ### TestServer
 - -p <port> (기본 9000)
 - -d <connstr> (DB 연결 문자열, 옵션)
-- --db (DB 서버 연결 활성화, 기본: 127.0.0.1:8001)
+- --db (DB 서버 연결 활성화, 코드 기본값: 127.0.0.1:8001)
 - --db-host <addr> (DB 서버 호스트)
 - --db-port <port> (DB 서버 포트)
 - -l <level> (DEBUG/INFO/WARN/ERROR)
