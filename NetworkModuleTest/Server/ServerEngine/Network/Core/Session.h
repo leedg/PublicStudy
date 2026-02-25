@@ -1,7 +1,7 @@
 #pragma once
 
 // English: Client session class for connection management
-// ???: ???ㅼ뒦?????굿?域? ??ш낄援η뵳????????⑤９苑???嶺뚮ㅎ?????????
+// 한글: 클라이언트 세션 클래스 — 연결 관리
 
 #include "../../Utils/NetworkUtils.h"
 #include "AsyncIOProvider.h"
@@ -17,7 +17,7 @@ namespace Network::Core
 {
 // =============================================================================
 // English: Session state
-// ???: ?嶺뚮ㅎ??????ㅺ컼??
+// 한글: 세션 상태
 // =============================================================================
 
 enum class SessionState : uint8_t
@@ -31,7 +31,7 @@ enum class SessionState : uint8_t
 
 // =============================================================================
 // English: IO operation type
-// ???: IO ??????????
+// 한글: IO 작업 타입
 // =============================================================================
 
 enum class IOType : uint8_t
@@ -44,7 +44,7 @@ enum class IOType : uint8_t
 
 // =============================================================================
 // English: IOCP overlapped context (Windows only)
-// ???: IOCP ????곷츉?????爾?????덉쉐 (Windows ??ш끽維??
+// 한글: IOCP overlapped 컨텍스트 (Windows 전용)
 // =============================================================================
 
 #ifdef _WIN32
@@ -73,13 +73,13 @@ struct IOContext : public OVERLAPPED
 
 // =============================================================================
 // English: Session class
-// ???: ?嶺뚮ㅎ?????????
+// 한글: 세션 클래스
 // =============================================================================
 
 class Session : public std::enable_shared_from_this<Session>
 {
 	// English: NetworkEngine classes need access to PostSend for completion handling
-	// ???: NetworkEngine ????????좊룆????ш끽維??癲ル슪?ｇ몭???????ш낄援??PostSend ???쒋닪????ш끽維??
+	// 한글: NetworkEngine 클래스가 완료 처리를 위해 PostSend에 접근해야 함
 	friend class BaseNetworkEngine;
 
   public:
@@ -87,12 +87,12 @@ class Session : public std::enable_shared_from_this<Session>
 	virtual ~Session();
 
 	// English: Lifecycle
-	// ???: ??筌뤾쑨???낆뒩??곷뎨?
+	// 한글: 생명주기
 	void Initialize(Utils::ConnectionId id, SocketHandle socket);
 	void Close();
 
 	// English: Send packet
-	// ???: ???????ш끽維뽬땻?
+	// 한글: 패킷 전송
 	void Send(const void *data, uint32_t size);
 
 	template <typename T> void Send(const T &packet)
@@ -101,11 +101,11 @@ class Session : public std::enable_shared_from_this<Session>
 	}
 
 	// English: Post receive request to IOCP
-	// ???: IOCP????筌뚯슜堉???釉먯뒜???濚밸Ŧ援욃ㅇ?
+	// 한글: IOCP에 수신 요청 등록
 	bool PostRecv();
 
 	// English: Accessors
-	// ???: ???쒋닪???
+	// 한글: 접근자
 	Utils::ConnectionId GetId() const { return mId; }
 	SocketHandle GetSocket() const { return mSocket.load(std::memory_order_acquire); }
 	SessionState GetState() const { return mState.load(std::memory_order_acquire); }
@@ -131,13 +131,13 @@ class Session : public std::enable_shared_from_this<Session>
 		mAsyncProvider.store(provider, std::memory_order_release);
 	}
 	// English: Cross-platform recv buffer access
-	// ???: ??繞??????????筌뚯슜堉??類???????쒋닪??
+	// 한글: 크로스 플랫폼 수신 버퍼 접근자
 	char *GetRecvBuffer();
 	const char *GetRecvBuffer() const;
 	size_t GetRecvBufferSize() const;
 
 	// English: Access recv buffer (for IOCP completion)
-	// ???: ??筌뚯슜堉??類???????쒋닪??(IOCP ??ш끽維??癲ル슪?ｇ몭???
+	// 한글: 수신 버퍼 접근 (IOCP 완료 처리용)
 #ifdef _WIN32
 	IOContext &GetRecvContext() { return mRecvContext; }
 	IOContext &GetSendContext() { return mSendContext; }
@@ -150,7 +150,7 @@ class Session : public std::enable_shared_from_this<Session>
 #endif
 
 	// English: Virtual event handlers (override in derived classes)
-	// ???: ??좊읈??????濚???嶺뚮ㅎ?볠뤃??(????????????怨좊군??????곷츉??繹먮끏???
+	// 한글: 가상 이벤트 핸들러 (파생 클래스에서 오버라이드)
 	virtual void OnConnected() {}
 	virtual void OnDisconnected() {}
 	virtual void OnRecv(const char *data, uint32_t size) {}
@@ -161,7 +161,7 @@ class Session : public std::enable_shared_from_this<Session>
 
   private:
 	// English: Internal send processing
-	// ???: ???? ??ш끽維뽬땻?癲ル슪?ｇ몭??
+	// 한글: 내부 전송 처리
 	void FlushSendQueue();
 	bool PostSend();
 	SocketHandle GetInvalidSocket() const;
@@ -178,26 +178,26 @@ class Session : public std::enable_shared_from_this<Session>
 	std::atomic<uint32_t> mPingSequence;
 
 	// English: IO contexts (Windows IOCP)
-	// ???: IO ???爾?????덉쉐 (Windows IOCP)
+	// 한글: IO 컨텍스트 (Windows IOCP)
 #ifdef _WIN32
 	IOContext mRecvContext;
 	IOContext mSendContext;
 #else
 	// English: Recv buffer for POSIX platforms
-	// ???: POSIX ??????繹먮끏裕???筌뚯슜堉??類????
+	// 한글: POSIX 플랫폼용 수신 버퍼
 	std::array<char, RECV_BUFFER_SIZE> mRecvBuffer{};
 #endif
 
 	// English: Send queue with lock contention optimization
-	// ???: Lock ?濡ろ뜑???? 癲ル슔?됭짆???? ???ㅼ굣?????ш끽維뽬땻???
+	// 한글: Lock 경합 최적화가 적용된 전송 큐
 	std::queue<std::vector<char>> mSendQueue;
 	std::mutex mSendMutex;
 	std::atomic<bool> mIsSending;
 
 	// English: Fast-path optimization - queue size counter (lock-free read)
-	// ???: Fast-path 癲ル슔?됭짆???- ???????怨멸텭????(lock-free ??熬곣뱿逾?
+	// 한글: Fast-path 최적화 — 큐 크기 카운터 (lock-free 읽기)
 	// Purpose: Avoid mutex lock when queue is likely empty
-	// 癲ル슢?꾤땟?? ??? ????룹젂???源낃도 ??좊읈????묐빝???亦껋꼨援?キ???mutex lock ???⑤베猷?
+	// 목적: 큐가 비어있을 가능성이 높을 때 mutex 잠금 회피
 	std::atomic<size_t> mSendQueueSize;
 
 	// English: Async I/O provider — atomic pointer so Close() (any thread) and
