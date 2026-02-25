@@ -36,7 +36,7 @@ bool RIOBufferPool::Initialize(AsyncIOProvider *provider, size_t bufferSize,
             static_cast<uint8_t *>(_aligned_malloc(bufferSize, 4096));
         if (!ptr)
         {
-            Shutdown();
+            ShutdownLocked();
             return false;
         }
 
@@ -44,7 +44,7 @@ bool RIOBufferPool::Initialize(AsyncIOProvider *provider, size_t bufferSize,
         if (id < 0)
         {
             _aligned_free(ptr);
-            Shutdown();
+            ShutdownLocked();
             return false;
         }
 
@@ -56,6 +56,11 @@ bool RIOBufferPool::Initialize(AsyncIOProvider *provider, size_t bufferSize,
 void RIOBufferPool::Shutdown()
 {
     std::lock_guard<std::mutex> lock(mMutex);
+    ShutdownLocked();
+}
+
+void RIOBufferPool::ShutdownLocked()
+{
     for (auto &slot : mSlots)
     {
         if (slot.ptr)
@@ -101,6 +106,7 @@ void RIOBufferPool::Release(int64_t bufferId)
 
 size_t RIOBufferPool::GetBufferSize() const
 {
+    std::lock_guard<std::mutex> lock(mMutex);
     return mBufferSize;
 }
 

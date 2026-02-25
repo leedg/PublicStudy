@@ -41,6 +41,10 @@ class RIOBufferPool : public IBufferPool
     size_t GetPoolSize() const override;
 
   private:
+    // English: Internal cleanup without acquiring mMutex. Call only while mMutex is held.
+    // 한글: mMutex를 잡지 않는 내부 정리 함수. mMutex 보유 상태에서만 호출.
+    void ShutdownLocked();
+
     struct Slot
     {
         uint8_t *ptr = nullptr;
