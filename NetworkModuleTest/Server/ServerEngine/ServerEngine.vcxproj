@@ -149,16 +149,16 @@
     <ClInclude Include="Platforms\Linux\EpollAsyncIOProvider.h" />
     <ClInclude Include="Platforms\Linux\IOUringAsyncIOProvider.h" />
     <ClInclude Include="Platforms\Linux\IOUringBufferPool.h" />
+    <ClInclude Include="Platforms\AsyncBufferPool.h" />
     <ClInclude Include="Platforms\macOS\KqueueAsyncIOProvider.h" />
     <ClCompile Include="Network\Platforms\WindowsNetworkEngine.cpp" />
     <ClCompile Include="Network\Platforms\LinuxNetworkEngine.cpp" />
     <ClCompile Include="Network\Platforms\macOSNetworkEngine.cpp" />
     <ClCompile Include="Platforms\Windows\IocpAsyncIOProvider.cpp" />
     <ClCompile Include="Platforms\Windows\RIOAsyncIOProvider.cpp" />
-    <ClCompile Include="Platforms\Windows\RIOBufferPool.cpp" />
     <ClCompile Include="Platforms\Linux\EpollAsyncIOProvider.cpp" />
     <ClCompile Include="Platforms\Linux\IOUringAsyncIOProvider.cpp" />
-    <ClCompile Include="Platforms\Linux\IOUringBufferPool.cpp" />
+    <ClCompile Include="Platforms\AsyncBufferPool.cpp" />
     <ClCompile Include="Platforms\macOS\KqueueAsyncIOProvider.cpp" />
   </ItemGroup>
   <ItemGroup>

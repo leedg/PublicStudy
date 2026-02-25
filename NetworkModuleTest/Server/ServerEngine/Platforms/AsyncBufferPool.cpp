@@ -1,24 +1,56 @@
-#include "Platforms/Windows/RIOBufferPool.h"
+#include "Platforms/AsyncBufferPool.h"
+
+#if defined(_WIN32) || defined(__linux__)
 
 #ifdef _WIN32
-#include <cstdlib>
+#include <cstdlib>  // _aligned_malloc, _aligned_free
+#elif defined(__linux__)
+#include <cstdlib>  // posix_memalign, free
+#endif
 
 namespace Network
 {
 namespace AsyncIO
 {
-namespace Windows
+
+// ---------------------------------------------------------------------------
+// Platform-specific allocation
+// ---------------------------------------------------------------------------
+
+uint8_t *AsyncBufferPool::AllocAligned(size_t size)
 {
+#ifdef _WIN32
+    return static_cast<uint8_t *>(_aligned_malloc(size, 4096));
+#elif defined(__linux__)
+    void *raw = nullptr;
+    if (posix_memalign(&raw, 4096, size) != 0)
+        return nullptr;
+    return static_cast<uint8_t *>(raw);
+#endif
+}
 
-RIOBufferPool::RIOBufferPool() = default;
+void AsyncBufferPool::FreeAligned(uint8_t *ptr)
+{
+#ifdef _WIN32
+    _aligned_free(ptr);
+#elif defined(__linux__)
+    ::free(ptr);
+#endif
+}
 
-RIOBufferPool::~RIOBufferPool()
+// ---------------------------------------------------------------------------
+// Common implementation
+// ---------------------------------------------------------------------------
+
+AsyncBufferPool::AsyncBufferPool() = default;
+
+AsyncBufferPool::~AsyncBufferPool()
 {
     Shutdown();
 }
 
-bool RIOBufferPool::Initialize(AsyncIOProvider *provider, size_t bufferSize,
-                                size_t poolSize)
+bool AsyncBufferPool::Initialize(AsyncIOProvider *provider, size_t bufferSize,
+                                  size_t poolSize)
 {
     if (!provider || bufferSize == 0 || poolSize == 0)
         return false;
@@ -30,10 +62,7 @@ bool RIOBufferPool::Initialize(AsyncIOProvider *provider, size_t bufferSize,
 
     for (size_t i = 0; i < poolSize; ++i)
     {
-        // English: 4KB page-aligned allocation for optimal RIO performance.
-        // 한글: RIO 성능 최적화를 위한 4KB 페이지 정렬 할당.
-        uint8_t *ptr =
-            static_cast<uint8_t *>(_aligned_malloc(bufferSize, 4096));
+        uint8_t *ptr = AllocAligned(bufferSize);
         if (!ptr)
         {
             ShutdownLocked();
@@ -43,7 +72,7 @@ bool RIOBufferPool::Initialize(AsyncIOProvider *provider, size_t bufferSize,
         int64_t id = provider->RegisterBuffer(ptr, bufferSize);
         if (id < 0)
         {
-            _aligned_free(ptr);
+            FreeAligned(ptr);
             ShutdownLocked();
             return false;
         }
@@ -53,13 +82,13 @@ bool RIOBufferPool::Initialize(AsyncIOProvider *provider, size_t bufferSize,
     return true;
 }
 
-void RIOBufferPool::Shutdown()
+void AsyncBufferPool::Shutdown()
 {
     std::lock_guard<std::mutex> lock(mMutex);
     ShutdownLocked();
 }
 
-void RIOBufferPool::ShutdownLocked()
+void AsyncBufferPool::ShutdownLocked()
 {
     for (auto &slot : mSlots)
     {
@@ -67,7 +96,7 @@ void RIOBufferPool::ShutdownLocked()
         {
             if (mProvider && slot.bufferId >= 0)
                 mProvider->UnregisterBuffer(slot.bufferId);
-            _aligned_free(slot.ptr);
+            FreeAligned(slot.ptr);
         }
     }
     mSlots.clear();
@@ -75,7 +104,7 @@ void RIOBufferPool::ShutdownLocked()
     mBufferSize = 0;
 }
 
-uint8_t *RIOBufferPool::Acquire(int64_t &outBufferId)
+uint8_t *AsyncBufferPool::Acquire(int64_t &outBufferId)
 {
     std::lock_guard<std::mutex> lock(mMutex);
     for (auto &slot : mSlots)
@@ -91,7 +120,7 @@ uint8_t *RIOBufferPool::Acquire(int64_t &outBufferId)
     return nullptr;
 }
 
-void RIOBufferPool::Release(int64_t bufferId)
+void AsyncBufferPool::Release(int64_t bufferId)
 {
     std::lock_guard<std::mutex> lock(mMutex);
     for (auto &slot : mSlots)
@@ -104,13 +133,13 @@ void RIOBufferPool::Release(int64_t bufferId)
     }
 }
 
-size_t RIOBufferPool::GetBufferSize() const
+size_t AsyncBufferPool::GetBufferSize() const
 {
     std::lock_guard<std::mutex> lock(mMutex);
     return mBufferSize;
 }
 
-size_t RIOBufferPool::GetAvailable() const
+size_t AsyncBufferPool::GetAvailable() const
 {
     std::lock_guard<std::mutex> lock(mMutex);
     size_t count = 0;
@@ -120,13 +149,12 @@ size_t RIOBufferPool::GetAvailable() const
     return count;
 }
 
-size_t RIOBufferPool::GetPoolSize() const
+size_t AsyncBufferPool::GetPoolSize() const
 {
     std::lock_guard<std::mutex> lock(mMutex);
     return mSlots.size();
 }
 
-} // namespace Windows
 } // namespace AsyncIO
 } // namespace Network
-#endif // _WIN32
+#endif // defined(_WIN32) || defined(__linux__)

@@ -114,9 +114,6 @@
     <ClInclude Include="Platforms\Windows\RIOBufferPool.h">
       <Filter>Core\Network\Platforms\Windows</Filter>
     </ClInclude>
-    <ClCompile Include="Platforms\Windows\RIOBufferPool.cpp">
-      <Filter>Core\Network\Platforms\Windows</Filter>
-    </ClCompile>
 
     <!-- Network Platform - Linux -->
     <ClInclude Include="Network\Platforms\LinuxNetworkEngine.h">
@@ -141,8 +138,13 @@
     <ClCompile Include="Platforms\Linux\IOUringAsyncIOProvider.cpp">
       <Filter>Core\Network\Platforms\Linux</Filter>
     </ClCompile>
-    <ClCompile Include="Platforms\Linux\IOUringBufferPool.cpp">
-      <Filter>Core\Network\Platforms\Linux</Filter>
+
+    <!-- Unified Buffer Pool (Windows + Linux) -->
+    <ClInclude Include="Platforms\AsyncBufferPool.h">
+      <Filter>Core\Network\Platforms</Filter>
+    </ClInclude>
+    <ClCompile Include="Platforms\AsyncBufferPool.cpp">
+      <Filter>Core\Network\Platforms</Filter>
     </ClCompile>
 
     <!-- Network Platform - macOS -->
@@ -275,12 +277,6 @@
       <Filter>Tests\Protocols</Filter>
     </ClCompile>
     <None Include="Tests\AsyncIOTest.cpp">
-      <Filter>Tests</Filter>
-    </None>
-    <None Include="Tests\RIOTest.cpp">
-      <Filter>Tests</Filter>
-    </None>
-    <None Include="Tests\IOUringTest.cpp">
       <Filter>Tests</Filter>
     </None>
     <ClCompile Include="Utils\LockProfiling.cpp">
