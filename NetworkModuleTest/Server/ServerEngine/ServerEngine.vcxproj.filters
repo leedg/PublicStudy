@@ -189,6 +189,9 @@
     <ClInclude Include="Interfaces\IMessageHandler.h">
       <Filter>Interfaces</Filter>
     </ClInclude>
+    <ClInclude Include="Interfaces\IMessageHandler_old.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
   </ItemGroup>
 
   <ItemGroup>
@@ -235,9 +238,6 @@
       <Filter>Implementations\Database</Filter>
     </ClCompile>
     <ClCompile Include="Database\ConnectionPool.cpp">
-      <Filter>Implementations\Database</Filter>
-    </ClCompile>
-    <ClCompile Include="Database\ODBCDatabase_new.cpp">
       <Filter>Implementations\Database</Filter>
     </ClCompile>
   </ItemGroup>
