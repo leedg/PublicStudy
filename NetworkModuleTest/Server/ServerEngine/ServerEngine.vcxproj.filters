@@ -277,6 +277,9 @@
     <None Include="Tests\AsyncIOTest.cpp">
       <Filter>Tests</Filter>
     </None>
+    <None Include="Tests\RIOTest.cpp">
+      <Filter>Tests</Filter>
+    </None>
     <ClCompile Include="Utils\LockProfiling.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
