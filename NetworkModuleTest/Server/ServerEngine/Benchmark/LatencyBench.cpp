@@ -69,7 +69,7 @@ int main()
     double maxL = latencies.back();
     double avgL =
         std::accumulate(latencies.begin(), latencies.end(), 0.0) / ITERATIONS;
-    double p99L = latencies[static_cast<size_t>(ITERATIONS * 0.99)];
+    double p99L = latencies[static_cast<size_t>(ITERATIONS * 0.99) - 1];
 
     std::cout << "[BENCH] Latency (" << ITERATIONS << " samples):\n";
     std::cout << "  min : " << minL << " us\n";

@@ -65,8 +65,8 @@ int main()
     //       실제 측정은 루프백 소켓 페어 필요.
     //       이 코드는 provider API 호출 오버헤드 하한 측정.
     uint64_t count = 0;
-    auto benchEnd = steady_clock::now() + seconds(DURATION_S);
     auto measureStart = steady_clock::now();
+    auto benchEnd = measureStart + seconds(DURATION_S);
 
     while (steady_clock::now() < benchEnd)
     {
