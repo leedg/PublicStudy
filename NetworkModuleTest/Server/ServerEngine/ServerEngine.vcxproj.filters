@@ -483,4 +483,19 @@
       <Filter>Documentation\Development</Filter>
     </None>
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- Benchmark -->
+    <Filter Include="Benchmark">
+      <UniqueIdentifier>{B1E2F3A4-C5D6-7890-ABCD-EF1234567891}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Benchmark\ThroughputBench.cpp">
+      <Filter>Benchmark</Filter>
+    </None>
+    <None Include="Benchmark\LatencyBench.cpp">
+      <Filter>Benchmark</Filter>
+    </None>
+  </ItemGroup>
 </Project>
