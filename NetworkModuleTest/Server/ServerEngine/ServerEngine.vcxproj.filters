@@ -111,6 +111,12 @@
     <ClCompile Include="Platforms\Windows\RIOAsyncIOProvider.cpp">
       <Filter>Core\Network\Platforms\Windows</Filter>
     </ClCompile>
+    <ClInclude Include="Platforms\Windows\RIOBufferPool.h">
+      <Filter>Core\Network\Platforms\Windows</Filter>
+    </ClInclude>
+    <ClCompile Include="Platforms\Windows\RIOBufferPool.cpp">
+      <Filter>Core\Network\Platforms\Windows</Filter>
+    </ClCompile>
 
     <!-- Network Platform - Linux -->
     <ClInclude Include="Network\Platforms\LinuxNetworkEngine.h">
@@ -190,6 +196,9 @@
       <Filter>Interfaces</Filter>
     </ClInclude>
     <ClInclude Include="Interfaces\IMessageHandler_old.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IBufferPool.h">
       <Filter>Interfaces</Filter>
     </ClInclude>
   </ItemGroup>
