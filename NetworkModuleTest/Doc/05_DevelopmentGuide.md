@@ -15,9 +15,9 @@
 1. `TestDBServer.exe -p 8001` (기본)
 2. `TestServer.exe -p 9000 --db-host 127.0.0.1 --db-port 8001 -d "<connstr>"` (옵션)
 3. `TestClient.exe --host 127.0.0.1 --port 9000`
-4. 자동 실행: `run_test.ps1` 또는 `run_test.bat`
+4. 자동 실행: `run_allServer.ps1` 또는 `run_allServer.bat`
 
-> 참고: `run_test.ps1` 기본값은 DB 포트를 `8002`로 전달합니다.
+> 참고: 실행 스크립트(`run_dbServer.ps1` 등)의 기본 DB 포트는 `8002`입니다. (코드 기본값은 `8001`)
 
 ## 4. CMake 사용
 - 루트 CMake는 `ModuleTest/MultiPlatformNetwork`만 빌드
