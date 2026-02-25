@@ -50,11 +50,15 @@ NetworkModuleTest/
 ├── Server/
 │   ├── ServerEngine/          # 네트워크 엔진 라이브러리
 │   ├── TestServer/            # 게임 서버
-│   ├── DBServer/              # DB 서버
-│   └── MultiPlatformNetwork/  # 테스트 프로젝트
+│   └── DBServer/              # DB 서버
 │
 ├── Client/
 │   └── TestClient/            # 테스트 클라이언트
+│
+├── ModuleTest/                # 단위/통합 테스트 프로젝트
+│   ├── MultiPlatformNetwork/  # 비동기 I/O 검증
+│   ├── DBModuleTest/          # DB 모듈 검증
+│   └── ServerStructureSync/   # 서버 구조 동기화 검증
 │
 ├── Doc/                       # 📚 문서 폴더
 │   ├── 01_ProjectOverview.md

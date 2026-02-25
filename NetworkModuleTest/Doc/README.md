@@ -18,6 +18,7 @@
 5. [전체 아키텍처](./02_Architecture.md) - 시스템 전체 구조
 6. [프로토콜 명세](./03_Protocol.md) - 통신 프로토콜
 7. [API 문서](./04_API.md) - API 사용법
+8. [동시성 런타임](./03_ConcurrencyRuntime.md) - Concurrency 모듈 (ExecutionQueue, KeyedDispatcher, Channel, AsyncScope)
 
 ---
 
@@ -107,7 +108,7 @@
   - 의존성 관리
 
 - [**NamingConventions.md**](./Development/NamingConventions.md)
-  - 전체 프로젝트 네이밍 규칙
+  - TestServer 프로젝트 네이밍 규칙 (전체 코딩 스타일은 CodingConventions.md 참고)
   - 클래스, 변수, 함수 명명 규칙
   - 파일 구조 규칙
 

@@ -28,7 +28,16 @@
     <ClCompile Include="src\TestServer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\GameSession.cpp">
+    <ClCompile Include="src\ClientSession.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ServerSession.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DBServerSession.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DBTaskQueue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ClientPacketHandler.cpp">
@@ -40,7 +49,16 @@
     <ClInclude Include="include\TestServer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\GameSession.h">
+    <ClInclude Include="include\ClientSession.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ServerSession.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\DBServerSession.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\DBTaskQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\ClientPacketHandler.h">

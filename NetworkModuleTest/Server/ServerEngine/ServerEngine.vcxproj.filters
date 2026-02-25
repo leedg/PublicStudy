@@ -17,6 +17,9 @@
     <Filter Include="Tests">
       <UniqueIdentifier>{E0F26C9B-B0C6-5d6g-9F8E-0F9G4C3D2B1E}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Concurrency">
+      <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Documentation">
       <UniqueIdentifier>{C7208E7F-31AB-4F71-AA51-3403F26FC837}</UniqueIdentifier>
     </Filter>
@@ -299,6 +302,56 @@
     <ClInclude Include="Utils\CrashDump.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\LockProfiling.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\PingPongConfig.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Concurrency -->
+    <ClInclude Include="Concurrency\AsyncScope.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+    <ClInclude Include="Concurrency\BoundedLockFreeQueue.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+    <ClInclude Include="Concurrency\Channel.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+    <ClInclude Include="Concurrency\ConcurrencyRuntime.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+    <ClInclude Include="Concurrency\ExecutionQueue.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+    <ClInclude Include="Concurrency\KeyedDispatcher.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Database - Additional -->
+    <ClInclude Include="Database\MockDatabase.h">
+      <Filter>Implementations\Database</Filter>
+    </ClInclude>
+    <ClInclude Include="Database\SQLiteDatabase.h">
+      <Filter>Implementations\Database</Filter>
+    </ClInclude>
+    <ClCompile Include="Database\MockDatabase.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="Database\SQLiteDatabase.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="Database\Examples\BasicUsage.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="Database\Examples\ConnectionPoolUsage.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
   </ItemGroup>
 
   <ItemGroup>

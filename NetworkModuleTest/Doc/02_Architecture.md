@@ -39,6 +39,7 @@ NetworkModuleTest/
 - Session/SessionManager: 연결 및 세션 관리
 - PacketDefine: SessionConnect/Ping/Pong 바이너리 프레이밍
 - Database: ConnectionPool, ODBC/OLEDB 구현
+- Concurrency: ExecutionQueue, KeyedDispatcher, Channel, AsyncScope, BoundedLockFreeQueue (상세: `Doc/03_ConcurrencyRuntime.md`)
 - Utils: Logger, Timer, ThreadPool 등
 
 ## 5. Client <-> Server 플로우
