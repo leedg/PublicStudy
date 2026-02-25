@@ -10,7 +10,7 @@ TestClient -> TestServer -> TestDBServer (옵션)
 
 기본 포트
 - TestServer: 9000
-- TestDBServer: 8001 (코드 기본값) / 8002 (실행 스크립트 기본값)
+- TestDBServer: 8001 (코드 기본값) / 8002 (실행 스크립트 `run_dbServer.ps1` 등 기본값)
 
 ## 3. 디렉터리 구조
 ```text
