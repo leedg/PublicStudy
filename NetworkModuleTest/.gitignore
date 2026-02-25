@@ -17,6 +17,7 @@
 # Build directories
 x64/
 build/
+build-wsl/
 out/
 bin/
 obj/
