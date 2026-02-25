@@ -128,6 +128,9 @@
     <ClInclude Include="Platforms\Linux\IOUringAsyncIOProvider.h">
       <Filter>Core\Network\Platforms\Linux</Filter>
     </ClInclude>
+    <ClInclude Include="Platforms\Linux\IOUringBufferPool.h">
+      <Filter>Core\Network\Platforms\Linux</Filter>
+    </ClInclude>
 
     <ClCompile Include="Network\Platforms\LinuxNetworkEngine.cpp">
       <Filter>Core\Network\Platforms\Linux</Filter>
@@ -136,6 +139,9 @@
       <Filter>Core\Network\Platforms\Linux</Filter>
     </ClCompile>
     <ClCompile Include="Platforms\Linux\IOUringAsyncIOProvider.cpp">
+      <Filter>Core\Network\Platforms\Linux</Filter>
+    </ClCompile>
+    <ClCompile Include="Platforms\Linux\IOUringBufferPool.cpp">
       <Filter>Core\Network\Platforms\Linux</Filter>
     </ClCompile>
 
