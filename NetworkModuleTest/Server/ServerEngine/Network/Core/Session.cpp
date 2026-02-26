@@ -405,6 +405,12 @@ bool Session::PostRecv()
 
 	return true;
 #else
+	// English: POSIX platforms delegate recv to AsyncIOProvider::RecvAsync().
+	//          PostRecv() is not used on this path — recv is driven by the
+	//          platform engine (epoll/io_uring/kqueue) directly.
+	// 한글: POSIX 플랫폼은 recv를 AsyncIOProvider::RecvAsync()에 위임.
+	//       PostRecv()는 이 경로에서 사용되지 않으며 recv는
+	//       플랫폼 엔진(epoll/io_uring/kqueue)이 직접 구동한다.
 	return false;
 #endif
 }
