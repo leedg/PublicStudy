@@ -1,5 +1,5 @@
 // English: Session class implementation
-// ?쒓?: Session ?대옒??援ы쁽
+// 한글: Session 클래스 구현
 
 #include "Session.h"
 #include <cstring>
@@ -211,44 +211,44 @@ void Session::Send(const void *data, uint32_t size)
 	}
 
 	// English: Lock contention optimization using atomic queue size counter
-	// ?쒓?: Atomic ???ш린 移댁슫?곕? ?ъ슜??Lock 寃쏀빀 理쒖쟻??
+	// 한글: Atomic 큐 크기 카운터를 사용한 Lock 경합 최적화
 	//
 	// Performance optimization strategy:
 	// - Fast path: Check mSendQueueSize (lock-free) before acquiring mutex
 	// - Slow path: Only acquire mutex when actually enqueuing data
 	// - Benefit: Reduces lock contention when Send() is called frequently
 	//
-	// ?깅뒫 理쒖쟻???꾨왂:
-	// - Fast path: mutex ?띾뱷 ?꾩뿉 mSendQueueSize瑜??뺤씤 (lock-free)
-	// - Slow path: ?ㅼ젣濡??곗씠?곕? ?명걧???뚮쭔 mutex ?띾뱷
-	// - ?댁젏: Send()媛 ?먯＜ ?몄텧????lock 寃쏀빀 媛먯냼
+	// 성능 최적화 전략:
+	// - Fast path: mutex 획득 전에 mSendQueueSize 확인 (lock-free)
+	// - Slow path: 실제로 데이터를 큐에 넣을 때에만 mutex 획득
+	// - 이점: Send()가 자주 호출될 때 lock 경합 감소
 
 	// English: Prepare buffer outside of lock (minimize critical section)
-	// ?쒓?: Lock ?몃??먯꽌 踰꾪띁 以鍮?(?꾧퀎 ?곸뿭 理쒖냼??
+	// 한글: Lock 밖에서 버퍼 준비 (임계 구역 최소화)
 	std::vector<char> buffer(size);
 	std::memcpy(buffer.data(), data, size);
 
 	// English: Enqueue with atomic size tracking
-	// ?쒓?: Atomic ?ш린 異붿쟻怨??④퍡 ?명걧
+	// 한글: Atomic 크기 추적과 함께 큐에 삽입
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
 		mSendQueue.push(std::move(buffer));
 
 		// English: Increment queue size atomically with release so PostSend's
 		//          acquire load sees the enqueued data
-		// ?쒓?: PostSend??acquire load媛 ?명걧???곗씠?곕? 蹂????덈룄濡?release濡?利앷?
+		// 한글: PostSend의 acquire load가 삽입된 데이터를 볼 수 있도록 release로 증가
 		mSendQueueSize.fetch_add(1, std::memory_order_release);
 	}
 
 	// English: Always try to flush (CAS inside will prevent double send)
-	// ?쒓?: ??긽 ?뚮윭???쒕룄 (?대? CAS媛 以묐났 ?꾩넚 諛⑹?)
+	// 한글: 항상 플러시 시도 (내부 CAS가 이중 전송 방지)
 	FlushSendQueue();
 }
 
 void Session::FlushSendQueue()
 {
 	// English: CAS to prevent concurrent sends
-	// ?쒓?: CAS濡??숈떆 ?꾩넚 諛⑹?
+	// 한글: CAS로 동시 전송 방지
 	bool expected = false;
 	if (!mIsSending.compare_exchange_strong(expected, true))
 	{
@@ -262,12 +262,12 @@ bool Session::PostSend()
 {
 	// English: Fast path - check queue size before acquiring lock
 	// 한글: Fast path - 락 획득 전 큐 크기 확인
-	// ?쒓?: Fast path - Send()??release store? ?띿쓣 ?대（??acquire load濡?
-	//       ?먭? 鍮꾩뼱?덈떎怨??먮떒?섍린 ?꾩뿉 ?명걧??紐⑤뱺 ??ぉ??蹂????덉쓬
+	//       Send()의 release store를 따르는 acquire load로
+	//       큐가 비어있다고 확인되면 삽입된 데이터를 반드시 볼 수 있음
 	if (mSendQueueSize.load(std::memory_order_acquire) == 0)
 	{
 		// English: Queue is empty, release sending flag and return
-		// ?쒓?: ?먭? 鍮꾩뼱?덉쓬, ?꾩넚 ?뚮옒洹??댁젣 ??諛섑솚
+		// 한글: 큐가 비어있음, 전송 플래그 해제 후 반환
 		mIsSending.store(false, std::memory_order_release);
 		return true;
 	}
@@ -278,11 +278,11 @@ bool Session::PostSend()
 		std::lock_guard<std::mutex> lock(mSendMutex);
 
 		// English: Double-check queue after acquiring lock (TOCTOU prevention)
-		// ?쒓?: Lock ?띾뱷 ?????ы솗??(TOCTOU 諛⑹?)
+		// 한글: Lock 획득 후 재확인 (TOCTOU 방지)
 		if (mSendQueue.empty())
 		{
 			// English: No more data to send, release flag atomically
-			// ?쒓?: ???댁긽 ?꾩넚???곗씠???놁쓬, atomic?쇰줈 ?뚮옒洹??댁젣
+			// 한글: 더 이상 전송할 데이터 없음, atomic으로 플래그 해제
 			mIsSending.store(false, std::memory_order_release);
 			return true;
 		}
@@ -291,7 +291,7 @@ bool Session::PostSend()
 		mSendQueue.pop();
 
 		// English: Decrement queue size atomically
-		// ?쒓?: Atomic?쇰줈 ???ш린 媛먯냼
+		// 한글: Atomic으로 큐 크기 감소
 		mSendQueueSize.fetch_sub(1, std::memory_order_release);
 	}
 
@@ -331,7 +331,7 @@ bool Session::PostSend()
 								 std::to_string(error));
 			// English: Socket error - release flag then close session
 			// 한글: 소켓 오류 - 플래그 해제 후 세션 종료
-			// ?쒓?: ?먮윭 ??atomic?쇰줈 ?뚮옒洹??댁젣
+			//       오류 발생 시 먼저 atomic으로 플래그 해제
 			mIsSending.store(false, std::memory_order_release);
 			Close();
 			return false;
@@ -445,7 +445,7 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 		std::lock_guard<std::mutex> recvLock(mRecvMutex);
 
 		// English: Overflow guard (slow-loris / flood defense).
-		// ???: ??????????? (??? ??? / ????????).
+		// 한글: 오버플로우 방어 (slow-loris / 플러드 방어).
 		constexpr size_t kMaxAccumSize = MAX_PACKET_SIZE * 4;
 		const size_t unread = mRecvAccumBuffer.size() - mRecvAccumOffset;
 		if (unread + size > kMaxAccumSize)
