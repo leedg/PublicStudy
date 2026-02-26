@@ -253,6 +253,26 @@ namespace Network::DBServer
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
+    std::string ServerLatencyManager::EscapeSqlString(const std::string& s)
+    {
+        // English: Escape single quotes for SQL string literals (standard SQL: ' → '')
+        // 한글: SQL 문자열 리터럴용 single quote 이스케이프 (표준 SQL: ' → '')
+        std::string result;
+        result.reserve(s.size());
+        for (char c : s)
+        {
+            if (c == '\'')
+            {
+                result += "''";
+            }
+            else
+            {
+                result += c;
+            }
+        }
+        return result;
+    }
+
     std::string ServerLatencyManager::BuildLatencyInsertQuery(uint32_t serverId,
                                                                const std::string& serverName,
                                                                uint64_t rttMs, double avgRttMs,
@@ -266,7 +286,7 @@ namespace Network::DBServer
               << "(server_id, server_name, rtt_ms, avg_rtt_ms, min_rtt_ms, max_rtt_ms, "
               << "ping_count, measured_time) VALUES ("
               << serverId << ", '"
-              << serverName << "', "
+              << EscapeSqlString(serverName) << "', "
               << rttMs << ", "
               << std::fixed << std::setprecision(2) << avgRttMs << ", "
               << minRttMs << ", "
@@ -285,7 +305,7 @@ namespace Network::DBServer
         std::ostringstream query;
         query << "INSERT INTO PingTimeLog (server_id, server_name, ping_time) VALUES ("
               << serverId << ", '"
-              << serverName << "', '"
+              << EscapeSqlString(serverName) << "', '"
               << FormatTimestamp(timestamp) << "')";
         return query.str();
     }
