@@ -34,10 +34,13 @@
 
 ### 실행 순서
 ```bash
-# 1. 서버 실행
+# 1. DB 서버 실행
+TestDBServer.exe
+
+# 2. 서버 실행 (별도 터미널)
 TestServer.exe
 
-# 2. 클라이언트 실행 (별도 터미널)
+# 3. 클라이언트 실행 (별도 터미널)
 TestClient.exe
 ```
 
@@ -109,6 +112,11 @@ NetworkModuleTest/
 ---
 
 ## 🔧 최근 업데이트
+
+### 2026-02-25
+- ✅ AsyncBufferPool 통합 (RIOBufferPool/IOUringBufferPool → using alias로 단일화)
+- ✅ RIOTest, IOUringTest 독립 VS 프로젝트로 승격
+- ✅ 플랫폼별 버퍼 할당 로직 AllocAligned/FreeAligned로 격리
 
 ### 2026-02-10
 - ✅ TestServer ↔ TestDBServer 패킷 연결 경로 추가
