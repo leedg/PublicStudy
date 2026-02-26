@@ -58,7 +58,8 @@ public:
 	static std::string ToUpper(const std::string &str)
 	{
 		std::string result = str;
-		std::transform(result.begin(), result.end(), result.begin(), ::toupper);
+		std::transform(result.begin(), result.end(), result.begin(),
+					   [](unsigned char c) { return ::toupper(c); });
 		return result;
 	}
 
@@ -67,7 +68,8 @@ public:
 	static std::string ToLower(const std::string &str)
 	{
 		std::string result = str;
-		std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+		std::transform(result.begin(), result.end(), result.begin(),
+					   [](unsigned char c) { return ::tolower(c); });
 		return result;
 	}
 };
