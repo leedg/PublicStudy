@@ -66,10 +66,10 @@ CreateNetworkEngine(const std::string &engineType)
 		if (uname(&unameData) == 0)
 		{
 			int major = 0, minor = 0;
-			sscanf(unameData.release, "%d.%d", &major, &minor);
+			const int parsed = sscanf(unameData.release, "%d.%d", &major, &minor);
 
 			// Linux 5.1+ supports io_uring
-			if (major > 5 || (major == 5 && minor >= 1))
+			if (parsed == 2 && (major > 5 || (major == 5 && minor >= 1)))
 			{
 				Utils::Logger::Info(
 					"Linux 5.1+ detected, using io_uring backend (auto)");
