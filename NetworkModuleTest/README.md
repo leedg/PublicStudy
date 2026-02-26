@@ -157,7 +157,7 @@ NetworkModuleTest/
 
 상세 내용 (선택)
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
 **카테고리 예시**:
