@@ -347,6 +347,15 @@ void TestClient::HandleConnectResponse(const PKT_SessionConnectRes *packet)
 void TestClient::HandlePongResponse(const PKT_PongRes *packet)
 {
 	uint64_t now = Timer::GetCurrentTimestamp();
+	
+	// English: Guard against clock skew / time going backwards
+	// 한글: 시계 역행 방어
+	if (now < packet->clientTime)
+	{
+		Logger::Warn("HandlePongResponse: System clock skew detected - skipping RTT update");
+		return;
+	}
+	
 	uint64_t rtt = now - packet->clientTime;
 
 	{
