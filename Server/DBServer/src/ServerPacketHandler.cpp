@@ -175,6 +175,7 @@ namespace Network::DBServer
             mOrderedTaskQueue->EnqueueTask(serverId,
                 [latencyMgr, capturedServerId, capturedRtt, capturedTime]()
                 {
+                    if (!latencyMgr || !latencyMgr->IsInitialized()) return;
                     latencyMgr->RecordLatency(capturedServerId,
                                               "Server_" + std::to_string(capturedServerId),
                                               capturedRtt, capturedTime);
@@ -226,6 +227,7 @@ namespace Network::DBServer
             mOrderedTaskQueue->EnqueueTask(capturedServerId,
                 [latencyMgr, sessionRef, capturedServerId, capturedServerName, capturedTimestamp]()
                 {
+                    if (!sessionRef || !sessionRef->IsConnected()) return;
                     PKT_DBSavePingTimeRes asyncResponse;
                     asyncResponse.serverId = capturedServerId;
 
