@@ -35,6 +35,14 @@ namespace
 void EmitLockRecord(const LockRecord &record) noexcept
 {
 	EnsureRegistered();
+	// English: TraceLogging buffers may drop records if the buffer is full.
+	// This is a known limitation of the Windows TraceLogging API - when the
+	// internal buffer reaches capacity, records are silently discarded to avoid
+	// blocking the caller. Profiling data may be incomplete if lock activity is heavy.
+	// 한글: TraceLogging 버퍼가 가득 찬 경우 기록이 드롭될 수 있습니다.
+	// 이는 Windows TraceLogging API의 알려진 제한 사항으로, 내부 버퍼가
+	// 용량에 도달할 때 호출자를 차단하지 않기 위해 레코드가 자동으로 삭제됩니다.
+	// 락 활동이 많은 경우 프로파일링 데이터가 불완전할 수 있습니다.
 	TraceLoggingWrite(g_NetworkLockProfilingProvider,
 					  "LockScope",
 					  TraceLoggingString(record.name, "Name"),
