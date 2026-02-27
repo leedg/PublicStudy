@@ -61,6 +61,14 @@ class ConnectionPool : public IConnectionPool
 	size_t GetTotalConnections() const;
 
   private:
+	// English: ClearLocked — Close idle connections WITHOUT acquiring mMutex.
+	//          Callers (Clear, Shutdown) must already hold mMutex.
+	//          Prevents deadlock when Shutdown() calls Clear() while owning the lock.
+	// 한글: ClearLocked — mMutex 획득 없이 유휴 연결 닫기.
+	//       호출자(Clear, Shutdown)가 이미 mMutex를 보유해야 함.
+	//       Shutdown()이 락 보유 상태에서 Clear()를 호출할 때 발생하는 데드락 방지.
+	void ClearLocked();
+
 	// English: Pooled connection structure
 	// 한글: 풀링된 연결 구조체
 	struct PooledConnection
@@ -80,14 +88,6 @@ class ConnectionPool : public IConnectionPool
 	// 한글: 헬퍼 메서드
 	std::shared_ptr<IConnection> CreateNewConnection();
 	void CleanupIdleConnections();
-
-	// English: ClearLocked — Close idle connections WITHOUT acquiring mMutex.
-	//          Callers (Clear, Shutdown) must already hold mMutex.
-	//          Prevents deadlock when Shutdown() calls Clear() while owning the lock.
-	// 한글: ClearLocked — mMutex 획득 없이 유휴 연결 닫기.
-	//       호출자(Clear, Shutdown)가 이미 mMutex를 보유해야 함.
-	//       Shutdown()이 락 보유 상태에서 Clear()를 호출할 때 발생하는 데드락 방지.
-	void ClearLocked();
 
   private:
 	DatabaseConfig mConfig;
