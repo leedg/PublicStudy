@@ -1,3 +1,27 @@
+# ==============================================================================
+# run_test_auto.ps1
+# 역할: DBServer + TestServer + TestClient 1개를 자동으로 기동하고,
+#       지정한 시간 실행 후 Graceful Shutdown 시키는 단일 클라이언트 자동 테스트 스크립트.
+#       run_test_2clients.ps1 의 단순화 버전으로, CI/CD 나 단독 검증에 적합하다.
+#
+# 실행 순서:
+#   1. (선택) 서버 구조 동기화 검증 스크립트 실행
+#      (ModuleTest/ServerStructureSync/validate_server_structure_sync.ps1)
+#      → 실패 시 테스트 중단 (-SkipStructureSyncCheck 로 건너뛸 수 있음)
+#   2. TestDBServer 기동 (포트 8002)
+#   3. TestServer 기동 (포트 9000, DB: 127.0.0.1:8002)
+#   4. TestClient 기동
+#   5. $RunSeconds 초 대기
+#   6. Named Event 로 Graceful Shutdown 신호 전송 (타임아웃 시 Kill 폴백)
+#   7. 각 프로세스 출력 결과 콘솔에 표시
+#
+# 매개변수:
+#   -RunSeconds            : 테스트 실행 시간(초), 기본값 5
+#   -SkipStructureSyncCheck: 지정 시 구조 동기화 검증 단계를 건너뜀
+#
+# 빌드 경로 (하드코딩):
+#   C:\MyGithub\PublicStudy\NetworkModuleTest\x64\Debug
+# ==============================================================================
 param(
     [int]$RunSeconds = 5,
     [switch]$SkipStructureSyncCheck

@@ -4,6 +4,7 @@
 #ifdef __linux__
 
 #include "EpollAsyncIOProvider.h"
+#include "Utils/Logger.h"
 #include "PlatformDetect.h"
 #include <cstdlib>
 #include <cstring>
@@ -112,6 +113,7 @@ AsyncIOError EpollAsyncIOProvider::AssociateSocket(SocketHandle socket,
 	if (epoll_ctl(mEpollFd, EPOLL_CTL_ADD, socket, &ev) < 0)
 	{
 		mLastError = "epoll_ctl EPOLL_CTL_ADD failed";
+		Logger::Error("EpollAsyncIOProvider::AssociateSocket - epoll_ctl EPOLL_CTL_ADD failed: " + std::string(strerror(errno)));
 		return AsyncIOError::OperationFailed;
 	}
 
@@ -174,7 +176,13 @@ AsyncIOError EpollAsyncIOProvider::SendAsync(SocketHandle socket,
 	struct epoll_event ev;
 	ev.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
 	ev.data.fd = socket;
-	epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev);
+	if (epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev) < 0)
+	{
+		Logger::Error("EpollAsyncIOProvider::SendAsync - epoll_ctl EPOLL_CTL_MOD failed: " + std::string(strerror(errno)));
+		mPendingSendOps.erase(socket);
+		mStats.mPendingRequests--;
+		return AsyncIOError::OperationFailed;
+	}
 
 	return AsyncIOError::Success;
 }
@@ -378,7 +386,10 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 				struct epoll_event ev;
 				ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
 				ev.data.fd = socket;
-				epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev);
+				if (epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev) < 0)
+				{
+					Logger::Error("EpollAsyncIOProvider::ProcessCompletions - epoll_ctl EPOLL_CTL_MOD (found) failed: " + std::string(strerror(errno)));
+				}
 
 				int32_t result = 0;
 				OSError osError = 0;

@@ -51,3 +51,6 @@ nul
 
 # Test artifacts
 crash_logs/
+
+# Claude
+.claude/

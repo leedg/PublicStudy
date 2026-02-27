@@ -119,7 +119,12 @@ void Session::Close()
 	//          the socket is closed below — prevents use of a closed/reassigned socket.
 	// 한글: 아래 소켓 닫기 전에 concurrent Send()의 acquire-load가 nullptr을 볼 수 있도록
 	//       release-store로 nullptr 설정.
-	mAsyncProvider.store(nullptr, std::memory_order_release);
+	// English: Release-to-Synchronize-store ensures: (1) all prior close-state stores
+	//          visible to subsequent Send(); (2) socket-closure below visible after
+	//          async provider clears; (3) sequential consistency with other threads.
+	// 한글: Release-To-Synchronize-store로 (1) 이전 닫기 상태 모두 Send()에 보임,
+	//      (2) 아래 소켓 닫기가 async provider 초기화 후 보임, (3) 다른 스레드와 일관성.
+	mAsyncProvider.store(nullptr, std::memory_order_seq_cst);
 
 	const SocketHandle socketToClose =
 		mSocket.exchange(GetInvalidSocket(), std::memory_order_acq_rel);
@@ -266,9 +271,22 @@ bool Session::PostSend()
 	//       큐가 비어있다고 확인되면 삽입된 데이터를 반드시 볼 수 있음
 	if (mSendQueueSize.load(std::memory_order_acquire) == 0)
 	{
-		// English: Queue is empty, release sending flag and return
-		// 한글: 큐가 비어있음, 전송 플래그 해제 후 반환
+		// English: Queue is empty, release sending flag
+		// 한글: 큐가 비어있음, 전송 플래그 해제
 		mIsSending.store(false, std::memory_order_release);
+
+		// English: [Fix D-3] TOCTOU guard: re-check queue size after releasing flag.
+		//          Send() may have pushed data and lost the CAS race in the window
+		//          between our size==0 check above and the store(false) above.
+		//          If so, re-trigger FlushSendQueue() so the data is not stranded.
+		// 한글: [Fix D-3] TOCTOU 방어: 플래그 해제 후 큐 크기 재확인.
+		//       위의 size==0 확인과 store(false) 사이 구간에 Send()가 데이터를 추가하고
+		//       CAS 경쟁에서 실패했을 수 있음. 그 경우 FlushSendQueue()를 재호출해
+		//       데이터가 큐에 방치되지 않도록 한다.
+		if (mSendQueueSize.load(std::memory_order_acquire) > 0)
+		{
+			FlushSendQueue();
+		}
 		return true;
 	}
 

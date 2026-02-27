@@ -61,6 +61,7 @@ bool ConnectionPool::Initialize(const DatabaseConfig &config)
 	}
 	catch (const DatabaseException &)
 	{
+		mConnections.clear();
 		return false;
 	}
 }
@@ -259,13 +260,11 @@ void ConnectionPool::SetMinPoolSize(size_t size)
 
 void ConnectionPool::SetConnectionTimeout(int seconds)
 {
-	std::lock_guard<std::mutex> lock(mMutex);
 	mConnectionTimeout = std::chrono::seconds(seconds);
 }
 
 void ConnectionPool::SetIdleTimeout(int seconds)
 {
-	std::lock_guard<std::mutex> lock(mMutex);
 	mIdleTimeout = std::chrono::seconds(seconds);
 }
 

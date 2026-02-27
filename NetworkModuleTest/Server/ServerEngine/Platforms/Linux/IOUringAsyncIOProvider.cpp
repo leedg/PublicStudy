@@ -209,9 +209,10 @@ AsyncIOError IOUringAsyncIOProvider::SendAsync(SocketHandle socket,
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
 
-	// English: Submit to ring
-	// 한글: 링에 제출
-	return SubmitRing() ? AsyncIOError::Success : AsyncIOError::OperationFailed;
+	// English: Submit to ring (within lock to prevent opKey removal before submission)
+	// 한글: 링에 제출 (락 범위 내에서 제출 전 opKey 제거 방지)
+	bool submitOk = SubmitRing();
+	return submitOk ? AsyncIOError::Success : AsyncIOError::OperationFailed;
 }
 
 AsyncIOError IOUringAsyncIOProvider::RecvAsync(SocketHandle socket,
@@ -254,7 +255,10 @@ AsyncIOError IOUringAsyncIOProvider::RecvAsync(SocketHandle socket,
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
 
-	return SubmitRing() ? AsyncIOError::Success : AsyncIOError::OperationFailed;
+	// English: Submit to ring (within lock to prevent opKey removal before submission)
+	// 한글: 링에 제출 (락 범위 내에서 제출 전 opKey 제거 방지)
+	bool submitOk = SubmitRing();
+	return submitOk ? AsyncIOError::Success : AsyncIOError::OperationFailed;
 }
 
 AsyncIOError IOUringAsyncIOProvider::FlushRequests()

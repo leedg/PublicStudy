@@ -150,7 +150,7 @@ namespace Network::DBServer
 
         // English: Convert to GMT tm structure
         // 한글: GMT tm 구조체로 변환
-        std::tm gmtTime{};
+        std::tm gmtTime;
 #ifdef _WIN32
         gmtime_s(&gmtTime, &seconds);
 #else

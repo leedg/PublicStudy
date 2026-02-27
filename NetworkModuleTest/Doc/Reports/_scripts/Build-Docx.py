@@ -1,3 +1,23 @@
+# ==============================================================================
+# Build-Docx.py  (Doc/Reports/_scripts/Build-Docx.py)
+# 역할: 마크다운 파일(.md)을 Word 문서(.docx)로 변환한다.
+#       Doc/Reports 패키지(ExecutiveSummary, TeamShare, WikiPackage)의
+#       DOCX 파일을 생성하는 데 사용한다.
+#
+# 기능:
+#   - 헤딩(#, ##, ###), 리스트(-, 1.), 코드블록(```), 표(|), 이미지(![...]) 지원
+#   - 이미지는 .svg → .png 자동 전환 (같은 경로에 .png 있을 경우)
+#   - 한글 폰트(맑은 고딕) 및 각 스타일별 글자 크기 자동 설정
+#   - 단일 파일 → 단일 docx (single 모드)
+#   - 여러 파일 → 페이지 구분으로 묶인 단일 docx (bundle 모드)
+#
+# 사용법:
+#   python Build-Docx.py single <입력.md> <출력.docx>
+#   python Build-Docx.py bundle <제목> <출력.docx> <입력1.md> [입력2.md ...]
+#
+# 사전 요구사항:
+#   pip install python-docx
+# ==============================================================================
 from pathlib import Path
 import sys
 from docx import Document

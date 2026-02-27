@@ -11,6 +11,8 @@
 #include <future>
 #include <atomic>
 #include <memory>
+#include <condition_variable>
+#include <mutex>
 
 namespace Network::Utils
 {
@@ -77,12 +79,20 @@ public:
 
 	// English: Wait for all tasks to complete
 	// 한글: 모든 작업 완료 대기
+	// Note: There may be a ±1 tolerance in mActiveTasks during task transitions.
+	// Between the moment a worker increments mActiveTasks and processes a task,
+	// or between completing the task and decrementing mActiveTasks, a small
+	// discrepancy may occur. This is acceptable for synchronization purposes.
+	// 한글 주석: 작업 전환 중에 mActiveTasks에서 ±1 허용 오차가 발생할 수 있습니다.
+	// 워커가 mActiveTasks를 증가시키고 작업을 처리하는 순간 또는 작업을 완료하고
+	// mActiveTasks를 감소시키는 사이에 작은 불일치가 발생할 수 있습니다.
+	// 동기화 목적으로는 이 정도의 오차는 허용됩니다.
 	void WaitForAll()
 	{
-		while (mActiveTasks > 0 || !mTasks.Empty())
-		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
+		std::unique_lock<std::mutex> lock(mWaitMutex);
+		mWaitCV.wait(lock, [this] {
+			return mActiveTasks == 0 && mTasks.Empty();
+		});
 	}
 
 	// English: Get number of worker threads
@@ -98,6 +108,8 @@ private:
 	SafeQueue<std::function<void()>> mTasks;
 	std::atomic<bool> mStop;
 	std::atomic<size_t> mActiveTasks;
+	std::mutex mWaitMutex;
+	std::condition_variable mWaitCV;
 
 	// English: Worker thread function
 	// 한글: 워커 스레드 함수
@@ -126,7 +138,10 @@ private:
 					// 한글: 알 수 없는 예외 타입 처리
 					Logger::Error("[ThreadPool] Task threw unknown exception");
 				}
-				--mActiveTasks;
+					--mActiveTasks;
+				// English: Notify WaitForAll() when task completes
+				// 한글: 작업 완료 시 WaitForAll() 알림
+				mWaitCV.notify_one();
 			}
 		}
 	}

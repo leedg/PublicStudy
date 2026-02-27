@@ -111,7 +111,10 @@ namespace Network::TestServer
         packet.sequence = ++mPingSequence;
         packet.timestamp = Timer::GetCurrentTimestamp();
 
-        session->Send(packet);
+        if (!session->Send(packet))
+        {
+            Logger::Warn("Failed to send ServerPingReq - Seq: " + std::to_string(packet.sequence));
+        }
 
 #ifdef ENABLE_PINGPONG_VERBOSE_LOG
         Logger::Debug("Sent ping to DB server - Seq: " + std::to_string(packet.sequence));
@@ -146,7 +149,10 @@ namespace Network::TestServer
 #endif
         }
 
-        session->Send(packet);
+        if (!session->Send(packet))
+        {
+            Logger::Warn("Failed to send DBSavePingTimeReq - ServerId: " + std::to_string(serverId));
+        }
 
         Logger::Info("Requested save ping time to DB - ServerId: " + std::to_string(serverId));
     }
@@ -178,7 +184,10 @@ namespace Network::TestServer
 
         // English: Update session's last ping time
         // 한글: 세션의 마지막 Ping 시간 갱신
-        session->SetLastPingTime(packet->responseTimestamp);
+        if (session->IsConnected())
+        {
+            session->SetLastPingTime(packet->responseTimestamp);
+        }
     }
 
     void DBServerPacketHandler::HandleDBSavePingTimeResponse(Core::Session* session, const PKT_DBSavePingTimeRes* packet)

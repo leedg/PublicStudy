@@ -32,10 +32,12 @@ public:
 			if (mMaxSize > 0 && mQueue.size() >= mMaxSize)
 				return false;
 			mQueue.push(item);
+			// English: Notify while holding the lock so the waiter sees the new item
+			//          before the mutex is released (avoids spurious wait_for timeouts).
+			// 한글: 락 보유 중 notify하여 대기자가 뮤텍스 해제 전에 새 항목을 인식하도록 함
+			//       (wait_for 타임아웃 오탐 방지)
+			mCondition.notify_one();
 		}
-		// English: Notify outside lock to avoid waking thread while holding lock
-		// 한글: 락을 잡은 채로 스레드를 깨우는 것을 방지하기 위해 락 밖에서 알림
-		mCondition.notify_one();
 		return true;
 	}
 
@@ -48,8 +50,10 @@ public:
 			if (mMaxSize > 0 && mQueue.size() >= mMaxSize)
 				return false;
 			mQueue.push(std::move(item));
+			// English: Notify while holding the lock (see Push(const T&) comment)
+			// 한글: 락 보유 중 notify (Push(const T&) 주석 참조)
+			mCondition.notify_one();
 		}
-		mCondition.notify_one();
 		return true;
 	}
 
@@ -63,8 +67,10 @@ public:
 			if (mMaxSize > 0 && mQueue.size() >= mMaxSize)
 				return false;
 			mQueue.emplace(std::forward<Args>(args)...);
+			// English: Notify while holding the lock (see Push(const T&) comment)
+			// 한글: 락 보유 중 notify (Push(const T&) 주석 참조)
+			mCondition.notify_one();
 		}
-		mCondition.notify_one();
 		return true;
 	}
 

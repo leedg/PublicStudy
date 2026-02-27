@@ -1,3 +1,28 @@
+# ==============================================================================
+# build-wiki-package.ps1
+# 역할: Doc/WikiDraft/ServerStructure/ 의 Wiki 마크다운 파일과 SVG 에셋을
+#       GitHub Wiki 에 바로 업로드할 수 있는 패키지 형태로 wiki-package/ 에 복사한다.
+#
+# 복사 대상 페이지:
+#   Home.md, _Sidebar.md, 01~05 문서, Wiki-Import-Guide.md
+#
+# 복사 대상 에셋:
+#   assets/*.svg (기본 포함)
+#   assets/*.png (-IncludePng 지정 시 추가 포함)
+#
+# 사용법:
+#   .\build-wiki-package.ps1 [-SourceRoot <경로>] [-OutputRoot <경로>] [-IncludePng]
+#
+# 매개변수:
+#   -SourceRoot : Wiki 원본 폴더 (기본값: Doc/WikiDraft/ServerStructure)
+#   -OutputRoot : 패키지 출력 폴더 (기본값: Doc/WikiDraft/ServerStructure/wiki-package)
+#   -IncludePng : 지정 시 PNG 이미지도 패키지에 포함
+#
+# GitHub Wiki 에 배포하는 방법:
+#   1. <repo>.wiki.git 을 별도로 클론
+#   2. wiki-package/ 내용을 Wiki 루트에 복사
+#   3. 커밋 및 푸시
+# ==============================================================================
 param(
     [string]$SourceRoot = "Doc/WikiDraft/ServerStructure",
     [string]$OutputRoot = "Doc/WikiDraft/ServerStructure/wiki-package",

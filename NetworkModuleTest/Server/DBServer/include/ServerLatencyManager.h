@@ -133,10 +133,6 @@ namespace Network::DBServer
         void SetDatabase(Network::Database::IDatabase* db);
 
     private:
-        // English: Escape single quotes in SQL string literals (' → '')
-        // 한글: SQL 문자열 리터럴의 single quote 이스케이프 (' → '')
-        static std::string EscapeSqlString(const std::string& s);
-
         // English: Format latency data as SQL INSERT for ServerLatencyLog
         // 한글: ServerLatencyLog용 SQL INSERT 포맷
         std::string BuildLatencyInsertQuery(uint32_t serverId, const std::string& serverName,

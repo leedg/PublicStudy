@@ -1,3 +1,27 @@
+# ==============================================================================
+# validate_server_structure_sync.ps1
+# 역할: 소스 코드와 문서(Wiki 초안)가 서로 동기화되어 있는지 검증한다.
+#       run_test_auto.ps1 에서 테스트 실행 전 자동으로 호출된다.
+#
+# 검증 항목:
+#   1. TestServer.cpp / TestServer.h 파일 존재 확인
+#   2. Wiki 초안 파일(Home.md, 01~05 문서) 존재 확인
+#   3. DBTaskQueue worker 수가 1인지 확인 (Initialize(1, ...))
+#   4. weak_ptr<DBTaskQueue> 캡처 패턴 사용 여부 확인
+#   5. Graceful Shutdown 종료 순서 확인
+#      (DBTaskQueue 종료 → DBServer 연결 해제 → 네트워크 엔진 종료)
+#   6. 재연결 로직의 WSAECONNREFUSED 분기 및 지수 백오프 확인
+#   7. Wiki 문서에 핵심 정책 키워드 포함 여부 확인
+#
+# 사용법:
+#   .\validate_server_structure_sync.ps1 [-RepoRoot <경로>]
+#
+# 매개변수:
+#   -RepoRoot : 저장소 루트 경로. 생략 시 스크립트 위치 기준으로 자동 계산.
+#
+# 반환:
+#   검증 항목 중 하나라도 실패하면 exit 1 로 종료.
+# ==============================================================================
 param(
     [string]$RepoRoot = ""
 )

@@ -99,6 +99,7 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 	{
 		Logger::Error("socket() failed: " + std::to_string(PlatformGetLastError()));
 		freeaddrinfo(addrResult);
+		mStream.Reset();
 		mState.store(ClientState::Disconnected);
 		return false;
 	}
@@ -115,6 +116,7 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 		Logger::Error("connect() failed: " + std::to_string(PlatformGetLastError()));
 		PlatformCloseSocket(mSocket);
 		mSocket = INVALID_SOCKET_HANDLE;
+		mStream.Reset();
 		mState.store(ClientState::Disconnected);
 		return false;
 	}
@@ -142,9 +144,11 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 	if (!mStream.SendPacket(connectReq))
 	{
 		Logger::Error("Failed to send SessionConnectReq");
+		// English: Clean up socket and stream consistently
+		// 한글: 소켓과 스트림 정리 통일
+		mStream.Reset();
 		PlatformCloseSocket(mSocket);
 		mSocket = INVALID_SOCKET_HANDLE;
-		mStream.Reset();
 		mState.store(ClientState::Disconnected);
 		return false;
 	}
@@ -347,6 +351,15 @@ void TestClient::HandleConnectResponse(const PKT_SessionConnectRes *packet)
 void TestClient::HandlePongResponse(const PKT_PongRes *packet)
 {
 	uint64_t now = Timer::GetCurrentTimestamp();
+	
+	// English: Guard against clock skew / time going backwards
+	// 한글: 시계 역행 방어
+	if (now < packet->clientTime)
+	{
+		Logger::Warn("HandlePongResponse: System clock skew detected - skipping RTT update");
+		return;
+	}
+	
 	uint64_t rtt = now - packet->clientTime;
 
 	{

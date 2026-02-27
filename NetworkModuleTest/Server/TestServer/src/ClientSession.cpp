@@ -97,6 +97,10 @@ namespace Network::TestServer
         //       weak_ptr을 lock() — Stop() 이후 늦은 IOCP 완료 시 nullptr 반환, 안전하게 건너뜀.
         if (auto queue = mDBTaskQueue.lock())
         {
+            // English: Shutdown may begin after lock() succeeds but before IsRunning() check.
+            //          If so, this task is lost — intentional behavior for graceful shutdown.
+            // 한글: lock() 성공 후 IsRunning() 체크 전에 Shutdown이 시작될 수 있음.
+            //      이 경우 이 작업은 손실됨 (graceful shutdown을 위한 의도된 동작).
             if (queue->IsRunning())
             {
                 queue->RecordConnectTime(GetId(), timeStr);
@@ -132,6 +136,10 @@ namespace Network::TestServer
         // 한글: AsyncRecordConnectTime과 동일한 이유로 weak_ptr lock().
         if (auto queue = mDBTaskQueue.lock())
         {
+            // English: Shutdown may begin after lock() succeeds but before IsRunning() check.
+            //          If so, this task is lost — intentional behavior for graceful shutdown.
+            // 한글: lock() 성공 후 IsRunning() 체크 전에 Shutdown이 시작될 수 있음.
+            //      이 경우 이 작업은 손실됨 (graceful shutdown을 위한 의도된 동작).
             if (queue->IsRunning())
             {
                 queue->RecordDisconnectTime(GetId(), timeStr);

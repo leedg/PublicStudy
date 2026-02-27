@@ -199,17 +199,19 @@ namespace Network::TestServer
             const std::string shutdownTime(timeStr);
 
             size_t queuedDisconnectCount = 0;
-            Core::SessionManager::Instance().ForEachSession(
-                [this, &shutdownTime, &queuedDisconnectCount](Core::SessionRef session)
+            // English: Get session snapshot to avoid race condition with session removal
+            // 한글: 세션 제거와의 경합 조건 방지를 위해 스냅샷 사용
+            auto allSessions = Core::SessionManager::Instance().GetAllSessions();
+            for (auto& session : allSessions)
+            {
+                if (!session || !session->IsConnected())
                 {
-                    if (!session || !session->IsConnected())
-                    {
-                        return;
-                    }
+                    continue;
+                }
 
-                    mDBTaskQueue->RecordDisconnectTime(session->GetId(), shutdownTime);
-                    ++queuedDisconnectCount;
-                });
+                mDBTaskQueue->RecordDisconnectTime(session->GetId(), shutdownTime);
+                ++queuedDisconnectCount;
+            }
 
             if (queuedDisconnectCount > 0)
             {
@@ -338,7 +340,13 @@ namespace Network::TestServer
         // English: Create and initialize DBServerSession for DB connection
         // 한글: DB 연결을 위한 DBServerSession 생성 및 초기화
         mDBServerSession = std::make_shared<DBServerSession>();
-        mDBServerSession->Initialize(static_cast<uint64_t>(clientSocket), clientSocket);
+        if (!mDBServerSession->Initialize(static_cast<uint64_t>(clientSocket), clientSocket))
+        {
+            Logger::Error("Failed to initialize DBServerSession");
+            mDBServerSession.reset();
+            mDBConnecting.store(false);
+            return false;
+        }
 
         mDBServerSocket = clientSocket;
         mDBRunning.store(true);
@@ -496,9 +504,10 @@ namespace Network::TestServer
                         break;
                     }
 
-                    if (mDBServerSession)
+                    auto sessionSnapshot = mDBServerSession;  // 로컬 스냅샷 생성
+                    if (sessionSnapshot)
                     {
-                        mDBServerSession->OnRecv(
+                        sessionSnapshot->OnRecv(
                             mDBRecvBuffer.data() + mDBRecvOffset,
                             header->size);
                     }

@@ -119,7 +119,10 @@ namespace Network::TestServer
         response.serverTime = static_cast<uint32_t>(std::time(nullptr));
         response.result = static_cast<uint8_t>(ConnectResult::Success);
 
-        session->Send(response);
+        if (!session->Send(response))
+        {
+            Logger::Warn("Failed to send SessionConnectRes - Session: " + std::to_string(session->GetId()));
+        }
     }
 
     void ClientPacketHandler::HandlePingRequest(Core::Session* session, const PKT_PingReq* packet)
@@ -141,7 +144,11 @@ namespace Network::TestServer
         response.serverTime = Timer::GetCurrentTimestamp();
         response.sequence = packet->sequence;
 
-        session->Send(response);
+        if (!session->Send(response))
+        {
+            Logger::Warn("Failed to send PongRes - Session: " + std::to_string(session->GetId()) +
+                ", Seq: " + std::to_string(packet->sequence));
+        }
 
 #ifdef ENABLE_PINGPONG_VERBOSE_LOG
         Logger::Debug("Client Ping/Pong - Session: " + std::to_string(session->GetId()) +

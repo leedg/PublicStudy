@@ -1,4 +1,20 @@
 @echo off
+:: ==============================================================================
+:: run_allServer.bat
+:: 역할: TestDBServer 와 TestServer 를 올바른 순서로 한 번에 실행한다.
+::       run_dbServer.bat → 1초 대기 → run_server.bat 순으로 호출한다.
+::       run_allServer.ps1 의 배치 파일 버전.
+::
+:: 사용법:
+::   run_allServer.bat [Config] [Platform] [ServerPort] [DbPort] [DbHost]
+::
+:: 인자 (순서대로, 모두 선택):
+::   %1 Config     : 빌드 구성 (기본값: Debug)
+::   %2 Platform   : 빌드 플랫폼 (기본값: x64)
+::   %3 ServerPort : TestServer 수신 포트 (기본값: 9000)
+::   %4 DbPort     : TestDBServer 수신 포트 (기본값: 8002)
+::   %5 DbHost     : TestServer 가 접속할 DBServer 주소 (기본값: 127.0.0.1)
+:: ==============================================================================
 setlocal
 
 set "CONFIG=Debug"

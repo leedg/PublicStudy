@@ -149,7 +149,15 @@ class BoundedLockFreeQueue
 	static size_t NormalizeCapacity(size_t requested)
 	{
 		// English: Keep minimum 2 to satisfy ring progression.
+		// In a ring buffer implementation using enqueue/dequeue position counters
+		// with modulo masking, we need at least 2 cells to distinguish between
+		// "empty queue" and "full queue" states using the sequence number.
+		// With capacity 1, the sequence wraps immediately and we cannot differentiate
+		// these states correctly.
 		// 한글: 링 진행 보장을 위해 최소 2로 보정.
+		// 시퀀스 번호를 사용하여 enqueue/dequeue 포인터를 구분하는 링 버퍼에서는
+		// "비어있음"과 "가득참" 상태를 올바르게 구분하기 위해 최소 2개 셀이 필요합니다.
+		// 용량이 1이면 시퀀스가 즉시 래핑되어 상태를 올바르게 구분할 수 없습니다.
 		size_t value = (requested < 2) ? 2 : requested;
 		size_t powerOfTwo = 1;
 		while (powerOfTwo < value)

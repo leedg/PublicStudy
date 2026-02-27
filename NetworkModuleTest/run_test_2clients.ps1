@@ -1,3 +1,28 @@
+# ==============================================================================
+# run_test_2clients.ps1
+# 역할: DBServer + TestServer + TestClient 2개를 자동으로 기동하고,
+#       지정한 시간 동안 실행 후 정상 종료(Graceful Shutdown)시키는 통합 테스트 스크립트.
+#
+# 실행 순서:
+#   1. 잔류 프로세스 강제 정리
+#   2. TestDBServer 기동 (포트 8002)
+#   3. TestServer 기동 (포트 9000, DB 연결: 127.0.0.1:8002)
+#   4. TestClient #1 기동
+#   5. TestClient #2 기동
+#   6. $RunSeconds 초 대기
+#   7. Windows Named Event 로 각 프로세스에 Graceful Shutdown 신호 전송
+#      (타임아웃 시 Kill() 폴백)
+#   8. 각 프로세스의 표준 출력/오류 및 종료 코드 출력
+#
+# 매개변수:
+#   -RunSeconds : 테스트 실행 시간(초), 기본값 10
+#
+# 출력 로그 경로 (테스트 실행 중 %TEMP% 에 생성):
+#   dbserver_out.txt / dbserver_err.txt
+#   server_out.txt   / server_err.txt
+#   client1_out.txt  / client1_err.txt
+#   client2_out.txt  / client2_err.txt
+# ==============================================================================
 param([int]$RunSeconds = 10)
 
 $binDir  = 'C:\MyGithub\PublicStudy\NetworkModuleTest\x64\Debug'

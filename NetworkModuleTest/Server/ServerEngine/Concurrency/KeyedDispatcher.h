@@ -33,7 +33,7 @@ class KeyedDispatcher
 	struct Options
 	{
 		size_t mWorkerCount = 0; // English: 0 -> hardware_concurrency fallback
-								// 한글: 0 -> hardware_concurrency 사용
+		                         // 한글: 0 -> hardware_concurrency 사용
 		ExecutionQueueOptions<std::function<void()>> mQueueOptions;
 		std::string mName = "KeyedDispatcher";
 	};
@@ -144,11 +144,12 @@ class KeyedDispatcher
 		}
 
 		const size_t workerIndex = KeyToWorkerIndex(key);
-		if (workerIndex >= mWorkers.size())
-		{
-			mRejected.fetch_add(1, std::memory_order_relaxed);
-			return false;
-		}
+		// English: KeyToWorkerIndex() returns (key % mWorkers.size()),
+		// so workerIndex is always < mWorkers.size() by definition.
+		// This condition is unreachable dead code.
+		// 한글: KeyToWorkerIndex()는 (key % mWorkers.size())를 반환하므로
+		// workerIndex는 정의상 항상 mWorkers.size()보다 작습니다.
+		// 이 조건은 도달 불가능한 dead code입니다.
 
 		bool queued = mWorkers[workerIndex]->mQueue.Push(std::move(task), timeoutMs);
 		if (queued)

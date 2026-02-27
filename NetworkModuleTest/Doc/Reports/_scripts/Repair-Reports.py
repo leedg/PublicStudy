@@ -1,3 +1,25 @@
+# ==============================================================================
+# Repair-Reports.py  (Doc/Reports/_scripts/Repair-Reports.py)
+# 역할: Network_Async_DB_Report_2026-02-26.md 원본 보고서를 파싱하여
+#       세 가지 배포용 패키지(TeamShare, ExecutiveSummary, WikiPackage)의
+#       마크다운 파일을 자동으로 재생성한다.
+#       원본 보고서가 수정되었을 때 각 패키지를 일괄 갱신하는 용도.
+#
+# 생성 파일:
+#   Doc/Reports/README.md                         — 패키지 목록 인덱스
+#   Doc/Reports/TeamShare/README.md               — 상세 기술 패키지 (다이어그램 + 코드 경로 포함)
+#   Doc/Reports/ExecutiveSummary/README.md        — 요약 패키지 (핵심 내용만)
+#   Doc/Reports/WikiPackage/Home.md               — Wiki 홈 페이지
+#   Doc/Reports/WikiPackage/01~05-*.md            — Wiki 섹션별 페이지
+#   Doc/Reports/WikiPackage/_Sidebar.md           — Wiki 사이드바 네비게이션
+#
+# 사용법:
+#   python Repair-Reports.py
+#   (인자 없음 — 스크립트 위치 기준으로 경로 자동 계산)
+#
+# 사전 요구사항:
+#   Python 3.10 이상 (pathlib, re 표준 라이브러리만 사용)
+# ==============================================================================
 from __future__ import annotations
 
 import re

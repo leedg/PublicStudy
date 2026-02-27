@@ -39,7 +39,8 @@ void ODBCDatabase::InitializeEnvironment()
 						(SQLPOINTER)SQL_OV_ODBC3, 0);
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO)
 	{
-		CleanupEnvironment();
+		SQLFreeHandle(SQL_HANDLE_ENV, mEnvironment);
+		mEnvironment = SQL_NULL_HANDLE;
 		throw DatabaseException("Failed to set ODBC version");
 	}
 }
@@ -154,12 +155,24 @@ void ODBCConnection::Open(const std::string &connectionString)
 	SQLCHAR connStrOut[1024];
 	SQLSMALLINT connStrOutLength;
 
-	SQLRETURN ret = SQLDriverConnectA(
-		mConnection, nullptr, (SQLCHAR *)connectionString.c_str(), SQL_NTS,
-		connStrOut, sizeof(connStrOut), &connStrOutLength, SQL_DRIVER_NOPROMPT);
+	try
+	{
+		SQLRETURN ret = SQLDriverConnectA(
+			mConnection, nullptr, (SQLCHAR *)connectionString.c_str(), SQL_NTS,
+			connStrOut, sizeof(connStrOut), &connStrOutLength, SQL_DRIVER_NOPROMPT);
 
-	CheckSQLReturn(ret, "Connection");
-	mConnected = true;
+		CheckSQLReturn(ret, "Connection");
+		mConnected = true;
+	}
+	catch (const std::exception&)
+	{
+		if (mConnection != SQL_NULL_HANDLE)
+		{
+			SQLFreeHandle(SQL_HANDLE_DBC, mConnection);
+			mConnection = SQL_NULL_HANDLE;
+		}
+		throw;
+	}
 }
 
 void ODBCConnection::Close()
