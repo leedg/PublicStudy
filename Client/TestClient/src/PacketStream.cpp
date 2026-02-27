@@ -115,8 +115,17 @@ RecvResult PacketStream::RecvPacket(PacketHeader &outHeader, char *outBody,
 	// English: Complete packet received - copy out
 	// 한글: 완전한 패킷 수신됨 - 복사
 	outHeader = *pHeader;
-	int bodySize = packetSize - sizeof(PacketHeader);
-	if (bodySize > 0 && bodySize <= bodyBufferSize)
+	// [Fix A-3] bodySize 가 음수인 경우는 위에서 packetSize >= sizeof(PacketHeader)를
+	// 이미 자장하지만, bodySize > bodyBufferSize 란 조용한 데이터 손실를
+	// 에러로 명시적으로 처리한다.
+	int bodySize = packetSize - static_cast<int>(sizeof(PacketHeader));
+	if (bodySize > bodyBufferSize)
+	{
+		Utils::Logger::Error("Body buffer too small: need " + std::to_string(bodySize) +
+		                     " but got " + std::to_string(bodyBufferSize));
+		return RecvResult::InvalidPacket;
+	}
+	if (bodySize > 0)
 	{
 		std::memcpy(outBody, mRecvBuffer + sizeof(PacketHeader), bodySize);
 	}
