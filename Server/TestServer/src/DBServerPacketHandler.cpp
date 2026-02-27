@@ -111,7 +111,10 @@ namespace Network::TestServer
         packet.sequence = ++mPingSequence;
         packet.timestamp = Timer::GetCurrentTimestamp();
 
-        session->Send(packet);
+        if (!session->Send(packet))
+        {
+            Logger::Warn("Failed to send ServerPingReq - Seq: " + std::to_string(packet.sequence));
+        }
 
 #ifdef ENABLE_PINGPONG_VERBOSE_LOG
         Logger::Debug("Sent ping to DB server - Seq: " + std::to_string(packet.sequence));
@@ -146,7 +149,10 @@ namespace Network::TestServer
 #endif
         }
 
-        session->Send(packet);
+        if (!session->Send(packet))
+        {
+            Logger::Warn("Failed to send DBSavePingTimeReq - ServerId: " + std::to_string(serverId));
+        }
 
         Logger::Info("Requested save ping time to DB - ServerId: " + std::to_string(serverId));
     }
