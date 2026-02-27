@@ -79,6 +79,14 @@ public:
 
 	// English: Wait for all tasks to complete
 	// 한글: 모든 작업 완료 대기
+	// Note: There may be a ±1 tolerance in mActiveTasks during task transitions.
+	// Between the moment a worker increments mActiveTasks and processes a task,
+	// or between completing the task and decrementing mActiveTasks, a small
+	// discrepancy may occur. This is acceptable for synchronization purposes.
+	// 한글 주석: 작업 전환 중에 mActiveTasks에서 ±1 허용 오차가 발생할 수 있습니다.
+	// 워커가 mActiveTasks를 증가시키고 작업을 처리하는 순간 또는 작업을 완료하고
+	// mActiveTasks를 감소시키는 사이에 작은 불일치가 발생할 수 있습니다.
+	// 동기화 목적으로는 이 정도의 오차는 허용됩니다.
 	void WaitForAll()
 	{
 		std::unique_lock<std::mutex> lock(mWaitMutex);
