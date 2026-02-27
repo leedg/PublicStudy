@@ -44,8 +44,14 @@ public:
 		mTotalAllocated.fetch_add(1, std::memory_order_relaxed);
 		size_t current = mCurrentUsed.fetch_add(1, std::memory_order_relaxed) + 1;
 		
-		// English: Update peak usage
-		// 한글: 최대 사용량 업데이트
+		// English: Update peak usage with lock-free CAS loop.
+		//          Since mMutex is held, only this thread can modify mCurrentUsed,
+		//          but mPeakUsed may be read by other threads without lock.
+		//          CAS ensures peak update is atomic against concurrent readers.
+		// 한글: 락프리 CAS 루프로 최대 사용량 업데이트.
+		//       mMutex가 보유되었으므로 mCurrentUsed는 이 스레드만 수정하지만,
+		//       mPeakUsed는 다른 스레드가 락 없이 읽을 수 있음.
+		//       CAS는 동시 읽기 스레드에 대해 peak 업데이트의 원자성 보장.
 		size_t peak = mPeakUsed.load(std::memory_order_relaxed);
 		while (current > peak)
 		{
