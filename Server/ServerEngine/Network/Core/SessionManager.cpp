@@ -127,6 +127,20 @@ void SessionManager::ForEachSession(const std::function<void(SessionRef)>& func)
 	}
 }
 
+std::vector<SessionRef> SessionManager::GetAllSessions()
+{
+	// English: Return snapshot of all sessions (caller owns the shared_ptr references)
+	// 한글: 모든 세션의 스냅샷 반환 (호출자가 shared_ptr 참조 소유)
+	std::vector<SessionRef> sessionsCopy;
+	NET_LOCK_GUARD(mMutex);
+	sessionsCopy.reserve(mSessions.size());
+	for (auto &[id, session] : mSessions)
+	{
+		sessionsCopy.push_back(session);
+	}
+	return sessionsCopy;
+}
+
 size_t SessionManager::GetSessionCount() const
 {
 	NET_LOCK_GUARD(mMutex);

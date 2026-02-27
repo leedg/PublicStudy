@@ -199,17 +199,19 @@ namespace Network::TestServer
             const std::string shutdownTime(timeStr);
 
             size_t queuedDisconnectCount = 0;
-            Core::SessionManager::Instance().ForEachSession(
-                [this, &shutdownTime, &queuedDisconnectCount](Core::SessionRef session)
+            // English: Get session snapshot to avoid race condition with session removal
+            // 한글: 세션 제거와의 경합 조건 방지를 위해 스냅샷 사용
+            auto allSessions = Core::SessionManager::Instance().GetAllSessions();
+            for (auto& session : allSessions)
+            {
+                if (!session || !session->IsConnected())
                 {
-                    if (!session || !session->IsConnected())
-                    {
-                        return;
-                    }
+                    continue;
+                }
 
-                    mDBTaskQueue->RecordDisconnectTime(session->GetId(), shutdownTime);
-                    ++queuedDisconnectCount;
-                });
+                mDBTaskQueue->RecordDisconnectTime(session->GetId(), shutdownTime);
+                ++queuedDisconnectCount;
+            }
 
             if (queuedDisconnectCount > 0)
             {

@@ -44,6 +44,10 @@ class SessionManager
 	// 한글: 모든 세션 순회 (함수 객체 복사 방지를 위한 const reference)
 	void ForEachSession(const std::function<void(SessionRef)>& func);
 
+	// English: Get snapshot of all sessions (for race-free iteration)
+	// 한글: 모든 세션의 스냅샷 취득 (경합 조건 없는 순회용)
+	std::vector<SessionRef> GetAllSessions();
+
 	// English: Session count
 	// 한글: 세션 수
 	size_t GetSessionCount() const;
