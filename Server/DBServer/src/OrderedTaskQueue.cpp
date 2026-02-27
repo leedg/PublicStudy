@@ -81,6 +81,12 @@ namespace Network::DBServer
 
         Logger::Info("Shutting down OrderedTaskQueue...");
         mIsRunning.store(false, std::memory_order_release);
+        
+        // English: mDispatcher.Shutdown() is blocking and waits for all
+        //          enqueued tasks to complete. This ensures accurate statistics
+        //          before printing them.
+        // 한글: mDispatcher.Shutdown()은 blocking이며 모든 인큐된 작업이
+        //       완료될 때까지 대기. 통계 출력 전 정확성 보장.
         mDispatcher.Shutdown();
 
         Logger::Info("OrderedTaskQueue shutdown complete - Enqueued: " +
