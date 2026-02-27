@@ -1,0 +1,8 @@
+<Project>
+  <!-- Ensure all projects compile source files as UTF-8 and suppress C4819 -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalOptions>/utf-8 /wd4819 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+</Project>

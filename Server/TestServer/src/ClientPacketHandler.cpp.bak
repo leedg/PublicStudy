@@ -1,0 +1,87 @@
+// English: Client packet handler implementation
+// 한글: 클라이언트 패킷 핸들러 구현
+
+#include "../include/ClientPacketHandler.h"
+#include <ctime>
+
+namespace Network::TestServer
+{
+    using namespace Network::Core;
+    using namespace Network::Utils;
+
+    ClientPacketHandler::ClientPacketHandler()
+    {
+    }
+
+    ClientPacketHandler::~ClientPacketHandler()
+    {
+    }
+
+    void ClientPacketHandler::ProcessPacket(Core::Session* session, const char* data, uint32_t size)
+    {
+        if (!session || !data || size < sizeof(PacketHeader))
+        {
+            Logger::Warn("Invalid packet data");
+            return;
+        }
+
+        const PacketHeader* header = reinterpret_cast<const PacketHeader*>(data);
+
+        if (header->size > size)
+        {
+            Logger::Warn("Incomplete packet - expected: " + std::to_string(header->size) +
+                ", received: " + std::to_string(size));
+            return;
+        }
+
+        PacketType packetType = static_cast<PacketType>(header->id);
+
+        switch (packetType)
+        {
+        case PacketType::SessionConnectReq:
+            HandleConnectRequest(session, reinterpret_cast<const PKT_SessionConnectReq*>(data));
+            break;
+
+        case PacketType::PingReq:
+            HandlePingRequest(session, reinterpret_cast<const PKT_PingReq*>(data));
+            break;
+
+        default:
+            Logger::Warn("Unknown packet type from client: " + std::to_string(header->id));
+            break;
+        }
+    }
+
+    void ClientPacketHandler::HandleConnectRequest(Core::Session* session, const PKT_SessionConnectReq* packet)
+    {
+        Logger::Info("Client connect request - Session: " + std::to_string(session->GetId()) +
+            ", ClientVersion: " + std::to_string(packet->clientVersion));
+
+        // English: Send connect response
+        // 한글: 접속 응답 전송
+        PKT_SessionConnectRes response;
+        response.sessionId = session->GetId();
+        response.serverTime = static_cast<uint32_t>(std::time(nullptr));
+        response.result = static_cast<uint8_t>(ConnectResult::Success);
+
+        session->Send(response);
+    }
+
+    void ClientPacketHandler::HandlePingRequest(Core::Session* session, const PKT_PingReq* packet)
+    {
+        session->SetLastPingTime(Timer::GetCurrentTimestamp());
+
+        // English: Send pong response
+        // 한글: 퐁 응답 전송
+        PKT_PongRes response;
+        response.clientTime = packet->clientTime;
+        response.serverTime = Timer::GetCurrentTimestamp();
+        response.sequence = packet->sequence;
+
+        session->Send(response);
+
+        Logger::Debug("Client Ping/Pong - Session: " + std::to_string(session->GetId()) +
+            ", Seq: " + std::to_string(packet->sequence));
+    }
+
+} // namespace Network::TestServer
