@@ -271,9 +271,22 @@ bool Session::PostSend()
 	//       큐가 비어있다고 확인되면 삽입된 데이터를 반드시 볼 수 있음
 	if (mSendQueueSize.load(std::memory_order_acquire) == 0)
 	{
-		// English: Queue is empty, release sending flag and return
-		// 한글: 큐가 비어있음, 전송 플래그 해제 후 반환
+		// English: Queue is empty, release sending flag
+		// 한글: 큐가 비어있음, 전송 플래그 해제
 		mIsSending.store(false, std::memory_order_release);
+
+		// English: [Fix D-3] TOCTOU guard: re-check queue size after releasing flag.
+		//          Send() may have pushed data and lost the CAS race in the window
+		//          between our size==0 check above and the store(false) above.
+		//          If so, re-trigger FlushSendQueue() so the data is not stranded.
+		// 한글: [Fix D-3] TOCTOU 방어: 플래그 해제 후 큐 크기 재확인.
+		//       위의 size==0 확인과 store(false) 사이 구간에 Send()가 데이터를 추가하고
+		//       CAS 경쟁에서 실패했을 수 있음. 그 경우 FlushSendQueue()를 재호출해
+		//       데이터가 큐에 방치되지 않도록 한다.
+		if (mSendQueueSize.load(std::memory_order_acquire) > 0)
+		{
+			FlushSendQueue();
+		}
 		return true;
 	}
 
