@@ -11,6 +11,8 @@
 #include <future>
 #include <atomic>
 #include <memory>
+#include <condition_variable>
+#include <mutex>
 
 namespace Network::Utils
 {
@@ -79,10 +81,10 @@ public:
 	// 한글: 모든 작업 완료 대기
 	void WaitForAll()
 	{
-		while (mActiveTasks > 0 || !mTasks.Empty())
-		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
+		std::unique_lock<std::mutex> lock(mWaitMutex);
+		mWaitCV.wait(lock, [this] {
+			return mActiveTasks == 0 && mTasks.Empty();
+		});
 	}
 
 	// English: Get number of worker threads
@@ -98,6 +100,8 @@ private:
 	SafeQueue<std::function<void()>> mTasks;
 	std::atomic<bool> mStop;
 	std::atomic<size_t> mActiveTasks;
+	std::mutex mWaitMutex;
+	std::condition_variable mWaitCV;
 
 	// English: Worker thread function
 	// 한글: 워커 스레드 함수
@@ -127,6 +131,9 @@ private:
 					Logger::Error("[ThreadPool] Task threw unknown exception");
 				}
 				--mActiveTasks;
+			// English: Notify WaitForAll() when task completes
+			// 한글: 작업 완료 시 WaitForAll() 알림
+			mWaitCV.notify_one();
 			}
 		}
 	}
