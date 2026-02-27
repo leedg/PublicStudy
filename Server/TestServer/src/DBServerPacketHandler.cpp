@@ -178,7 +178,10 @@ namespace Network::TestServer
 
         // English: Update session's last ping time
         // 한글: 세션의 마지막 Ping 시간 갱신
-        session->SetLastPingTime(packet->responseTimestamp);
+        if (session->IsConnected())
+        {
+            session->SetLastPingTime(packet->responseTimestamp);
+        }
     }
 
     void DBServerPacketHandler::HandleDBSavePingTimeResponse(Core::Session* session, const PKT_DBSavePingTimeRes* packet)
