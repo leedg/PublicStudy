@@ -2,6 +2,7 @@
 // 한글: SQLiteDatabase 구현 (HAVE_SQLITE3 정의 시에만 컴파일)
 
 #include "SQLiteDatabase.h"
+#include "Utils/Logger.h"
 
 #ifdef HAVE_SQLITE3
 
@@ -41,7 +42,14 @@ void SQLiteDatabase::Connect(const DatabaseConfig &config)
 
 	// English: Enable WAL mode for better concurrent access
 	// 한글: 동시 접근 향상을 위한 WAL 모드 활성화
-	sqlite3_exec(mDb, "PRAGMA journal_mode=WAL;", nullptr, nullptr, nullptr);
+	char *walErrMsg = nullptr;
+	int walRc = sqlite3_exec(mDb, "PRAGMA journal_mode=WAL;", nullptr, nullptr, &walErrMsg);
+	if (walRc != SQLITE_OK)
+	{
+		std::string walErr = walErrMsg ? walErrMsg : "unknown error";
+		sqlite3_free(walErrMsg);
+		Logger::Warn("SQLiteDatabase: Failed to set WAL mode: " + walErr);
+	}
 
 	mConnected = true;
 }
