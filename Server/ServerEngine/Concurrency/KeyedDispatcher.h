@@ -33,7 +33,7 @@ class KeyedDispatcher
 	struct Options
 	{
 		size_t mWorkerCount = 0; // English: 0 -> hardware_concurrency fallback
-									// 한글: 0 -> hardware_concurrency 사용
+		                         // 한글: 0 -> hardware_concurrency 사용
 		ExecutionQueueOptions<std::function<void()>> mQueueOptions;
 		std::string mName = "KeyedDispatcher";
 	};

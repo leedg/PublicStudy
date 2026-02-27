@@ -289,16 +289,6 @@ bool Session::PostSend()
 			// English: No more data to send, release flag atomically
 			// 한글: 더 이상 전송할 데이터 없음, atomic으로 플래그 해제
 			mIsSending.store(false, std::memory_order_release);
-			
-			// English: Double-check after clearing flag: if Send() added data after our check,
-			//          re-issue the send request (another thread may be blocked waiting).
-			// 한글: 플래그 해제 후 재확인: Send()가 데이터 추가했으면 전송 재요청
-			//      (다른 스레드가 대기 중일 수 있음)
-			if (!mSendQueue.empty())
-			{
-				mIsSending.store(true, std::memory_order_release);
-				return false;  // 호출자가 FlushSendQueue() 재호출하도록 함
-			}
 			return true;
 		}
 

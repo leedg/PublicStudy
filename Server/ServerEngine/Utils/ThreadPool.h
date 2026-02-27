@@ -138,10 +138,10 @@ private:
 					// 한글: 알 수 없는 예외 타입 처리
 					Logger::Error("[ThreadPool] Task threw unknown exception");
 				}
-				--mActiveTasks;
-			// English: Notify WaitForAll() when task completes
-			// 한글: 작업 완료 시 WaitForAll() 알림
-			mWaitCV.notify_one();
+					--mActiveTasks;
+				// English: Notify WaitForAll() when task completes
+				// 한글: 작업 완료 시 WaitForAll() 알림
+				mWaitCV.notify_one();
 			}
 		}
 	}

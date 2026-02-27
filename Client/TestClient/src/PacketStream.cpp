@@ -116,7 +116,7 @@ RecvResult PacketStream::RecvPacket(PacketHeader &outHeader, char *outBody,
 	// 한글: 완전한 패킷 수신됨 - 복사
 	outHeader = *pHeader;
 	// [Fix A-3] bodySize 가 음수인 경우는 위에서 packetSize >= sizeof(PacketHeader)를
-	// 이미 자장하지만, bodySize > bodyBufferSize 란 조용한 데이터 손실를
+	// 이미 보장하지만, bodySize > bodyBufferSize 란 조용한 데이터 손실을
 	// 에러로 명시적으로 처리한다.
 	int bodySize = packetSize - static_cast<int>(sizeof(PacketHeader));
 	if (bodySize > bodyBufferSize)
