@@ -321,6 +321,14 @@ namespace Network::DBServer
 
         try
         {
+            // English: Double-check connection state before query execution
+            // 한글: 쿼리 실행 전 연결 상태 재확인
+            if (!mDatabase->IsConnected())
+            {
+                Logger::Warn("ServerLatencyManager: Database connection lost during query execution");
+                return false;
+            }
+
             auto stmt = mDatabase->CreateStatement();
             stmt->SetQuery(query);
             stmt->ExecuteUpdate();
