@@ -35,7 +35,10 @@ public:
 	// 한글: 현재 타임스탬프를 밀리초 단위로 가져오기
 	static Timestamp GetCurrentTimestamp()
 	{
-		auto now = std::chrono::system_clock::now();
+		// English: Use steady_clock for elapsed time measurement to prevent issues
+		// caused by NTP clock adjustments (system time going backwards).
+		// 한글: steady_clock을 사용하여 NTP 시계 조정으로 인한 문제(시스템 시간 역행)를 방지합니다.
+		auto now = std::chrono::steady_clock::now();
 		auto duration = now.time_since_epoch();
 		return std::chrono::duration_cast<std::chrono::milliseconds>(duration)
 			.count();
