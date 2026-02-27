@@ -570,6 +570,15 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			continue;
 		}
 
+		// Verify shutdown status before accessing buffer
+		// ProcessCompletions() starts with mShuttingDown check outside lock,
+		// but Shutdown() may release buffers after that check.
+		// Re-check here before dereferencing RequestContext (buffer pointer).
+		if (mShuttingDown.load(std::memory_order_acquire))
+		{
+			continue;
+		}
+
 		entries[completionCount].mContext = op->mContext;
 		entries[completionCount].mType = op->mType;
 		entries[completionCount].mResult =
