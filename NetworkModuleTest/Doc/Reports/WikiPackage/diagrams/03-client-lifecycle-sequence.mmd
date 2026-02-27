@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    participant Client as TestClient
+    participant Engine as PlatformEngine
+    participant SM as SessionManager
+    participant CS as ClientSession
+    participant PH as ClientPacketHandler
+    participant DBQ as DBTaskQueue
+    participant DB as Local DB
+
+    Client->>Engine: TCP connect
+    Engine->>SM: CreateSession(socket)
+    SM-->>Engine: SessionRef
+    Engine->>CS: OnConnected() via logic thread
+    CS->>DBQ: RecordConnectTime(sessionId, timestamp)
+    DBQ-->>CS: immediate return
+
+    Client->>Engine: PKT_SessionConnectReq
+    Engine->>CS: ProcessRawRecv(...)
+    CS->>PH: ProcessPacket(...)
+    PH-->>CS: build SessionConnectRes
+    CS-->>Client: PKT_SessionConnectRes
+
+    Client->>Engine: PKT_PingReq
+    Engine->>CS: ProcessRawRecv(...)
+    CS->>PH: HandlePingRequest(...)
+    PH-->>Client: PKT_PongRes
+
+    DBQ->>DB: INSERT SessionConnectLog

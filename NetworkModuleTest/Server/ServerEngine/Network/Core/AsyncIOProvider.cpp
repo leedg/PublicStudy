@@ -234,7 +234,7 @@ const char **GetSupportedPlatforms(size_t &outCount)
 	// English: Return array of supported platform names
 	// 한글: 지원 플랫폼 이름 배열 반환
 	outCount = sizeof(sSupportedPlatforms) / sizeof(sSupportedPlatforms[0]);
-	return const_cast<const char **>(sSupportedPlatforms);
+	return sSupportedPlatforms;
 }
 
 PlatformType GetCurrentPlatform()

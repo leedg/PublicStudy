@@ -34,10 +34,13 @@
 
 ### 실행 순서
 ```bash
-# 1. 서버 실행
+# 1. DB 서버 실행
+TestDBServer.exe
+
+# 2. 서버 실행 (별도 터미널)
 TestServer.exe
 
-# 2. 클라이언트 실행 (별도 터미널)
+# 3. 클라이언트 실행 (별도 터미널)
 TestClient.exe
 ```
 
@@ -50,11 +53,15 @@ NetworkModuleTest/
 ├── Server/
 │   ├── ServerEngine/          # 네트워크 엔진 라이브러리
 │   ├── TestServer/            # 게임 서버
-│   ├── DBServer/              # DB 서버
-│   └── MultiPlatformNetwork/  # 테스트 프로젝트
+│   └── DBServer/              # DB 서버
 │
 ├── Client/
 │   └── TestClient/            # 테스트 클라이언트
+│
+├── ModuleTest/                # 단위/통합 테스트 프로젝트
+│   ├── MultiPlatformNetwork/  # 비동기 I/O 검증
+│   ├── DBModuleTest/          # DB 모듈 검증
+│   └── ServerStructureSync/   # 서버 구조 동기화 검증
 │
 ├── Doc/                       # 📚 문서 폴더
 │   ├── 01_ProjectOverview.md
@@ -106,6 +113,11 @@ NetworkModuleTest/
 
 ## 🔧 최근 업데이트
 
+### 2026-02-25
+- ✅ AsyncBufferPool 통합 (RIOBufferPool/IOUringBufferPool → using alias로 단일화)
+- ✅ RIOTest, IOUringTest 독립 VS 프로젝트로 승격
+- ✅ 플랫폼별 버퍼 할당 로직 AllocAligned/FreeAligned로 격리
+
 ### 2026-02-10
 - ✅ TestServer ↔ TestDBServer 패킷 연결 경로 추가
 - ✅ Linux/macOS 기본 send/recv 경로 보강
@@ -145,7 +157,7 @@ NetworkModuleTest/
 
 상세 내용 (선택)
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
 **카테고리 예시**:
@@ -165,13 +177,37 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
 ## 📬 연락처
 
-프로젝트 관리자: [작성 필요]
+프로젝트 관리자: [leedg](https://github.com/leedg)
 
 ---
 
 ## 📄 라이선스
 
-[라이선스 정보 작성 필요]
+이 프로젝트는 [MIT License](LICENSE) 하에 배포됩니다.
+
+```
+MIT License
+
+Copyright (c) 2026 leedg
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ---
 

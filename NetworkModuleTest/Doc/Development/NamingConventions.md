@@ -1,5 +1,8 @@
 # TestServer Naming Conventions
 
+> **적용 범위**: 이 문서는 **TestServer 프로젝트** 한정 네이밍 규칙을 다룹니다.
+> 전체 프로젝트 코딩 스타일은 `Doc/Network/CodingConventions.md`를 참조하세요.
+
 ## 개요
 
 TestServer는 명시적이고 자기설명적인(self-descriptive) 네이밍 규칙을 따릅니다.

@@ -17,6 +17,9 @@
     <Filter Include="Tests">
       <UniqueIdentifier>{E0F26C9B-B0C6-5d6g-9F8E-0F9G4C3D2B1E}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Concurrency">
+      <UniqueIdentifier>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Documentation">
       <UniqueIdentifier>{C7208E7F-31AB-4F71-AA51-3403F26FC837}</UniqueIdentifier>
     </Filter>
@@ -108,6 +111,9 @@
     <ClCompile Include="Platforms\Windows\RIOAsyncIOProvider.cpp">
       <Filter>Core\Network\Platforms\Windows</Filter>
     </ClCompile>
+    <ClInclude Include="Platforms\Windows\RIOBufferPool.h">
+      <Filter>Core\Network\Platforms\Windows</Filter>
+    </ClInclude>
 
     <!-- Network Platform - Linux -->
     <ClInclude Include="Network\Platforms\LinuxNetworkEngine.h">
@@ -119,6 +125,9 @@
     <ClInclude Include="Platforms\Linux\IOUringAsyncIOProvider.h">
       <Filter>Core\Network\Platforms\Linux</Filter>
     </ClInclude>
+    <ClInclude Include="Platforms\Linux\IOUringBufferPool.h">
+      <Filter>Core\Network\Platforms\Linux</Filter>
+    </ClInclude>
 
     <ClCompile Include="Network\Platforms\LinuxNetworkEngine.cpp">
       <Filter>Core\Network\Platforms\Linux</Filter>
@@ -128,6 +137,14 @@
     </ClCompile>
     <ClCompile Include="Platforms\Linux\IOUringAsyncIOProvider.cpp">
       <Filter>Core\Network\Platforms\Linux</Filter>
+    </ClCompile>
+
+    <!-- Unified Buffer Pool (Windows + Linux) -->
+    <ClInclude Include="Platforms\AsyncBufferPool.h">
+      <Filter>Core\Network\Platforms</Filter>
+    </ClInclude>
+    <ClCompile Include="Platforms\AsyncBufferPool.cpp">
+      <Filter>Core\Network\Platforms</Filter>
     </ClCompile>
 
     <!-- Network Platform - macOS -->
@@ -186,6 +203,12 @@
     <ClInclude Include="Interfaces\IMessageHandler.h">
       <Filter>Interfaces</Filter>
     </ClInclude>
+    <ClInclude Include="Interfaces\IMessageHandler_old.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="Interfaces\IBufferPool.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
   </ItemGroup>
 
   <ItemGroup>
@@ -232,9 +255,6 @@
       <Filter>Implementations\Database</Filter>
     </ClCompile>
     <ClCompile Include="Database\ConnectionPool.cpp">
-      <Filter>Implementations\Database</Filter>
-    </ClCompile>
-    <ClCompile Include="Database\ODBCDatabase_new.cpp">
       <Filter>Implementations\Database</Filter>
     </ClCompile>
   </ItemGroup>
@@ -299,6 +319,56 @@
     <ClInclude Include="Utils\CrashDump.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\LockProfiling.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\PingPongConfig.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Concurrency -->
+    <ClInclude Include="Concurrency\AsyncScope.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+    <ClInclude Include="Concurrency\BoundedLockFreeQueue.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+    <ClInclude Include="Concurrency\Channel.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+    <ClInclude Include="Concurrency\ConcurrencyRuntime.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+    <ClInclude Include="Concurrency\ExecutionQueue.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+    <ClInclude Include="Concurrency\KeyedDispatcher.h">
+      <Filter>Concurrency</Filter>
+    </ClInclude>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Database - Additional -->
+    <ClInclude Include="Database\MockDatabase.h">
+      <Filter>Implementations\Database</Filter>
+    </ClInclude>
+    <ClInclude Include="Database\SQLiteDatabase.h">
+      <Filter>Implementations\Database</Filter>
+    </ClInclude>
+    <ClCompile Include="Database\MockDatabase.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="Database\SQLiteDatabase.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="Database\Examples\BasicUsage.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="Database\Examples\ConnectionPoolUsage.cpp">
+      <Filter>Implementations\Database</Filter>
+    </ClCompile>
   </ItemGroup>
 
   <ItemGroup>
@@ -407,6 +477,21 @@
     </None>
     <None Include="..\..\Doc\Development\UnitTesting.md">
       <Filter>Documentation\Development</Filter>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Benchmark -->
+    <Filter Include="Benchmark">
+      <UniqueIdentifier>{B1E2F3A4-C5D6-7890-ABCD-EF1234567891}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Benchmark\ThroughputBench.cpp">
+      <Filter>Benchmark</Filter>
+    </None>
+    <None Include="Benchmark\LatencyBench.cpp">
+      <Filter>Benchmark</Filter>
     </None>
   </ItemGroup>
 </Project>

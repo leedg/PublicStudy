@@ -1,0 +1,21 @@
+sequenceDiagram
+    autonumber
+    participant Main as Signal/Main Thread
+    participant TS as TestServer
+    participant Reconnect as DBReconnectThread
+    participant DBQ as DBTaskQueue
+    participant LDB as Local DB
+    participant DBS as DB Server Socket
+    participant Engine as ClientEngine
+    participant SM as SessionManager
+
+    Main->>TS: Stop()
+    TS->>Reconnect: notify_all + join
+    TS->>SM: ForEachSession(...)
+    TS->>DBQ: enqueue disconnect records
+    TS->>DBQ: Shutdown() / drain remaining tasks
+    DBQ->>LDB: flush pending DB writes
+    TS->>LDB: Disconnect()
+    TS->>DBS: DisconnectFromDBServer()
+    TS->>Engine: Stop()
+    Engine->>SM: CloseAllSessions()

@@ -239,11 +239,13 @@ fix/feat/...: <작업 요약>
 # 빠른 자동 테스트 (5초)
 .\run_test_auto.ps1 -RunSeconds 5
 
-# 대화형 테스트
-.\run_test.ps1 -Configuration Debug -ServerPort 9000 -DbPort 8002
+# 대화형 테스트 (서버 전체 기동)
+.\run_allServer.ps1 -ServerPort 9000 -DbPort 8002
 
-# 크래시 재현 테스트
-.\run_crash_repro.ps1
+# 개별 기동
+.\run_dbServer.ps1 -DbPort 8002
+.\run_server.ps1 -ServerPort 9000 -DbPort 8002
+.\run_client.ps1
 ```
 
 **프로세스 기동 순서**: TestDBServer(8002) → TestServer(9000) → TestClient

@@ -168,7 +168,7 @@ NetworkModuleTest/
 | `Doc/02_Architecture.md` | `Server/ServerEngine/Network/Core/`, `Server/TestServer/`, `Server/DBServer/` | 시스템 구성/흐름 |
 | `Doc/03_Protocol.md` | `Server/ServerEngine/Network/Core/PacketDefine.h`, `Server/ServerEngine/Network/Core/ServerPacketDefine.h` | 패킷/프로토콜 |
 | `Doc/04_API.md` | `Server/ServerEngine/Network/Core/NetworkEngine.h`, `Server/ServerEngine/Network/Core/AsyncIOProvider.h` | API 인터페이스 |
-| `Doc/05_DevelopmentGuide.md` | `CMakeLists.txt`, `run_test.ps1`, `*.vcxproj` | 빌드/실행/개발 규칙 |
+| `Doc/05_DevelopmentGuide.md` | `CMakeLists.txt`, `run_*.ps1 / run_*.bat`, `*.vcxproj` | 빌드/실행/개발 규칙 |
 | `Doc/06_SolutionGuide.md` | `NetworkModuleTest.sln`, `Server/*/*.vcxproj`, `Client/*/*.vcxproj` | 솔루션 구성 |
 | `Doc/Architecture/*` | `Server/ServerEngine/`, `Server/TestServer/`, `Server/DBServer/` | 설계 상세 |
 | `Doc/Database/*` | `Server/ServerEngine/Database/`, `ModuleTest/DBModuleTest/` | DB 모듈/마이그레이션 |
@@ -180,5 +180,5 @@ NetworkModuleTest/
 ## 7) 참고 및 주의
 
 - TestDBServer 기본 포트는 코드상 `8001`입니다 (`Server/DBServer/main.cpp`).
-- 테스트 스크립트 `run_test.ps1`의 기본 DB 포트는 `8002`입니다.
-- 즉, 스크립트 실행 시에는 `run_test.ps1` 설정값을 기준으로 동작합니다.
+- 실행 스크립트(`run_dbServer.ps1`, `run_allServer.ps1` 등)의 기본 DB 포트는 `8002`입니다.
+- 즉, 스크립트로 실행 시에는 `8002` 기준으로 동작합니다.

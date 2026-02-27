@@ -10,7 +10,7 @@ TestClient -> TestServer -> TestDBServer (옵션)
 
 기본 포트
 - TestServer: 9000
-- TestDBServer: 8001 (run_test.ps1 기본값은 8002)
+- TestDBServer: 8001 (코드 기본값) / 8002 (실행 스크립트 `run_dbServer.ps1` 등 기본값)
 
 ## 3. 디렉터리 구조
 ```text
@@ -39,6 +39,7 @@ NetworkModuleTest/
 - Session/SessionManager: 연결 및 세션 관리
 - PacketDefine: SessionConnect/Ping/Pong 바이너리 프레이밍
 - Database: ConnectionPool, ODBC/OLEDB 구현
+- Concurrency: ExecutionQueue, KeyedDispatcher, Channel, AsyncScope, BoundedLockFreeQueue (상세: `Doc/03_ConcurrencyRuntime.md`)
 - Utils: Logger, Timer, ThreadPool 등
 
 ## 5. Client <-> Server 플로우
@@ -55,6 +56,7 @@ NetworkModuleTest/
 - `DBPingTimeManager` → `ServerLatencyManager` 통합 완료: `SavePingTime` / `GetLastPingTime` 메서드가 `ServerLatencyManager`로 이전됨
 - `ClientSession` 의존성 주입: `static sDBTaskQueue` 전역 제거 → 생성자 주입(`mDBTaskQueue`), `TestServer::MakeClientSessionFactory()` 람다 패턴
 - `DBTaskQueue` 워커 수: 2 → **1** (같은 세션 RecordConnect/Disconnect 순서 보장)
+- `OrderedTaskQueue` (TestDBServer 전용): serverId 기반 해시 스레드 친화도 — 같은 serverId의 작업은 항상 동일 워커 스레드에서 순서대로 실행 (`Concurrency::KeyedDispatcher` 래핑)
 
 ## 7. 제약 및 향후 과제
 - Linux/macOS 경로는 기본 send/recv 구현 완료 (테스트/안정성 검증 필요)

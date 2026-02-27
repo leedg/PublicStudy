@@ -179,7 +179,9 @@ void SessionManager::CloseAllSessions()
 
 Utils::ConnectionId SessionManager::GenerateSessionId()
 {
-	return mNextSessionId.fetch_add(1);
+	// English: relaxed ordering is sufficient — only uniqueness matters, not ordering relative to other ops
+	// 한글: 유일성만 필요하므로 relaxed 순서로 충분
+	return mNextSessionId.fetch_add(1, std::memory_order_relaxed);
 }
 
 } // namespace Network::Core
