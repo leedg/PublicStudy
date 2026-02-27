@@ -496,9 +496,10 @@ namespace Network::TestServer
                         break;
                     }
 
-                    if (mDBServerSession)
+                    auto sessionSnapshot = mDBServerSession;  // 로컬 스냅샷 생성
+                    if (sessionSnapshot)
                     {
-                        mDBServerSession->OnRecv(
+                        sessionSnapshot->OnRecv(
                             mDBRecvBuffer.data() + mDBRecvOffset,
                             header->size);
                     }
