@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    participant Recv as DBRecvLoop
+    participant TS as TestServer
+    participant Reconn as DBReconnectLoop
+    participant DB as DBServer
+
+    Recv-->>TS: recv failed / connection closed
+    TS->>Reconn: start reconnect thread
+
+    loop while server running and DB disconnected
+        Reconn->>Reconn: wait(delayMs) with condition_variable
+        Reconn->>DB: ConnectToDBServer(host, port)
+        alt success
+            DB-->>Reconn: connected
+            Reconn-->>TS: reconnect success
+        else WSAECONNREFUSED
+            Reconn->>Reconn: delay = 1000ms fixed
+        else other socket error
+            Reconn->>Reconn: exponential backoff, max 30000ms
+        end
+    end

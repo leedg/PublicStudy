@@ -1,0 +1,35 @@
+flowchart LR
+    subgraph ClientSide[Client Side]
+        C[TestClient]
+    end
+
+    subgraph GameServer[TestServer]
+        TS[TestServer]
+        CE[INetworkEngine]
+        BNE[BaseNetworkEngine]
+        CS[ClientSession]
+        DBQ[DBTaskQueue\n1 worker + WAL]
+        LDB[Local DB\nSQLite or Mock]
+    end
+
+    subgraph PlatformBackends[Platform Backends]
+        W[Windows\nRIO -> IOCP]
+        L[Linux\nio_uring -> epoll]
+        M[macOS\nkqueue]
+    end
+
+    subgraph DBServer[TestDBServer]
+        DBS[TestDBServer]
+        OTQ[OrderedTaskQueue\nkey affinity by serverId]
+        SLM[ServerLatencyManager]
+    end
+
+    C -->|TCP SessionConnect/Ping| TS
+    TS --> CE --> BNE
+    BNE --> W
+    BNE --> L
+    BNE --> M
+    TS --> CS
+    CS -->|non-blocking DB tasks| DBQ --> LDB
+    TS -->|ServerPacket TCP| DBS
+    DBS --> OTQ --> SLM

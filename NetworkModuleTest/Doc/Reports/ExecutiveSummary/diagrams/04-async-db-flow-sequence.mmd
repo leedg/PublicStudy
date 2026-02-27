@@ -1,0 +1,21 @@
+sequenceDiagram
+    autonumber
+    participant Session as ClientSession
+    participant Queue as DBTaskQueue
+    participant WAL as db_tasks.wal
+    participant Worker as WorkerThread
+    participant DB as IDatabase(SQLite/Mock)
+
+    Session->>Queue: RecordConnectTime(sessionId, ts)
+    Queue->>WAL: P|RecordConnectTime|sessionId|seq|ts
+    Queue-->>Session: return immediately
+
+    Worker->>Queue: dequeue task
+    Worker->>DB: Execute INSERT SessionConnectLog
+    alt success
+        Worker->>WAL: D|seq
+    else failure
+        Worker-->>Queue: failedCount++
+    end
+
+    Note over Queue,WAL: restart ? WalRecover()? ??? ??? ???
