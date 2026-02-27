@@ -32,10 +32,12 @@ public:
 			if (mMaxSize > 0 && mQueue.size() >= mMaxSize)
 				return false;
 			mQueue.push(item);
+			// English: Notify within lock to prevent lost wake-up
+			//          (avoid race between lock release and notify timeout)
+			// 한글: 알림 유실 방지를 위해 락 범위 안에서 notify
+			//       (락 해제와 notify 사이 타임아웃 경합 방지)
+			mCondition.notify_one();
 		}
-		// English: Notify outside lock to avoid waking thread while holding lock
-		// 한글: 락을 잡은 채로 스레드를 깨우는 것을 방지하기 위해 락 밖에서 알림
-		mCondition.notify_one();
 		return true;
 	}
 
@@ -48,8 +50,10 @@ public:
 			if (mMaxSize > 0 && mQueue.size() >= mMaxSize)
 				return false;
 			mQueue.push(std::move(item));
+			// English: Notify within lock to prevent lost wake-up
+			// 한글: 알림 유실 방지를 위해 락 범위 안에서 notify
+			mCondition.notify_one();
 		}
-		mCondition.notify_one();
 		return true;
 	}
 
@@ -63,8 +67,10 @@ public:
 			if (mMaxSize > 0 && mQueue.size() >= mMaxSize)
 				return false;
 			mQueue.emplace(std::forward<Args>(args)...);
+			// English: Notify within lock to prevent lost wake-up
+			// 한글: 알림 유실 방지를 위해 락 범위 안에서 notify
+			mCondition.notify_one();
 		}
-		mCondition.notify_one();
 		return true;
 	}
 
