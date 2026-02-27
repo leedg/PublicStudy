@@ -61,6 +61,7 @@ bool ConnectionPool::Initialize(const DatabaseConfig &config)
 	}
 	catch (const DatabaseException &)
 	{
+		mConnections.clear();
 		return false;
 	}
 }
