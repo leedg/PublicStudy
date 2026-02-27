@@ -563,6 +563,8 @@ namespace Network::TestServer
             return;
         }
 
+        // English: mWalFile lazy-open is protected by mWalMutex to prevent race conditions.
+        // 한글: mWalFile의 lazy-open은 mWalMutex로 보호되어 경합 방지.
         std::lock_guard<std::mutex> lock(mWalMutex);
 
         if (!mWalFile.is_open())
@@ -599,6 +601,8 @@ namespace Network::TestServer
             return;
         }
 
+        // English: mWalFile lazy-open is protected by mWalMutex to prevent race conditions.
+        // 한글: mWalFile의 lazy-open은 mWalMutex로 보호되어 경합 방지.
         std::lock_guard<std::mutex> lock(mWalMutex);
 
         if (!mWalFile.is_open())
