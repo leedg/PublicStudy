@@ -150,6 +150,13 @@ struct PKT_PongRes
 constexpr uint32_t MAX_PACKET_SIZE = 4096;
 constexpr uint32_t RECV_BUFFER_SIZE = 8192;
 constexpr uint32_t SEND_BUFFER_SIZE = 8192;
+
+// [Fix A-2] IOContext::buffer는 RECV_BUFFER_SIZE를 기준으로 정의됨.
+// Send 경로는 SEND_BUFFER_SIZE로 검증하므로, 두 값이 다를 경우 버퍼 오버플로우가 발생한다.
+// 상수 수정 시 반드시 두 값을 함께 조정해야 한다.
+static_assert(SEND_BUFFER_SIZE == RECV_BUFFER_SIZE,
+    "SEND_BUFFER_SIZE must equal RECV_BUFFER_SIZE: IOContext::buffer uses RECV_BUFFER_SIZE "
+    "but Send() validates against SEND_BUFFER_SIZE. Mismatch causes buffer overflow.");
 constexpr uint32_t PING_INTERVAL_MS = 5000;
 constexpr uint32_t PING_TIMEOUT_MS = 30000;
 
