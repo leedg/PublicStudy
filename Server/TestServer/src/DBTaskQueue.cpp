@@ -216,12 +216,27 @@ namespace Network::TestServer
 
 
 
-        for (size_t i = 0; i < workerThreadCount; ++i)
-
+        try
         {
-
-            mWorkerThreads.emplace_back(&DBTaskQueue::WorkerThreadFunc, this);
-
+            for (size_t i = 0; i < workerThreadCount; ++i)
+            {
+                mWorkerThreads.emplace_back(&DBTaskQueue::WorkerThreadFunc, this);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            Logger::Warn("Failed to create worker thread: " + std::string(e.what()));
+            mIsRunning.store(false);
+            for (auto& t : mWorkerThreads)
+            {
+                if (t.joinable())
+                {
+                    t.join();
+                }
+            }
+            mWorkerThreads.clear();
+            return false;
+        }
         }
 
 
