@@ -62,6 +62,14 @@ namespace Network::DBServer
             return;
         }
 
+        // English: Ensure that mOrderedTaskQueue and mLatencyManager are initialized
+        // 한글: mOrderedTaskQueue와 mLatencyManager가 초기화되었는지 확인
+        if (!mOrderedTaskQueue || !mLatencyManager)
+        {
+            Logger::Error("ServerPacketHandler not properly initialized - missing OrderedTaskQueue or LatencyManager");
+            return;
+        }
+
         const ServerPacketHeader* header = reinterpret_cast<const ServerPacketHeader*>(data);
 
         if (header->size < sizeof(ServerPacketHeader) || header->size > 4096)
