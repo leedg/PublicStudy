@@ -1,0 +1,57 @@
+====================================
+  TestDBServer - Database Server
+====================================
+[12:44:54] [INFO] Initializing TestDBServer on port 8002
+[12:44:55] [INFO] Initializing ServerLatencyManager...
+[12:44:55] [INFO] ServerLatencyManager initialized successfully
+[12:44:55] [INFO] OrderedTaskQueue: initialized with 4 workers
+[12:44:55] [INFO] OrderedTaskQueue initialized successfully
+[12:44:55] [INFO] SessionManager initialized
+[12:44:55] [INFO] Windows RIO supported, using RIO backend (auto)
+[12:44:55] [INFO] WindowsNetworkEngine created with mode: RIO
+[12:44:55] [INFO] Winsock initialized (version 2.2)
+[12:44:55] [INFO] Using RIO backend
+[12:44:55] [INFO] Listen socket created and bound to port 8002
+[12:44:55] [INFO] BaseNetworkEngine initialized on port 8002
+[12:44:55] [INFO] TestDBServer initialized on port 8002
+[12:44:55] [INFO] Started 16 worker threads + 1 accept thread
+[12:44:55] [INFO] BaseNetworkEngine started
+[12:44:55] [INFO] TestDBServer started
+[12:44:55] [INFO] TestDBServer is running. Press Ctrl+C to stop.
+[12:44:55] [INFO] Accept thread started
+[12:44:56] [INFO] Session initialized - ID: 1
+[12:44:56] [INFO] Session created - ID: 1, Total: 1
+[12:44:56] [INFO] DBSession connected - ID: 1
+[12:44:56] [INFO] Game server connected - Connection: 1
+[12:44:56] [INFO] Client connected - IP: 127.0.0.1:56957 (Session 1)
+[12:44:56] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 1
+[12:45:01] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 2
+[12:45:06] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 3
+[12:45:11] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 4
+[12:45:16] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 5
+[12:45:16] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[12:45:16] [INFO] Ping time saved for ServerId: 1
+[12:45:21] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 6
+[12:45:26] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 7
+[12:45:31] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 8
+[12:45:35] [INFO] Session closed - ID: 1
+[12:45:35] [INFO] Session removed - ID: 1, Remaining: 0
+[12:45:35] [INFO] DBSession disconnected - ID: 1
+[12:45:35] [INFO] Game server disconnected - Connection: 1
+[12:45:36] [INFO] Shutdown event signaled - stopping DBServer
+[12:45:36] [INFO] Shutting down TestDBServer...
+[12:45:36] [INFO] Accept thread stopped
+[12:45:36] [INFO] All I/O threads stopped
+[12:45:36] [INFO] All sessions closed - Count: 0
+[12:45:36] [INFO] WindowsNetworkEngine platform shutdown complete
+[12:45:36] [INFO] BaseNetworkEngine stopped
+[12:45:36] [INFO] Shutting down ordered task queue...
+[12:45:36] [INFO] Shutting down OrderedTaskQueue...
+[12:45:36] [INFO] OrderedTaskQueue: shutdown complete - submitted=9, completed=9, failed=0, rejected=0
+[12:45:36] [INFO] OrderedTaskQueue shutdown complete - Enqueued: 9, Processed: 9, Failed: 0
+[12:45:36] [INFO] OrderedTaskQueue statistics - Enqueued: 9, Processed: 9
+[12:45:36] [INFO] Shutting down ServerLatencyManager...
+[12:45:36] [INFO] ServerLatencyManager shut down
+[12:45:36] [INFO] TestDBServer stopped
+[12:45:36] [INFO] TestDBServer stopped.
+Server shutdown complete.

@@ -1,0 +1,175 @@
+====================================
+  TestServer - IOCP Game Server
+====================================
+[12:44:56] [INFO] Initializing server on port 9000
+[12:44:56] [INFO] TestServer: using MockDatabase for DBTaskQueue
+[12:44:56] [INFO] Initializing DBTaskQueue with 1 worker threads
+[12:44:56] [INFO] DBTaskQueue: DB tables ensured (SessionConnectLog, SessionDisconnectLog, PlayerData)
+[12:44:56] [INFO] WAL: Clean startup (no pending tasks to recover)
+[12:44:56] [INFO] DBTaskQueue initialized successfully
+[12:44:56] [INFO] SessionManager initialized
+[12:44:56] [INFO] Windows RIO supported, using RIO backend (auto)
+[12:44:56] [INFO] DBTaskQueue worker thread started
+[12:44:56] [INFO] WindowsNetworkEngine created with mode: RIO
+[12:44:56] [INFO] Winsock initialized (version 2.2)
+[12:44:56] [INFO] Using RIO backend
+[12:44:56] [INFO] Listen socket created and bound to port 9000
+[12:44:56] [INFO] BaseNetworkEngine initialized on port 9000
+[12:44:56] [INFO] TestServer initialized on port 9000
+[12:44:56] [INFO] Started 16 worker threads + 1 accept thread
+[12:44:56] [INFO] BaseNetworkEngine started
+[12:44:56] [INFO] TestServer started
+[12:44:56] [INFO] Connecting to DB server at 127.0.0.1:8002
+[12:44:56] [INFO] Session initialized - ID: 440
+[12:44:56] [INFO] Successfully connected to DB server at 127.0.0.1:8002
+[12:44:56] [INFO] Server is running. Press Ctrl+C to stop.
+[12:44:56] [INFO] Accept thread started
+[12:44:57] [INFO] Session initialized - ID: 1
+[12:44:57] [INFO] Session created - ID: 1, Total: 1
+[12:44:57] [INFO] ClientSession connected - ID: 1
+[12:44:57] [INFO] Client connected - IP: 127.0.0.1:56958 (Session 1)
+[12:44:57] [INFO] Client connected - Connection: 1
+[12:44:57] [INFO] DB INSERT SessionConnectLog - Session: 1 at 2026-02-28 12:44:57
+[12:44:57] [INFO] Client connect request - Session: 1, ClientVersion: 1
+[12:44:57] [INFO] Session initialized - ID: 2
+[12:44:57] [INFO] Session created - ID: 2, Total: 2
+[12:44:57] [INFO] Client connected - IP: 127.0.0.1:56959 (Session 2)
+[12:44:57] [INFO] ClientSession connected - ID: 2
+[12:44:57] [INFO] Client connected - Connection: 2
+[12:44:57] [INFO] DB INSERT SessionConnectLog - Session: 2 at 2026-02-28 12:44:57
+[12:44:57] [INFO] Client connect request - Session: 2, ClientVersion: 1
+[12:44:57] [INFO] Session initialized - ID: 3
+[12:44:57] [INFO] Session created - ID: 3, Total: 3
+[12:44:57] [INFO] ClientSession connected - ID: 3
+[12:44:57] [INFO] Client connected - IP: 127.0.0.1:56960 (Session 3)
+[12:44:57] [INFO] Client connected - Connection: 3
+[12:44:57] [INFO] DB INSERT SessionConnectLog - Session: 3 at 2026-02-28 12:44:57
+[12:44:57] [INFO] Client connect request - Session: 3, ClientVersion: 1
+[12:44:57] [INFO] Session initialized - ID: 4
+[12:44:57] [INFO] Session created - ID: 4, Total: 4
+[12:44:57] [INFO] Client connected - IP: 127.0.0.1:56961 (Session 4)
+[12:44:57] [INFO] ClientSession connected - ID: 4
+[12:44:57] [INFO] Client connected - Connection: 4
+[12:44:57] [INFO] DB INSERT SessionConnectLog - Session: 4 at 2026-02-28 12:44:57
+[12:44:57] [INFO] Client connect request - Session: 4, ClientVersion: 1
+[12:44:57] [INFO] Session initialized - ID: 5
+[12:44:57] [INFO] Session created - ID: 5, Total: 5
+[12:44:57] [INFO] Client connected - IP: 127.0.0.1:56962 (Session 5)
+[12:44:57] [INFO] ClientSession connected - ID: 5
+[12:44:57] [INFO] Client connected - Connection: 5
+[12:44:57] [INFO] DB INSERT SessionConnectLog - Session: 5 at 2026-02-28 12:44:57
+[12:44:57] [INFO] Client connect request - Session: 5, ClientVersion: 1
+[12:44:57] [INFO] Session initialized - ID: 6
+[12:44:57] [INFO] Session created - ID: 6, Total: 6
+[12:44:57] [INFO] ClientSession connected - ID: 6
+[12:44:57] [INFO] Client connected - IP: 127.0.0.1:56963 (Session 6)
+[12:44:57] [INFO] Client connected - Connection: 6
+[12:44:57] [INFO] DB INSERT SessionConnectLog - Session: 6 at 2026-02-28 12:44:57
+[12:44:57] [INFO] Client connect request - Session: 6, ClientVersion: 1
+[12:44:57] [INFO] Session initialized - ID: 7
+[12:44:57] [INFO] Session created - ID: 7, Total: 7
+[12:44:57] [INFO] ClientSession connected - ID: 7
+[12:44:57] [INFO] Client connected - IP: 127.0.0.1:56964 (Session 7)
+[12:44:57] [INFO] Client connected - Connection: 7
+[12:44:57] [INFO] DB INSERT SessionConnectLog - Session: 7 at 2026-02-28 12:44:57
+[12:44:57] [INFO] Session initialized - ID: 8
+[12:44:57] [INFO] Session created - ID: 8, Total: 8
+[12:44:57] [INFO] Client connect request - Session: 7, ClientVersion: 1
+[12:44:57] [INFO] ClientSession connected - ID: 8
+[12:44:57] [INFO] Client connected - IP: 127.0.0.1:56965 (Session 8)
+[12:44:57] [INFO] Client connected - Connection: 8
+[12:44:57] [INFO] DB INSERT SessionConnectLog - Session: 8 at 2026-02-28 12:44:57
+[12:44:57] [INFO] Client connect request - Session: 8, ClientVersion: 1
+[12:44:57] [INFO] Session initialized - ID: 9
+[12:44:57] [INFO] Session created - ID: 9, Total: 9
+[12:44:57] [INFO] Client connected - IP: 127.0.0.1:56966 (Session 9)
+[12:44:57] [INFO] ClientSession connected - ID: 9
+[12:44:57] [INFO] Session initialized - ID: 10
+[12:44:57] [INFO] Session created - ID: 10, Total: 10
+[12:44:57] [INFO] DB INSERT SessionConnectLog - Session: 9 at 2026-02-28 12:44:57
+[12:44:57] [INFO] Client connected - Connection: 9
+[12:44:57] [INFO] ClientSession connected - ID: 10
+[12:44:57] [INFO] Client connected - IP: 127.0.0.1:56967 (Session 10)
+[12:44:57] [INFO] Client connect request - Session: 9, ClientVersion: 1
+[12:44:57] [INFO] Client connect request - Session: 10, ClientVersion: 1
+[12:44:57] [INFO] Client connected - Connection: 10
+[12:44:57] [INFO] DB INSERT SessionConnectLog - Session: 10 at 2026-02-28 12:44:57
+[12:45:02] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 1, Seq: 0
+[12:45:02] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 2, Seq: 0
+[12:45:02] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 3, Seq: 0
+[12:45:02] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 4, Seq: 0
+[12:45:02] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 5, Seq: 0
+[12:45:02] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 6, Seq: 0
+[12:45:02] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 8, Seq: 0
+[12:45:02] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 7, Seq: 0
+[12:45:02] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 9, Seq: 0
+[12:45:02] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 10, Seq: 0
+[12:45:16] [INFO] Ping time saved successfully in DB - ServerId: 1
+[12:45:27] [INFO] ClientSession disconnected - ID: 1
+[12:45:27] [INFO] Session closed - ID: 1
+[12:45:27] [INFO] Session removed - ID: 1, Remaining: 9
+[12:45:27] [INFO] DB INSERT SessionDisconnectLog - Session: 1 at 2026-02-28 12:45:27
+[12:45:27] [INFO] Client disconnected - Connection: 1
+[12:45:28] [INFO] ClientSession disconnected - ID: 2
+[12:45:28] [INFO] Client disconnected - Connection: 2
+[12:45:28] [INFO] Session closed - ID: 2
+[12:45:28] [INFO] Session removed - ID: 2, Remaining: 8
+[12:45:28] [INFO] DB INSERT SessionDisconnectLog - Session: 2 at 2026-02-28 12:45:28
+[12:45:29] [INFO] ClientSession disconnected - ID: 3
+[12:45:29] [INFO] Session closed - ID: 3
+[12:45:29] [INFO] Session removed - ID: 3, Remaining: 7
+[12:45:29] [INFO] DB INSERT SessionDisconnectLog - Session: 3 at 2026-02-28 12:45:29
+[12:45:29] [INFO] Client disconnected - Connection: 3
+[12:45:30] [INFO] Session closed - ID: 4
+[12:45:30] [INFO] Session removed - ID: 4, Remaining: 6
+[12:45:30] [INFO] ClientSession disconnected - ID: 4
+[12:45:30] [INFO] Client disconnected - Connection: 4
+[12:45:30] [INFO] DB INSERT SessionDisconnectLog - Session: 4 at 2026-02-28 12:45:30
+[12:45:31] [INFO] Session closed - ID: 5
+[12:45:31] [INFO] ClientSession disconnected - ID: 5
+[12:45:31] [INFO] Client disconnected - Connection: 5
+[12:45:31] [INFO] Session removed - ID: 5, Remaining: 5
+[12:45:31] [INFO] DB INSERT SessionDisconnectLog - Session: 5 at 2026-02-28 12:45:31
+[12:45:32] [INFO] ClientSession disconnected - ID: 6
+[12:45:32] [INFO] Session closed - ID: 6
+[12:45:32] [INFO] Session removed - ID: 6, Remaining: 4
+[12:45:32] [INFO] DB INSERT SessionDisconnectLog - Session: 6 at 2026-02-28 12:45:32
+[12:45:32] [INFO] Client disconnected - Connection: 6
+[12:45:33] [INFO] Session closed - ID: 7
+[12:45:33] [INFO] Session removed - ID: 7, Remaining: 3
+[12:45:33] [INFO] ClientSession disconnected - ID: 7
+[12:45:33] [INFO] Client disconnected - Connection: 7
+[12:45:33] [INFO] DB INSERT SessionDisconnectLog - Session: 7 at 2026-02-28 12:45:33
+[12:45:34] [INFO] ClientSession disconnected - ID: 8
+[12:45:34] [INFO] Client disconnected - Connection: 8
+[12:45:34] [INFO] Session closed - ID: 8
+[12:45:34] [INFO] Session removed - ID: 8, Remaining: 2
+[12:45:34] [INFO] DB INSERT SessionDisconnectLog - Session: 8 at 2026-02-28 12:45:34
+[12:45:34] [INFO] ClientSession disconnected - ID: 10
+[12:45:34] [INFO] Session closed - ID: 10
+[12:45:34] [INFO] Session removed - ID: 10, Remaining: 1
+[12:45:34] [INFO] DB INSERT SessionDisconnectLog - Session: 10 at 2026-02-28 12:45:34
+[12:45:34] [INFO] Client disconnected - Connection: 10
+[12:45:35] [INFO] ClientSession disconnected - ID: 9
+[12:45:35] [INFO] Client disconnected - Connection: 9
+[12:45:35] [INFO] Session closed - ID: 9
+[12:45:35] [INFO] Session removed - ID: 9, Remaining: 0
+[12:45:35] [INFO] DB INSERT SessionDisconnectLog - Session: 9 at 2026-02-28 12:45:35
+[12:45:35] [INFO] Shutdown event signaled - stopping server
+[12:45:35] [INFO] Shutting down server...
+[12:45:35] [INFO] Shutting down DB task queue...
+[12:45:35] [INFO] Shutting down DBTaskQueue...
+[12:45:35] [INFO] DBTaskQueue worker thread stopped
+[12:45:35] [INFO] DBTaskQueue shutdown complete - Processed: 20, Failed: 0
+[12:45:35] [INFO] DB task queue statistics - Processed: 20, Failed: 0
+[12:45:35] [INFO] TestServer: local database disconnected
+[12:45:35] [WARN] DB server closed connection
+[12:45:35] [INFO] Session closed - ID: 440
+[12:45:35] [INFO] Accept thread stopped
+[12:45:35] [INFO] All I/O threads stopped
+[12:45:36] [INFO] All sessions closed - Count: 0
+[12:45:36] [INFO] WindowsNetworkEngine platform shutdown complete
+[12:45:36] [INFO] BaseNetworkEngine stopped
+[12:45:36] [INFO] TestServer stopped
+[12:45:36] [INFO] Server stopped.
+Server shutdown complete.
