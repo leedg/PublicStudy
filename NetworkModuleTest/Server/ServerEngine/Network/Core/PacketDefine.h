@@ -4,6 +4,7 @@
 // 한글: 네트워크 프레이밍용 바이너리 패킷 정의
 
 #include <cstdint>
+#include <limits>
 
 namespace Network::Core
 {
@@ -162,5 +163,20 @@ constexpr uint32_t PING_TIMEOUT_MS = 30000;
 
 constexpr size_t MAX_SEND_QUEUE_DEPTH = 1000;
 constexpr size_t MAX_LOGIC_QUEUE_DEPTH = 10000;
+
+// ─── 패킷 크기 명시적 상수 ────────────────────────────────────────────────────
+// MAX_PACKET_SIZE = 전체 와이어 크기 (PacketHeader + payload 합산)
+constexpr uint32_t PACKET_HEADER_SIZE      = sizeof(PacketHeader);
+constexpr uint32_t MAX_PACKET_TOTAL_SIZE   = MAX_PACKET_SIZE;   // 명시적 alias
+constexpr uint32_t MAX_PACKET_PAYLOAD_SIZE = MAX_PACKET_SIZE - PACKET_HEADER_SIZE;
+
+// ─── 컴파일 타임 불변식 ──────────────────────────────────────────────────────
+static_assert(MAX_PACKET_SIZE > PACKET_HEADER_SIZE,
+    "MAX_PACKET_SIZE must be > PACKET_HEADER_SIZE");
+static_assert(MAX_PACKET_SIZE <= std::numeric_limits<uint16_t>::max(),
+    "MAX_PACKET_SIZE exceeds uint16_t; update PacketHeader::size to uint32_t "
+    "or reduce MAX_PACKET_SIZE");
+static_assert(MAX_PACKET_SIZE <= SEND_BUFFER_SIZE,
+    "MAX_PACKET_SIZE must fit within SEND_BUFFER_SIZE");
 
 } // namespace Network::Core

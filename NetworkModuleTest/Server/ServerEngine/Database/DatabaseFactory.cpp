@@ -6,8 +6,11 @@
 #include "../Interfaces/DatabaseUtils.h"
 #include "MockDatabase.h"
 #include "ODBCDatabase.h"
-#include "OLEDBDatabase.h"
 #include "SQLiteDatabase.h"
+#ifdef _WIN32
+#include "OLEDBDatabase.h"
+#endif
+#include <iostream>
 #include <map>
 #include <stdexcept>
 
@@ -40,7 +43,13 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateODBCDatabase()
 
 std::unique_ptr<IDatabase> DatabaseFactory::CreateOLEDBDatabase()
 {
+#ifdef _WIN32
 	return std::make_unique<OLEDBDatabase>();
+#else
+	std::cerr << "[DatabaseFactory] OLEDB backend is only available on Windows. "
+	             "Returning nullptr — use ODBC or SQLite instead.\n";
+	return nullptr;
+#endif
 }
 
 std::unique_ptr<IDatabase> DatabaseFactory::CreateMockDatabase()

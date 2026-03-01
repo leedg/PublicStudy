@@ -39,9 +39,10 @@ public:
     size_t PoolSize()  const override { return mPoolSize; }
     size_t FreeCount() const override;
 
-    // IBufferPool io_uring extensions
-    int  GetFixedBufferIndex(size_t index) const override { return static_cast<int>(index); }
-    bool IsFixedBufferMode()               const override { return mIsFixed; }
+    // English: io_uring concrete extensions (non-virtual — use concrete type directly).
+    // 한글: io_uring 구체 확장 메서드 (비-가상 — 구체 타입으로 직접 호출).
+    int  GetFixedBufferIndex(size_t index) const { return static_cast<int>(index); }
+    bool IsFixedBufferMode()               const { return mIsFixed; }
 
 private:
     void*               mStorage   = nullptr;

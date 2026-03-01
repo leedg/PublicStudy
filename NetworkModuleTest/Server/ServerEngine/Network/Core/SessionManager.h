@@ -4,18 +4,10 @@
 // 한글: 세션 생성/추적/제거를 위한 세션 관리자
 
 #include "Session.h"
-#include <functional>
 #include <unordered_map>
 
 namespace Network::Core
 {
-// =============================================================================
-// English: Session factory function type
-// 한글: 세션 팩토리 함수 타입
-// =============================================================================
-
-using SessionFactory = std::function<SessionRef()>;
-
 // =============================================================================
 // English: SessionManager class
 // 한글: SessionManager 클래스
@@ -25,10 +17,6 @@ class SessionManager
 {
   public:
 	static SessionManager &Instance();
-
-	// English: Set session factory (must be called before CreateSession)
-	// 한글: 세션 팩토리 설정 (CreateSession 호출 전에 설정 필요)
-	void Initialize(SessionFactory factory);
 
 	// English: Session lifecycle
 	// 한글: 세션 생명주기
@@ -69,7 +57,6 @@ class SessionManager
 	std::unordered_map<Utils::ConnectionId, SessionRef> mSessions;
 	mutable std::mutex mMutex;
 	std::atomic<Utils::ConnectionId> mNextSessionId{1};
-	SessionFactory mSessionFactory;
 };
 
 } // namespace Network::Core

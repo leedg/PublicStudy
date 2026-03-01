@@ -39,12 +39,12 @@ bool LinuxNetworkEngine::InitializePlatform()
 	// 한글: 모드에 따라 AsyncIOProvider 생성
 	if (mMode == Mode::Epoll)
 	{
-		mProvider = std::make_unique<AsyncIO::Linux::EpollAsyncIOProvider>();
+		mProvider = std::make_shared<AsyncIO::Linux::EpollAsyncIOProvider>();
 		Utils::Logger::Info("Using epoll backend");
 	}
 	else // IOUring
 	{
-		mProvider = std::make_unique<AsyncIO::Linux::IOUringAsyncIOProvider>();
+		mProvider = std::make_shared<AsyncIO::Linux::IOUringAsyncIOProvider>();
 		Utils::Logger::Info("Using io_uring backend");
 	}
 
@@ -210,13 +210,16 @@ void LinuxNetworkEngine::AcceptLoop()
 				std::to_string(session->GetId()) + ": " +
 				std::string(mProvider->GetLastError()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			close(clientSocket);
+			// English: Session::Close() called by pool deleter on last ref drop —
+			//          do NOT close(clientSocket) here (double-close / fd-recycle risk).
+			// 한글: 마지막 참조 소멸 시 풀 deleter가 Session::Close()를 호출하므로
+			//       여기서 close(clientSocket)를 호출하면 이중 닫기 / fd 재사용 경합 발생.
 			continue;
 		}
 
 		// English: Set async provider so session can queue sends via EPOLLOUT
 		// 한글: EPOLLOUT을 통해 세션이 송신을 큐에 넣을 수 있도록 async 공급자 설정
-		session->SetAsyncProvider(mProvider.get());
+		session->SetAsyncProvider(mProvider);
 
 		// English: Update stats (atomic)
 		// 한글: 통계 업데이트 (atomic)
@@ -239,8 +242,10 @@ void LinuxNetworkEngine::AcceptLoop()
 		Utils::Logger::Error("Failed to queue recv - Session " +
 							 std::to_string(session->GetId()));
 		Core::SessionManager::Instance().RemoveSession(session);
-		close(clientSocket);
-		continue;
+			// English: Session owns the socket; pool deleter calls Close() — do NOT
+			//          close(clientSocket) here.
+			// 한글: 세션이 소켓을 소유하므로 풀 deleter가 Close()를 호출한다.
+			continue;
 	}
 
 		// English: Log connection

@@ -91,6 +91,12 @@ class Session : public std::enable_shared_from_this<Session>
 	void Initialize(Utils::ConnectionId id, SocketHandle socket);
 	void Close();
 
+	// English: Reset session state for pool reuse. Call after Close() and before re-Initialize().
+	//          Clears ID, state, counters. mAsyncProvider and buffers are already cleaned by Close().
+	// 한글: 풀 재사용을 위한 세션 상태 초기화. Close() 이후, 재Initialize() 이전에 호출.
+	//       ID·상태·카운터 초기화. mAsyncProvider·버퍼는 Close()에서 이미 정리됨.
+	void Reset();
+
 	// English: Send packet
 	// 한글: 패킷 전송
 	void Send(const void *data, uint32_t size);
@@ -126,9 +132,10 @@ class Session : public std::enable_shared_from_this<Session>
 		mPingSequence.fetch_add(1, std::memory_order_relaxed);
 	}
 
-	void SetAsyncProvider(AsyncIO::AsyncIOProvider *provider)
+	void SetAsyncProvider(std::shared_ptr<AsyncIO::AsyncIOProvider> provider)
 	{
-		mAsyncProvider.store(provider, std::memory_order_release);
+		std::lock_guard<std::mutex> lock(mSendMutex);
+		mAsyncProvider = std::move(provider);
 	}
 	// English: Cross-platform recv buffer access
 	// 한글: 크로스 플랫폼 수신 버퍼 접근자
@@ -214,12 +221,17 @@ class Session : public std::enable_shared_from_this<Session>
 	// 목적: 큐가 비어있을 가능성이 높을 때 mutex 잠금 회피
 	std::atomic<size_t> mSendQueueSize;
 
-	// English: Async I/O provider — atomic pointer so Close() (any thread) and
-	//          Send() (I/O thread) can race safely without a dedicated lock.
-	//          Stored with release on set/clear and loaded with acquire before use.
-	// 한글: 비동기 I/O 공급자 — Close()(임의 스레드)와 Send()(I/O 스레드) 간
-	//       전용 락 없이 안전하게 경쟁하도록 atomic 포인터로 선언.
-	std::atomic<AsyncIO::AsyncIOProvider *> mAsyncProvider;
+	// English: Async I/O provider — protected by mSendMutex.
+	//          SetAsyncProvider(), Close(), Send() RIO path, and PostSend() POSIX
+	//          path all lock mSendMutex before reading/writing this field.
+	//          Copy the shared_ptr under the lock, then use the snapshot outside
+	//          the lock to avoid holding mSendMutex during actual I/O calls.
+	// 한글: 비동기 I/O 공급자 — mSendMutex 보호.
+	//       SetAsyncProvider(), Close(), Send() RIO 경로, PostSend() POSIX 경로가
+	//       이 필드 읽기/쓰기 전에 mSendMutex를 획득한다.
+	//       락 내에서 shared_ptr을 복사한 뒤, 락 해제 후 스냅샷을 사용하여
+	//       실제 I/O 호출 중 mSendMutex를 보유하지 않도록 한다.
+	std::shared_ptr<AsyncIO::AsyncIOProvider> mAsyncProvider;
 
 	// English: TCP reassembly accumulation buffer + mutex + read offset
 	//
@@ -245,6 +257,16 @@ class Session : public std::enable_shared_from_this<Session>
 	std::vector<char> mRecvAccumBuffer;
 	size_t            mRecvAccumOffset{0};
 	std::mutex        mRecvMutex;
+
+	// English: Reusable batch buffer for ProcessRawRecv general path.
+	//          Reserved in Initialize() to amortise allocations across calls.
+	//          Protected by mRecvMutex. Swapped with a local variable before
+	//          dispatching so OnRecv is called without holding mRecvMutex.
+	// 한글: ProcessRawRecv 일반 경로용 재사용 배치 버퍼.
+	//       Initialize()에서 예약하여 호출 간 할당 비용을 상각.
+	//       mRecvMutex 보호. 디스패치 전 지역 변수와 swap하여
+	//       OnRecv 호출 시 mRecvMutex를 보유하지 않도록 한다.
+	std::vector<char> mRecvBatchBuf;
 };
 
 using SessionRef = std::shared_ptr<Session>;

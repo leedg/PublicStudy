@@ -88,18 +88,36 @@ elseif(PLATFORM_LINUX)
         Platforms/Linux/IOUringAsyncIOProvider.h
         Platforms/Linux/IOUringAsyncIOProvider.cpp
     )
-    # English: io_uring requires liburing-dev. Check availability and enable conditionally.
+    # English: io_uring option — enabled by default on Linux; requires liburing-dev.
     #          Without liburing the factory silently falls back to epoll.
-    # 한글: io_uring은 liburing-dev 필요. 가용성 검사 후 조건부 활성화.
+    # 한글: io_uring 옵션 — Linux에서 기본 활성화; liburing-dev 필요.
     #       없으면 팩토리가 자동으로 epoll로 폴백.
-    find_library(LIBURING_LIB NAMES uring liburing)
-    find_path(LIBURING_INCLUDE NAMES liburing.h)
-    if(LIBURING_LIB AND LIBURING_INCLUDE)
-        message(STATUS "liburing found: ${LIBURING_LIB} — io_uring backend enabled")
-        set(HAVE_LIBURING ON)
+    option(ENABLE_IO_URING "Enable io_uring backend (Linux)" ON)
+
+    if(ENABLE_IO_URING)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(LIBURING liburing)
+        if(LIBURING_FOUND)
+            message(STATUS "liburing found (${LIBURING_VERSION}) — io_uring backend enabled")
+            set(HAVE_IO_URING ON)
+        else()
+            # Fallback: manual find
+            find_library(LIBURING_LIB NAMES uring liburing)
+            find_path(LIBURING_INCLUDE NAMES liburing.h)
+            if(LIBURING_LIB AND LIBURING_INCLUDE)
+                message(STATUS "liburing found: ${LIBURING_LIB} — io_uring backend enabled")
+                set(HAVE_IO_URING ON)
+                set(LIBURING_LIBRARIES ${LIBURING_LIB})
+                set(LIBURING_INCLUDE_DIRS ${LIBURING_INCLUDE})
+            else()
+                message(WARNING "liburing not found (apt install liburing-dev) — io_uring disabled, using epoll only")
+                set(HAVE_IO_URING OFF)
+                set(ENABLE_IO_URING OFF)
+            endif()
+        endif()
     else()
-        message(WARNING "liburing not found (apt install liburing-dev) — io_uring backend disabled, using epoll only")
-        set(HAVE_LIBURING OFF)
+        message(STATUS "io_uring backend disabled (ENABLE_IO_URING=OFF)")
+        set(HAVE_IO_URING OFF)
     endif()
 elseif(PLATFORM_MACOS)
     list(APPEND ASYNCIO_SOURCES
@@ -154,11 +172,12 @@ elseif(PLATFORM_LINUX)
     target_compile_options(AsyncIOLib PRIVATE
         -fPIC
     )
-    if(HAVE_LIBURING)
-        target_compile_definitions(AsyncIOLib PRIVATE HAVE_LIBURING)
+    if(HAVE_IO_URING)
+        target_compile_definitions(AsyncIOLib PUBLIC HAVE_IO_URING HAVE_LIBURING)
+        target_include_directories(AsyncIOLib PUBLIC ${LIBURING_INCLUDE_DIRS})
         target_link_libraries(AsyncIOLib PUBLIC
-            ${LIBURING_LIB}  # io_uring library (liburing-dev)
-            pthread           # POSIX threads
+            ${LIBURING_LIBRARIES}  # io_uring library (liburing-dev)
+            pthread                # POSIX threads
             protobuf::libprotobuf
         )
     else()

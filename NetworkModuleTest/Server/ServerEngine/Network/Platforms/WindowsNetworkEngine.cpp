@@ -38,12 +38,12 @@ bool WindowsNetworkEngine::InitializePlatform()
 
 	if (mMode == Mode::IOCP)
 	{
-		mProvider = std::make_unique<AsyncIO::Windows::IocpAsyncIOProvider>();
+		mProvider = std::make_shared<AsyncIO::Windows::IocpAsyncIOProvider>();
 		Utils::Logger::Info("Using IOCP backend");
 	}
 	else
 	{
-		mProvider = std::make_unique<AsyncIO::Windows::RIOAsyncIOProvider>();
+		mProvider = std::make_shared<AsyncIO::Windows::RIOAsyncIOProvider>();
 		Utils::Logger::Info("Using RIO backend");
 	}
 
@@ -194,7 +194,7 @@ void WindowsNetworkEngine::AcceptLoop()
 
 		if (mMode == Mode::RIO)
 		{
-			session->SetAsyncProvider(mProvider.get());
+			session->SetAsyncProvider(mProvider);
 		}
 
 		mTotalConnections.fetch_add(1, std::memory_order_relaxed);

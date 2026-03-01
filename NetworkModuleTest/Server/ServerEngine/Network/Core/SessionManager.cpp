@@ -2,6 +2,7 @@
 // 한글: SessionManager 구현
 
 #include "SessionManager.h"
+#include "SessionPool.h"
 #include "Utils/LockProfiling.h"
 #include <sstream>
 
@@ -14,24 +15,12 @@ SessionManager &SessionManager::Instance()
 	return instance;
 }
 
-void SessionManager::Initialize(SessionFactory factory)
-{
-	mSessionFactory = std::move(factory);
-	Utils::Logger::Info("SessionManager initialized");
-}
-
 SessionRef SessionManager::CreateSession(SocketHandle socket)
 {
-	if (!mSessionFactory)
-	{
-		Utils::Logger::Error("Session factory not set");
-		return nullptr;
-	}
-
-	SessionRef session = mSessionFactory();
+	SessionRef session = SessionPool::Instance().Acquire();
 	if (!session)
 	{
-		Utils::Logger::Error("Failed to create session from factory");
+		Utils::Logger::Error("SessionPool exhausted - no free session slots");
 		return nullptr;
 	}
 

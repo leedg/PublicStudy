@@ -35,7 +35,7 @@ bool macOSNetworkEngine::InitializePlatform()
 {
 	// English: Create kqueue AsyncIOProvider
 	// 한글: kqueue AsyncIOProvider 생성
-	mProvider = std::make_unique<AsyncIO::BSD::KqueueAsyncIOProvider>();
+	mProvider = std::make_shared<AsyncIO::BSD::KqueueAsyncIOProvider>();
 	Utils::Logger::Info("Using kqueue backend");
 
 	// English: Initialize provider
@@ -206,7 +206,7 @@ void macOSNetworkEngine::AcceptLoop()
 
 		// English: Set async provider so session can queue sends via EVFILT_WRITE
 		// 한글: EVFILT_WRITE를 통해 세션이 송신을 큐에 넣을 수 있도록 async 공급자 설정
-		session->SetAsyncProvider(mProvider.get());
+		session->SetAsyncProvider(mProvider);
 
 		// English: Update stats (atomic)
 		// 한글: 통계 업데이트 (atomic)

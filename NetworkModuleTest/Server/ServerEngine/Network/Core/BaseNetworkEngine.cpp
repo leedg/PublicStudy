@@ -2,6 +2,7 @@
 // 한글: 기본 NetworkEngine 구현
 
 #include "BaseNetworkEngine.h"
+#include "SessionPool.h"
 #include "../../Utils/Logger.h"
 #include "../../Utils/Timer.h"
 
@@ -36,6 +37,14 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 	mPort = port;
 	mMaxConnections = maxConnections;
 	mStats.startTime = Utils::Timer::GetCurrentTimestamp();
+
+	// English: Initialize session pool (one-time, allocates all session slots).
+	// 한글: 세션 풀 초기화 (1회, 모든 세션 슬롯 사전 할당).
+	if (!SessionPool::Instance().Initialize(maxConnections))
+	{
+		Utils::Logger::Error("SessionPool initialization failed");
+		return false;
+	}
 
 	// English: Call platform-specific initialization
 	// 한글: 플랫폼별 초기화 호출

@@ -136,9 +136,13 @@ class BaseNetworkEngine : public INetworkEngine
 	// 한글: 공통 멤버 변수
 	// =====================================================================
 
-	// English: Async I/O provider (platform-specific backend)
-	// 한글: 비동기 I/O 공급자 (플랫폼별 백엔드)
-	std::unique_ptr<AsyncIO::AsyncIOProvider> mProvider;
+	// English: Async I/O provider (platform-specific backend).
+	//          shared_ptr so that Session objects can hold a copy (via SetAsyncProvider)
+	//          and the provider stays alive until all sessions release their reference.
+	// 한글: 비동기 I/O 공급자 (플랫폼별 백엔드).
+	//       Session이 SetAsyncProvider를 통해 복사본을 보유할 수 있도록 shared_ptr 사용.
+	//       모든 세션이 참조를 해제할 때까지 공급자가 살아있음.
+	std::shared_ptr<AsyncIO::AsyncIOProvider> mProvider;
 
 	// English: Configuration
 	// 한글: 설정

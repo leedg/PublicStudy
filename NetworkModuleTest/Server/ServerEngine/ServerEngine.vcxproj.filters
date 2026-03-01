@@ -203,9 +203,6 @@
     <ClInclude Include="Interfaces\IMessageHandler.h">
       <Filter>Interfaces</Filter>
     </ClInclude>
-    <ClInclude Include="Interfaces\IMessageHandler_old.h">
-      <Filter>Interfaces</Filter>
-    </ClInclude>
     <ClInclude Include="Interfaces\IBufferPool.h">
       <Filter>Interfaces</Filter>
     </ClInclude>

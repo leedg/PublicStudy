@@ -11,7 +11,9 @@
 
 #include "AsyncIOProvider.h"
 
-#if defined(__linux__) && defined(HAVE_LIBURING)
+#if defined(__linux__) && (defined(HAVE_IO_URING) || defined(HAVE_LIBURING))
+#include "../../Core/Memory/IOUringBufferPool.h"
+#include "../../Core/Memory/StandardBufferPool.h"
 #include <liburing.h>
 #include <map>
 #include <memory>
@@ -110,13 +112,13 @@ class IOUringAsyncIOProvider : public AsyncIOProvider
 	// 한글: 대기 작업 추적
 	struct PendingOperation
 	{
-		RequestContext mContext; // English: User request context / 한글: 사용자
-								 // 요청 컨텍스트
-		AsyncIOType mType;    // English: Operation type / 한글: 작업 타입
-		SocketHandle mSocket; // English: Socket handle / 한글: 소켓 핸들
-		std::unique_ptr<uint8_t[]> mBuffer; // English: Dynamically allocated
-											// buffer / 한글: 동적 할당 버퍼
-		uint32_t mBufferSize; // English: Buffer size / 한글: 버퍼 크기
+		RequestContext mContext;      // English: User request context / 한글: 사용자 요청 컨텍스트
+		AsyncIOType    mType;         // English: Operation type / 한글: 작업 타입
+		SocketHandle   mSocket;       // English: Socket handle / 한글: 소켓 핸들
+		void*          mCallerBuffer; // English: Recv destination (nullptr for send) / 한글: 수신 목적지 버퍼
+		void*          mPoolSlotPtr;  // English: Pool slot pointer (recv fixed buf or send buf) / 한글: 풀 슬롯 포인터
+		uint32_t       mBufferSize;   // English: Buffer size / 한글: 버퍼 크기
+		size_t         mPoolSlotIndex;// English: Pool slot index for Release() / 한글: Release() 용 슬롯 인덱스
 	};
 
 	// English: Registered buffer info
@@ -155,6 +157,16 @@ class IOUringAsyncIOProvider : public AsyncIOProvider
 	bool mSupportsDirectDescriptors; // English: Direct descriptor support /
 									 // 한글: 직접 디스크립터 지원
 
+	// English: Pre-allocated buffer pools.
+	//          mRecvPool: fixed-buffer recv (io_uring_register_buffers); falls
+	//          back to non-fixed if kernel doesn't support registration.
+	//          mSendPool: standard aligned pool for staging send data.
+	// 한글: 사전 할당 버퍼 풀.
+	//       mRecvPool: 고정 버퍼 recv (io_uring_register_buffers); 커널 미지원 시 일반 모드 폴백.
+	//       mSendPool: 송신 데이터 스테이징용 표준 정렬 풀.
+	Core::Memory::IOUringBufferPool  mRecvPool;
+	Core::Memory::StandardBufferPool mSendPool;
+
 	// =====================================================================
 	// English: Helper Methods
 	// 한글: 헬퍼 메서드
@@ -173,4 +185,4 @@ class IOUringAsyncIOProvider : public AsyncIOProvider
 } // namespace AsyncIO
 } // namespace Network
 
-#endif // defined(__linux__) && defined(HAVE_LIBURING)
+#endif // defined(__linux__) && (defined(HAVE_IO_URING) || defined(HAVE_LIBURING))

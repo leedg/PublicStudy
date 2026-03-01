@@ -28,18 +28,11 @@ public:
     virtual size_t PoolSize()  const = 0;
     virtual size_t FreeCount() const = 0;
 
-#if defined(_WIN32)
-    // RIO-specific (only RIOBufferPool overrides; base returns sentinel values)
-    virtual uint64_t GetRIOBufferId(size_t /*index*/) const { return UINT64_MAX; }
-    virtual size_t   GetRIOOffset  (size_t /*index*/) const { return SIZE_MAX;   }
-#endif
-
-#if defined(__linux__)
-    // io_uring-specific (only IOUringBufferPool overrides; base returns sentinel values)
-    virtual int  GetFixedBufferIndex(size_t /*index*/) const { return -1;    }
-    virtual bool IsFixedBufferMode()                   const { return false; }
-#endif
 };
+
+// Platform-specific helpers are provided as non-virtual concrete methods
+// in the derived classes (RIOBufferPool, IOUringBufferPool) only.
+// Do NOT add platform #if virtual methods here — use the concrete type directly.
 
 } // namespace Memory
 } // namespace Core
