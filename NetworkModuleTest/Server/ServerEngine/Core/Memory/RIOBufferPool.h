@@ -40,9 +40,10 @@ public:
     size_t PoolSize()  const override { return mPoolSize; }
     size_t FreeCount() const override;
 
-    // IBufferPool RIO extensions
-    uint64_t GetRIOBufferId(size_t index) const override;
-    size_t   GetRIOOffset  (size_t index) const override { return index * mSlotSize; }
+    // English: RIO concrete extensions (non-virtual — use concrete type directly).
+    // 한글: RIO 구체 확장 메서드 (비-가상 — 구체 타입으로 직접 호출).
+    uint64_t GetRIOBufferId(size_t index) const;
+    size_t   GetRIOOffset  (size_t index) const { return index * mSlotSize; }
 
     // Concrete helpers — used by RIOAsyncIOProvider directly (no virtual dispatch overhead)
     RIO_BUFFERID GetSlabId()           const { return mSlabId; }

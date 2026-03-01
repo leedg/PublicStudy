@@ -4,6 +4,7 @@
 // 한글: 세션 생성/추적/제거를 위한 세션 관리자
 
 #include "Session.h"
+#include <functional>
 #include <unordered_map>
 
 namespace Network::Core
@@ -44,6 +45,15 @@ class SessionManager
 	// 한글: 모든 세션 종료
 	void CloseAllSessions();
 
+	// English: Register a one-time configurator invoked inside CreateSession, after
+	//          Initialize() and before PostRecv().  Use this to attach per-session
+	//          callbacks (e.g. SetOnRecv) so that no recv completion can fire before
+	//          the callback is set.  Replaces the removed SessionFactory pattern.
+	// 한글: CreateSession 내에서 Initialize() 이후, PostRecv() 이전에 한 번 호출되는
+	//       설정 콜백 등록. 세션별 콜백(예: SetOnRecv)을 첫 recv 완료 이전에 안전하게
+	//       등록하기 위해 사용. 제거된 SessionFactory 패턴을 대체.
+	void SetSessionConfigurator(std::function<void(Session *)> configurator);
+
   private:
 	SessionManager() = default;
 	~SessionManager() = default;
@@ -57,6 +67,7 @@ class SessionManager
 	std::unordered_map<Utils::ConnectionId, SessionRef> mSessions;
 	mutable std::mutex mMutex;
 	std::atomic<Utils::ConnectionId> mNextSessionId{1};
+	std::function<void(Session *)> mSessionConfigurator;
 };
 
 } // namespace Network::Core

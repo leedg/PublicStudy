@@ -306,3 +306,85 @@
 `C:\MyGithub\PublicStudy\NetworkModuleTest\Doc\Performance\Logs\20260301_163405`
 
 ---
+
+---
+
+## ?ㅽ뻾: 20260301_224424
+
+- **鍮뚮뱶**: x64 Release
+- **?쒓컖**: 2026-03-01 22:44:24
+- **Phase**: 0
+- **Ramp ?④퀎**: 10, 100, 500, 1000 clients
+- **媛??④퀎 ?좎?**: 30珥?n
+### Phase 0 ??Smoke Test (Release, 1 client, 10s)
+
+| ??ぉ | 媛?|
+|------|-----|
+| 寃곌낵 | **PASS** |
+| ?곌껐 ??| 1 |
+| RTT min=4ms avg=4ms max=4ms Pong=1 | |
+| ?쒕쾭 由ъ냼??| WS=342.5MB Handles=141 Threads=28 |
+| DB 由ъ냼??| WS=54.2MB Handles=136 Threads=29 |
+| [ERROR] ??| 0 |
+| ?쒕쾭 ?뺤긽 醫낅즺 | True |
+| ?대씪?댁뼵???뺤긽 醫낅즺 | True |
+
+### ?대쾲 ?ㅽ뻾 ?곸꽭 濡쒓렇 ?꾩튂
+
+`C:\MyGithub\PublicStudy\NetworkModuleTest\Doc\Performance\Logs\20260301_224424`
+
+---
+
+---
+
+## ?ㅽ뻾: 20260301_224451
+
+- **鍮뚮뱶**: x64 Release
+- **?쒓컖**: 2026-03-01 22:44:51
+- **Phase**: 2
+- **Ramp ?④퀎**: 10 clients
+- **媛??④퀎 ?좎?**: 30珥?n
+### Phase 2 ???쇳룷癒쇱뒪 Ramp-up (x64 Release, 30s/?④퀎)
+
+| ?④퀎 | 紐⑺몴 ?곌껐 | ?ㅼ젣 ?곌껐 | [ERROR] ??| Server WS(MB) | Server Handles | RTT (?대씪?댁뼵??1踰? | ?먯젙 |
+|------|-----------|-----------|------------|---------------|----------------|----------------------|------|
+| 10 | 10 | 10 | 0 | 342.4 | 150 | RTT min=0ms avg=0ms max=1ms Pong=5 | **PASS** |
+
+### ?대쾲 ?ㅽ뻾 ?곸꽭 濡쒓렇 ?꾩튂
+
+`C:\MyGithub\PublicStudy\NetworkModuleTest\Doc\Performance\Logs\20260301_224451`
+
+---
+
+---
+
+## ?ㅽ뻾: 20260301_224544
+
+- **鍮뚮뱶**: x64 Release
+- **?쒓컖**: 2026-03-01 22:45:44
+- **Phase**: 1
+- **Ramp ?④퀎**: 10, 100, 500, 1000 clients
+- **媛??④퀎 ?좎?**: 30珥?n
+### Phase 1 ???덉젙???뚯뒪??n
+#### 1-A: Graceful Shutdown (2 clients, 30s)
+
+| ??ぉ | 媛?|
+|------|-----|
+| 寃곌낵 | **PASS** |
+| ?곌껐???대씪?댁뼵????| 2 |
+| ?쒕쾭 由ъ냼??(醫낅즺 吏곸쟾) | WS=342.4MB Handles=142 Threads=26 |
+| DBTaskQueue ?쒕젅??| Yes |
+| [ERROR] ??| 0 |
+
+#### 1-B: Forced Shutdown + WAL Recovery
+
+| ??ぉ | 媛?|
+|------|-----|
+| WAL ?곹깭 (?ш린???? | Clean |
+| ?대씪?댁뼵???먮룞 ?ъ뿰寃??쒕룄 | Yes |
+
+### ?대쾲 ?ㅽ뻾 ?곸꽭 濡쒓렇 ?꾩튂
+
+`C:\MyGithub\PublicStudy\NetworkModuleTest\Doc\Performance\Logs\20260301_224544`
+
+---

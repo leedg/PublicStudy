@@ -15,6 +15,11 @@ SessionManager &SessionManager::Instance()
 	return instance;
 }
 
+void SessionManager::SetSessionConfigurator(std::function<void(Session *)> configurator)
+{
+	mSessionConfigurator = std::move(configurator);
+}
+
 SessionRef SessionManager::CreateSession(SocketHandle socket)
 {
 	SessionRef session = SessionPool::Instance().Acquire();
@@ -26,6 +31,14 @@ SessionRef SessionManager::CreateSession(SocketHandle socket)
 
 	Utils::ConnectionId id = GenerateSessionId();
 	session->Initialize(id, socket);
+
+	// English: Apply application-level configuration before PostRecv() is issued.
+	//          Called here (before the session enters mSessions) so recv completions
+	//          cannot fire before the callback is set.
+	// 한글: PostRecv() 이전에 애플리케이션 수준 설정 적용.
+	//       mSessions에 등록되기 전 호출하므로 recv 완료보다 먼저 실행됨을 보장.
+	if (mSessionConfigurator)
+		mSessionConfigurator(session.get());
 
 	{
 		NET_LOCK_GUARD(mMutex);

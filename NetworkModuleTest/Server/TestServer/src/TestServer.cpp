@@ -31,7 +31,8 @@ namespace Network::TestServer
     // =============================================================================
 
     TestServer::TestServer()
-        : mIsRunning(false)
+        : mPacketHandler(std::make_unique<ClientPacketHandler>())
+        , mIsRunning(false)
         , mPort(0)
 #ifdef _WIN32
         , mDBServerSocket(INVALID_SOCKET)
@@ -105,12 +106,26 @@ namespace Network::TestServer
             return false;
         }
 
-        // English: Set Session factory. MakeClientSessionFactory() captures a weak_ptr
-        //          to mDBTaskQueue for constructor injection, replacing the previous
-        //          static class variable pattern (hidden global state).
-        // 한글: 세션 팩토리 설정. MakeClientSessionFactory()가 mDBTaskQueue의 weak_ptr을
-        //       캡처해 생성자 주입을 수행하며, 이전 static 클래스 변수(숨겨진 전역 상태)를 대체.
-        Core::SessionManager::Instance().Initialize(MakeClientSessionFactory());
+        // English: Register per-session recv callback via SessionConfigurator.
+        //          Called inside CreateSession before PostRecv() so the first recv
+        //          completion is guaranteed to see the callback (no race).
+        //          ClientPacketHandler is shared (stateless after ctor) and thread-safe.
+        // 한글: SessionConfigurator로 세션별 recv 콜백 등록.
+        //       CreateSession 내에서 PostRecv() 이전에 호출되므로 첫 recv 완료가
+        //       반드시 콜백을 인식함 (경합 없음). ClientPacketHandler는 공유하며
+        //       생성 후 stateless — 스레드 안전.
+        {
+            ClientPacketHandler* handlerPtr = mPacketHandler.get();
+            Core::SessionManager::Instance().SetSessionConfigurator(
+                [handlerPtr](Core::Session* session)
+                {
+                    session->SetOnRecv(
+                        [handlerPtr](Core::Session* s, const char* data, uint32_t size)
+                        {
+                            handlerPtr->ProcessPacket(s, data, size);
+                        });
+                });
+        }
 
         // English: Create and initialize client network engine using factory (auto-detect best backend)
         // Korean: 팩토리를 사용하여 클라이언트 네트워크 엔진 생성 및 초기화 (최적 백엔드 자동 감지)
@@ -363,32 +378,56 @@ namespace Network::TestServer
     void TestServer::OnClientConnectionEstablished(const NetworkEventData& eventData)
     {
         Logger::Info("Client connected - Connection: " + std::to_string(eventData.connectionId));
+
+        // English: Record connect time asynchronously.
+        //          Replaces ClientSession::OnConnected / AsyncRecordConnectTime.
+        // 한글: 접속 시간 비동기 기록. ClientSession::OnConnected / AsyncRecordConnectTime 대체.
+        if (mDBTaskQueue && mDBTaskQueue->IsRunning())
+        {
+            auto now = std::chrono::system_clock::now();
+            auto rawTime = std::chrono::system_clock::to_time_t(now);
+            std::tm localTime{};
+#ifdef _WIN32
+            localtime_s(&localTime, &rawTime);
+#else
+            localtime_r(&rawTime, &localTime);
+#endif
+            char timeStr[64] = {0};
+            std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &localTime);
+            mDBTaskQueue->RecordConnectTime(eventData.connectionId, timeStr);
+        }
     }
 
     void TestServer::OnClientConnectionClosed(const NetworkEventData& eventData)
     {
         Logger::Info("Client disconnected - Connection: " + std::to_string(eventData.connectionId));
+
+        // English: Record disconnect time only during normal operation.
+        //          Stop() already records disconnect for all active sessions before
+        //          engine teardown, so we skip during shutdown to avoid duplicates.
+        // 한글: 정상 운영 중에만 접속 종료 시간 기록.
+        //       Stop()이 이미 엔진 종료 전에 모든 활성 세션의 종료 기록을 큐잉하므로,
+        //       종료 중에는 중복 방지를 위해 건너뜀.
+        if (mIsRunning.load() && mDBTaskQueue && mDBTaskQueue->IsRunning())
+        {
+            auto now = std::chrono::system_clock::now();
+            auto rawTime = std::chrono::system_clock::to_time_t(now);
+            std::tm localTime{};
+#ifdef _WIN32
+            localtime_s(&localTime, &rawTime);
+#else
+            localtime_r(&rawTime, &localTime);
+#endif
+            char timeStr[64] = {0};
+            std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &localTime);
+            mDBTaskQueue->RecordDisconnectTime(eventData.connectionId, timeStr);
+        }
     }
 
     void TestServer::OnClientDataReceived(const NetworkEventData& eventData)
     {
         Logger::Debug("Received " + std::to_string(eventData.dataSize) +
             " bytes from client Connection: " + std::to_string(eventData.connectionId));
-    }
-
-    Core::SessionFactory TestServer::MakeClientSessionFactory()
-    {
-        // English: Capture a weak_ptr — if mDBTaskQueue is destroyed before a late IOCP
-        //          completion fires, weak_ptr::lock() in ClientSession returns nullptr and
-        //          the callback skips the enqueue safely (prevents use-after-free).
-        // 한글: weak_ptr 캡처 — 늦은 IOCP 완료 이전에 mDBTaskQueue가 소멸되어도
-        //       ClientSession::weak_ptr::lock()이 nullptr을 반환하고 안전하게 건너뜀
-        //       (use-after-free 방지).
-        std::weak_ptr<DBTaskQueue> weakQueue = mDBTaskQueue;
-        return [weakQueue]() -> Core::SessionRef
-        {
-            return std::make_shared<ClientSession>(weakQueue);
-        };
     }
 
     void TestServer::DisconnectFromDBServer()

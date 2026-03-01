@@ -54,7 +54,7 @@ void SendBufferPool::Shutdown()
     mPoolSize = 0;
 }
 
-Core::Memory::BufferSlot SendBufferPool::Acquire()
+::Core::Memory::BufferSlot SendBufferPool::Acquire()
 {
     std::lock_guard<std::mutex> lock(mMutex);
 
@@ -64,7 +64,7 @@ Core::Memory::BufferSlot SendBufferPool::Acquire()
     const size_t idx = mFreeSlots.back();
     mFreeSlots.pop_back();
 
-    Core::Memory::BufferSlot slot;
+    ::Core::Memory::BufferSlot slot;
     slot.ptr      = static_cast<char *>(mStorage) + idx * mSlotSize;
     slot.index    = idx;
     slot.capacity = mSlotSize;

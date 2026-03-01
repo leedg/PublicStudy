@@ -7,6 +7,7 @@
 #include "AsyncIOProvider.h"
 #include "PacketDefine.h"
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -160,7 +161,20 @@ class Session : public std::enable_shared_from_this<Session>
 	// 한글: 가상 이벤트 핸들러 (파생 클래스에서 오버라이드)
 	virtual void OnConnected() {}
 	virtual void OnDisconnected() {}
-	virtual void OnRecv(const char *data, uint32_t size) {}
+	virtual void OnRecv(const char *data, uint32_t size)
+	{
+		if (mOnRecvCb) mOnRecvCb(this, data, size);
+	}
+
+	// English: Per-session recv callback — set once in SessionManager::CreateSession via
+	//          SetSessionConfigurator, before PostRecv() is issued. Cleared in Reset().
+	//          Signature includes Session* so the handler can call session->Send() without
+	//          capturing a raw pointer in the closure.
+	// 한글: 세션별 recv 콜백 — SessionManager::CreateSession에서 PostRecv() 이전에 1회 설정.
+	//       Reset()에서 초기화. Session*를 인자로 포함하여 핸들러가 클로저에 raw ptr를
+	//       캡처하지 않고 session->Send()를 호출할 수 있도록 함.
+	using OnRecvCallback = std::function<void(Session*, const char*, uint32_t)>;
+	void SetOnRecv(OnRecvCallback cb);
 
 	// English: TCP stream reassembly - engine calls this with raw bytes
 	// 한글: TCP 스트림 재조립 - 엔진이 원시 바이트로 이 메서드를 호출
@@ -267,6 +281,14 @@ class Session : public std::enable_shared_from_this<Session>
 	//       mRecvMutex 보호. 디스패치 전 지역 변수와 swap하여
 	//       OnRecv 호출 시 mRecvMutex를 보유하지 않도록 한다.
 	std::vector<char> mRecvBatchBuf;
+
+	// English: Application-level recv callback. Set once before PostRecv() in
+	//          SessionManager::CreateSession (happens-before first recv completion).
+	//          Cleared in Reset() so the slot can be reused without stale captures.
+	// 한글: 애플리케이션 수준 recv 콜백. SessionManager::CreateSession에서
+	//       PostRecv() 이전에 1회 설정 (첫 recv 완료보다 happens-before 보장).
+	//       Reset()에서 초기화하여 스테일 캡처 없이 슬롯 재사용 가능.
+	OnRecvCallback mOnRecvCb;
 };
 
 using SessionRef = std::shared_ptr<Session>;

@@ -22,7 +22,7 @@
 namespace Network::Core
 {
 
-class SendBufferPool : public Core::Memory::IBufferPool
+class SendBufferPool : public ::Core::Memory::IBufferPool
 {
   public:
     // English: Singleton accessor.
@@ -33,7 +33,7 @@ class SendBufferPool : public Core::Memory::IBufferPool
     bool Initialize(size_t poolSize, size_t slotSize) override;
     void Shutdown() override;
 
-    Core::Memory::BufferSlot Acquire() override;
+    ::Core::Memory::BufferSlot Acquire() override;
     void                     Release(size_t index) override;
 
     size_t SlotSize()  const override;

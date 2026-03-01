@@ -99,13 +99,21 @@ namespace Network::DBServer
         mPacketHandler->Initialize(mLatencyManager.get(),
                                    mOrderedTaskQueue.get());
 
-        // English: Set session factory for DB server connections
-        // Korean: DB 서버 연결용 세션 팩토리 설정
-        Core::SessionManager::Instance().Initialize([this]() {
-            auto session = std::make_shared<DBSession>();
-            session->SetPacketHandler(mPacketHandler.get());
-            return session;
-        });
+        // English: Register per-session recv callback via SetSessionConfigurator.
+        //          Replaces the removed SessionFactory pattern.
+        // Korean: SetSessionConfigurator로 세션별 recv 콜백 등록. 제거된 SessionFactory 패턴 대체.
+        {
+            ServerPacketHandler* handlerPtr = mPacketHandler.get();
+            Core::SessionManager::Instance().SetSessionConfigurator(
+                [handlerPtr](Core::Session* session)
+                {
+                    session->SetOnRecv(
+                        [handlerPtr](Core::Session* s, const char* data, uint32_t size)
+                        {
+                            handlerPtr->ProcessPacket(s, data, size);
+                        });
+                });
+        }
 
         // English: Create and initialize network engine using factory (auto-detect best backend)
         // Korean: 팩토리를 사용하여 네트워크 엔진 생성 및 초기화 (최적 백엔드 자동 감지)

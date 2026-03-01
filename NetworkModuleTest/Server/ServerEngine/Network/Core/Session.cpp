@@ -96,9 +96,15 @@ void Session::Reset()
 	mPingSequence.store(0, std::memory_order_relaxed);
 	mIsSending.store(false, std::memory_order_relaxed);
 	mSendQueueSize.store(0, std::memory_order_relaxed);
+	mOnRecvCb = nullptr;
 #ifdef _WIN32
 	mCurrentSendSlotIdx = ~size_t(0);
 #endif
+}
+
+void Session::SetOnRecv(OnRecvCallback cb)
+{
+	mOnRecvCb = std::move(cb);
 }
 
 void Session::Close()

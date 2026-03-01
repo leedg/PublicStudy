@@ -173,7 +173,7 @@ constexpr uint32_t MAX_PACKET_PAYLOAD_SIZE = MAX_PACKET_SIZE - PACKET_HEADER_SIZ
 // ─── 컴파일 타임 불변식 ──────────────────────────────────────────────────────
 static_assert(MAX_PACKET_SIZE > PACKET_HEADER_SIZE,
     "MAX_PACKET_SIZE must be > PACKET_HEADER_SIZE");
-static_assert(MAX_PACKET_SIZE <= std::numeric_limits<uint16_t>::max(),
+static_assert(MAX_PACKET_SIZE <= (std::numeric_limits<uint16_t>::max)(),
     "MAX_PACKET_SIZE exceeds uint16_t; update PacketHeader::size to uint32_t "
     "or reduce MAX_PACKET_SIZE");
 static_assert(MAX_PACKET_SIZE <= SEND_BUFFER_SIZE,
