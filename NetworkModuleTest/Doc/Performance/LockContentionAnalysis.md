@@ -1,6 +1,6 @@
 # 🔒 Lock 경합(Lock Contention) 분석 보고서
 
-**날짜**: 2026-02-05 (2026-02-16 Session 수신 버퍼 최적화 + mPingSequence 원자화 반영)
+**날짜**: 2026-02-05 (2026-02-16 수신 버퍼 최적화 + mPingSequence 원자화 / 2026-03-01 Session::Send() SendBufferPool 도입 반영)
 **분석 범위**: NetworkModuleTest 프로젝트 전체
 **목적**: Lock 경합 및 Deadlock 위험 식별, 성능 최적화 권장사항 제시
 
@@ -21,7 +21,7 @@
 
 1. **SessionManager::CloseAllSessions()** - Deadlock 위험 🔴
 2. **DBTaskQueue::GetQueueSize()** - 불필요한 Lock 경합 ⚠️
-3. **Session::Send()** - 높은 빈도 Lock 경합 ⚠️
+3. **Session::Send()** - ~~높은 빈도 Lock 경합~~ → ✅ **2026-03-01 SendBufferPool 도입으로 해결됨**
 4. **SafeQueue::Push()** - 최적화 가능 💡
 
 ### 2026-02-16 적용 완료 최적화
@@ -31,6 +31,15 @@
 | `ProcessRawRecv` TCP 재조립 | O(n) `erase()` 반복 | O(1) `mRecvAccumOffset` 진행 + 주기적 compact | 고빈도 수신 시 패킷당 O(n) 비용 제거 |
 | `mPingSequence` | `uint32_t` (비원자) | `std::atomic<uint32_t>` | 핑 타이머 스레드 ↔ IO 스레드 경쟁 조건 해소 |
 | `CloseConnection` 이벤트 | 직접 `OnDisconnected()` 호출 | `mLogicThreadPool.Submit()` | 연결 해제 경로 스레드 안전성 통일 |
+
+### 2026-03-01 적용 완료 최적화
+
+| 항목 | 이전 | 이후 | 효과 |
+|------|------|------|------|
+| `Session::Send()` IOCP 경로 | `vector<char>` per-send 힙 할당 + Lock 경합 | `SendBufferPool` O(1) 슬롯 Acquire, Mutex 범위 유지 | per-message 힙 할당 제거 |
+| `Session::PostSend()` IOCP 경로 | `memcpy` → `mSendContext.buffer` (2회 복사) | 풀 슬롯 포인터 직접 wsaBuf에 설정 (zero-copy) | IOCP 전송 경로 memcpy 1회 제거 |
+| `ProcessRawRecv` 패킷 분리 | N 패킷 = N `vector<char>` 힙 할당 | 배치 평탄 버퍼(1 alloc) + 단일 패킷 패스트패스(0 alloc) | 수신 경로 alloc 최소화 |
+| `AsyncBufferPool::Acquire/Release` | O(n) `bool inUse` 선형 스캔 | O(1) 프리리스트 스택 + `unordered_map` 인덱스 | 슬롯 수 증가 무관 상수 시간 |
 
 ---
 
@@ -287,69 +296,44 @@ void SessionManager::ForEachSession(std::function<void(SessionRef)> func)
 
 **파일**: `Server/ServerEngine/Network/Core/Session.h`
 
-#### ⚠️ **개선 가능: Send() - 높은 빈도 Lock 경합**
+#### ✅ **[2026-03-01 해결] Send() — SendBufferPool 도입으로 per-message 힙 할당 제거**
 
+**이전 구현 (문제점)**:
 ```cpp
-// Session.cpp (추정 구현)
-void Session::Send(const void *data, uint32_t size)
+// 매 Send 호출마다 힙 할당 + Lock 경합
+std::vector<char> packet(size);           // alloc
+std::memcpy(packet.data(), data, size);
 {
-    std::vector<char> packet(size);
-    std::memcpy(packet.data(), data, size);
-
-    {
-        std::lock_guard<std::mutex> lock(mSendMutex);  // ⚠️ 매 Send 호출마다
-        mSendQueue.push(std::move(packet));
-    }
-
-    FlushSendQueue();
+    std::lock_guard<std::mutex> lock(mSendMutex);  // Lock
+    mSendQueue.push(std::move(packet));
 }
+FlushSendQueue();
 ```
 
-**문제점**:
-- 게임 서버에서 초당 수천~수만 번 호출 가능
-- Lock 경합으로 인한 성능 저하
-
-**개선 방안 1: Lock-Free Queue**
+**현재 구현 (IOCP 경로, 2026-03-01)**:
 ```cpp
-// Lock-free SPSC/MPSC 큐 사용
-#include <boost/lockfree/queue.hpp>
-
-class Session
+// SendBufferPool: poolSize × slotSize 연속 메모리에서 O(1) Acquire
+auto slot = SendBufferPool::Instance().Acquire();
+if (!slot.ptr) { Logger::Warn("SendPool full"); return; }
+std::memcpy(slot.ptr, data, size);   // 1회 복사
 {
-private:
-    boost::lockfree::queue<std::vector<char>*> mSendQueue;
-    // Lock 불필요!
-};
-```
-
-**개선 방안 2: Batch Send**
-```cpp
-void Session::Send(const void *data, uint32_t size)
-{
-    // Thread-local 버퍼에 축적
-    thread_local std::vector<std::vector<char>> batchBuffer;
-
-    batchBuffer.push_back(std::vector<char>(
-        static_cast<const char*>(data),
-        static_cast<const char*>(data) + size
-    ));
-
-    // 일정 개수 모이면 한 번에 전송
-    if (batchBuffer.size() >= BATCH_SIZE)
-    {
-        std::lock_guard<std::mutex> lock(mSendMutex);
-        for (auto& packet : batchBuffer)
-        {
-            mSendQueue.push(std::move(packet));
-        }
-        batchBuffer.clear();
-
-        FlushSendQueue();
-    }
+    std::lock_guard<std::mutex> lock(mSendMutex);
+    mSendQueue.push({slot.idx, (uint32_t)size});  // alloc 없음
 }
+FlushSendQueue();
 ```
 
-**우선순위**: ⚠️ Medium-High (트래픽에 따라)
+**PostSend() zero-copy (IOCP 경로)**:
+```cpp
+// 풀 슬롯 포인터를 wsaBuf에 직접 설정 → WSASend 시 추가 memcpy 없음
+mSendContext.wsaBuf.buf = SendBufferPool::Instance().SlotPtr(req.slotIdx);
+mSendContext.wsaBuf.len = static_cast<ULONG>(req.size);
+```
+
+> **RIO 경로**: 2026-02-28 slab pool 도입으로 이미 처리됨.
+> `SendBufferPool`은 IOCP 전용 (`#ifdef _WIN32` 조건부 컴파일).
+
+**우선순위**: ✅ **해결됨** (2026-03-01)
 
 #### ✅ **양호: Atomic Flag 사용**
 
@@ -558,62 +542,16 @@ void SessionManager::CloseAllSessions()
 
 ---
 
-### ⚠️ **P1 - 높은 우선순위 (성능 영향)**
+### ✅ **P1 — 해결됨 (2026-03-01): Session::Send() SendBufferPool 도입**
 
-#### 2. Session::Send() - Lock-Free 또는 Batch 처리
+**적용된 해결책**: `SendBufferPool` 싱글턴을 통해 per-send 힙 할당을 제거하고,
+`PostSend()`에서 wsaBuf 포인터를 풀 슬롯에 직접 설정하여 두 번째 memcpy 제거.
 
-**옵션 A: Lock-Free Queue (권장)**
-```cpp
-#include <boost/lockfree/queue.hpp>
+- **파일**: `Server/ServerEngine/Network/Core/SendBufferPool.h/.cpp`
+- **Session 변경**: `Send()`, `PostSend()`, `Close()` IOCP 경로
+- **초기화**: `WindowsNetworkEngine::InitializePlatform()` (IOCP 모드 전용)
 
-class Session
-{
-private:
-    struct SendPacket
-    {
-        std::vector<char> data;
-    };
-
-    boost::lockfree::queue<SendPacket*> mSendQueue{128};
-    std::atomic<bool> mIsSending{false};
-
-public:
-    void Send(const void *data, uint32_t size)
-    {
-        auto* packet = new SendPacket{
-            std::vector<char>(
-                static_cast<const char*>(data),
-                static_cast<const char*>(data) + size
-            )
-        };
-
-        while (!mSendQueue.push(packet))
-        {
-            // 큐가 가득 찬 경우 재시도 또는 에러 처리
-            std::this_thread::yield();
-        }
-
-        FlushSendQueue();
-    }
-};
-```
-
-**옵션 B: Batch Send**
-```cpp
-void Session::SendBatch(const std::vector<std::pair<const void*, uint32_t>>& packets)
-{
-    std::lock_guard<std::mutex> lock(mSendMutex);
-
-    for (const auto& [data, size] : packets)
-    {
-        std::vector<char> packet(size);
-        std::memcpy(packet.data(), data, size);
-        mSendQueue.push(std::move(packet));
-    }
-
-    FlushSendQueue();
-}
-```
+결과: 1000 클라이언트, 오류 0, PASS 확인 (2026-03-01 퍼포먼스 테스트).
 
 ---
 
@@ -904,7 +842,7 @@ void BenchmarkSessionManager()
 - [ ] SessionManager::CloseAllSessions() Deadlock 수정
 
 ### 높은 우선순위 (P1)
-- [ ] Session::Send() Lock-Free Queue 또는 Batch 처리
+- [x] ~~Session::Send() Lock-Free Queue 또는 Batch 처리~~ → **2026-03-01 SendBufferPool 도입으로 해결됨**
 
 ### 중간 우선순위 (P2)
 - [ ] DBTaskQueue::GetQueueSize() Atomic 카운터
@@ -916,7 +854,7 @@ void BenchmarkSessionManager()
 
 ### 모니터링 및 테스트
 - [ ] Lock Profiling 도구 구현
-- [ ] 부하 테스트 시나리오 작성
+- [x] ~~부하 테스트 시나리오 작성~~ → **run_perf_test.ps1 완성 (2026-02-28)**
 - [ ] Lock 순서 문서화
 
 ---

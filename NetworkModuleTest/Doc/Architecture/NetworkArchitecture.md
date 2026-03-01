@@ -79,7 +79,9 @@ Server/ServerEngine/
 │   │   ├── NetworkEngineFactory.cpp     # CreateNetworkEngine
 │   │   ├── AsyncIOProvider.h            # low-level I/O interface
 │   │   ├── Session.h/.cpp
-│   │   └── SessionManager.h/.cpp
+│   │   ├── SessionManager.h/.cpp
+│   │   ├── SendBufferPool.h/.cpp        # IOCP 전송 풀 (2026-03-01 추가)
+│   │   └── PacketDefine.h
 │   └── Platforms/
 │       ├── WindowsNetworkEngine.h/.cpp
 │       ├── LinuxNetworkEngine.h/.cpp
@@ -87,12 +89,13 @@ Server/ServerEngine/
 └── Platforms/
     ├── Windows/
     │   ├── IocpAsyncIOProvider.*
-    │   └── RIOAsyncIOProvider.*
+    │   └── RIOAsyncIOProvider.*         # slab pool (2026-02-28 추가)
     ├── Linux/
     │   ├── EpollAsyncIOProvider.*
     │   └── IOUringAsyncIOProvider.*
-    └── macOS/
-        └── KqueueAsyncIOProvider.*
+    ├── macOS/
+    │   └── KqueueAsyncIOProvider.*
+    └── AsyncBufferPool.h/.cpp           # O(1) free-list (2026-03-01 개선)
 ```
 
 ---
@@ -144,10 +147,47 @@ provider->RecvAsync(socket, buffer, size, context, 0);
 
 ---
 
+## SendBufferPool / IOCP 전송 버퍼 풀
+
+**파일**: `Network/Core/SendBufferPool.h/.cpp`
+**추가일**: 2026-03-01
+
+IOCP 전송 경로의 per-send 힙 할당을 제거하기 위한 싱글턴 풀.
+
+```
+┌─────────────────────────────────────┐
+│ SendBufferPool (singleton)          │
+│  poolSize × slotSize 연속 메모리    │
+│  O(1) Acquire / O(1) Release        │
+├─────────────────────────────────────┤
+│ Session::Send()  →  Acquire slot    │
+│   memcpy data → slot (1회 복사)     │
+│ Session::PostSend() →              │
+│   wsaBuf.buf = slot ptr (zero-copy) │
+│ IOCP 완료 →  Release slot          │
+└─────────────────────────────────────┘
+```
+
+- **RIO 경로**: `RIOAsyncIOProvider` 내부 slab pool 사용 (별개)
+- **초기화**: `WindowsNetworkEngine::InitializePlatform()` (IOCP 모드만)
+- **슬롯 수**: `maxConnections × 4` (소켓당 동시 4 전송 기준)
+
+---
+
 ## Current Status / 현재 상태
 
-- **Windows**: primary development/test path
+- **Windows**: primary development/test path (RIO/IOCP 모두 1000 클라이언트 PASS)
 - **Linux/macOS**: 기본 send/recv 경로 구현 완료, 테스트/검증 필요
+
+### 최근 성능 최적화 이력 (Windows)
+
+| 날짜 | 항목 | 효과 |
+|------|------|------|
+| 2026-02-16 | ProcessRawRecv O(1) 오프셋 기반 TCP 재조립 | 패킷당 O(n) 제거 |
+| 2026-02-28 | RIOAsyncIOProvider slab pool (WSA 10055 수정) | 1000 동접 PASS |
+| 2026-03-01 | AsyncBufferPool O(1) 프리리스트 | 슬롯 탐색 O(n)→O(1) |
+| 2026-03-01 | ProcessRawRecv 배치 버퍼 + 패스트패스 | alloc N→1/0 |
+| 2026-03-01 | SendBufferPool zero-copy IOCP 전송 | per-send alloc 제거 |
 
 ---
 
@@ -155,6 +195,7 @@ provider->RecvAsync(socket, buffer, size, context, 0);
 
 - **NetworkEngine**: production-facing server abstraction
 - **AsyncIOProvider**: low-level, reusable async I/O building block
+- **SendBufferPool**: IOCP 전용 zero-copy 전송 버퍼 관리자
 
 Choose the layer that fits your use case.
 

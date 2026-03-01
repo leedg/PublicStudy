@@ -375,3 +375,63 @@ DB 레이어는 `IDatabase` / `IStatement` 인터페이스 기반으로 구현�
 - `Server/DBServer/src/OrderedTaskQueue.cpp`
 - `Server/DBServer/src/ServerLatencyManager.cpp`
 - `Server/DBServer/src/DBServer.cpp` (대체/실험 경로)
+
+---
+
+## 11. 업데이트 이력 (보고서 작성 이후)
+
+### 11.1 2026-02-28 — RIO slab pool 도입 (WSA 10055 수정)
+
+**문제**: `RIOAsyncIOProvider`가 소켓 연결마다 `RIORegisterBuffer`를 호출하여
+Windows Non-Paged Pool을 소진 → 1000 클라이언트에서 WSA 10055 (`ENOBUFS`) 발생
+
+**변경 내용**:
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `RIOAsyncIOProvider.h/.cpp` | per-I/O 등록 폐지, `Initialize()`에서 recv·send 2개 slab 사전 등록 (VirtualAlloc + RIORegisterBuffer 각 1회) |
+| `NetworkTypes.h` | `MAX_CONNECTIONS = 1000` (10000 → 1000) |
+| `WindowsNetworkEngine.cpp` | CQ 깊이 = `effectiveMax * 2 + 64` 동적 계산 |
+
+**결과**: 1000/1000 연결 PASS, 오류 0 (x64 Release, 퍼포먼스 테스트 2회 확인)
+
+---
+
+### 11.2 2026-03-01 — 메모리 풀 3단계 추가 최적화
+
+**배경**: RIO slab pool 도입 이후 남아있던 IOCP 경로 및 공용 풀 비효율 3곳 개선
+
+#### 변경 1: AsyncBufferPool O(1) 프리리스트
+
+**파일**: `Platforms/AsyncBufferPool.h/.cpp`
+
+- 기존: `Acquire()` / `Release()` 모두 O(n) 선형 탐색
+- 변경: `vector<size_t> mFreeIndices` 스택(O(1) pop/push) + `unordered_map<int64_t,size_t> mBufferIdToIndex`(O(1) 조회)
+
+#### 변경 2: Session::ProcessRawRecv 배치 버퍼
+
+**파일**: `Network/Core/Session.cpp`
+
+- 기존: 완성 패킷마다 `vector<char>` 생성 → N 패킷 = N 힙 alloc
+- 변경: 단일 패킷 패스트패스 (0 alloc) + 일반 경로 배치 평탄 버퍼 (1 alloc)
+
+#### 변경 3: SendBufferPool (IOCP 전송 버퍼 풀)
+
+**파일**: `Network/Core/SendBufferPool.h/.cpp` (신규)
+
+- 기존 IOCP Send 경로: `vector<char>` per-send 힙 alloc + 2회 memcpy
+- 변경: 풀 슬롯 Acquire(O(1)) → 1회 memcpy → wsaBuf 포인터 직접 설정(zero-copy WSASend)
+
+#### 퍼포먼스 테스트 결과 (2026-03-01)
+
+`run_perf_test.ps1 -Phase all -RampClients @(10,100,500,1000) -SustainSec 30 -BinMode Release`
+
+| 단계 | 목표 | 실제 | 오류 | Server WS | 판정 |
+|------|------|------|------|-----------|------|
+| 10   | 10   | 10   | 0    | 178.9 MB  | **PASS** |
+| 100  | 100  | 100  | 0    | 180.6 MB  | **PASS** |
+| 500  | 500  | 500  | 0    | 188 MB    | **PASS** |
+| 1000 | 1000 | 1000 | 0    | 193.7 MB  | **PASS** |
+
+> 상세 로그: `Doc/Performance/Logs/20260301_111832/`
+> 누적 이력: `Doc/Performance/Logs/PERF_HISTORY.md`
