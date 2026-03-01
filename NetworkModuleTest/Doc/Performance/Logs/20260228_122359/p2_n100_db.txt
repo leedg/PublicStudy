@@ -1,0 +1,81 @@
+====================================
+  TestDBServer - Database Server
+====================================
+[12:25:49] [INFO] Initializing TestDBServer on port 8002
+[12:25:49] [INFO] Initializing ServerLatencyManager...
+[12:25:49] [INFO] ServerLatencyManager initialized successfully
+[12:25:49] [INFO] OrderedTaskQueue: initialized with 4 workers
+[12:25:49] [INFO] OrderedTaskQueue initialized successfully
+[12:25:49] [INFO] SessionManager initialized
+[12:25:49] [INFO] Windows RIO supported, using RIO backend (auto)
+[12:25:49] [INFO] WindowsNetworkEngine created with mode: RIO
+[12:25:49] [INFO] Winsock initialized (version 2.2)
+[12:25:49] [INFO] Using RIO backend
+[12:25:49] [INFO] Listen socket created and bound to port 8002
+[12:25:49] [INFO] BaseNetworkEngine initialized on port 8002
+[12:25:49] [INFO] TestDBServer initialized on port 8002
+[12:25:49] [INFO] Started 16 worker threads + 1 accept thread
+[12:25:49] [INFO] BaseNetworkEngine started
+[12:25:49] [INFO] TestDBServer started
+[12:25:49] [INFO] TestDBServer is running. Press Ctrl+C to stop.
+[12:25:49] [INFO] Accept thread started
+[12:25:51] [INFO] Session initialized - ID: 1
+[12:25:51] [INFO] Session created - ID: 1, Total: 1
+[12:25:51] [INFO] Client connected - IP: 127.0.0.1:55690 (Session 1)
+[12:25:51] [INFO] DBSession connected - ID: 1
+[12:25:51] [INFO] Game server connected - Connection: 1
+[12:25:51] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 1
+[12:25:56] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 2
+[12:26:01] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 3
+[12:26:06] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 4
+[12:26:11] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 5
+[12:26:11] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[12:26:11] [INFO] Ping time saved for ServerId: 1
+[12:26:16] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 6
+[12:26:21] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 7
+[12:26:26] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 8
+[12:26:31] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 9
+[12:26:36] [INFO] [DBServer] Ping received (every 10th) - Seq: 10, Latency: 1ms
+[12:26:36] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 10
+[12:26:36] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[12:26:36] [INFO] Ping time saved for ServerId: 1
+[12:26:41] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 11
+[12:26:46] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 12
+[12:26:51] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 13
+[12:26:56] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 14
+[12:27:01] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[12:27:01] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 15
+[12:27:01] [INFO] Ping time saved for ServerId: 1
+[12:27:06] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 16
+[12:27:11] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 17
+[12:27:16] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 18
+[12:27:21] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 19
+[12:27:26] [INFO] [DBServer] Ping received (every 10th) - Seq: 20, Latency: 0ms
+[12:27:26] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[12:27:26] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 20
+[12:27:26] [INFO] Ping time saved for ServerId: 1
+[12:27:31] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 21
+[12:27:36] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 22
+[12:27:41] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 23
+[12:27:46] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 24
+[12:27:46] [INFO] DBSession disconnected - ID: 1
+[12:27:46] [INFO] Game server disconnected - Connection: 1
+[12:27:46] [INFO] Session closed - ID: 1
+[12:27:46] [INFO] Session removed - ID: 1, Remaining: 0
+[12:27:47] [INFO] Shutdown event signaled - stopping DBServer
+[12:27:47] [INFO] Shutting down TestDBServer...
+[12:27:47] [INFO] Accept thread stopped
+[12:27:47] [INFO] All I/O threads stopped
+[12:27:47] [INFO] All sessions closed - Count: 0
+[12:27:47] [INFO] WindowsNetworkEngine platform shutdown complete
+[12:27:47] [INFO] BaseNetworkEngine stopped
+[12:27:47] [INFO] Shutting down ordered task queue...
+[12:27:47] [INFO] Shutting down OrderedTaskQueue...
+[12:27:47] [INFO] OrderedTaskQueue: shutdown complete - submitted=28, completed=28, failed=0, rejected=0
+[12:27:47] [INFO] OrderedTaskQueue shutdown complete - Enqueued: 28, Processed: 28, Failed: 0
+[12:27:47] [INFO] OrderedTaskQueue statistics - Enqueued: 28, Processed: 28
+[12:27:47] [INFO] Shutting down ServerLatencyManager...
+[12:27:47] [INFO] ServerLatencyManager shut down
+[12:27:47] [INFO] TestDBServer stopped
+[12:27:47] [INFO] TestDBServer stopped.
+Server shutdown complete.

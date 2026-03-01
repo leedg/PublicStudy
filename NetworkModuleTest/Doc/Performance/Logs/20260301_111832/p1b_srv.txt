@@ -1,0 +1,33 @@
+====================================
+  TestServer - IOCP Game Server
+====================================
+[11:19:25] [INFO] Initializing server on port 9000
+[11:19:25] [INFO] TestServer: using MockDatabase for DBTaskQueue
+[11:19:25] [INFO] Initializing DBTaskQueue with 1 worker threads
+[11:19:25] [INFO] DBTaskQueue: DB tables ensured (SessionConnectLog, SessionDisconnectLog, PlayerData)
+[11:19:25] [INFO] WAL: Clean startup (no pending tasks to recover)
+[11:19:25] [INFO] DBTaskQueue initialized successfully
+[11:19:25] [INFO] SessionManager initialized
+[11:19:25] [INFO] Windows RIO supported, using RIO backend (auto)
+[11:19:25] [INFO] DBTaskQueue worker thread started
+[11:19:25] [INFO] WindowsNetworkEngine created with mode: RIO
+[11:19:25] [INFO] Winsock initialized (version 2.2)
+[11:19:25] [INFO] Using RIO backend
+[11:19:25] [INFO] Listen socket created and bound to port 9000
+[11:19:25] [INFO] BaseNetworkEngine initialized on port 9000
+[11:19:25] [INFO] TestServer initialized on port 9000
+[11:19:25] [INFO] Started 16 worker threads + 1 accept thread
+[11:19:25] [INFO] BaseNetworkEngine started
+[11:19:25] [INFO] TestServer started
+[11:19:25] [INFO] Connecting to DB server at 127.0.0.1:8002
+[11:19:25] [INFO] Session initialized - ID: 452
+[11:19:25] [INFO] Successfully connected to DB server at 127.0.0.1:8002
+[11:19:25] [INFO] Server is running. Press Ctrl+C to stop.
+[11:19:25] [INFO] Accept thread started
+[11:19:26] [INFO] Session initialized - ID: 1
+[11:19:26] [INFO] Session created - ID: 1, Total: 1
+[11:19:26] [INFO] Client connected - IP: 127.0.0.1:50633 (Session 1)
+[11:19:26] [INFO] ClientSession connected - ID: 1
+[11:19:26] [INFO] Client connected - Connection: 1
+[11:19:26] [INFO] Client connect request - Session: 1, ClientVersion: 1
+[11:19:26] [INFO] DB INSERT SessionConnectLog - Session: 1 at 2026-03-01 11:19:26

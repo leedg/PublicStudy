@@ -1,0 +1,50 @@
+====================================
+  TestDBServer - Database Server
+====================================
+[17:25:25] [INFO] Initializing TestDBServer on port 8002
+[17:25:25] [INFO] Initializing ServerLatencyManager...
+[17:25:25] [INFO] ServerLatencyManager initialized successfully
+[17:25:25] [INFO] OrderedTaskQueue: initialized with 4 workers
+[17:25:25] [INFO] OrderedTaskQueue initialized successfully
+[17:25:25] [INFO] SessionManager initialized
+[17:25:25] [INFO] Windows RIO supported, using RIO backend (auto)
+[17:25:25] [INFO] WindowsNetworkEngine created with mode: RIO
+[17:25:25] [INFO] Winsock initialized (version 2.2)
+[17:25:25] [INFO] Using RIO backend
+[17:25:25] [INFO] Listen socket created and bound to port 8002
+[17:25:25] [INFO] BaseNetworkEngine initialized on port 8002
+[17:25:25] [INFO] TestDBServer initialized on port 8002
+[17:25:25] [INFO] Started 16 worker threads + 1 accept thread
+[17:25:25] [INFO] BaseNetworkEngine started
+[17:25:25] [INFO] TestDBServer started
+[17:25:25] [INFO] TestDBServer is running. Press Ctrl+C to stop.
+[17:25:25] [INFO] Accept thread started
+[17:25:27] [INFO] Session initialized - ID: 1
+[17:25:27] [INFO] Session created - ID: 1, Total: 1
+[17:25:27] [INFO] Client connected - IP: 127.0.0.1:50596 (Session 1)
+[17:25:27] [INFO] DBSession connected - ID: 1
+[17:25:27] [INFO] Game server connected - Connection: 1
+[17:25:27] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 1
+[17:25:32] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 2
+[17:25:37] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 3
+[17:25:39] [INFO] DBSession disconnected - ID: 1
+[17:25:39] [INFO] Game server disconnected - Connection: 1
+[17:25:39] [INFO] Session closed - ID: 1
+[17:25:39] [INFO] Session removed - ID: 1, Remaining: 0
+[17:25:39] [INFO] Shutdown event signaled - stopping DBServer
+[17:25:39] [INFO] Shutting down TestDBServer...
+[17:25:39] [INFO] Accept thread stopped
+[17:25:39] [INFO] All I/O threads stopped
+[17:25:39] [INFO] All sessions closed - Count: 0
+[17:25:39] [INFO] WindowsNetworkEngine platform shutdown complete
+[17:25:39] [INFO] BaseNetworkEngine stopped
+[17:25:39] [INFO] Shutting down ordered task queue...
+[17:25:39] [INFO] Shutting down OrderedTaskQueue...
+[17:25:39] [INFO] OrderedTaskQueue: shutdown complete - submitted=3, completed=3, failed=0, rejected=0
+[17:25:39] [INFO] OrderedTaskQueue shutdown complete - Enqueued: 3, Processed: 3, Failed: 0
+[17:25:39] [INFO] OrderedTaskQueue statistics - Enqueued: 3, Processed: 3
+[17:25:39] [INFO] Shutting down ServerLatencyManager...
+[17:25:39] [INFO] ServerLatencyManager shut down
+[17:25:39] [INFO] TestDBServer stopped
+[17:25:39] [INFO] TestDBServer stopped.
+Server shutdown complete.
