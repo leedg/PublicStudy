@@ -251,3 +251,58 @@
 `C:\MyGithub\PublicStudy\NetworkModuleTest\Doc\Performance\Logs\20260301_111832`
 
 ---
+
+---
+
+## ?ㅽ뻾: 20260301_163405
+
+- **鍮뚮뱶**: x64 Release
+- **?쒓컖**: 2026-03-01 16:34:05
+- **Phase**: all
+- **Ramp ?④퀎**: 10, 100, 500, 1000 clients
+- **媛??④퀎 ?좎?**: 30珥?n
+### Phase 0 ??Smoke Test (Release, 1 client, 10s)
+
+| ??ぉ | 媛?|
+|------|-----|
+| 寃곌낵 | **PASS** |
+| ?곌껐 ??| 1 |
+| RTT min=4ms avg=4ms max=4ms Pong=1 | |
+| ?쒕쾭 由ъ냼??| WS=178.9MB Handles=137 Threads=28 |
+| DB 由ъ냼??| WS=37.6MB Handles=132 Threads=29 |
+| [ERROR] ??| 0 |
+| ?쒕쾭 ?뺤긽 醫낅즺 | True |
+| ?대씪?댁뼵???뺤긽 醫낅즺 | True |
+
+### Phase 1 ???덉젙???뚯뒪??n
+#### 1-A: Graceful Shutdown (2 clients, 30s)
+
+| ??ぉ | 媛?|
+|------|-----|
+| 寃곌낵 | **PASS** |
+| ?곌껐???대씪?댁뼵????| 2 |
+| ?쒕쾭 由ъ냼??(醫낅즺 吏곸쟾) | WS=178.7MB Handles=138 Threads=26 |
+| DBTaskQueue ?쒕젅??| Yes |
+| [ERROR] ??| 0 |
+
+#### 1-B: Forced Shutdown + WAL Recovery
+
+| ??ぉ | 媛?|
+|------|-----|
+| WAL ?곹깭 (?ш린???? | Clean |
+| ?대씪?댁뼵???먮룞 ?ъ뿰寃??쒕룄 | Yes |
+
+### Phase 2 ???쇳룷癒쇱뒪 Ramp-up (x64 Release, 30s/?④퀎)
+
+| ?④퀎 | 紐⑺몴 ?곌껐 | ?ㅼ젣 ?곌껐 | [ERROR] ??| Server WS(MB) | Server Handles | RTT (?대씪?댁뼵??1踰? | ?먯젙 |
+|------|-----------|-----------|------------|---------------|----------------|----------------------|------|
+| 10 | 10 | 10 | 0 | 179 | 146 | RTT min=0ms avg=1ms max=5ms Pong=5 | **PASS** |
+| 100 | 100 | 100 | 0 | 180.6 | 236 | RTT min=0ms avg=2ms max=8ms Pong=6 | **PASS** |
+| 500 | 500 | 500 | 0 | 188.2 | 636 | RTT min=0ms avg=0ms max=1ms Pong=8 | **PASS** |
+| 1000 | 1000 | 1000 | 0 | 143.6 | 853 | RTT min=0ms avg=2ms max=20ms Pong=16 | **PASS** |
+
+### ?대쾲 ?ㅽ뻾 ?곸꽭 濡쒓렇 ?꾩튂
+
+`C:\MyGithub\PublicStudy\NetworkModuleTest\Doc\Performance\Logs\20260301_163405`
+
+---

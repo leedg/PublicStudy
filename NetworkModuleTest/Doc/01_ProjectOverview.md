@@ -22,14 +22,33 @@ DB 연동은 프로토타입(로그/플레이스홀더 중심) 단계입니다.
 | TestClient | 프로토타입 | RTT 통계 포함 |
 | MultiPlatformNetwork | 보관 | 참고 구현 |
 
-## 최근 업데이트 (2026-03-01) — 메모리 풀 3단계 최적화
+## 최근 업데이트 (2026-03-01) — Core/Memory 버퍼 모듈 + 핑퐁 검증 페이로드
+
+### Core/Memory 독립 버퍼 모듈
+- **Dead code 제거**: `Platforms/AsyncBufferPool.h/.cpp`, `Platforms/Windows/RIOBufferPool.h`, `Platforms/Linux/IOUringBufferPool.h`, `Interfaces/IBufferPool.h` 삭제
+- **신규 모듈**: `Core/Memory/` — 플랫폼 독립 버퍼 풀 인터페이스 + 구현 3종
+  - `IBufferPool.h` — `BufferSlot{ptr, index, capacity}` 공용 인터페이스 (`namespace Core::Memory`)
+  - `StandardBufferPool.h/.cpp` — `_aligned_malloc`/`posix_memalign` 기반, IOCP·epoll·kqueue 공용
+  - `RIOBufferPool.h/.cpp` — VirtualAlloc + 1× `RIORegisterBuffer`, `GetSlabId()`/`SlotPtr()` 헬퍼
+  - `IOUringBufferPool.h/.cpp` — `posix_memalign` + `io_uring_register_buffers`, `#if __linux__` 전용
+- **RIOAsyncIOProvider 리팩토링**: inline slab 멤버 제거 → `Core::Memory::RIOBufferPool mRecvPool, mSendPool` 으로 교체 (락 순서: `mMutex` → 풀 내부 lock, deadlock 없음)
+
+### 핑퐁 검증 페이로드 추가
+- Ping 패킷에 **랜덤 숫자 1~5개 (`uint32_t`) + 랜덤 문자 1~5개** 추가 (`mt19937` 생성)
+- Pong이 검증 필드를 에코 → `ParsePong()` 에서 원본과 대조 → `GetLastValidationResult()` 반환
+- 버퍼 손상 없이 왕복이 정상인지를 매 핑퐁 사이클마다 자동 검증
+
+### 퍼포먼스 테스트 결과 (20260301_163405)
+- 1000/1000 PASS, Errors=0, Server WS=**143.6 MB** (이전 193.7 MB → 약 50 MB 감소)
+- RTT: avg=2ms, max=20ms @1000 clients
+
+## 이전 업데이트 (2026-03-01 오전) — 메모리 풀 3단계 최적화
 
 - `AsyncBufferPool::Acquire/Release` O(n) 선형 탐색 → O(1) 프리리스트 (`vector<size_t>` 스택 + `unordered_map` 인덱스)
 - `Session::ProcessRawRecv()` N 패킷 = N `vector<char>` 힙 할당 → 배치 평탄 버퍼(1 alloc) + 단일 패킷 패스트패스(0 alloc)
 - `Session::Send()` IOCP 경로 per-send `vector<char>` alloc 제거 → `SendBufferPool` 싱글턴 O(1) 슬롯 할당
 - `Session::PostSend()` IOCP 경로 두 번째 memcpy 제거 → 풀 슬롯 포인터 직접 wsaBuf 설정 (zero-copy WSASend)
 - 신규 파일: `Network/Core/SendBufferPool.h/.cpp`
-- 퍼포먼스 테스트 결과: 1000/1000 PASS, 오류 0, Server WS=193.7 MB
 
 ## 이전 업데이트 (2026-02-28) — RIO slab pool / WSA 10055 수정
 

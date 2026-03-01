@@ -18,11 +18,19 @@ NetworkModuleTest/
   Doc/
   Server/
     ServerEngine/
+      Core/
+        Memory/               # 플랫폼 독립 버퍼 풀 모듈 (2026-03-01 신규)
+          IBufferPool.h
+          StandardBufferPool.h/.cpp
+          RIOBufferPool.h/.cpp
+          IOUringBufferPool.h/.cpp
       Network/Core/
+        SendBufferPool.h/.cpp # IOCP 전송 풀 (2026-03-01)
       Platforms/Windows|Linux|macOS/
       Database/
       Implementations/Protocols/
       Tests/Protocols/
+        PingPong.h/.cpp       # 검증 페이로드 포함 (2026-03-01)
       Utils/
     TestServer/
     DBServer/
@@ -36,7 +44,9 @@ NetworkModuleTest/
 - INetworkEngine + BaseNetworkEngine: 공통 로직 (이벤트, 통계, 세션 관리)
 - Platform NetworkEngine: Windows(IOCP/RIO), Linux(epoll/io_uring), macOS(kqueue)
 - AsyncIOProvider: 플랫폼별 저수준 백엔드
+- **Core/Memory**: `IBufferPool` 인터페이스 + `StandardBufferPool` / `RIOBufferPool` / `IOUringBufferPool` 구현체 (2026-03-01 신규)
 - Session/SessionManager: 연결 및 세션 관리
+- SendBufferPool: IOCP 경로 zero-copy 전송 버퍼 싱글턴
 - PacketDefine: SessionConnect/Ping/Pong 바이너리 프레이밍
 - Database: ConnectionPool, ODBC/OLEDB 구현
 - Concurrency: ExecutionQueue, KeyedDispatcher, Channel, AsyncScope, BoundedLockFreeQueue (상세: `Doc/03_ConcurrencyRuntime.md`)
@@ -45,8 +55,21 @@ NetworkModuleTest/
 ## 5. Client <-> Server 플로우
 1. Client가 TCP 연결 후 SessionConnectReq 전송
 2. Server가 SessionConnectRes로 sessionId 전달
-3. Client가 주기적으로 PingReq 전송
-4. Server가 PongRes로 응답
+3. Client가 주기적으로 PingReq 전송 (검증 페이로드 포함)
+4. Server가 PongRes로 응답 (검증 페이로드 에코)
+5. Client가 에코된 검증 페이로드를 원본과 대조 (`GetLastValidationResult()`)
+
+### PingPong 검증 페이로드 (2026-03-01)
+Ping/Pong 패킷 와이어 포맷에 검증 필드 추가:
+```
+Ping: [uint64 timestamp][uint32 seq][string msg]
+      [uint8 numCount][uint32×N nums][uint8 charCount][char×M chars]
+Pong: [uint64 timestamp][uint64 pingTs][uint32 pingSeq][string msg]
+      [uint8 numCount][uint32×N nums][uint8 charCount][char×M chars]  ← 에코
+```
+- `numCount` / `charCount` : 각 1~5개 랜덤 (`mt19937`)
+- 문자 범위: 출력 가능 ASCII (0x21~0x7E)
+- `ParsePong()` 에서 에코값과 원본 비교 → `mLastValidationOk` 설정
 
 ## 6. DBServer 연동
 - TestServer <-> TestDBServer는 `ServerPacketDefine` 기반(Ping/Pong, DBSavePingTime)

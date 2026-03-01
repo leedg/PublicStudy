@@ -8,7 +8,7 @@
 #ifdef _WIN32
 #include "Network/Core/AsyncIOProvider.h"
 #include "Platforms/Windows/RIOAsyncIOProvider.h"
-#include "Platforms/Windows/RIOBufferPool.h"
+#include "Core/Memory/RIOBufferPool.h"
 #include <iostream>
 
 using namespace Network::AsyncIO;
@@ -49,91 +49,73 @@ void TestRIOProviderInit()
 void TestRIOBufferPoolInit()
 {
     const char *name = "RIOBufferPoolInit";
-    RIOAsyncIOProvider provider;
-    if (provider.Initialize(256, 128) != AsyncIOError::Success)
+    ::Core::Memory::RIOBufferPool pool;
+    // Initialize(poolSize, slotSize) — pool loads RIO fn ptrs itself.
+    // Initialize(poolSize, slotSize) — 풀이 직접 RIO 함수 포인터를 로드.
+    if (!pool.Initialize(8, 65536))
     {
         std::cout << "[SKIP] " << name << " - RIO not available\n";
         return;
     }
-    RIOBufferPool pool;
-    bool ok = pool.Initialize(&provider, 65536, 8);
-    if (ok && pool.GetPoolSize() == 8 && pool.GetAvailable() == 8)
+    if (pool.PoolSize() == 8 && pool.FreeCount() == 8)
         Pass(name);
     else
         Fail(name, "Pool init failed or wrong counts");
     pool.Shutdown();
-    provider.Shutdown();
 }
 
 // -----------------------------------------------------------------------
 void TestRIOBufferPoolAcquireRelease()
 {
     const char *name = "RIOBufferPoolAcquireRelease";
-    RIOAsyncIOProvider provider;
-    if (provider.Initialize(256, 128) != AsyncIOError::Success)
+    ::Core::Memory::RIOBufferPool pool;
+    if (!pool.Initialize(4, 65536))
     {
         std::cout << "[SKIP] " << name << " - RIO not available\n";
         return;
     }
-    RIOBufferPool pool;
-    if (!pool.Initialize(&provider, 65536, 4))
-    {
-        Fail(name, "Init failed");
-        provider.Shutdown();
-        return;
-    }
 
-    int64_t id1 = -1, id2 = -1;
-    uint8_t *buf1 = pool.Acquire(id1);
-    uint8_t *buf2 = pool.Acquire(id2);
+    auto slot1 = pool.Acquire();
+    auto slot2 = pool.Acquire();
 
-    if (!buf1 || !buf2 || id1 < 0 || id2 < 0 || pool.GetAvailable() != 2)
+    if (!slot1.ptr || !slot2.ptr || pool.FreeCount() != 2)
     {
         Fail(name, "Acquire returned wrong state");
     }
     else
     {
-        pool.Release(id1);
-        if (pool.GetAvailable() == 3)
+        pool.Release(slot1.index);
+        if (pool.FreeCount() == 3)
             Pass(name);
         else
             Fail(name, "Release did not restore availability");
     }
 
     pool.Shutdown();
-    provider.Shutdown();
 }
 
 // -----------------------------------------------------------------------
 void TestRIOBufferPoolExhaustion()
 {
     const char *name = "RIOBufferPoolExhaustion";
-    RIOAsyncIOProvider provider;
-    if (provider.Initialize(256, 128) != AsyncIOError::Success)
+    ::Core::Memory::RIOBufferPool pool;
+    if (!pool.Initialize(2, 4096))
     {
         std::cout << "[SKIP] " << name << " - RIO not available\n";
         return;
     }
-    RIOBufferPool pool;
-    if (!pool.Initialize(&provider, 4096, 2))
-    {
-        Fail(name, "Init failed");
-        provider.Shutdown();
-        return;
-    }
 
-    int64_t id1 = -1, id2 = -1, id3 = -1;
-    pool.Acquire(id1);
-    pool.Acquire(id2);
-    uint8_t *buf3 = pool.Acquire(id3); // English: must return nullptr / 한글: nullptr 반환 필수
+    auto s1 = pool.Acquire();
+    auto s2 = pool.Acquire();
+    auto s3 = pool.Acquire(); // English: must return {nullptr,...} / 한글: nullptr 반환 필수
+    (void)s1; (void)s2;
 
-    if (buf3 == nullptr && id3 == -1)
+    if (s3.ptr == nullptr)
         Pass(name);
     else
         Fail(name, "Expected nullptr on pool exhaustion");
 
     pool.Shutdown();
-    provider.Shutdown();
 }
 
 // -----------------------------------------------------------------------

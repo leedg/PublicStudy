@@ -146,12 +146,16 @@
     <ClInclude Include="Network\Platforms\LinuxNetworkEngine.h" />
     <ClInclude Include="Network\Platforms\macOSNetworkEngine.h" />
     <ClInclude Include="Platforms\Windows\IocpAsyncIOProvider.h" />
+    <ClInclude Include="Core\Memory\IBufferPool.h" />
+    <ClInclude Include="Core\Memory\StandardBufferPool.h" />
+    <ClCompile Include="Core\Memory\StandardBufferPool.cpp" />
+    <ClInclude Include="Core\Memory\RIOBufferPool.h" />
+    <ClCompile Include="Core\Memory\RIOBufferPool.cpp" />
+    <ClInclude Include="Core\Memory\IOUringBufferPool.h" />
+    <ClCompile Include="Core\Memory\IOUringBufferPool.cpp" />
     <ClInclude Include="Platforms\Windows\RIOAsyncIOProvider.h" />
-    <ClInclude Include="Platforms\Windows\RIOBufferPool.h" />
     <ClInclude Include="Platforms\Linux\EpollAsyncIOProvider.h" />
     <ClInclude Include="Platforms\Linux\IOUringAsyncIOProvider.h" />
-    <ClInclude Include="Platforms\Linux\IOUringBufferPool.h" />
-    <ClInclude Include="Platforms\AsyncBufferPool.h" />
     <ClInclude Include="Platforms\macOS\KqueueAsyncIOProvider.h" />
     <ClCompile Include="Network\Platforms\WindowsNetworkEngine.cpp" />
     <ClCompile Include="Network\Platforms\LinuxNetworkEngine.cpp" />
@@ -160,7 +164,6 @@
     <ClCompile Include="Platforms\Windows\RIOAsyncIOProvider.cpp" />
     <ClCompile Include="Platforms\Linux\EpollAsyncIOProvider.cpp" />
     <ClCompile Include="Platforms\Linux\IOUringAsyncIOProvider.cpp" />
-    <ClCompile Include="Platforms\AsyncBufferPool.cpp" />
     <ClCompile Include="Platforms\macOS\KqueueAsyncIOProvider.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -174,8 +177,6 @@
     <ClInclude Include="Interfaces\IResultSet.h" />
     <ClInclude Include="Interfaces\IConnectionPool.h" />
     <ClInclude Include="Interfaces\DatabaseUtils.h" />
-    <!-- Interface Layer - Buffer Pool -->
-    <ClInclude Include="Interfaces\IBufferPool.h" />
     <!-- Interface Layer - Message Handling -->
     <ClInclude Include="Interfaces\MessageType_enum.h" />
     <ClInclude Include="Interfaces\Message.h" />

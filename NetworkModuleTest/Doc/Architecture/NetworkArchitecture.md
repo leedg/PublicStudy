@@ -72,6 +72,12 @@ This document describes the current architecture of the network module and how t
 
 ```
 Server/ServerEngine/
+├── Core/
+│   └── Memory/                          # 플랫폼 독립 버퍼 풀 모듈 (2026-03-01 신규)
+│       ├── IBufferPool.h                # BufferSlot + IBufferPool 인터페이스
+│       ├── StandardBufferPool.h/.cpp    # _aligned_malloc/posix_memalign, Group A
+│       ├── RIOBufferPool.h/.cpp         # VirtualAlloc+RIORegisterBuffer, Group B
+│       └── IOUringBufferPool.h/.cpp     # posix_memalign+io_uring_register_buffers, Group C
 ├── Network/
 │   ├── Core/
 │   │   ├── NetworkEngine.h              # INetworkEngine
@@ -89,13 +95,12 @@ Server/ServerEngine/
 └── Platforms/
     ├── Windows/
     │   ├── IocpAsyncIOProvider.*
-    │   └── RIOAsyncIOProvider.*         # slab pool (2026-02-28 추가)
+    │   └── RIOAsyncIOProvider.*         # Core::Memory::RIOBufferPool 사용 (2026-03-01 리팩토링)
     ├── Linux/
     │   ├── EpollAsyncIOProvider.*
     │   └── IOUringAsyncIOProvider.*
-    ├── macOS/
-    │   └── KqueueAsyncIOProvider.*
-    └── AsyncBufferPool.h/.cpp           # O(1) free-list (2026-03-01 개선)
+    └── macOS/
+        └── KqueueAsyncIOProvider.*
 ```
 
 ---
@@ -168,7 +173,7 @@ IOCP 전송 경로의 per-send 힙 할당을 제거하기 위한 싱글턴 풀.
 └─────────────────────────────────────┘
 ```
 
-- **RIO 경로**: `RIOAsyncIOProvider` 내부 slab pool 사용 (별개)
+- **RIO 경로**: `RIOAsyncIOProvider`가 `Core::Memory::RIOBufferPool mRecvPool, mSendPool`을 멤버로 소유 (별개)
 - **초기화**: `WindowsNetworkEngine::InitializePlatform()` (IOCP 모드만)
 - **슬롯 수**: `maxConnections × 4` (소켓당 동시 4 전송 기준)
 
@@ -188,6 +193,31 @@ IOCP 전송 경로의 per-send 힙 할당을 제거하기 위한 싱글턴 풀.
 | 2026-03-01 | AsyncBufferPool O(1) 프리리스트 | 슬롯 탐색 O(n)→O(1) |
 | 2026-03-01 | ProcessRawRecv 배치 버퍼 + 패스트패스 | alloc N→1/0 |
 | 2026-03-01 | SendBufferPool zero-copy IOCP 전송 | per-send alloc 제거 |
+| 2026-03-01 | Core/Memory 버퍼 모듈 (RIOBufferPool 분리) | RIOAsyncIOProvider 내부 slab → 독립 풀 클래스 |
+| 2026-03-01 | PingPong 검증 페이로드 추가 | 매 왕복 버퍼 무결성 자동 검증 |
+
+---
+
+## Core/Memory 버퍼 풀 모듈
+
+**디렉토리**: `Core/Memory/`
+**추가일**: 2026-03-01
+
+플랫폼별 버퍼/메모리 풀 전략을 네트워크 모듈에 종속되지 않는 독립 모듈로 분리.
+
+| 클래스 | 플랫폼 | 할당 방식 | 특징 |
+|--------|--------|-----------|------|
+| `StandardBufferPool` | All | `_aligned_malloc` / `posix_memalign` | IOCP·epoll·kqueue 공용 |
+| `RIOBufferPool` | Windows | `VirtualAlloc` + 1× `RIORegisterBuffer` | `GetSlabId()` / `GetRIOOffset()` / `SlotPtr()` |
+| `IOUringBufferPool` | Linux | `posix_memalign` + `io_uring_register_buffers` | `InitializeFixed(ring, …)` / `GetFixedBufferIndex()` |
+
+```
+BufferSlot Acquire()  →  { ptr, index, capacity }
+void       Release(index)
+```
+
+**락 순서 (RIOBufferPool + RIOAsyncIOProvider)**:
+`mMutex`(Provider) → pool 내부 mutex (단방향, deadlock 없음)
 
 ---
 
@@ -195,6 +225,7 @@ IOCP 전송 경로의 per-send 힙 할당을 제거하기 위한 싱글턴 풀.
 
 - **NetworkEngine**: production-facing server abstraction
 - **AsyncIOProvider**: low-level, reusable async I/O building block
+- **Core/Memory**: platform-agnostic buffer pool module (`IBufferPool` + 3 concrete implementations)
 - **SendBufferPool**: IOCP 전용 zero-copy 전송 버퍼 관리자
 
 Choose the layer that fits your use case.

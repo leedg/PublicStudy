@@ -1,0 +1,1424 @@
+====================================
+  TestServer - IOCP Game Server
+====================================
+[16:35:58] [INFO] Initializing server on port 9000
+[16:35:58] [INFO] TestServer: using MockDatabase for DBTaskQueue
+[16:35:59] [INFO] Initializing DBTaskQueue with 1 worker threads
+[16:35:59] [INFO] DBTaskQueue: DB tables ensured (SessionConnectLog, SessionDisconnectLog, PlayerData)
+[16:35:59] [INFO] WAL: Clean startup (no pending tasks to recover)
+[16:35:59] [INFO] DBTaskQueue initialized successfully
+[16:35:59] [INFO] SessionManager initialized
+[16:35:59] [INFO] Windows RIO supported, using RIO backend (auto)
+[16:35:59] [INFO] DBTaskQueue worker thread started
+[16:35:59] [INFO] WindowsNetworkEngine created with mode: RIO
+[16:35:59] [INFO] Winsock initialized (version 2.2)
+[16:35:59] [INFO] Using RIO backend
+[16:35:59] [INFO] Listen socket created and bound to port 9000
+[16:35:59] [INFO] BaseNetworkEngine initialized on port 9000
+[16:35:59] [INFO] TestServer initialized on port 9000
+[16:35:59] [INFO] Started 16 worker threads + 1 accept thread
+[16:35:59] [INFO] BaseNetworkEngine started
+[16:35:59] [INFO] TestServer started
+[16:35:59] [INFO] Connecting to DB server at 127.0.0.1:8002
+[16:35:59] [INFO] Session initialized - ID: 440
+[16:35:59] [INFO] Successfully connected to DB server at 127.0.0.1:8002
+[16:35:59] [INFO] Server is running. Press Ctrl+C to stop.
+[16:35:59] [INFO] Accept thread started
+[16:36:00] [INFO] Session initialized - ID: 1
+[16:36:00] [INFO] Session created - ID: 1, Total: 1
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59021 (Session 1)
+[16:36:00] [INFO] ClientSession connected - ID: 1
+[16:36:00] [INFO] Client connect request - Session: 1, ClientVersion: 1
+[16:36:00] [INFO] Client connected - Connection: 1
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 1 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Session initialized - ID: 2
+[16:36:00] [INFO] Session created - ID: 2, Total: 2
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59022 (Session 2)
+[16:36:00] [INFO] ClientSession connected - ID: 2
+[16:36:00] [INFO] Client connected - Connection: 2
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 2 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Client connect request - Session: 2, ClientVersion: 1
+[16:36:00] [INFO] Session initialized - ID: 3
+[16:36:00] [INFO] Session created - ID: 3, Total: 3
+[16:36:00] [INFO] ClientSession connected - ID: 3
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59023 (Session 3)
+[16:36:00] [INFO] Client connected - Connection: 3
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 3 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Client connect request - Session: 3, ClientVersion: 1
+[16:36:00] [INFO] Session initialized - ID: 4
+[16:36:00] [INFO] Session created - ID: 4, Total: 4
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59024 (Session 4)
+[16:36:00] [INFO] ClientSession connected - ID: 4
+[16:36:00] [INFO] Client connected - Connection: 4
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 4 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Client connect request - Session: 4, ClientVersion: 1
+[16:36:00] [INFO] Session initialized - ID: 5
+[16:36:00] [INFO] Session created - ID: 5, Total: 5
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59025 (Session 5)
+[16:36:00] [INFO] ClientSession connected - ID: 5
+[16:36:00] [INFO] Client connected - Connection: 5
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 5 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Client connect request - Session: 5, ClientVersion: 1
+[16:36:00] [INFO] Session initialized - ID: 6
+[16:36:00] [INFO] Session created - ID: 6, Total: 6
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59026 (Session 6)
+[16:36:00] [INFO] ClientSession connected - ID: 6
+[16:36:00] [INFO] Client connected - Connection: 6
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 6 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Client connect request - Session: 6, ClientVersion: 1
+[16:36:00] [INFO] Session initialized - ID: 7
+[16:36:00] [INFO] Session created - ID: 7, Total: 7
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59027 (Session 7)
+[16:36:00] [INFO] ClientSession connected - ID: 7
+[16:36:00] [INFO] Client connected - Connection: 7
+[16:36:00] [INFO] Client connect request - Session: 7, ClientVersion: 1
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 7 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Session initialized - ID: 8
+[16:36:00] [INFO] Session created - ID: 8, Total: 8
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59028 (Session 8)
+[16:36:00] [INFO] ClientSession connected - ID: 8
+[16:36:00] [INFO] Client connected - Connection: 8
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 8 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Session initialized - ID: 9
+[16:36:00] [INFO] Session created - ID: 9, Total: 9
+[16:36:00] [INFO] Client connect request - Session: 8, ClientVersion: 1
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59029 (Session 9)
+[16:36:00] [INFO] ClientSession connected - ID: 9
+[16:36:00] [INFO] Client connect request - Session: 9, ClientVersion: 1
+[16:36:00] [INFO] Client connected - Connection: 9
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 9 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Session initialized - ID: 10
+[16:36:00] [INFO] Session created - ID: 10, Total: 10
+[16:36:00] [INFO] ClientSession connected - ID: 10
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59030 (Session 10)
+[16:36:00] [INFO] Client connected - Connection: 10
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 10 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Client connect request - Session: 10, ClientVersion: 1
+[16:36:00] [INFO] Session initialized - ID: 11
+[16:36:00] [INFO] Session created - ID: 11, Total: 11
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59031 (Session 11)
+[16:36:00] [INFO] ClientSession connected - ID: 11
+[16:36:00] [INFO] Client connected - Connection: 11
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 11 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Client connect request - Session: 11, ClientVersion: 1
+[16:36:00] [INFO] Session initialized - ID: 12
+[16:36:00] [INFO] Session created - ID: 12, Total: 12
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59032 (Session 12)
+[16:36:00] [INFO] ClientSession connected - ID: 12
+[16:36:00] [INFO] Client connect request - Session: 12, ClientVersion: 1
+[16:36:00] [INFO] Client connected - Connection: 12
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 12 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Session initialized - ID: 13
+[16:36:00] [INFO] Session created - ID: 13, Total: 13
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59033 (Session 13)
+[16:36:00] [INFO] ClientSession connected - ID: 13
+[16:36:00] [INFO] Client connect request - Session: 13, ClientVersion: 1
+[16:36:00] [INFO] Client connected - Connection: 13
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 13 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Session initialized - ID: 14
+[16:36:00] [INFO] Session created - ID: 14, Total: 14
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59034 (Session 14)
+[16:36:00] [INFO] ClientSession connected - ID: 14
+[16:36:00] [INFO] Client connected - Connection: 14
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 14 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Client connect request - Session: 14, ClientVersion: 1
+[16:36:00] [INFO] Session initialized - ID: 15
+[16:36:00] [INFO] Session created - ID: 15, Total: 15
+[16:36:00] [INFO] Client connected - IP: 127.0.0.1:59035 (Session 15)
+[16:36:00] [INFO] ClientSession connected - ID: 15
+[16:36:00] [INFO] Client connected - Connection: 15
+[16:36:00] [INFO] DB INSERT SessionConnectLog - Session: 15 at 2026-03-01 16:36:00
+[16:36:00] [INFO] Client connect request - Session: 15, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 16
+[16:36:01] [INFO] Session created - ID: 16, Total: 16
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59036 (Session 16)
+[16:36:01] [INFO] ClientSession connected - ID: 16
+[16:36:01] [INFO] Client connected - Connection: 16
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 16 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 16, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 17
+[16:36:01] [INFO] Session created - ID: 17, Total: 17
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59037 (Session 17)
+[16:36:01] [INFO] ClientSession connected - ID: 17
+[16:36:01] [INFO] Client connected - Connection: 17
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 17 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 17, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 18
+[16:36:01] [INFO] Session created - ID: 18, Total: 18
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59038 (Session 18)
+[16:36:01] [INFO] ClientSession connected - ID: 18
+[16:36:01] [INFO] Client connected - Connection: 18
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 18 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 18, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 19
+[16:36:01] [INFO] Session created - ID: 19, Total: 19
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59039 (Session 19)
+[16:36:01] [INFO] ClientSession connected - ID: 19
+[16:36:01] [INFO] Client connected - Connection: 19
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 19 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 19, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 20
+[16:36:01] [INFO] Session created - ID: 20, Total: 20
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59040 (Session 20)
+[16:36:01] [INFO] ClientSession connected - ID: 20
+[16:36:01] [INFO] Client connected - Connection: 20
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 20 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 20, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 21
+[16:36:01] [INFO] Session created - ID: 21, Total: 21
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59041 (Session 21)
+[16:36:01] [INFO] ClientSession connected - ID: 21
+[16:36:01] [INFO] Client connected - Connection: 21
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 21 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 21, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 22
+[16:36:01] [INFO] Session created - ID: 22, Total: 22
+[16:36:01] [INFO] ClientSession connected - ID: 22
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59042 (Session 22)
+[16:36:01] [INFO] Client connect request - Session: 22, ClientVersion: 1
+[16:36:01] [INFO] Client connected - Connection: 22
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 22 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Session initialized - ID: 23
+[16:36:01] [INFO] Session created - ID: 23, Total: 23
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59043 (Session 23)
+[16:36:01] [INFO] ClientSession connected - ID: 23
+[16:36:01] [INFO] Client connected - Connection: 23
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 23 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 23, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 24
+[16:36:01] [INFO] Session created - ID: 24, Total: 24
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59044 (Session 24)
+[16:36:01] [INFO] ClientSession connected - ID: 24
+[16:36:01] [INFO] Session initialized - ID: 25
+[16:36:01] [INFO] Session created - ID: 25, Total: 25
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 24 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connected - Connection: 24
+[16:36:01] [INFO] Client connect request - Session: 24, ClientVersion: 1
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59045 (Session 25)
+[16:36:01] [INFO] ClientSession connected - ID: 25
+[16:36:01] [INFO] Client connect request - Session: 25, ClientVersion: 1
+[16:36:01] [INFO] Client connected - Connection: 25
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 25 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Session initialized - ID: 26
+[16:36:01] [INFO] Session created - ID: 26, Total: 26
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59046 (Session 26)
+[16:36:01] [INFO] ClientSession connected - ID: 26
+[16:36:01] [INFO] Client connected - Connection: 26
+[16:36:01] [INFO] Client connect request - Session: 26, ClientVersion: 1
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 26 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Session initialized - ID: 27
+[16:36:01] [INFO] Session created - ID: 27, Total: 27
+[16:36:01] [INFO] ClientSession connected - ID: 27
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59047 (Session 27)
+[16:36:01] [INFO] Client connected - Connection: 27
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 27 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 27, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 28
+[16:36:01] [INFO] Session created - ID: 28, Total: 28
+[16:36:01] [INFO] ClientSession connected - ID: 28
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59048 (Session 28)
+[16:36:01] [INFO] Client connected - Connection: 28
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 28 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 28, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 29
+[16:36:01] [INFO] Session created - ID: 29, Total: 29
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59049 (Session 29)
+[16:36:01] [INFO] ClientSession connected - ID: 29
+[16:36:01] [INFO] Client connected - Connection: 29
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 29 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 29, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 30
+[16:36:01] [INFO] Session created - ID: 30, Total: 30
+[16:36:01] [INFO] ClientSession connected - ID: 30
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59050 (Session 30)
+[16:36:01] [INFO] Client connected - Connection: 30
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 30 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 30, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 31
+[16:36:01] [INFO] Session created - ID: 31, Total: 31
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59051 (Session 31)
+[16:36:01] [INFO] ClientSession connected - ID: 31
+[16:36:01] [INFO] Client connected - Connection: 31
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 31 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 31, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 32
+[16:36:01] [INFO] Session created - ID: 32, Total: 32
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59052 (Session 32)
+[16:36:01] [INFO] ClientSession connected - ID: 32
+[16:36:01] [INFO] Client connected - Connection: 32
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 32 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 32, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 33
+[16:36:01] [INFO] Session created - ID: 33, Total: 33
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59053 (Session 33)
+[16:36:01] [INFO] ClientSession connected - ID: 33
+[16:36:01] [INFO] Client connected - Connection: 33
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 33 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 33, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 34
+[16:36:01] [INFO] Session created - ID: 34, Total: 34
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59054 (Session 34)
+[16:36:01] [INFO] ClientSession connected - ID: 34
+[16:36:01] [INFO] Client connect request - Session: 34, ClientVersion: 1
+[16:36:01] [INFO] Client connected - Connection: 34
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 34 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Session initialized - ID: 35
+[16:36:01] [INFO] Session created - ID: 35, Total: 35
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59055 (Session 35)
+[16:36:01] [INFO] ClientSession connected - ID: 35
+[16:36:01] [INFO] Client connected - Connection: 35
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 35 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 35, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 36
+[16:36:01] [INFO] Session created - ID: 36, Total: 36
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59056 (Session 36)
+[16:36:01] [INFO] ClientSession connected - ID: 36
+[16:36:01] [INFO] Client connected - Connection: 36
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 36 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 36, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 37
+[16:36:01] [INFO] Session created - ID: 37, Total: 37
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59057 (Session 37)
+[16:36:01] [INFO] ClientSession connected - ID: 37
+[16:36:01] [INFO] Client connected - Connection: 37
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 37 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 37, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 38
+[16:36:01] [INFO] Session created - ID: 38, Total: 38
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59058 (Session 38)
+[16:36:01] [INFO] ClientSession connected - ID: 38
+[16:36:01] [INFO] Client connected - Connection: 38
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 38 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 38, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 39
+[16:36:01] [INFO] Session created - ID: 39, Total: 39
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59059 (Session 39)
+[16:36:01] [INFO] ClientSession connected - ID: 39
+[16:36:01] [INFO] Client connected - Connection: 39
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 39 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 39, ClientVersion: 1
+[16:36:01] [INFO] Session initialized - ID: 40
+[16:36:01] [INFO] Session created - ID: 40, Total: 40
+[16:36:01] [INFO] Client connected - IP: 127.0.0.1:59060 (Session 40)
+[16:36:01] [INFO] ClientSession connected - ID: 40
+[16:36:01] [INFO] Client connected - Connection: 40
+[16:36:01] [INFO] DB INSERT SessionConnectLog - Session: 40 at 2026-03-01 16:36:01
+[16:36:01] [INFO] Client connect request - Session: 40, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 41
+[16:36:02] [INFO] Session created - ID: 41, Total: 41
+[16:36:02] [INFO] ClientSession connected - ID: 41
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59061 (Session 41)
+[16:36:02] [INFO] Client connected - Connection: 41
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 41 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 41, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 42
+[16:36:02] [INFO] Session created - ID: 42, Total: 42
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59062 (Session 42)
+[16:36:02] [INFO] ClientSession connected - ID: 42
+[16:36:02] [INFO] Client connected - Connection: 42
+[16:36:02] [INFO] Client connect request - Session: 42, ClientVersion: 1
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 42 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 43
+[16:36:02] [INFO] Session created - ID: 43, Total: 43
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59063 (Session 43)
+[16:36:02] [INFO] ClientSession connected - ID: 43
+[16:36:02] [INFO] Client connected - Connection: 43
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 43 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 43, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 44
+[16:36:02] [INFO] Session created - ID: 44, Total: 44
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59064 (Session 44)
+[16:36:02] [INFO] ClientSession connected - ID: 44
+[16:36:02] [INFO] Client connected - Connection: 44
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 44 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 44, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 45
+[16:36:02] [INFO] Session created - ID: 45, Total: 45
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59065 (Session 45)
+[16:36:02] [INFO] ClientSession connected - ID: 45
+[16:36:02] [INFO] Client connect request - Session: 45, ClientVersion: 1
+[16:36:02] [INFO] Client connected - Connection: 45
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 45 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 46
+[16:36:02] [INFO] Session created - ID: 46, Total: 46
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59066 (Session 46)
+[16:36:02] [INFO] ClientSession connected - ID: 46
+[16:36:02] [INFO] Client connected - Connection: 46
+[16:36:02] [INFO] Client connect request - Session: 46, ClientVersion: 1
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 46 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 47
+[16:36:02] [INFO] Session created - ID: 47, Total: 47
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59067 (Session 47)
+[16:36:02] [INFO] ClientSession connected - ID: 47
+[16:36:02] [INFO] Client connect request - Session: 47, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 48
+[16:36:02] [INFO] Session created - ID: 48, Total: 48
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 47 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connected - Connection: 47
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59068 (Session 48)
+[16:36:02] [INFO] ClientSession connected - ID: 48
+[16:36:02] [INFO] Client connected - Connection: 48
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 48 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 48, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 49
+[16:36:02] [INFO] Session created - ID: 49, Total: 49
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59069 (Session 49)
+[16:36:02] [INFO] ClientSession connected - ID: 49
+[16:36:02] [INFO] Client connected - Connection: 49
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 49 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 49, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 50
+[16:36:02] [INFO] Session created - ID: 50, Total: 50
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59070 (Session 50)
+[16:36:02] [INFO] ClientSession connected - ID: 50
+[16:36:02] [INFO] Client connect request - Session: 50, ClientVersion: 1
+[16:36:02] [INFO] Client connected - Connection: 50
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 50 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 51
+[16:36:02] [INFO] Session created - ID: 51, Total: 51
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59071 (Session 51)
+[16:36:02] [INFO] ClientSession connected - ID: 51
+[16:36:02] [INFO] Client connected - Connection: 51
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 51 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 51, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 52
+[16:36:02] [INFO] Session created - ID: 52, Total: 52
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59072 (Session 52)
+[16:36:02] [INFO] ClientSession connected - ID: 52
+[16:36:02] [INFO] Client connected - Connection: 52
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 52 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 52, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 53
+[16:36:02] [INFO] Session created - ID: 53, Total: 53
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59073 (Session 53)
+[16:36:02] [INFO] ClientSession connected - ID: 53
+[16:36:02] [INFO] Client connected - Connection: 53
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 53 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 53, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 54
+[16:36:02] [INFO] Session created - ID: 54, Total: 54
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59074 (Session 54)
+[16:36:02] [INFO] ClientSession connected - ID: 54
+[16:36:02] [INFO] Client connected - Connection: 54
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 54 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 54, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 55
+[16:36:02] [INFO] Session created - ID: 55, Total: 55
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59075 (Session 55)
+[16:36:02] [INFO] ClientSession connected - ID: 55
+[16:36:02] [INFO] Client connect request - Session: 55, ClientVersion: 1
+[16:36:02] [INFO] Client connected - Connection: 55
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 55 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 56
+[16:36:02] [INFO] Session created - ID: 56, Total: 56
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59076 (Session 56)
+[16:36:02] [INFO] ClientSession connected - ID: 56
+[16:36:02] [INFO] Client connect request - Session: 56, ClientVersion: 1
+[16:36:02] [INFO] Client connected - Connection: 56
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 56 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 57
+[16:36:02] [INFO] Session created - ID: 57, Total: 57
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59077 (Session 57)
+[16:36:02] [INFO] ClientSession connected - ID: 57
+[16:36:02] [INFO] Client connected - Connection: 57
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 57 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 57, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 58
+[16:36:02] [INFO] Session created - ID: 58, Total: 58
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59078 (Session 58)
+[16:36:02] [INFO] ClientSession connected - ID: 58
+[16:36:02] [INFO] Client connected - Connection: 58
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 58 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 59
+[16:36:02] [INFO] Session created - ID: 59, Total: 59
+[16:36:02] [INFO] Client connect request - Session: 58, ClientVersion: 1
+[16:36:02] [INFO] ClientSession connected - ID: 59
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59079 (Session 59)
+[16:36:02] [INFO] Client connect request - Session: 59, ClientVersion: 1
+[16:36:02] [INFO] Client connected - Connection: 59
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 59 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 60
+[16:36:02] [INFO] Session created - ID: 60, Total: 60
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59080 (Session 60)
+[16:36:02] [INFO] ClientSession connected - ID: 60
+[16:36:02] [INFO] Client connected - Connection: 60
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 60 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 60, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 61
+[16:36:02] [INFO] Session created - ID: 61, Total: 61
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59081 (Session 61)
+[16:36:02] [INFO] ClientSession connected - ID: 61
+[16:36:02] [INFO] Client connected - Connection: 61
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 61 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 61, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 62
+[16:36:02] [INFO] Session created - ID: 62, Total: 62
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59082 (Session 62)
+[16:36:02] [INFO] ClientSession connected - ID: 62
+[16:36:02] [INFO] Client connected - Connection: 62
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 62 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 62, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 63
+[16:36:02] [INFO] Session created - ID: 63, Total: 63
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59083 (Session 63)
+[16:36:02] [INFO] ClientSession connected - ID: 63
+[16:36:02] [INFO] Client connected - Connection: 63
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 63 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 63, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 64
+[16:36:02] [INFO] Session created - ID: 64, Total: 64
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59084 (Session 64)
+[16:36:02] [INFO] ClientSession connected - ID: 64
+[16:36:02] [INFO] Client connected - Connection: 64
+[16:36:02] [INFO] Client connect request - Session: 64, ClientVersion: 1
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 64 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 65
+[16:36:02] [INFO] Session created - ID: 65, Total: 65
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59085 (Session 65)
+[16:36:02] [INFO] ClientSession connected - ID: 65
+[16:36:02] [INFO] Client connected - Connection: 65
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 65 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 65, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 66
+[16:36:02] [INFO] Session created - ID: 66, Total: 66
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59086 (Session 66)
+[16:36:02] [INFO] ClientSession connected - ID: 66
+[16:36:02] [INFO] Client connect request - Session: 66, ClientVersion: 1
+[16:36:02] [INFO] Client connected - Connection: 66
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 66 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 67
+[16:36:02] [INFO] Session created - ID: 67, Total: 67
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59087 (Session 67)
+[16:36:02] [INFO] ClientSession connected - ID: 67
+[16:36:02] [INFO] Client connected - Connection: 67
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 67 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 67, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 68
+[16:36:02] [INFO] Session created - ID: 68, Total: 68
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59088 (Session 68)
+[16:36:02] [INFO] ClientSession connected - ID: 68
+[16:36:02] [INFO] Client connected - Connection: 68
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 68 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 68, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 69
+[16:36:02] [INFO] Session created - ID: 69, Total: 69
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59089 (Session 69)
+[16:36:02] [INFO] ClientSession connected - ID: 69
+[16:36:02] [INFO] Client connected - Connection: 69
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 69 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 69, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 70
+[16:36:02] [INFO] Session created - ID: 70, Total: 70
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59090 (Session 70)
+[16:36:02] [INFO] ClientSession connected - ID: 70
+[16:36:02] [INFO] Client connected - Connection: 70
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 70 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 70, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 71
+[16:36:02] [INFO] Session created - ID: 71, Total: 71
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59091 (Session 71)
+[16:36:02] [INFO] ClientSession connected - ID: 71
+[16:36:02] [INFO] Client connected - Connection: 71
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 71 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 71, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 72
+[16:36:02] [INFO] Session created - ID: 72, Total: 72
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59092 (Session 72)
+[16:36:02] [INFO] ClientSession connected - ID: 72
+[16:36:02] [INFO] Client connected - Connection: 72
+[16:36:02] [INFO] Client connect request - Session: 72, ClientVersion: 1
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 72 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 73
+[16:36:02] [INFO] Session created - ID: 73, Total: 73
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59093 (Session 73)
+[16:36:02] [INFO] ClientSession connected - ID: 73
+[16:36:02] [INFO] Client connect request - Session: 73, ClientVersion: 1
+[16:36:02] [INFO] Client connected - Connection: 73
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 73 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 74
+[16:36:02] [INFO] Session created - ID: 74, Total: 74
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59094 (Session 74)
+[16:36:02] [INFO] ClientSession connected - ID: 74
+[16:36:02] [INFO] Client connected - Connection: 74
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 74 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 74, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 75
+[16:36:02] [INFO] Session created - ID: 75, Total: 75
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59095 (Session 75)
+[16:36:02] [INFO] ClientSession connected - ID: 75
+[16:36:02] [INFO] Client connected - Connection: 75
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 75 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 75, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 76
+[16:36:02] [INFO] Session created - ID: 76, Total: 76
+[16:36:02] [INFO] ClientSession connected - ID: 76
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59096 (Session 76)
+[16:36:02] [INFO] Client connected - Connection: 76
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 76 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 77
+[16:36:02] [INFO] Session created - ID: 77, Total: 77
+[16:36:02] [INFO] ClientSession connected - ID: 77
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59097 (Session 77)
+[16:36:02] [INFO] Client connected - Connection: 77
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 77 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 76, ClientVersion: 1
+[16:36:02] [INFO] Client connect request - Session: 77, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 78
+[16:36:02] [INFO] Session created - ID: 78, Total: 78
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59098 (Session 78)
+[16:36:02] [INFO] ClientSession connected - ID: 78
+[16:36:02] [INFO] Session initialized - ID: 79
+[16:36:02] [INFO] Session created - ID: 79, Total: 79
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 78 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connected - Connection: 78
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59099 (Session 79)
+[16:36:02] [INFO] ClientSession connected - ID: 79
+[16:36:02] [INFO] Client connected - Connection: 79
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 79 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 78, ClientVersion: 1
+[16:36:02] [INFO] Client connect request - Session: 79, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 80
+[16:36:02] [INFO] Session created - ID: 80, Total: 80
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59100 (Session 80)
+[16:36:02] [INFO] ClientSession connected - ID: 80
+[16:36:02] [INFO] Client connected - Connection: 80
+[16:36:02] [INFO] Client connect request - Session: 80, ClientVersion: 1
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 80 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 81
+[16:36:02] [INFO] Session created - ID: 81, Total: 81
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59101 (Session 81)
+[16:36:02] [INFO] ClientSession connected - ID: 81
+[16:36:02] [INFO] Client connected - Connection: 81
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 81 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 81, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 82
+[16:36:02] [INFO] Session created - ID: 82, Total: 82
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59102 (Session 82)
+[16:36:02] [INFO] ClientSession connected - ID: 82
+[16:36:02] [INFO] Client connected - Connection: 82
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 82 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 82, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 83
+[16:36:02] [INFO] Session created - ID: 83, Total: 83
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59103 (Session 83)
+[16:36:02] [INFO] ClientSession connected - ID: 83
+[16:36:02] [INFO] Client connected - Connection: 83
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 83 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 83, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 84
+[16:36:02] [INFO] Session created - ID: 84, Total: 84
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59104 (Session 84)
+[16:36:02] [INFO] ClientSession connected - ID: 84
+[16:36:02] [INFO] Client connected - Connection: 84
+[16:36:02] [INFO] Client connect request - Session: 84, ClientVersion: 1
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 84 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 85
+[16:36:02] [INFO] Session created - ID: 85, Total: 85
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59105 (Session 85)
+[16:36:02] [INFO] ClientSession connected - ID: 85
+[16:36:02] [INFO] Client connected - Connection: 85
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 85 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 85, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 86
+[16:36:02] [INFO] Session created - ID: 86, Total: 86
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59106 (Session 86)
+[16:36:02] [INFO] ClientSession connected - ID: 86
+[16:36:02] [INFO] Client connected - Connection: 86
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 86 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 86, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 87
+[16:36:02] [INFO] Session created - ID: 87, Total: 87
+[16:36:02] [INFO] ClientSession connected - ID: 87
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59107 (Session 87)
+[16:36:02] [INFO] Client connected - Connection: 87
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 87 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Session initialized - ID: 88
+[16:36:02] [INFO] Session created - ID: 88, Total: 88
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59108 (Session 88)
+[16:36:02] [INFO] ClientSession connected - ID: 88
+[16:36:02] [INFO] Client connected - Connection: 88
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 88 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 87, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 89
+[16:36:02] [INFO] Session created - ID: 89, Total: 89
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59109 (Session 89)
+[16:36:02] [INFO] ClientSession connected - ID: 89
+[16:36:02] [INFO] Client connected - Connection: 89
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 89 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 88, ClientVersion: 1
+[16:36:02] [INFO] Session initialized - ID: 90
+[16:36:02] [INFO] Session created - ID: 90, Total: 90
+[16:36:02] [INFO] Client connected - IP: 127.0.0.1:59110 (Session 90)
+[16:36:02] [INFO] ClientSession connected - ID: 90
+[16:36:02] [INFO] Client connect request - Session: 89, ClientVersion: 1
+[16:36:02] [INFO] Client connected - Connection: 90
+[16:36:02] [INFO] DB INSERT SessionConnectLog - Session: 90 at 2026-03-01 16:36:02
+[16:36:02] [INFO] Client connect request - Session: 90, ClientVersion: 1
+[16:36:03] [INFO] Session initialized - ID: 91
+[16:36:03] [INFO] Session created - ID: 91, Total: 91
+[16:36:03] [INFO] Client connected - IP: 127.0.0.1:59111 (Session 91)
+[16:36:03] [INFO] ClientSession connected - ID: 91
+[16:36:03] [INFO] Session initialized - ID: 92
+[16:36:03] [INFO] Client connected - Connection: 91
+[16:36:03] [INFO] DB INSERT SessionConnectLog - Session: 91 at 2026-03-01 16:36:03
+[16:36:03] [INFO] Client connect request - Session: 91, ClientVersion: 1
+[16:36:03] [INFO] Session created - ID: 92, Total: 92
+[16:36:03] [INFO] ClientSession connected - ID: 92
+[16:36:03] [INFO] Client connected - IP: 127.0.0.1:59112 (Session 92)
+[16:36:03] [INFO] Client connect request - Session: 92, ClientVersion: 1
+[16:36:03] [INFO] Client connected - Connection: 92
+[16:36:03] [INFO] DB INSERT SessionConnectLog - Session: 92 at 2026-03-01 16:36:03
+[16:36:03] [INFO] Session initialized - ID: 93
+[16:36:03] [INFO] Session created - ID: 93, Total: 93
+[16:36:03] [INFO] ClientSession connected - ID: 93
+[16:36:03] [INFO] Client connected - IP: 127.0.0.1:59113 (Session 93)
+[16:36:03] [INFO] Client connect request - Session: 93, ClientVersion: 1
+[16:36:03] [INFO] Client connected - Connection: 93
+[16:36:03] [INFO] DB INSERT SessionConnectLog - Session: 93 at 2026-03-01 16:36:03
+[16:36:03] [INFO] Session initialized - ID: 94
+[16:36:03] [INFO] Session created - ID: 94, Total: 94
+[16:36:03] [INFO] ClientSession connected - ID: 94
+[16:36:03] [INFO] Client connected - IP: 127.0.0.1:59114 (Session 94)
+[16:36:03] [INFO] Client connect request - Session: 94, ClientVersion: 1
+[16:36:03] [INFO] Client connected - Connection: 94
+[16:36:03] [INFO] DB INSERT SessionConnectLog - Session: 94 at 2026-03-01 16:36:03
+[16:36:03] [INFO] Session initialized - ID: 95
+[16:36:03] [INFO] Session created - ID: 95, Total: 95
+[16:36:03] [INFO] Client connected - IP: 127.0.0.1:59115 (Session 95)
+[16:36:03] [INFO] ClientSession connected - ID: 95
+[16:36:03] [INFO] Client connected - Connection: 95
+[16:36:03] [INFO] DB INSERT SessionConnectLog - Session: 95 at 2026-03-01 16:36:03
+[16:36:03] [INFO] Client connect request - Session: 95, ClientVersion: 1
+[16:36:03] [INFO] Session initialized - ID: 96
+[16:36:03] [INFO] Session created - ID: 96, Total: 96
+[16:36:03] [INFO] Client connected - IP: 127.0.0.1:59116 (Session 96)
+[16:36:03] [INFO] ClientSession connected - ID: 96
+[16:36:03] [INFO] Client connected - Connection: 96
+[16:36:03] [INFO] DB INSERT SessionConnectLog - Session: 96 at 2026-03-01 16:36:03
+[16:36:03] [INFO] Client connect request - Session: 96, ClientVersion: 1
+[16:36:03] [INFO] Session initialized - ID: 97
+[16:36:03] [INFO] Session created - ID: 97, Total: 97
+[16:36:03] [INFO] Client connected - IP: 127.0.0.1:59117 (Session 97)
+[16:36:03] [INFO] ClientSession connected - ID: 97
+[16:36:03] [INFO] Client connected - Connection: 97
+[16:36:03] [INFO] DB INSERT SessionConnectLog - Session: 97 at 2026-03-01 16:36:03
+[16:36:03] [INFO] Client connect request - Session: 97, ClientVersion: 1
+[16:36:03] [INFO] Session initialized - ID: 98
+[16:36:03] [INFO] Session created - ID: 98, Total: 98
+[16:36:03] [INFO] Client connected - IP: 127.0.0.1:59118 (Session 98)
+[16:36:03] [INFO] ClientSession connected - ID: 98
+[16:36:03] [INFO] Session initialized - ID: 99
+[16:36:03] [INFO] Session created - ID: 99, Total: 99
+[16:36:03] [INFO] DB INSERT SessionConnectLog - Session: 98 at 2026-03-01 16:36:03
+[16:36:03] [INFO] Client connect request - Session: 98, ClientVersion: 1
+[16:36:03] [INFO] Client connected - Connection: 98
+[16:36:03] [INFO] Client connected - IP: 127.0.0.1:59120 (Session 99)
+[16:36:03] [INFO] ClientSession connected - ID: 99
+[16:36:03] [INFO] Client connect request - Session: 99, ClientVersion: 1
+[16:36:03] [INFO] Session initialized - ID: 100
+[16:36:03] [INFO] Client connected - Connection: 99
+[16:36:03] [INFO] DB INSERT SessionConnectLog - Session: 99 at 2026-03-01 16:36:03
+[16:36:03] [INFO] Session created - ID: 100, Total: 100
+[16:36:03] [INFO] ClientSession connected - ID: 100
+[16:36:03] [INFO] Client connected - IP: 127.0.0.1:59119 (Session 100)
+[16:36:03] [INFO] Client connect request - Session: 100, ClientVersion: 1
+[16:36:03] [INFO] Client connected - Connection: 100
+[16:36:03] [INFO] DB INSERT SessionConnectLog - Session: 100 at 2026-03-01 16:36:03
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 1, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 2, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 3, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 4, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 5, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 6, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 7, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 8, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 10, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 9, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 11, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 12, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 13, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 14, Seq: 0
+[16:36:05] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 15, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 16, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 18, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 17, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 19, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 20, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 21, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 23, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 22, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 24, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 25, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 26, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 28, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 27, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 29, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 30, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 31, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 32, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 33, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 34, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 35, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 36, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 37, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 38, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 40, Seq: 0
+[16:36:06] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 39, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 41, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 42, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 43, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 44, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 46, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 45, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 49, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 48, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 50, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 47, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 51, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 52, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 53, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 54, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 55, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 56, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 57, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 60, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 58, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 59, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 61, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 62, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 63, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 64, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 65, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 66, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 70, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 69, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 67, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 68, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 71, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 72, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 73, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 75, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 74, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 77, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 76, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 79, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 80, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 78, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 81, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 83, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 84, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 82, Seq: 0
+[16:36:07] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 85, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 86, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 88, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 87, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 92, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 90, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 89, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 91, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 93, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 94, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 95, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 97, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 96, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 100, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 99, Seq: 0
+[16:36:08] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 98, Seq: 0
+[16:36:19] [INFO] Ping time saved successfully in DB - ServerId: 1
+[16:36:32] [INFO] ClientSession disconnected - ID: 1
+[16:36:32] [INFO] Session closed - ID: 1
+[16:36:32] [INFO] Session removed - ID: 1, Remaining: 99
+[16:36:32] [INFO] DB INSERT SessionDisconnectLog - Session: 1 at 2026-03-01 16:36:32
+[16:36:32] [INFO] Client disconnected - Connection: 1
+[16:36:33] [INFO] ClientSession disconnected - ID: 2
+[16:36:33] [INFO] Session closed - ID: 2
+[16:36:33] [INFO] Session removed - ID: 2, Remaining: 98
+[16:36:33] [INFO] DB INSERT SessionDisconnectLog - Session: 2 at 2026-03-01 16:36:33
+[16:36:33] [INFO] Client disconnected - Connection: 2
+[16:36:34] [INFO] ClientSession disconnected - ID: 3
+[16:36:34] [INFO] Client disconnected - Connection: 3
+[16:36:34] [INFO] Session closed - ID: 3
+[16:36:34] [INFO] Session removed - ID: 3, Remaining: 97
+[16:36:34] [INFO] DB INSERT SessionDisconnectLog - Session: 3 at 2026-03-01 16:36:34
+[16:36:34] [INFO] Session closed - ID: 4
+[16:36:34] [INFO] Session removed - ID: 4, Remaining: 96
+[16:36:34] [INFO] ClientSession disconnected - ID: 4
+[16:36:34] [INFO] Client disconnected - Connection: 4
+[16:36:34] [INFO] DB INSERT SessionDisconnectLog - Session: 4 at 2026-03-01 16:36:34
+[16:36:35] [INFO] ClientSession disconnected - ID: 5
+[16:36:35] [INFO] Client disconnected - Connection: 5
+[16:36:35] [INFO] DB INSERT SessionDisconnectLog - Session: 5 at 2026-03-01 16:36:35
+[16:36:35] [INFO] Session closed - ID: 5
+[16:36:35] [INFO] Session removed - ID: 5, Remaining: 95
+[16:36:36] [INFO] ClientSession disconnected - ID: 6
+[16:36:36] [INFO] Client disconnected - Connection: 6
+[16:36:36] [INFO] Session closed - ID: 6
+[16:36:36] [INFO] Session removed - ID: 6, Remaining: 94
+[16:36:36] [INFO] DB INSERT SessionDisconnectLog - Session: 6 at 2026-03-01 16:36:36
+[16:36:37] [INFO] ClientSession disconnected - ID: 7
+[16:36:37] [INFO] Client disconnected - Connection: 7
+[16:36:37] [INFO] Session closed - ID: 7
+[16:36:37] [INFO] Session removed - ID: 7, Remaining: 93
+[16:36:37] [INFO] DB INSERT SessionDisconnectLog - Session: 7 at 2026-03-01 16:36:37
+[16:36:38] [INFO] ClientSession disconnected - ID: 8
+[16:36:38] [INFO] Session closed - ID: 8
+[16:36:38] [INFO] Session removed - ID: 8, Remaining: 92
+[16:36:38] [INFO] DB INSERT SessionDisconnectLog - Session: 8 at 2026-03-01 16:36:38
+[16:36:38] [INFO] Client disconnected - Connection: 8
+[16:36:39] [INFO] ClientSession disconnected - ID: 9
+[16:36:39] [INFO] Session closed - ID: 9
+[16:36:39] [INFO] Session removed - ID: 9, Remaining: 91
+[16:36:39] [INFO] DB INSERT SessionDisconnectLog - Session: 9 at 2026-03-01 16:36:39
+[16:36:39] [INFO] Client disconnected - Connection: 9
+[16:36:40] [INFO] ClientSession disconnected - ID: 10
+[16:36:40] [INFO] Session closed - ID: 10
+[16:36:40] [INFO] Session removed - ID: 10, Remaining: 90
+[16:36:40] [INFO] DB INSERT SessionDisconnectLog - Session: 10 at 2026-03-01 16:36:40
+[16:36:40] [INFO] Client disconnected - Connection: 10
+[16:36:40] [INFO] ClientSession disconnected - ID: 11
+[16:36:40] [INFO] Session closed - ID: 11
+[16:36:40] [INFO] Session removed - ID: 11, Remaining: 89
+[16:36:40] [INFO] DB INSERT SessionDisconnectLog - Session: 11 at 2026-03-01 16:36:40
+[16:36:40] [INFO] Client disconnected - Connection: 11
+[16:36:41] [INFO] ClientSession disconnected - ID: 12
+[16:36:41] [INFO] Session closed - ID: 12
+[16:36:41] [INFO] Client disconnected - Connection: 12
+[16:36:41] [INFO] DB INSERT SessionDisconnectLog - Session: 12 at 2026-03-01 16:36:41
+[16:36:41] [INFO] Session removed - ID: 12, Remaining: 88
+[16:36:42] [INFO] ClientSession disconnected - ID: 13
+[16:36:42] [INFO] Client disconnected - Connection: 13
+[16:36:42] [INFO] DB INSERT SessionDisconnectLog - Session: 13 at 2026-03-01 16:36:42
+[16:36:42] [INFO] Session closed - ID: 13
+[16:36:42] [INFO] Session removed - ID: 13, Remaining: 87
+[16:36:43] [INFO] ClientSession disconnected - ID: 14
+[16:36:43] [INFO] Session closed - ID: 14
+[16:36:43] [INFO] Client disconnected - Connection: 14
+[16:36:43] [INFO] DB INSERT SessionDisconnectLog - Session: 14 at 2026-03-01 16:36:43
+[16:36:43] [INFO] Session removed - ID: 14, Remaining: 86
+[16:36:43] [INFO] ClientSession disconnected - ID: 15
+[16:36:43] [INFO] Session closed - ID: 15
+[16:36:43] [INFO] Session removed - ID: 15, Remaining: 85
+[16:36:43] [INFO] DB INSERT SessionDisconnectLog - Session: 15 at 2026-03-01 16:36:43
+[16:36:43] [INFO] Client disconnected - Connection: 15
+[16:36:43] [INFO] ClientSession disconnected - ID: 19
+[16:36:43] [INFO] Session closed - ID: 19
+[16:36:43] [INFO] Session removed - ID: 19, Remaining: 84
+[16:36:43] [INFO] DB INSERT SessionDisconnectLog - Session: 19 at 2026-03-01 16:36:43
+[16:36:43] [INFO] Client disconnected - Connection: 19
+[16:36:44] [INFO] [GameServer<-DB] Pong received (every 10th) - Seq: 10, RTT: 6ms
+[16:36:44] [INFO] Ping time saved successfully in DB - ServerId: 1
+[16:36:44] [INFO] ClientSession disconnected - ID: 16
+[16:36:44] [INFO] Session closed - ID: 16
+[16:36:44] [INFO] Session removed - ID: 16, Remaining: 83
+[16:36:44] [INFO] DB INSERT SessionDisconnectLog - Session: 16 at 2026-03-01 16:36:44
+[16:36:44] [INFO] Client disconnected - Connection: 16
+[16:36:44] [INFO] ClientSession disconnected - ID: 18
+[16:36:44] [INFO] Client disconnected - Connection: 18
+[16:36:44] [INFO] Session closed - ID: 18
+[16:36:44] [INFO] Session removed - ID: 18, Remaining: 82
+[16:36:44] [INFO] DB INSERT SessionDisconnectLog - Session: 18 at 2026-03-01 16:36:44
+[16:36:45] [INFO] ClientSession disconnected - ID: 17
+[16:36:45] [INFO] Session closed - ID: 17
+[16:36:45] [INFO] Client disconnected - Connection: 17
+[16:36:45] [INFO] DB INSERT SessionDisconnectLog - Session: 17 at 2026-03-01 16:36:45
+[16:36:45] [INFO] Session removed - ID: 17, Remaining: 81
+[16:36:45] [INFO] ClientSession disconnected - ID: 20
+[16:36:45] [INFO] Session closed - ID: 20
+[16:36:45] [INFO] Session removed - ID: 20, Remaining: 80
+[16:36:45] [INFO] DB INSERT SessionDisconnectLog - Session: 20 at 2026-03-01 16:36:45
+[16:36:45] [INFO] Client disconnected - Connection: 20
+[16:36:45] [INFO] ClientSession disconnected - ID: 21
+[16:36:45] [INFO] Client disconnected - Connection: 21
+[16:36:45] [INFO] Session closed - ID: 21
+[16:36:45] [INFO] DB INSERT SessionDisconnectLog - Session: 21 at 2026-03-01 16:36:45
+[16:36:45] [INFO] Session removed - ID: 21, Remaining: 79
+[16:36:46] [INFO] ClientSession disconnected - ID: 22
+[16:36:46] [INFO] Client disconnected - Connection: 22
+[16:36:46] [INFO] Session closed - ID: 22
+[16:36:46] [INFO] Session removed - ID: 22, Remaining: 78
+[16:36:46] [INFO] DB INSERT SessionDisconnectLog - Session: 22 at 2026-03-01 16:36:46
+[16:36:47] [INFO] ClientSession disconnected - ID: 27
+[16:36:47] [INFO] Session closed - ID: 27
+[16:36:47] [INFO] Client disconnected - Connection: 27
+[16:36:47] [INFO] DB INSERT SessionDisconnectLog - Session: 27 at 2026-03-01 16:36:47
+[16:36:47] [INFO] Session removed - ID: 27, Remaining: 77
+[16:36:48] [INFO] ClientSession disconnected - ID: 25
+[16:36:48] [INFO] Client disconnected - Connection: 25
+[16:36:48] [INFO] Session closed - ID: 25
+[16:36:48] [INFO] Session removed - ID: 25, Remaining: 76
+[16:36:48] [INFO] DB INSERT SessionDisconnectLog - Session: 25 at 2026-03-01 16:36:48
+[16:36:49] [INFO] ClientSession disconnected - ID: 24
+[16:36:49] [INFO] Client disconnected - Connection: 24
+[16:36:49] [INFO] DB INSERT SessionDisconnectLog - Session: 24 at 2026-03-01 16:36:49
+[16:36:49] [INFO] Session closed - ID: 24
+[16:36:49] [INFO] Session removed - ID: 24, Remaining: 75
+[16:36:49] [INFO] Session closed - ID: 30
+[16:36:49] [INFO] ClientSession disconnected - ID: 30
+[16:36:49] [INFO] Session removed - ID: 30, Remaining: 74
+[16:36:49] [INFO] Client disconnected - Connection: 30
+[16:36:49] [INFO] DB INSERT SessionDisconnectLog - Session: 30 at 2026-03-01 16:36:49
+[16:36:50] [INFO] Session closed - ID: 26
+[16:36:50] [INFO] ClientSession disconnected - ID: 26
+[16:36:50] [INFO] Client disconnected - Connection: 26
+[16:36:50] [INFO] Session removed - ID: 26, Remaining: 73
+[16:36:50] [INFO] DB INSERT SessionDisconnectLog - Session: 26 at 2026-03-01 16:36:50
+[16:36:51] [INFO] ClientSession disconnected - ID: 23
+[16:36:51] [INFO] Session closed - ID: 23
+[16:36:51] [INFO] Session removed - ID: 23, Remaining: 72
+[16:36:51] [INFO] DB INSERT SessionDisconnectLog - Session: 23 at 2026-03-01 16:36:51
+[16:36:51] [INFO] Client disconnected - Connection: 23
+[16:36:52] [INFO] ClientSession disconnected - ID: 28
+[16:36:52] [INFO] Session closed - ID: 28
+[16:36:52] [INFO] Client disconnected - Connection: 28
+[16:36:52] [INFO] DB INSERT SessionDisconnectLog - Session: 28 at 2026-03-01 16:36:52
+[16:36:52] [INFO] Session removed - ID: 28, Remaining: 71
+[16:36:53] [INFO] Session closed - ID: 29
+[16:36:53] [INFO] Session removed - ID: 29, Remaining: 70
+[16:36:53] [INFO] ClientSession disconnected - ID: 29
+[16:36:53] [INFO] Client disconnected - Connection: 29
+[16:36:53] [INFO] DB INSERT SessionDisconnectLog - Session: 29 at 2026-03-01 16:36:53
+[16:36:54] [INFO] Session closed - ID: 31
+[16:36:54] [INFO] Session removed - ID: 31, Remaining: 69
+[16:36:54] [INFO] ClientSession disconnected - ID: 31
+[16:36:54] [INFO] Client disconnected - Connection: 31
+[16:36:54] [INFO] DB INSERT SessionDisconnectLog - Session: 31 at 2026-03-01 16:36:54
+[16:36:55] [INFO] ClientSession disconnected - ID: 32
+[16:36:55] [INFO] Session closed - ID: 32
+[16:36:55] [INFO] Session removed - ID: 32, Remaining: 68
+[16:36:55] [INFO] DB INSERT SessionDisconnectLog - Session: 32 at 2026-03-01 16:36:55
+[16:36:55] [INFO] Client disconnected - Connection: 32
+[16:36:56] [INFO] ClientSession disconnected - ID: 33
+[16:36:56] [INFO] Client disconnected - Connection: 33
+[16:36:56] [INFO] DB INSERT SessionDisconnectLog - Session: 33 at 2026-03-01 16:36:56
+[16:36:56] [INFO] Session closed - ID: 33
+[16:36:56] [INFO] Session removed - ID: 33, Remaining: 67
+[16:36:56] [INFO] ClientSession disconnected - ID: 34
+[16:36:56] [INFO] Client disconnected - Connection: 34
+[16:36:56] [INFO] Session closed - ID: 34
+[16:36:56] [INFO] Session removed - ID: 34, Remaining: 66
+[16:36:56] [INFO] DB INSERT SessionDisconnectLog - Session: 34 at 2026-03-01 16:36:56
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 36, Seq: 10
+[16:36:57] [INFO] ClientSession disconnected - ID: 35
+[16:36:57] [INFO] Session closed - ID: 35
+[16:36:57] [INFO] Client disconnected - Connection: 35
+[16:36:57] [INFO] DB INSERT SessionDisconnectLog - Session: 35 at 2026-03-01 16:36:57
+[16:36:57] [INFO] Session removed - ID: 35, Remaining: 65
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 37, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 39, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 38, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 40, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 41, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 43, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 42, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 46, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 45, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 44, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 49, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 50, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 48, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 47, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 51, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 52, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 54, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 53, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 57, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 55, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 56, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 60, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 59, Seq: 10
+[16:36:57] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 58, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 61, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 63, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 62, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 64, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 65, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 68, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 69, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 67, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 66, Seq: 10
+[16:36:58] [INFO] Session closed - ID: 36
+[16:36:58] [INFO] Session removed - ID: 36, Remaining: 64
+[16:36:58] [INFO] ClientSession disconnected - ID: 36
+[16:36:58] [INFO] Client disconnected - Connection: 36
+[16:36:58] [INFO] DB INSERT SessionDisconnectLog - Session: 36 at 2026-03-01 16:36:58
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 70, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 71, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 72, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 75, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 74, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 80, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 79, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 77, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 73, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 76, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 78, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 81, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 87, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 89, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 85, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 88, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 82, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 90, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 83, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 92, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 86, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 91, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 84, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 93, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 94, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 95, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 100, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 98, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 96, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 97, Seq: 10
+[16:36:58] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 99, Seq: 10
+[16:36:59] [INFO] Session closed - ID: 37
+[16:36:59] [INFO] Session removed - ID: 37, Remaining: 63
+[16:36:59] [INFO] ClientSession disconnected - ID: 37
+[16:36:59] [INFO] Client disconnected - Connection: 37
+[16:36:59] [INFO] DB INSERT SessionDisconnectLog - Session: 37 at 2026-03-01 16:36:59
+[16:37:00] [INFO] ClientSession disconnected - ID: 38
+[16:37:00] [INFO] Session closed - ID: 38
+[16:37:00] [INFO] Session removed - ID: 38, Remaining: 62
+[16:37:00] [INFO] DB INSERT SessionDisconnectLog - Session: 38 at 2026-03-01 16:37:00
+[16:37:00] [INFO] Client disconnected - Connection: 38
+[16:37:01] [INFO] ClientSession disconnected - ID: 39
+[16:37:01] [INFO] Client disconnected - Connection: 39
+[16:37:01] [INFO] Session closed - ID: 39
+[16:37:01] [INFO] Session removed - ID: 39, Remaining: 61
+[16:37:01] [INFO] DB INSERT SessionDisconnectLog - Session: 39 at 2026-03-01 16:37:01
+[16:37:02] [INFO] ClientSession disconnected - ID: 40
+[16:37:02] [INFO] Client disconnected - Connection: 40
+[16:37:02] [INFO] Session closed - ID: 40
+[16:37:02] [INFO] Session removed - ID: 40, Remaining: 60
+[16:37:02] [INFO] DB INSERT SessionDisconnectLog - Session: 40 at 2026-03-01 16:37:02
+[16:37:02] [INFO] ClientSession disconnected - ID: 41
+[16:37:02] [INFO] Client disconnected - Connection: 41
+[16:37:02] [INFO] Session closed - ID: 41
+[16:37:02] [INFO] Session removed - ID: 41, Remaining: 59
+[16:37:02] [INFO] DB INSERT SessionDisconnectLog - Session: 41 at 2026-03-01 16:37:02
+[16:37:03] [INFO] ClientSession disconnected - ID: 43
+[16:37:03] [INFO] Session closed - ID: 43
+[16:37:03] [INFO] Session removed - ID: 43, Remaining: 58
+[16:37:03] [INFO] Client disconnected - Connection: 43
+[16:37:03] [INFO] DB INSERT SessionDisconnectLog - Session: 43 at 2026-03-01 16:37:03
+[16:37:04] [INFO] Session closed - ID: 42
+[16:37:04] [INFO] Session removed - ID: 42, Remaining: 57
+[16:37:04] [INFO] ClientSession disconnected - ID: 42
+[16:37:04] [INFO] Client disconnected - Connection: 42
+[16:37:04] [INFO] DB INSERT SessionDisconnectLog - Session: 42 at 2026-03-01 16:37:04
+[16:37:04] [INFO] Session closed - ID: 44
+[16:37:04] [INFO] Session removed - ID: 44, Remaining: 56
+[16:37:04] [INFO] ClientSession disconnected - ID: 44
+[16:37:04] [INFO] Client disconnected - Connection: 44
+[16:37:04] [INFO] DB INSERT SessionDisconnectLog - Session: 44 at 2026-03-01 16:37:04
+[16:37:05] [INFO] Session closed - ID: 46
+[16:37:05] [INFO] Session removed - ID: 46, Remaining: 55
+[16:37:05] [INFO] ClientSession disconnected - ID: 46
+[16:37:05] [INFO] Client disconnected - Connection: 46
+[16:37:05] [INFO] DB INSERT SessionDisconnectLog - Session: 46 at 2026-03-01 16:37:05
+[16:37:06] [INFO] Session closed - ID: 45
+[16:37:06] [INFO] Session removed - ID: 45, Remaining: 54
+[16:37:06] [INFO] ClientSession disconnected - ID: 45
+[16:37:06] [INFO] Client disconnected - Connection: 45
+[16:37:06] [INFO] DB INSERT SessionDisconnectLog - Session: 45 at 2026-03-01 16:37:06
+[16:37:07] [INFO] ClientSession disconnected - ID: 47
+[16:37:07] [INFO] Client disconnected - Connection: 47
+[16:37:07] [INFO] Session closed - ID: 47
+[16:37:07] [INFO] DB INSERT SessionDisconnectLog - Session: 47 at 2026-03-01 16:37:07
+[16:37:07] [INFO] Session removed - ID: 47, Remaining: 53
+[16:37:08] [INFO] ClientSession disconnected - ID: 49
+[16:37:08] [INFO] Client disconnected - Connection: 49
+[16:37:08] [INFO] Session closed - ID: 49
+[16:37:08] [INFO] Session removed - ID: 49, Remaining: 52
+[16:37:08] [INFO] DB INSERT SessionDisconnectLog - Session: 49 at 2026-03-01 16:37:08
+[16:37:09] [INFO] Ping time saved successfully in DB - ServerId: 1
+[16:37:09] [INFO] Session closed - ID: 50
+[16:37:09] [INFO] Session removed - ID: 50, Remaining: 51
+[16:37:09] [INFO] ClientSession disconnected - ID: 50
+[16:37:09] [INFO] Client disconnected - Connection: 50
+[16:37:09] [INFO] DB INSERT SessionDisconnectLog - Session: 50 at 2026-03-01 16:37:09
+[16:37:10] [INFO] ClientSession disconnected - ID: 48
+[16:37:10] [INFO] Session closed - ID: 48
+[16:37:10] [INFO] Session removed - ID: 48, Remaining: 50
+[16:37:10] [INFO] DB INSERT SessionDisconnectLog - Session: 48 at 2026-03-01 16:37:10
+[16:37:10] [INFO] Client disconnected - Connection: 48
+[16:37:10] [INFO] ClientSession disconnected - ID: 51
+[16:37:10] [INFO] Client disconnected - Connection: 51
+[16:37:10] [INFO] DB INSERT SessionDisconnectLog - Session: 51 at 2026-03-01 16:37:10
+[16:37:10] [INFO] Session closed - ID: 51
+[16:37:10] [INFO] Session removed - ID: 51, Remaining: 49
+[16:37:12] [INFO] ClientSession disconnected - ID: 52
+[16:37:12] [INFO] Session closed - ID: 52
+[16:37:12] [INFO] Session removed - ID: 52, Remaining: 48
+[16:37:12] [INFO] DB INSERT SessionDisconnectLog - Session: 52 at 2026-03-01 16:37:12
+[16:37:12] [INFO] Client disconnected - Connection: 52
+[16:37:13] [INFO] ClientSession disconnected - ID: 53
+[16:37:13] [INFO] Client disconnected - Connection: 53
+[16:37:13] [INFO] Session closed - ID: 53
+[16:37:13] [INFO] Session removed - ID: 53, Remaining: 47
+[16:37:13] [INFO] DB INSERT SessionDisconnectLog - Session: 53 at 2026-03-01 16:37:13
+[16:37:14] [INFO] ClientSession disconnected - ID: 54
+[16:37:14] [INFO] Session closed - ID: 54
+[16:37:14] [INFO] Session removed - ID: 54, Remaining: 46
+[16:37:14] [INFO] DB INSERT SessionDisconnectLog - Session: 54 at 2026-03-01 16:37:14
+[16:37:14] [INFO] Client disconnected - Connection: 54
+[16:37:15] [INFO] ClientSession disconnected - ID: 55
+[16:37:15] [INFO] Client disconnected - Connection: 55
+[16:37:15] [INFO] Session closed - ID: 55
+[16:37:15] [INFO] Session removed - ID: 55, Remaining: 45
+[16:37:15] [INFO] DB INSERT SessionDisconnectLog - Session: 55 at 2026-03-01 16:37:15
+[16:37:16] [INFO] ClientSession disconnected - ID: 56
+[16:37:16] [INFO] Client disconnected - Connection: 56
+[16:37:16] [INFO] DB INSERT SessionDisconnectLog - Session: 56 at 2026-03-01 16:37:16
+[16:37:16] [INFO] Session closed - ID: 56
+[16:37:16] [INFO] Session removed - ID: 56, Remaining: 44
+[16:37:17] [INFO] ClientSession disconnected - ID: 57
+[16:37:17] [INFO] Session closed - ID: 57
+[16:37:17] [INFO] Session removed - ID: 57, Remaining: 43
+[16:37:17] [INFO] Client disconnected - Connection: 57
+[16:37:17] [INFO] DB INSERT SessionDisconnectLog - Session: 57 at 2026-03-01 16:37:17
+[16:37:17] [INFO] ClientSession disconnected - ID: 59
+[16:37:17] [INFO] Session closed - ID: 59
+[16:37:17] [INFO] Session removed - ID: 59, Remaining: 42
+[16:37:17] [INFO] DB INSERT SessionDisconnectLog - Session: 59 at 2026-03-01 16:37:17
+[16:37:17] [INFO] Client disconnected - Connection: 59
+[16:37:18] [INFO] ClientSession disconnected - ID: 60
+[16:37:18] [INFO] Client disconnected - Connection: 60
+[16:37:18] [INFO] DB INSERT SessionDisconnectLog - Session: 60 at 2026-03-01 16:37:18
+[16:37:18] [INFO] Session closed - ID: 60
+[16:37:18] [INFO] Session removed - ID: 60, Remaining: 41
+[16:37:19] [INFO] ClientSession disconnected - ID: 58
+[16:37:19] [INFO] Session closed - ID: 58
+[16:37:19] [INFO] Session removed - ID: 58, Remaining: 40
+[16:37:19] [INFO] Client disconnected - Connection: 58
+[16:37:19] [INFO] DB INSERT SessionDisconnectLog - Session: 58 at 2026-03-01 16:37:19
+[16:37:20] [INFO] Session closed - ID: 61
+[16:37:20] [INFO] Session removed - ID: 61, Remaining: 39
+[16:37:20] [INFO] ClientSession disconnected - ID: 61
+[16:37:20] [INFO] Client disconnected - Connection: 61
+[16:37:20] [INFO] DB INSERT SessionDisconnectLog - Session: 61 at 2026-03-01 16:37:20
+[16:37:21] [INFO] ClientSession disconnected - ID: 62
+[16:37:21] [INFO] Client disconnected - Connection: 62
+[16:37:21] [INFO] DB INSERT SessionDisconnectLog - Session: 62 at 2026-03-01 16:37:21
+[16:37:21] [INFO] Session closed - ID: 62
+[16:37:21] [INFO] Session removed - ID: 62, Remaining: 38
+[16:37:22] [INFO] Session closed - ID: 63
+[16:37:22] [INFO] Session removed - ID: 63, Remaining: 37
+[16:37:22] [INFO] ClientSession disconnected - ID: 63
+[16:37:22] [INFO] Client disconnected - Connection: 63
+[16:37:22] [INFO] DB INSERT SessionDisconnectLog - Session: 63 at 2026-03-01 16:37:22
+[16:37:23] [INFO] ClientSession disconnected - ID: 64
+[16:37:23] [INFO] Session closed - ID: 64
+[16:37:23] [INFO] Session removed - ID: 64, Remaining: 36
+[16:37:23] [INFO] DB INSERT SessionDisconnectLog - Session: 64 at 2026-03-01 16:37:23
+[16:37:23] [INFO] Client disconnected - Connection: 64
+[16:37:23] [INFO] ClientSession disconnected - ID: 65
+[16:37:23] [INFO] Session closed - ID: 65
+[16:37:23] [INFO] Session removed - ID: 65, Remaining: 35
+[16:37:23] [INFO] DB INSERT SessionDisconnectLog - Session: 65 at 2026-03-01 16:37:23
+[16:37:23] [INFO] Client disconnected - Connection: 65
+[16:37:24] [INFO] ClientSession disconnected - ID: 66
+[16:37:24] [INFO] Session closed - ID: 66
+[16:37:24] [INFO] Session removed - ID: 66, Remaining: 34
+[16:37:24] [INFO] DB INSERT SessionDisconnectLog - Session: 66 at 2026-03-01 16:37:24
+[16:37:24] [INFO] Client disconnected - Connection: 66
+[16:37:25] [INFO] ClientSession disconnected - ID: 67
+[16:37:25] [INFO] Session closed - ID: 67
+[16:37:25] [INFO] Session removed - ID: 67, Remaining: 33
+[16:37:25] [INFO] DB INSERT SessionDisconnectLog - Session: 67 at 2026-03-01 16:37:25
+[16:37:25] [INFO] Client disconnected - Connection: 67
+[16:37:26] [INFO] ClientSession disconnected - ID: 69
+[16:37:26] [INFO] Client disconnected - Connection: 69
+[16:37:26] [INFO] Session closed - ID: 69
+[16:37:26] [INFO] Session removed - ID: 69, Remaining: 32
+[16:37:26] [INFO] DB INSERT SessionDisconnectLog - Session: 69 at 2026-03-01 16:37:26
+[16:37:27] [INFO] Session closed - ID: 68
+[16:37:27] [INFO] Session removed - ID: 68, Remaining: 31
+[16:37:27] [INFO] ClientSession disconnected - ID: 68
+[16:37:27] [INFO] Client disconnected - Connection: 68
+[16:37:27] [INFO] DB INSERT SessionDisconnectLog - Session: 68 at 2026-03-01 16:37:27
+[16:37:28] [INFO] ClientSession disconnected - ID: 70
+[16:37:28] [INFO] Session closed - ID: 70
+[16:37:28] [INFO] Session removed - ID: 70, Remaining: 30
+[16:37:28] [INFO] DB INSERT SessionDisconnectLog - Session: 70 at 2026-03-01 16:37:28
+[16:37:28] [INFO] Client disconnected - Connection: 70
+[16:37:29] [INFO] Session closed - ID: 71
+[16:37:29] [INFO] Session removed - ID: 71, Remaining: 29
+[16:37:29] [INFO] ClientSession disconnected - ID: 71
+[16:37:29] [INFO] Client disconnected - Connection: 71
+[16:37:29] [INFO] DB INSERT SessionDisconnectLog - Session: 71 at 2026-03-01 16:37:29
+[16:37:30] [INFO] ClientSession disconnected - ID: 72
+[16:37:30] [INFO] Session closed - ID: 72
+[16:37:30] [INFO] Session removed - ID: 72, Remaining: 28
+[16:37:30] [INFO] DB INSERT SessionDisconnectLog - Session: 72 at 2026-03-01 16:37:30
+[16:37:30] [INFO] Client disconnected - Connection: 72
+[16:37:31] [INFO] Session closed - ID: 73
+[16:37:31] [INFO] Session removed - ID: 73, Remaining: 27
+[16:37:31] [INFO] ClientSession disconnected - ID: 73
+[16:37:31] [INFO] Client disconnected - Connection: 73
+[16:37:31] [INFO] DB INSERT SessionDisconnectLog - Session: 73 at 2026-03-01 16:37:31
+[16:37:32] [INFO] ClientSession disconnected - ID: 75
+[16:37:32] [INFO] Session closed - ID: 75
+[16:37:32] [INFO] Session removed - ID: 75, Remaining: 26
+[16:37:32] [INFO] DB INSERT SessionDisconnectLog - Session: 75 at 2026-03-01 16:37:32
+[16:37:32] [INFO] Client disconnected - Connection: 75
+[16:37:33] [INFO] ClientSession disconnected - ID: 74
+[16:37:33] [INFO] Client disconnected - Connection: 74
+[16:37:33] [INFO] Session closed - ID: 74
+[16:37:33] [INFO] Session removed - ID: 74, Remaining: 25
+[16:37:33] [INFO] DB INSERT SessionDisconnectLog - Session: 74 at 2026-03-01 16:37:33
+[16:37:34] [INFO] [GameServer<-DB] Pong received (every 10th) - Seq: 20, RTT: 7ms
+[16:37:34] [INFO] Ping time saved successfully in DB - ServerId: 1
+[16:37:34] [INFO] ClientSession disconnected - ID: 76
+[16:37:34] [INFO] Session closed - ID: 76
+[16:37:34] [INFO] Session removed - ID: 76, Remaining: 24
+[16:37:34] [INFO] DB INSERT SessionDisconnectLog - Session: 76 at 2026-03-01 16:37:34
+[16:37:34] [INFO] Client disconnected - Connection: 76
+[16:37:35] [INFO] Session closed - ID: 80
+[16:37:35] [INFO] Session removed - ID: 80, Remaining: 23
+[16:37:35] [INFO] ClientSession disconnected - ID: 80
+[16:37:35] [INFO] Client disconnected - Connection: 80
+[16:37:35] [INFO] DB INSERT SessionDisconnectLog - Session: 80 at 2026-03-01 16:37:35
+[16:37:36] [INFO] Session closed - ID: 77
+[16:37:36] [INFO] Session removed - ID: 77, Remaining: 22
+[16:37:36] [INFO] ClientSession disconnected - ID: 77
+[16:37:36] [INFO] Client disconnected - Connection: 77
+[16:37:36] [INFO] DB INSERT SessionDisconnectLog - Session: 77 at 2026-03-01 16:37:36
+[16:37:37] [INFO] ClientSession disconnected - ID: 78
+[16:37:37] [INFO] Session closed - ID: 78
+[16:37:37] [INFO] Session removed - ID: 78, Remaining: 21
+[16:37:37] [INFO] DB INSERT SessionDisconnectLog - Session: 78 at 2026-03-01 16:37:37
+[16:37:37] [INFO] Client disconnected - Connection: 78
+[16:37:38] [INFO] ClientSession disconnected - ID: 79
+[16:37:38] [INFO] Client disconnected - Connection: 79
+[16:37:38] [INFO] Session closed - ID: 79
+[16:37:38] [INFO] Session removed - ID: 79, Remaining: 20
+[16:37:38] [INFO] DB INSERT SessionDisconnectLog - Session: 79 at 2026-03-01 16:37:38
+[16:37:38] [INFO] ClientSession disconnected - ID: 81
+[16:37:38] [INFO] Session closed - ID: 81
+[16:37:38] [INFO] Client disconnected - Connection: 81
+[16:37:38] [INFO] DB INSERT SessionDisconnectLog - Session: 81 at 2026-03-01 16:37:38
+[16:37:38] [INFO] Session removed - ID: 81, Remaining: 19
+[16:37:39] [INFO] ClientSession disconnected - ID: 83
+[16:37:39] [INFO] Session closed - ID: 83
+[16:37:39] [INFO] Session removed - ID: 83, Remaining: 18
+[16:37:39] [INFO] DB INSERT SessionDisconnectLog - Session: 83 at 2026-03-01 16:37:39
+[16:37:39] [INFO] Client disconnected - Connection: 83
+[16:37:40] [INFO] Session closed - ID: 84
+[16:37:40] [INFO] Session removed - ID: 84, Remaining: 17
+[16:37:40] [INFO] ClientSession disconnected - ID: 84
+[16:37:40] [INFO] Client disconnected - Connection: 84
+[16:37:40] [INFO] DB INSERT SessionDisconnectLog - Session: 84 at 2026-03-01 16:37:40
+[16:37:41] [INFO] ClientSession disconnected - ID: 82
+[16:37:41] [INFO] Session closed - ID: 82
+[16:37:41] [INFO] Session removed - ID: 82, Remaining: 16
+[16:37:41] [INFO] DB INSERT SessionDisconnectLog - Session: 82 at 2026-03-01 16:37:41
+[16:37:41] [INFO] Client disconnected - Connection: 82
+[16:37:42] [INFO] ClientSession disconnected - ID: 85
+[16:37:42] [INFO] Session closed - ID: 85
+[16:37:42] [INFO] Session removed - ID: 85, Remaining: 15
+[16:37:42] [INFO] DB INSERT SessionDisconnectLog - Session: 85 at 2026-03-01 16:37:42
+[16:37:42] [INFO] Client disconnected - Connection: 85
+[16:37:43] [INFO] ClientSession disconnected - ID: 86
+[16:37:43] [INFO] Session closed - ID: 86
+[16:37:43] [INFO] Session removed - ID: 86, Remaining: 14
+[16:37:43] [INFO] DB INSERT SessionDisconnectLog - Session: 86 at 2026-03-01 16:37:43
+[16:37:43] [INFO] Client disconnected - Connection: 86
+[16:37:44] [INFO] ClientSession disconnected - ID: 87
+[16:37:44] [INFO] Client disconnected - Connection: 87
+[16:37:44] [INFO] DB INSERT SessionDisconnectLog - Session: 87 at 2026-03-01 16:37:44
+[16:37:44] [INFO] Session closed - ID: 87
+[16:37:44] [INFO] Session removed - ID: 87, Remaining: 13
+[16:37:45] [INFO] ClientSession disconnected - ID: 88
+[16:37:45] [INFO] Client disconnected - Connection: 88
+[16:37:45] [INFO] DB INSERT SessionDisconnectLog - Session: 88 at 2026-03-01 16:37:45
+[16:37:45] [INFO] Session closed - ID: 88
+[16:37:45] [INFO] Session removed - ID: 88, Remaining: 12
+[16:37:46] [INFO] Session closed - ID: 89
+[16:37:46] [INFO] Session removed - ID: 89, Remaining: 11
+[16:37:46] [INFO] ClientSession disconnected - ID: 89
+[16:37:46] [INFO] Client disconnected - Connection: 89
+[16:37:46] [INFO] DB INSERT SessionDisconnectLog - Session: 89 at 2026-03-01 16:37:46
+[16:37:47] [INFO] ClientSession disconnected - ID: 90
+[16:37:47] [INFO] Client disconnected - Connection: 90
+[16:37:47] [INFO] DB INSERT SessionDisconnectLog - Session: 90 at 2026-03-01 16:37:47
+[16:37:47] [INFO] Session closed - ID: 90
+[16:37:47] [INFO] Session removed - ID: 90, Remaining: 10
+[16:37:48] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 93, Seq: 20
+[16:37:48] [INFO] ClientSession disconnected - ID: 91
+[16:37:48] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 95, Seq: 20
+[16:37:48] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 92, Seq: 20
+[16:37:48] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 94, Seq: 20
+[16:37:48] [INFO] Session closed - ID: 91
+[16:37:48] [INFO] Session removed - ID: 91, Remaining: 9
+[16:37:48] [INFO] DB INSERT SessionDisconnectLog - Session: 91 at 2026-03-01 16:37:48
+[16:37:48] [INFO] Client disconnected - Connection: 91
+[16:37:48] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 99, Seq: 20
+[16:37:48] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 96, Seq: 20
+[16:37:48] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 98, Seq: 20
+[16:37:48] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 100, Seq: 20
+[16:37:48] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 97, Seq: 20
+[16:37:49] [INFO] ClientSession disconnected - ID: 93
+[16:37:49] [INFO] Session closed - ID: 93
+[16:37:49] [INFO] Session removed - ID: 93, Remaining: 8
+[16:37:49] [INFO] DB INSERT SessionDisconnectLog - Session: 93 at 2026-03-01 16:37:49
+[16:37:49] [INFO] Client disconnected - Connection: 93
+[16:37:50] [INFO] Session closed - ID: 94
+[16:37:50] [INFO] Session removed - ID: 94, Remaining: 7
+[16:37:50] [INFO] ClientSession disconnected - ID: 94
+[16:37:50] [INFO] Client disconnected - Connection: 94
+[16:37:50] [INFO] DB INSERT SessionDisconnectLog - Session: 94 at 2026-03-01 16:37:50
+[16:37:51] [INFO] ClientSession disconnected - ID: 92
+[16:37:51] [INFO] Client disconnected - Connection: 92
+[16:37:51] [INFO] Session closed - ID: 92
+[16:37:51] [INFO] Session removed - ID: 92, Remaining: 6
+[16:37:51] [INFO] DB INSERT SessionDisconnectLog - Session: 92 at 2026-03-01 16:37:51
+[16:37:52] [INFO] ClientSession disconnected - ID: 96
+[16:37:52] [INFO] Client disconnected - Connection: 96
+[16:37:52] [INFO] Session closed - ID: 96
+[16:37:52] [INFO] Session removed - ID: 96, Remaining: 5
+[16:37:52] [INFO] DB INSERT SessionDisconnectLog - Session: 96 at 2026-03-01 16:37:52
+[16:37:53] [INFO] ClientSession disconnected - ID: 95
+[16:37:53] [INFO] Session closed - ID: 95
+[16:37:53] [INFO] Session removed - ID: 95, Remaining: 4
+[16:37:53] [INFO] DB INSERT SessionDisconnectLog - Session: 95 at 2026-03-01 16:37:53
+[16:37:53] [INFO] Client disconnected - Connection: 95
+[16:37:54] [INFO] ClientSession disconnected - ID: 97
+[16:37:54] [INFO] Client disconnected - Connection: 97
+[16:37:54] [INFO] Session closed - ID: 97
+[16:37:54] [INFO] Session removed - ID: 97, Remaining: 3
+[16:37:54] [INFO] DB INSERT SessionDisconnectLog - Session: 97 at 2026-03-01 16:37:54
+[16:37:55] [INFO] Session closed - ID: 98
+[16:37:55] [INFO] Session removed - ID: 98, Remaining: 2
+[16:37:55] [INFO] ClientSession disconnected - ID: 98
+[16:37:55] [INFO] Client disconnected - Connection: 98
+[16:37:55] [INFO] DB INSERT SessionDisconnectLog - Session: 98 at 2026-03-01 16:37:55
+[16:37:56] [INFO] ClientSession disconnected - ID: 100
+[16:37:56] [INFO] Session closed - ID: 100
+[16:37:56] [INFO] Session removed - ID: 100, Remaining: 1
+[16:37:56] [INFO] DB INSERT SessionDisconnectLog - Session: 100 at 2026-03-01 16:37:56
+[16:37:56] [INFO] Client disconnected - Connection: 100
+[16:37:57] [INFO] ClientSession disconnected - ID: 99
+[16:37:57] [INFO] Session closed - ID: 99
+[16:37:57] [INFO] Session removed - ID: 99, Remaining: 0
+[16:37:57] [INFO] DB INSERT SessionDisconnectLog - Session: 99 at 2026-03-01 16:37:57
+[16:37:57] [INFO] Client disconnected - Connection: 99
+[16:37:57] [INFO] Shutdown event signaled - stopping server
+[16:37:57] [INFO] Shutting down server...
+[16:37:57] [INFO] Shutting down DB task queue...
+[16:37:57] [INFO] Shutting down DBTaskQueue...
+[16:37:57] [INFO] DBTaskQueue worker thread stopped
+[16:37:57] [INFO] DBTaskQueue shutdown complete - Processed: 200, Failed: 0
+[16:37:57] [INFO] DB task queue statistics - Processed: 200, Failed: 0
+[16:37:57] [INFO] TestServer: local database disconnected
+[16:37:57] [WARN] DB server closed connection
+[16:37:57] [INFO] Session closed - ID: 440
+[16:37:57] [INFO] Accept thread stopped
+[16:37:58] [INFO] All I/O threads stopped
+[16:37:58] [INFO] All sessions closed - Count: 0
+[16:37:58] [INFO] WindowsNetworkEngine platform shutdown complete
+[16:37:58] [INFO] BaseNetworkEngine stopped
+[16:37:58] [INFO] TestServer stopped
+[16:37:58] [INFO] Server stopped.
+Server shutdown complete.

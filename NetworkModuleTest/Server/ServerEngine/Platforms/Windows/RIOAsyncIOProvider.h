@@ -6,6 +6,7 @@
 #include "Network/Core/AsyncIOProvider.h"
 
 #ifdef _WIN32
+#include "Core/Memory/RIOBufferPool.h"
 #include <atomic>
 #include <memory>
 #include <mswsock.h>
@@ -105,16 +106,10 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	std::unordered_map<uintptr_t, std::shared_ptr<PendingOperation>> mPendingOps; // English: O(1) pending op lookup / 한글: O(1) 대기 작업 탐색
 	mutable std::mutex mMutex;
 
-	// Pre-registered slab pool (one-time RIORegisterBuffer at Initialize)
-	// 사전 등록 슬랩 풀 (Initialize 시 1회 RIORegisterBuffer)
-	void*       mRecvSlab = nullptr;
-	void*       mSendSlab = nullptr;
-	RIO_BUFFERID mRecvSlabId = RIO_INVALID_BUFFERID;
-	RIO_BUFFERID mSendSlabId = RIO_INVALID_BUFFERID;
-	size_t      mSlotSize = 0;    // bytes per slot (8192)
-	size_t      mPoolSize = 0;    // number of slots (= maxConcurrent)
-	std::vector<size_t> mFreeRecvSlots; // guarded by mMutex
-	std::vector<size_t> mFreeSendSlots; // guarded by mMutex
+	// Pre-registered slab pools (mRecvPool / mSendPool own VirtualAlloc + 1x RIORegisterBuffer each)
+	// 사전 등록 슬랩 풀 (각 풀이 VirtualAlloc + 1회 RIORegisterBuffer 보유)
+	::Core::Memory::RIOBufferPool mRecvPool;
+	::Core::Memory::RIOBufferPool mSendPool;
 	std::unordered_map<SocketHandle, size_t> mSocketRecvSlot; // guarded by mMutex
 
 	PfnRIOCloseCompletionQueue mPfnRIOCloseCompletionQueue;

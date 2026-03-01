@@ -59,6 +59,12 @@ class PingPongHandler
 	uint64_t GetLastPongPingTimestamp() const;
 	uint32_t GetLastPongPingSequence() const;
 
+	// English: Validation payload accessors — available after ParsePong()
+	// 한글: 검증 페이로드 접근자 — ParsePong() 호출 후 유효
+	bool                        GetLastValidationResult() const { return mLastValidationOk; }
+	const std::vector<uint32_t>& GetLastValidationNums()  const { return mLastPingValidationNums; }
+	const std::vector<char>&     GetLastValidationChars()  const { return mLastPingValidationChars; }
+
 #ifdef HAS_PROTOBUF
 	// English: Accessors (available only with protobuf)
 	// 한글: 접근자 (protobuf 있을 때만 사용 가능)
@@ -79,6 +85,12 @@ class PingPongHandler
 	std::string mLastPongMessage;
 	bool mHasLastPing;
 	bool mHasLastPong;
+
+	// English: Validation payload — sent in Ping, echoed by Pong, verified in ParsePong
+	// 한글: 검증 페이로드 — Ping에 포함해 송신, Pong이 에코, ParsePong에서 원본 대조
+	std::vector<uint32_t> mLastPingValidationNums;  // 1~5개 랜덤 숫자
+	std::vector<char>     mLastPingValidationChars; // 1~5개 랜덤 문자
+	bool                  mLastValidationOk = false;
 
 #ifdef HAS_PROTOBUF
 	std::unique_ptr<ping::Ping> mLastPing;
