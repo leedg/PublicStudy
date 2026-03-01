@@ -2,6 +2,7 @@
 // 한글: Session 클래스 구현
 
 #include "Session.h"
+#include "SendBufferPool.h"
 #include <cstring>
 #include <iostream>
 #include <sstream>
@@ -36,6 +37,7 @@ Session::Session()
 		  mAsyncProvider(nullptr)
 #ifdef _WIN32
 		  ,
+		  mCurrentSendSlotIdx(~size_t(0)),
 		  mRecvContext(IOType::Recv),
 		  mSendContext(IOType::Send)
 #endif
@@ -99,6 +101,9 @@ void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 	mIsSending = false;
 	mSendQueueSize.store(0, std::memory_order_relaxed);
 	mAsyncProvider.store(nullptr, std::memory_order_relaxed);
+#ifdef _WIN32
+	mCurrentSendSlotIdx = ~size_t(0);
+#endif
 	mRecvAccumBuffer.clear();
 	mRecvAccumOffset = 0;
 
@@ -138,14 +143,38 @@ void Session::Close()
 #endif
 	}
 
+	// English: Release any in-flight send pool slot AFTER closesocket().
+	//          closesocket() aborts the pending WSASend so the kernel no longer
+	//          references the buffer — safe to return the slot here.
+	// 한글: closesocket() 이후 전송 중인 풀 슬롯 반납.
+	//       closesocket()이 대기 중인 WSASend를 중단시켜 커널이 버퍼를
+	//       더 이상 참조하지 않으므로 여기서 슬롯을 안전하게 반납 가능.
+#ifdef _WIN32
+	if (mCurrentSendSlotIdx != ~size_t(0))
+	{
+		SendBufferPool::Instance().Release(mCurrentSendSlotIdx);
+		mCurrentSendSlotIdx = ~size_t(0);
+	}
+#endif
+
 	// English: Clear send queue and recv reassembly state
 	// 한글: 송신 큐와 수신 재조립 상태 초기화
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
+#ifdef _WIN32
+		// English: Return all queued (unsent) pool slots before draining the queue.
+		// 한글: 큐 비우기 전 미전송 풀 슬롯 전체 반납.
+		while (!mSendQueue.empty())
+		{
+			SendBufferPool::Instance().Release(mSendQueue.front().slotIdx);
+			mSendQueue.pop();
+		}
+#else
 		while (!mSendQueue.empty())
 		{
 			mSendQueue.pop();
 		}
+#endif
 		mSendQueueSize.store(0, std::memory_order_relaxed);
 	}
 	{
@@ -217,33 +246,36 @@ void Session::Send(const void *data, uint32_t size)
 
 	// English: Lock contention optimization using atomic queue size counter
 	// 한글: Atomic 큐 크기 카운터를 사용한 Lock 경합 최적화
-	//
-	// Performance optimization strategy:
-	// - Fast path: Check mSendQueueSize (lock-free) before acquiring mutex
-	// - Slow path: Only acquire mutex when actually enqueuing data
-	// - Benefit: Reduces lock contention when Send() is called frequently
-	//
-	// 성능 최적화 전략:
-	// - Fast path: mutex 획득 전에 mSendQueueSize 확인 (lock-free)
-	// - Slow path: 실제로 데이터를 큐에 넣을 때에만 mutex 획득
-	// - 이점: Send()가 자주 호출될 때 lock 경합 감소
 
-	// English: Prepare buffer outside of lock (minimize critical section)
-	// 한글: Lock 밖에서 버퍼 준비 (임계 구역 최소화)
+#ifdef _WIN32
+	// English: IOCP path — acquire a pool slot (O(1), no heap alloc) and copy once.
+	// 한글: IOCP 경로 — 풀 슬롯 획득 (O(1), 힙 할당 없음) 후 1회 복사.
+	auto slot = SendBufferPool::Instance().Acquire();
+	if (!slot.ptr)
+	{
+		Utils::Logger::Warn("SendBufferPool exhausted - packet dropped (Session: " +
+							std::to_string(mId) + ")");
+		return;
+	}
+	std::memcpy(slot.ptr, data, size);
+
+	{
+		std::lock_guard<std::mutex> lock(mSendMutex);
+		mSendQueue.push({slot.idx, size});
+		mSendQueueSize.fetch_add(1, std::memory_order_release);
+	}
+#else
+	// English: Non-IOCP path — copy into a heap buffer (existing behaviour).
+	// 한글: 비 IOCP 경로 — 힙 버퍼로 복사 (기존 동작).
 	std::vector<char> buffer(size);
 	std::memcpy(buffer.data(), data, size);
 
-	// English: Enqueue with atomic size tracking
-	// 한글: Atomic 크기 추적과 함께 큐에 삽입
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
 		mSendQueue.push(std::move(buffer));
-
-		// English: Increment queue size atomically with release so PostSend's
-		//          acquire load sees the enqueued data
-		// 한글: PostSend의 acquire load가 삽입된 데이터를 볼 수 있도록 release로 증가
 		mSendQueueSize.fetch_add(1, std::memory_order_release);
 	}
+#endif
 
 	// English: Always try to flush (CAS inside will prevent double send)
 	// 한글: 항상 플러시 시도 (내부 CAS가 이중 전송 방지)
@@ -267,22 +299,25 @@ bool Session::PostSend()
 {
 	// English: Fast path - check queue size before acquiring lock
 	// 한글: Fast path - 락 획득 전 큐 크기 확인
-	//       Send()의 release store를 따르는 acquire load로
-	//       큐가 비어있다고 확인되면 삽입된 데이터를 반드시 볼 수 있음
 	if (mSendQueueSize.load(std::memory_order_acquire) == 0)
 	{
 		// English: Queue is empty, release sending flag
 		// 한글: 큐가 비어있음, 전송 플래그 해제
+
+#ifdef _WIN32
+		// English: Release the previous in-flight slot (send just completed).
+		// 한글: 이전 전송 중 슬롯 반납 (방금 전송 완료).
+		if (mCurrentSendSlotIdx != ~size_t(0))
+		{
+			SendBufferPool::Instance().Release(mCurrentSendSlotIdx);
+			mCurrentSendSlotIdx = ~size_t(0);
+		}
+#endif
+
 		mIsSending.store(false, std::memory_order_release);
 
 		// English: [Fix D-3] TOCTOU guard: re-check queue size after releasing flag.
-		//          Send() may have pushed data and lost the CAS race in the window
-		//          between our size==0 check above and the store(false) above.
-		//          If so, re-trigger FlushSendQueue() so the data is not stranded.
 		// 한글: [Fix D-3] TOCTOU 방어: 플래그 해제 후 큐 크기 재확인.
-		//       위의 size==0 확인과 store(false) 사이 구간에 Send()가 데이터를 추가하고
-		//       CAS 경쟁에서 실패했을 수 있음. 그 경우 FlushSendQueue()를 재호출해
-		//       데이터가 큐에 방치되지 않도록 한다.
 		if (mSendQueueSize.load(std::memory_order_acquire) > 0)
 		{
 			FlushSendQueue();
@@ -290,7 +325,11 @@ bool Session::PostSend()
 		return true;
 	}
 
+#ifdef _WIN32
+	SendRequest req{~size_t(0), 0};
+#else
 	std::vector<char> dataToSend;
+#endif
 
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
@@ -299,14 +338,24 @@ bool Session::PostSend()
 		// 한글: Lock 획득 후 재확인 (TOCTOU 방지)
 		if (mSendQueue.empty())
 		{
-			// English: No more data to send, release flag atomically
-			// 한글: 더 이상 전송할 데이터 없음, atomic으로 플래그 해제
+#ifdef _WIN32
+			if (mCurrentSendSlotIdx != ~size_t(0))
+			{
+				SendBufferPool::Instance().Release(mCurrentSendSlotIdx);
+				mCurrentSendSlotIdx = ~size_t(0);
+			}
+#endif
 			mIsSending.store(false, std::memory_order_release);
 			return true;
 		}
 
+#ifdef _WIN32
+		req = mSendQueue.front();
+		mSendQueue.pop();
+#else
 		dataToSend = std::move(mSendQueue.front());
 		mSendQueue.pop();
+#endif
 
 		// English: Decrement queue size atomically
 		// 한글: Atomic으로 큐 크기 감소
@@ -314,27 +363,28 @@ bool Session::PostSend()
 	}
 
 #ifdef _WIN32
+	// English: Release the previous in-flight slot before committing the next one.
+	// 한글: 다음 슬롯 커밋 전에 이전 전송 중 슬롯 반납.
+	if (mCurrentSendSlotIdx != ~size_t(0))
+	{
+		SendBufferPool::Instance().Release(mCurrentSendSlotIdx);
+		mCurrentSendSlotIdx = ~size_t(0);
+	}
+
 	const SocketHandle socket = mSocket.load(std::memory_order_acquire);
 	if (socket == GetInvalidSocket())
 	{
+		SendBufferPool::Instance().Release(req.slotIdx);
 		mIsSending.store(false, std::memory_order_release);
 		return false;
 	}
 
+	// English: Zero-copy: point wsaBuf directly at the pool slot (no memcpy into mSendContext.buffer).
+	// 한글: Zero-copy: wsaBuf를 풀 슬롯에 직접 지정 (mSendContext.buffer로의 memcpy 없음).
 	mSendContext.Reset();
-	if (dataToSend.size() > sizeof(mSendContext.buffer))
-	{
-		Utils::Logger::Error("Send buffer overflow risk detected - closing session (Session: " +
-							 std::to_string(mId) + ", Size: " +
-							 std::to_string(dataToSend.size()) + ")");
-		mIsSending.store(false, std::memory_order_release);
-		Close();
-		return false;
-	}
-
-	std::memcpy(mSendContext.buffer, dataToSend.data(), dataToSend.size());
-	mSendContext.wsaBuf.buf = mSendContext.buffer;
-	mSendContext.wsaBuf.len = static_cast<ULONG>(dataToSend.size());
+	mSendContext.wsaBuf.buf = SendBufferPool::Instance().SlotPtr(req.slotIdx);
+	mSendContext.wsaBuf.len = static_cast<ULONG>(req.size);
+	mCurrentSendSlotIdx = req.slotIdx;
 
 	DWORD bytesSent = 0;
 	int result = WSASend(socket, &mSendContext.wsaBuf, 1, &bytesSent, 0,
@@ -345,11 +395,9 @@ bool Session::PostSend()
 		int error = WSAGetLastError();
 		if (error != WSA_IO_PENDING)
 		{
-			Utils::Logger::Error("WSASend failed - Error: " +
-								 std::to_string(error));
-			// English: Socket error - release flag then close session
-			// 한글: 소켓 오류 - 플래그 해제 후 세션 종료
-			//       오류 발생 시 먼저 atomic으로 플래그 해제
+			Utils::Logger::Error("WSASend failed - Error: " + std::to_string(error));
+			SendBufferPool::Instance().Release(req.slotIdx);
+			mCurrentSendSlotIdx = ~size_t(0);
 			mIsSending.store(false, std::memory_order_release);
 			Close();
 			return false;
@@ -462,7 +510,41 @@ size_t Session::GetRecvBufferSize() const
 
 void Session::ProcessRawRecv(const char *data, uint32_t size)
 {
-	std::vector<std::vector<char>> completePackets;
+	// English: PacketSpan records offset+size within the flat batch buffer (no per-packet alloc).
+	// 한글: PacketSpan은 평탄 배치 버퍼 내 offset+size만 기록 (패킷별 alloc 없음).
+	struct PacketSpan { uint32_t offset; uint32_t size; };
+
+	// English: Fast-path check — no accumulated data and exactly one complete packet.
+	//          Holds the lock only during the check; releases before invoking OnRecv.
+	// 한글: 패스트패스 검사 — 누적 데이터 없고 정확히 1개의 완성 패킷인 경우.
+	//       검사 중에만 락 보유; OnRecv 호출 전에 해제.
+	bool fastPath = false;
+	{
+		std::lock_guard<std::mutex> recvLock(mRecvMutex);
+		if (mRecvAccumBuffer.empty() && size >= sizeof(PacketHeader))
+		{
+			const auto *hdr = reinterpret_cast<const PacketHeader *>(data);
+			if (hdr->size >= sizeof(PacketHeader) &&
+				hdr->size <= MAX_PACKET_SIZE &&
+				static_cast<uint32_t>(hdr->size) == size)
+			{
+				fastPath = true;
+			}
+		}
+	}
+
+	if (fastPath)
+	{
+		// English: Zero-alloc fast path: deliver raw recv buffer directly.
+		// 한글: 할당 없는 패스트패스: 원시 recv 버퍼를 직접 전달.
+		OnRecv(data, size);
+		return;
+	}
+
+	// English: General path — batch all complete packets into one flat buffer (1 alloc).
+	// 한글: 일반 경로 — 완성 패킷 전체를 단일 평탄 버퍼로 배치 처리 (1 alloc).
+	std::vector<char>     batchBuf;
+	std::vector<PacketSpan> spans;
 	bool shouldClose = false;
 
 	{
@@ -504,8 +586,11 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 					break;
 				}
 
-				const uint16_t packetSize = hdr->size;
-				completePackets.emplace_back(
+				const uint32_t packetSize = hdr->size;
+				// English: Append packet bytes to flat batch buffer and record its span.
+				// 한글: 패킷 바이트를 평탄 배치 버퍼에 추가하고 span 기록.
+				spans.push_back({static_cast<uint32_t>(batchBuf.size()), packetSize});
+				batchBuf.insert(batchBuf.end(),
 					mRecvAccumBuffer.begin() + static_cast<std::ptrdiff_t>(mRecvAccumOffset),
 					mRecvAccumBuffer.begin() + static_cast<std::ptrdiff_t>(mRecvAccumOffset + packetSize));
 				mRecvAccumOffset += packetSize;
@@ -532,9 +617,11 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 		return;
 	}
 
-	for (const auto &packet : completePackets)
+	// English: Dispatch all packets from the single batch buffer (1 alloc total for N packets).
+	// 한글: 단일 배치 버퍼에서 모든 패킷 디스패치 (N 패킷에 총 1 alloc).
+	for (const auto &sp : spans)
 	{
-		OnRecv(packet.data(), static_cast<uint32_t>(packet.size()));
+		OnRecv(batchBuf.data() + sp.offset, sp.size);
 	}
 }
 

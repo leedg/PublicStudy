@@ -340,13 +340,7 @@ namespace Network::TestServer
         // English: Create and initialize DBServerSession for DB connection
         // 한글: DB 연결을 위한 DBServerSession 생성 및 초기화
         mDBServerSession = std::make_shared<DBServerSession>();
-        if (!mDBServerSession->Initialize(static_cast<uint64_t>(clientSocket), clientSocket))
-        {
-            Logger::Error("Failed to initialize DBServerSession");
-            mDBServerSession.reset();
-            mDBConnecting.store(false);
-            return false;
-        }
+        mDBServerSession->Initialize(static_cast<uint64_t>(clientSocket), clientSocket);
 
         mDBServerSocket = clientSocket;
         mDBRunning.store(true);

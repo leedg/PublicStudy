@@ -79,6 +79,16 @@ bool AsyncBufferPool::Initialize(AsyncIOProvider *provider, size_t bufferSize,
 
         mSlots.push_back({ptr, id, false});
     }
+
+    // O(1) 프리리스트 초기화: 0..poolSize-1 스택
+    mFreeIndices.resize(poolSize);
+    std::iota(mFreeIndices.begin(), mFreeIndices.end(), size_t(0));
+
+    // O(1) bufferId → 슬롯 인덱스 맵 구성
+    mBufferIdToIndex.reserve(poolSize);
+    for (size_t i = 0; i < mSlots.size(); ++i)
+        mBufferIdToIndex[mSlots[i].bufferId] = i;
+
     return true;
 }
 
@@ -100,6 +110,8 @@ void AsyncBufferPool::ShutdownLocked()
         }
     }
     mSlots.clear();
+    mFreeIndices.clear();
+    mBufferIdToIndex.clear();
     mProvider = nullptr;
     mBufferSize = 0;
 }
@@ -107,30 +119,27 @@ void AsyncBufferPool::ShutdownLocked()
 uint8_t *AsyncBufferPool::Acquire(int64_t &outBufferId)
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    for (auto &slot : mSlots)
+    if (mFreeIndices.empty())
     {
-        if (!slot.inUse)
-        {
-            slot.inUse = true;
-            outBufferId = slot.bufferId;
-            return slot.ptr;
-        }
+        outBufferId = -1;
+        return nullptr;
     }
-    outBufferId = -1;
-    return nullptr;
+    const size_t idx = mFreeIndices.back();
+    mFreeIndices.pop_back();
+    mSlots[idx].inUse = true;
+    outBufferId = mSlots[idx].bufferId;
+    return mSlots[idx].ptr;
 }
 
 void AsyncBufferPool::Release(int64_t bufferId)
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    for (auto &slot : mSlots)
-    {
-        if (slot.bufferId == bufferId)
-        {
-            slot.inUse = false;
-            return;
-        }
-    }
+    const auto it = mBufferIdToIndex.find(bufferId);
+    if (it == mBufferIdToIndex.end())
+        return;
+    const size_t idx = it->second;
+    mSlots[idx].inUse = false;
+    mFreeIndices.push_back(idx);
 }
 
 size_t AsyncBufferPool::GetBufferSize() const
@@ -142,11 +151,7 @@ size_t AsyncBufferPool::GetBufferSize() const
 size_t AsyncBufferPool::GetAvailable() const
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    size_t count = 0;
-    for (const auto &slot : mSlots)
-        if (!slot.inUse)
-            ++count;
-    return count;
+    return mFreeIndices.size();
 }
 
 size_t AsyncBufferPool::GetPoolSize() const

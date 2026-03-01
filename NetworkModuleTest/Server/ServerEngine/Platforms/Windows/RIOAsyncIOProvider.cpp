@@ -17,6 +17,9 @@ namespace Windows
 
 RIOAsyncIOProvider::RIOAsyncIOProvider()
 	: mCompletionQueue(RIO_INVALID_CQ), mCompletionEvent(nullptr),
+	  mRecvSlab(nullptr), mSendSlab(nullptr),
+	  mRecvSlabId(RIO_INVALID_BUFFERID), mSendSlabId(RIO_INVALID_BUFFERID),
+	  mSlotSize(0), mPoolSize(0),
 	  mMaxConcurrentOps(0), mNextBufferId(1), mInitialized(false),
 	  mShuttingDown(false)
 {
@@ -126,6 +129,81 @@ AsyncIOError RIOAsyncIOProvider::Initialize(size_t queueDepth,
 	}
 
 	mMaxConcurrentOps = (maxConcurrent > 0) ? maxConcurrent : 128;
+
+	// Allocate pre-registered recv/send slabs (1 RIORegisterBuffer each, total 2)
+	// 사전 등록 recv/send 슬랩 할당 (각 1회 RIORegisterBuffer, 합계 2회)
+	mSlotSize = 8192;
+	mPoolSize = mMaxConcurrentOps;
+	const SIZE_T slabBytes = mSlotSize * mPoolSize;
+
+	mRecvSlab = VirtualAlloc(nullptr, slabBytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	if (!mRecvSlab)
+	{
+		mLastError = "Failed to allocate recv slab (VirtualAlloc)";
+		mPfnRIOCloseCompletionQueue(mCompletionQueue);
+		mCompletionQueue = RIO_INVALID_CQ;
+		CloseHandle(mCompletionEvent);
+		mCompletionEvent = nullptr;
+		return AsyncIOError::AllocationFailed;
+	}
+
+	mSendSlab = VirtualAlloc(nullptr, slabBytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	if (!mSendSlab)
+	{
+		mLastError = "Failed to allocate send slab (VirtualAlloc)";
+		VirtualFree(mRecvSlab, 0, MEM_RELEASE);
+		mRecvSlab = nullptr;
+		mPfnRIOCloseCompletionQueue(mCompletionQueue);
+		mCompletionQueue = RIO_INVALID_CQ;
+		CloseHandle(mCompletionEvent);
+		mCompletionEvent = nullptr;
+		return AsyncIOError::AllocationFailed;
+	}
+
+	mRecvSlabId = mPfnRIORegisterBuffer(
+		reinterpret_cast<PCHAR>(mRecvSlab), static_cast<DWORD>(slabBytes));
+	if (mRecvSlabId == RIO_INVALID_BUFFERID)
+	{
+		mLastError = "Failed to register recv slab buffer";
+		VirtualFree(mRecvSlab, 0, MEM_RELEASE);
+		mRecvSlab = nullptr;
+		VirtualFree(mSendSlab, 0, MEM_RELEASE);
+		mSendSlab = nullptr;
+		mPfnRIOCloseCompletionQueue(mCompletionQueue);
+		mCompletionQueue = RIO_INVALID_CQ;
+		CloseHandle(mCompletionEvent);
+		mCompletionEvent = nullptr;
+		return AsyncIOError::OperationFailed;
+	}
+
+	mSendSlabId = mPfnRIORegisterBuffer(
+		reinterpret_cast<PCHAR>(mSendSlab), static_cast<DWORD>(slabBytes));
+	if (mSendSlabId == RIO_INVALID_BUFFERID)
+	{
+		mLastError = "Failed to register send slab buffer";
+		mPfnRIODeregisterBuffer(mRecvSlabId);
+		mRecvSlabId = RIO_INVALID_BUFFERID;
+		VirtualFree(mRecvSlab, 0, MEM_RELEASE);
+		mRecvSlab = nullptr;
+		VirtualFree(mSendSlab, 0, MEM_RELEASE);
+		mSendSlab = nullptr;
+		mPfnRIOCloseCompletionQueue(mCompletionQueue);
+		mCompletionQueue = RIO_INVALID_CQ;
+		CloseHandle(mCompletionEvent);
+		mCompletionEvent = nullptr;
+		return AsyncIOError::OperationFailed;
+	}
+
+	// Initialize free slot indices: 0 .. mPoolSize-1
+	// 가용 슬롯 인덱스 초기화: 0 .. mPoolSize-1
+	mFreeRecvSlots.reserve(mPoolSize);
+	mFreeSendSlots.reserve(mPoolSize);
+	for (size_t i = 0; i < mPoolSize; ++i)
+	{
+		mFreeRecvSlots.push_back(i);
+		mFreeSendSlots.push_back(i);
+	}
+
 	mInfo.mMaxQueueDepth = queueDepth;
 	mInfo.mMaxConcurrentReq = mMaxConcurrentOps;
 	mInitialized.store(true, std::memory_order_release);
@@ -133,13 +211,10 @@ AsyncIOError RIOAsyncIOProvider::Initialize(size_t queueDepth,
 	return AsyncIOError::Success;
 }
 
-void RIOAsyncIOProvider::CleanupPendingOperation(PendingOperation &op)
+void RIOAsyncIOProvider::CleanupPendingOperation(PendingOperation & /*op*/)
 {
-	if (op.mRioBufferId != RIO_INVALID_BUFFERID && mPfnRIODeregisterBuffer)
-	{
-		mPfnRIODeregisterBuffer(op.mRioBufferId);
-		op.mRioBufferId = RIO_INVALID_BUFFERID;
-	}
+	// Pre-registered slab: no per-op deregistration needed.
+	// Send slots are returned in ProcessCompletions or on RIOSend failure.
 }
 
 void RIOAsyncIOProvider::Shutdown()
@@ -174,6 +249,32 @@ void RIOAsyncIOProvider::Shutdown()
 		}
 		mRegisteredBuffers.clear();
 		mRequestQueues.clear();
+		mSocketRecvSlot.clear();
+		mFreeRecvSlots.clear();
+		mFreeSendSlots.clear();
+	}
+
+	// Deregister slab buffers (1 call each, inverse of Initialize)
+	// 슬랩 버퍼 등록 해제 (각 1회, Initialize의 역순)
+	if (mRecvSlabId != RIO_INVALID_BUFFERID && mPfnRIODeregisterBuffer)
+	{
+		mPfnRIODeregisterBuffer(mRecvSlabId);
+		mRecvSlabId = RIO_INVALID_BUFFERID;
+	}
+	if (mSendSlabId != RIO_INVALID_BUFFERID && mPfnRIODeregisterBuffer)
+	{
+		mPfnRIODeregisterBuffer(mSendSlabId);
+		mSendSlabId = RIO_INVALID_BUFFERID;
+	}
+	if (mRecvSlab)
+	{
+		VirtualFree(mRecvSlab, 0, MEM_RELEASE);
+		mRecvSlab = nullptr;
+	}
+	if (mSendSlab)
+	{
+		VirtualFree(mSendSlab, 0, MEM_RELEASE);
+		mSendSlab = nullptr;
 	}
 
 	if (mCompletionQueue != RIO_INVALID_CQ && mPfnRIOCloseCompletionQueue)
@@ -244,7 +345,28 @@ AsyncIOError RIOAsyncIOProvider::AssociateSocket(SocketHandle socket,
 									 RequestContext context)
 {
 	RIO_RQ queue = RIO_INVALID_RQ;
-	return GetOrCreateRequestQueue(socket, queue, context);
+	AsyncIOError result = GetOrCreateRequestQueue(socket, queue, context);
+	if (result != AsyncIOError::Success)
+	{
+		return result;
+	}
+
+	// Assign a pre-registered recv slab slot to this socket
+	// 이 소켓에 사전 등록 recv 슬랩 슬롯 할당
+	std::lock_guard<std::mutex> lock(mMutex);
+	if (mSocketRecvSlot.count(socket))
+	{
+		return AsyncIOError::Success; // Already assigned (idempotent)
+	}
+	if (mFreeRecvSlots.empty())
+	{
+		mLastError = "No free recv slots (connection limit reached)";
+		return AsyncIOError::NoResources;
+	}
+	const size_t slotIdx = mFreeRecvSlots.back();
+	mFreeRecvSlots.pop_back();
+	mSocketRecvSlot[socket] = slotIdx;
+	return AsyncIOError::Success;
 }
 
 int64_t RIOAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
@@ -324,29 +446,17 @@ AsyncIOError RIOAsyncIOProvider::SendAsync(SocketHandle socket,
 		return queueResult;
 	}
 
+	if (size > mSlotSize)
+	{
+		mLastError = "Send size exceeds slab slot size";
+		return AsyncIOError::InvalidBuffer;
+	}
+
 	auto op = std::make_shared<PendingOperation>();
 	op->mContext = context;
 	op->mSocket = socket;
 	op->mType = AsyncIOType::Send;
 	op->mBufferSize = size;
-	op->mOwnedBuffer.resize(size);
-	std::memcpy(op->mOwnedBuffer.data(), buffer, size);
-	op->mBufferPtr = op->mOwnedBuffer.data();
-
-	op->mRioBufferId = mPfnRIORegisterBuffer(
-		reinterpret_cast<PCHAR>(op->mBufferPtr), static_cast<DWORD>(size));
-	if (op->mRioBufferId == RIO_INVALID_BUFFERID)
-	{
-		mLastError = "Failed to register send buffer";
-		std::lock_guard<std::mutex> lock(mMutex);
-		mStats.mErrorCount++;
-		return AsyncIOError::OperationFailed;
-	}
-
-	RIO_BUF rioBuffer;
-	rioBuffer.BufferId = op->mRioBufferId;
-	rioBuffer.Offset = 0;
-	rioBuffer.Length = static_cast<ULONG>(size);
 
 	const uintptr_t opKey = static_cast<uintptr_t>(
 		mNextOpId.fetch_add(1, std::memory_order_relaxed));
@@ -356,10 +466,31 @@ AsyncIOError RIOAsyncIOProvider::SendAsync(SocketHandle socket,
 	if (!mInitialized.load(std::memory_order_acquire) ||
 		mShuttingDown.load(std::memory_order_acquire))
 	{
-		CleanupPendingOperation(*op);
 		mLastError = "Provider is shutting down";
 		return AsyncIOError::NotInitialized;
 	}
+
+	// Acquire a send slab slot (replaces per-I/O RIORegisterBuffer)
+	// 송신 슬랩 슬롯 획득 (per-I/O RIORegisterBuffer 대체)
+	if (mFreeSendSlots.empty())
+	{
+		mLastError = "Send slot pool exhausted";
+		mStats.mErrorCount++;
+		return AsyncIOError::NoResources;
+	}
+	const size_t slotIdx = mFreeSendSlots.back();
+	mFreeSendSlots.pop_back();
+	op->mSendSlotIdx = slotIdx;
+
+	// Copy payload into the pre-registered slab slot
+	// 사전 등록 슬랩 슬롯으로 페이로드 복사
+	void *slotPtr = reinterpret_cast<char *>(mSendSlab) + slotIdx * mSlotSize;
+	std::memcpy(slotPtr, buffer, size);
+
+	RIO_BUF rioBuffer;
+	rioBuffer.BufferId = mSendSlabId;
+	rioBuffer.Offset   = static_cast<ULONG>(slotIdx * mSlotSize);
+	rioBuffer.Length   = static_cast<ULONG>(size);
 
 	mPendingOps.emplace(opKey, op);
 	mStats.mTotalRequests++;
@@ -374,7 +505,7 @@ AsyncIOError RIOAsyncIOProvider::SendAsync(SocketHandle socket,
 			mStats.mPendingRequests--;
 		}
 		mStats.mErrorCount++;
-		CleanupPendingOperation(*op);
+		mFreeSendSlots.push_back(slotIdx); // return slot on failure
 		mLastError = "RIOSend failed";
 		return AsyncIOError::OperationFailed;
 	}
@@ -411,23 +542,8 @@ AsyncIOError RIOAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	op->mContext = context;
 	op->mSocket = socket;
 	op->mType = AsyncIOType::Recv;
-	op->mBufferPtr = buffer;
+	op->mBufferPtr = buffer; // session's recv buffer: filled via memcpy on completion
 	op->mBufferSize = size;
-
-	op->mRioBufferId = mPfnRIORegisterBuffer(
-		reinterpret_cast<PCHAR>(buffer), static_cast<DWORD>(size));
-	if (op->mRioBufferId == RIO_INVALID_BUFFERID)
-	{
-		mLastError = "Failed to register recv buffer";
-		std::lock_guard<std::mutex> lock(mMutex);
-		mStats.mErrorCount++;
-		return AsyncIOError::OperationFailed;
-	}
-
-	RIO_BUF rioBuffer;
-	rioBuffer.BufferId = op->mRioBufferId;
-	rioBuffer.Offset = 0;
-	rioBuffer.Length = static_cast<ULONG>(size);
 
 	const uintptr_t opKey = static_cast<uintptr_t>(
 		mNextOpId.fetch_add(1, std::memory_order_relaxed));
@@ -437,10 +553,25 @@ AsyncIOError RIOAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	if (!mInitialized.load(std::memory_order_acquire) ||
 		mShuttingDown.load(std::memory_order_acquire))
 	{
-		CleanupPendingOperation(*op);
 		mLastError = "Provider is shutting down";
 		return AsyncIOError::NotInitialized;
 	}
+
+	// Use the socket's pre-assigned recv slab slot (set in AssociateSocket)
+	// 소켓에 사전 할당된 recv 슬랩 슬롯 사용 (AssociateSocket에서 할당)
+	auto slotIt = mSocketRecvSlot.find(socket);
+	if (slotIt == mSocketRecvSlot.end())
+	{
+		mLastError = "No recv slot for socket (call AssociateSocket first)";
+		mStats.mErrorCount++;
+		return AsyncIOError::InvalidSocket;
+	}
+
+	RIO_BUF rioBuffer;
+	rioBuffer.BufferId = mRecvSlabId;
+	rioBuffer.Offset   = static_cast<ULONG>(slotIt->second * mSlotSize);
+	rioBuffer.Length   = static_cast<ULONG>(
+		size < mSlotSize ? size : mSlotSize);
 
 	mPendingOps.emplace(opKey, op);
 	mStats.mTotalRequests++;
@@ -455,7 +586,6 @@ AsyncIOError RIOAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 			mStats.mPendingRequests--;
 		}
 		mStats.mErrorCount++;
-		CleanupPendingOperation(*op);
 		mLastError = "RIORecv failed";
 		return AsyncIOError::OperationFailed;
 	}
@@ -570,38 +700,86 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			continue;
 		}
 
-		// Verify shutdown status before accessing buffer
-		// ProcessCompletions() starts with mShuttingDown check outside lock,
-		// but Shutdown() may release buffers after that check.
-		// Re-check here before dereferencing RequestContext (buffer pointer).
+		// Verify shutdown status before accessing slab/session buffers.
+		// Re-check here because Shutdown() may have started after we dequeued.
 		if (mShuttingDown.load(std::memory_order_acquire))
 		{
+			// Return send slot if needed — slab memory is still valid until VirtualFree
+			if (op->mType == AsyncIOType::Send && op->mSendSlotIdx != SIZE_MAX)
+			{
+				std::lock_guard<std::mutex> lock(mMutex);
+				mFreeSendSlots.push_back(op->mSendSlotIdx);
+			}
 			continue;
 		}
 
+		const bool hasError      = (rioResults[i].Status != NO_ERROR);
+		const bool isDisconnect  = hasError ||
+			(op->mType == AsyncIOType::Recv &&
+			 rioResults[i].BytesTransferred == 0);
+
 		entries[completionCount].mContext = op->mContext;
-		entries[completionCount].mType = op->mType;
-		entries[completionCount].mResult =
+		entries[completionCount].mType    = op->mType;
+		entries[completionCount].mResult  =
 			static_cast<int32_t>(rioResults[i].BytesTransferred);
 		entries[completionCount].mOsError =
 			static_cast<OSError>(rioResults[i].Status);
 		entries[completionCount].mCompletionTime = 0;
 
-		if (rioResults[i].Status != NO_ERROR)
+		if (hasError)
 		{
 			entries[completionCount].mResult = -1;
 		}
 
-		CleanupPendingOperation(*op);
-
 		{
 			std::lock_guard<std::mutex> lock(mMutex);
+
+			// Recv: copy received bytes from slab slot to session buffer
+			// recv: 슬랩 슬롯 → 세션 버퍼로 수신 데이터 복사
+			if (op->mType == AsyncIOType::Recv && !hasError &&
+				rioResults[i].BytesTransferred > 0 && op->mBufferPtr)
+			{
+				auto slotIt = mSocketRecvSlot.find(op->mSocket);
+				if (slotIt != mSocketRecvSlot.end())
+				{
+					const void *src =
+						reinterpret_cast<const char *>(mRecvSlab) +
+						slotIt->second * mSlotSize;
+					const size_t copyLen =
+						static_cast<size_t>(rioResults[i].BytesTransferred) <
+								op->mBufferSize
+							? static_cast<size_t>(rioResults[i].BytesTransferred)
+							: op->mBufferSize;
+					std::memcpy(op->mBufferPtr, src, copyLen);
+				}
+			}
+
+			// Send: return slab slot to free pool
+			// 송신: 슬랩 슬롯을 가용 풀에 반환
+			if (op->mType == AsyncIOType::Send && op->mSendSlotIdx != SIZE_MAX)
+			{
+				mFreeSendSlots.push_back(op->mSendSlotIdx);
+			}
+
+			// Recv disconnect: return recv slot and clean up socket mappings
+			// recv 연결 해제: recv 슬롯 반환 및 소켓 맵 정리
+			if (isDisconnect && op->mType == AsyncIOType::Recv)
+			{
+				auto slotIt = mSocketRecvSlot.find(op->mSocket);
+				if (slotIt != mSocketRecvSlot.end())
+				{
+					mFreeRecvSlots.push_back(slotIt->second);
+					mSocketRecvSlot.erase(slotIt);
+				}
+				mRequestQueues.erase(op->mSocket);
+			}
+
 			mStats.mTotalCompletions++;
 			if (mStats.mPendingRequests > 0)
 			{
 				mStats.mPendingRequests--;
 			}
-			if (entries[completionCount].mOsError != 0)
+			if (hasError)
 			{
 				mStats.mErrorCount++;
 			}

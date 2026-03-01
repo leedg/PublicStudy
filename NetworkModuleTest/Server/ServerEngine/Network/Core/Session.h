@@ -188,9 +188,23 @@ class Session : public std::enable_shared_from_this<Session>
 	std::array<char, RECV_BUFFER_SIZE> mRecvBuffer{};
 #endif
 
-	// English: Send queue with lock contention optimization
-	// 한글: Lock 경합 최적화가 적용된 전송 큐
+	// English: Send queue with lock contention optimization.
+	//          IOCP path (Windows): uses SendRequest referencing a pool slot (0 alloc).
+	//          Other platforms: uses vector<char> (unchanged).
+	// 한글: Lock 경합 최적화가 적용된 전송 큐.
+	//       IOCP 경로(Windows): 풀 슬롯을 참조하는 SendRequest 사용 (0 alloc).
+	//       다른 플랫폼: vector<char> 사용 (기존과 동일).
+#ifdef _WIN32
+	struct SendRequest
+	{
+		size_t   slotIdx; // English: index into SendBufferPool / 한글: SendBufferPool 슬롯 인덱스
+		uint32_t size;    // English: payload byte count / 한글: 페이로드 바이트 수
+	};
+	std::queue<SendRequest> mSendQueue;
+	size_t mCurrentSendSlotIdx; // English: in-flight slot index (~0 = none) / 한글: 전송 중 슬롯 인덱스 (~0 = 없음)
+#else
 	std::queue<std::vector<char>> mSendQueue;
+#endif
 	std::mutex mSendMutex;
 	std::atomic<bool> mIsSending;
 

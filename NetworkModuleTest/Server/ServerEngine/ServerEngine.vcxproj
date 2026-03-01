@@ -129,12 +129,14 @@
     <ClInclude Include="Network\Core\PlatformDetect.h" />
     <ClInclude Include="Network\Core\PacketDefine.h" />
     <ClInclude Include="Network\Core\ServerPacketDefine.h" />
+    <ClInclude Include="Network\Core\SendBufferPool.h" />
     <ClInclude Include="Network\Core\Session.h" />
     <ClInclude Include="Network\Core\SessionManager.h" />
     <ClCompile Include="Network\Core\AsyncIOProvider.cpp" />
     <ClCompile Include="Network\Core\BaseNetworkEngine.cpp" />
     <ClCompile Include="Network\Core\NetworkEngineFactory.cpp" />
     <ClCompile Include="Network\Core\PlatformDetect.cpp" />
+    <ClCompile Include="Network\Core\SendBufferPool.cpp" />
     <ClCompile Include="Network\Core\Session.cpp" />
     <ClCompile Include="Network\Core\SessionManager.cpp" />
   </ItemGroup>

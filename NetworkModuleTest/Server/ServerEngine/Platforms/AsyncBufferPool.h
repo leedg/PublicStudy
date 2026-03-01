@@ -11,6 +11,8 @@
 
 #if defined(_WIN32) || defined(__linux__)
 #include <mutex>
+#include <numeric>
+#include <unordered_map>
 #include <vector>
 
 namespace Network
@@ -59,6 +61,8 @@ class AsyncBufferPool : public IBufferPool
 
     AsyncIOProvider *mProvider = nullptr;
     std::vector<Slot> mSlots;
+    std::vector<size_t> mFreeIndices;                    // O(1) pop/push 프리슬롯 스택
+    std::unordered_map<int64_t, size_t> mBufferIdToIndex; // O(1) bufferId → 슬롯 인덱스
     size_t mBufferSize = 0;
     mutable std::mutex mMutex;
 };

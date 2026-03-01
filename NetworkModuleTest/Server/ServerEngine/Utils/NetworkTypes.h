@@ -26,7 +26,7 @@ using Timestamp = uint64_t;
 
 constexpr uint32_t DEFAULT_PORT = 8000;
 constexpr size_t DEFAULT_BUFFER_SIZE = 4096;
-constexpr size_t MAX_CONNECTIONS = 10000;
+constexpr size_t MAX_CONNECTIONS = 1000;
 constexpr int DEFAULT_TIMEOUT_MS = 30000;
 constexpr Timestamp INVALID_TIMESTAMP = 0;
 

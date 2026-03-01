@@ -6,6 +6,7 @@
 #include "../../Platforms/Windows/IocpAsyncIOProvider.h"
 #include "../../Platforms/Windows/RIOAsyncIOProvider.h"
 #include "../../Utils/Logger.h"
+#include "../Core/SendBufferPool.h"
 #include <algorithm>
 #include <chrono>
 #include <ws2tcpip.h>
@@ -46,13 +47,27 @@ bool WindowsNetworkEngine::InitializePlatform()
 		Utils::Logger::Info("Using RIO backend");
 	}
 
-	auto error = mProvider->Initialize(
-		1024, mMaxConnections > 0 ? static_cast<size_t>(mMaxConnections) : 128);
+	const size_t effectiveMax =
+		mMaxConnections > 0 ? static_cast<size_t>(mMaxConnections) : 128;
+	auto error = mProvider->Initialize(effectiveMax * 2 + 64, effectiveMax);
 	if (error != AsyncIO::AsyncIOError::Success)
 	{
 		Utils::Logger::Error("Failed to initialize AsyncIOProvider: " +
 							 std::string(mProvider->GetLastError()));
 		return false;
+	}
+
+	// English: Initialize IOCP send buffer pool (4 concurrent sends per connection).
+	//          RIO path uses its own slab pool; only initialize for IOCP mode.
+	// 한글: IOCP 전송 버퍼 풀 초기화 (연결당 동시 전송 4개 기준).
+	//       RIO 경로는 자체 slab 풀 사용; IOCP 모드에서만 초기화.
+	if (mMode == Mode::IOCP)
+	{
+		Core::SendBufferPool::Instance().Initialize(
+			effectiveMax * 4, Core::SEND_BUFFER_SIZE);
+		Utils::Logger::Info("SendBufferPool initialized: " +
+							std::to_string(effectiveMax * 4) + " slots × " +
+							std::to_string(Core::SEND_BUFFER_SIZE) + " bytes");
 	}
 
 	if (!CreateListenSocket())
