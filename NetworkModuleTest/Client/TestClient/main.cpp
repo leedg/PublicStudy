@@ -325,5 +325,15 @@ int main(int argc, char *argv[])
 #endif
 
 	Logger::Info("TestClient shutdown complete.");
+
+	// English: Return non-zero if this was an automated test run (maxPings > 0) but
+	//          no pong was ever received — indicates a connection/protocol failure.
+	// 한글: 자동화 테스트 모드(maxPings > 0)에서 퐁을 하나도 받지 못했으면 1 반환.
+	//       연결·프로토콜 실패를 나타내므로 meta 파일에 FAIL로 올바르게 기록됨.
+	auto finalStats = client.GetLatencyStats();
+	if (maxPings > 0 && finalStats.pongCount == 0)
+	{
+		return 1;
+	}
 	return 0;
 }

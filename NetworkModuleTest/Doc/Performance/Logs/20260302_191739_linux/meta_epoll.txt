@@ -1,0 +1,9 @@
+date:        2026-03-02 10:20:09
+backend:     epoll
+server:      server:9000
+num_clients: 10
+num_pings:   5
+kernel:      6.6.87.2-microsoft-standard-WSL2
+wait_sec:    0
+duration_sec: 30
+result:      PASS
