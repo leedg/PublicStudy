@@ -46,6 +46,33 @@ namespace Network::TestServer
 #endif
     }
 
+    // =============================================================================
+    // English: DB ping helper (called by timer, replaces DBPingLoop thread)
+    // 한글: DB 핑 헬퍼 (타이머 호출, DBPingLoop 스레드 대체)
+    // =============================================================================
+
+    void TestServer::SendDBPing()
+    {
+#ifdef _WIN32
+        constexpr uint32_t kSaveInterval = 5;
+
+        Core::PKT_ServerPingReq pingPacket;
+        pingPacket.sequence  = ++mDBPingSequence;
+        pingPacket.timestamp = Timer::GetCurrentTimestamp();
+        SendDBPacket(&pingPacket, sizeof(pingPacket));
+
+        if (mDBPingSequence.load() % kSaveInterval == 0)
+        {
+            Core::PKT_DBSavePingTimeReq savePacket;
+            savePacket.serverId  = 1;
+            savePacket.timestamp = Timer::GetCurrentTimestamp();
+            strncpy_s(savePacket.serverName, sizeof(savePacket.serverName),
+                      "TestServer", _TRUNCATE);
+            SendDBPacket(&savePacket, sizeof(savePacket));
+        }
+#endif
+    }
+
     TestServer::~TestServer()
     {
         if (mIsRunning.load())
@@ -105,6 +132,16 @@ namespace Network::TestServer
             Logger::Error("Failed to initialize DB task queue");
             return false;
         }
+
+#ifdef _WIN32
+        // English: Initialize DB ping timer queue (one background thread, starts here).
+        // 한글: DB 핑 타이머 큐 초기화 (백그라운드 스레드 1개, 여기서 시작).
+        if (!mTimerQueue.Initialize())
+        {
+            Logger::Error("TestServer: TimerQueue initialization failed");
+            return false;
+        }
+#endif
 
         // English: Register per-session recv callback via SessionConfigurator.
         //          Called inside CreateSession before PostRecv() so the first recv
@@ -186,6 +223,7 @@ namespace Network::TestServer
 
         mIsRunning.store(false);
 
+#ifdef _WIN32
         // English: Wake reconnect loop immediately (if waiting in backoff sleep)
         // 한글: 재연결 루프가 백오프 대기 중이면 즉시 깨움
         mDBShutdownCV.notify_all();
@@ -194,6 +232,7 @@ namespace Network::TestServer
         {
             mDBReconnectThread.join();
         }
+#endif
 
         // English: Record disconnect events for still-connected sessions before
         //          shutting down DBTaskQueue so Stop() does not lose terminal records.
@@ -234,6 +273,17 @@ namespace Network::TestServer
                              std::to_string(queuedDisconnectCount));
             }
         }
+
+        // English: Shutdown DB ping timer before disconnecting so the last ping isn't lost.
+        // 한글: 연결 해제 전 DB 핑 타이머 종료하여 마지막 핑이 누락되지 않도록 함.
+#ifdef _WIN32
+        if (mDBPingTimer != 0)
+        {
+            mTimerQueue.Cancel(mDBPingTimer);
+            mDBPingTimer = 0;
+        }
+        mTimerQueue.Shutdown();
+#endif
 
         // English: Step 1 - Flush DB task queue (complete pending tasks while DB connection is still alive)
         // Korean: 1단계 - DB 태스크 큐 드레인 (DB 연결이 살아있는 동안 대기 중인 작업 완료)
@@ -294,10 +344,16 @@ namespace Network::TestServer
             return true;
         }
 
-        // English: Join previous recv/ping threads before reusing (reconnect path)
-        // 한글: 재연결 경로에서 재사용 전 이전 스레드 join
+        // English: Join previous recv thread before reusing (reconnect path).
+        //          Ping is now handled by TimerQueue — cancel any previous timer.
+        // 한글: 재연결 경로에서 재사용 전 이전 recv 스레드 join.
+        //       핑은 TimerQueue가 처리 — 이전 타이머 취소.
         if (mDBRecvThread.joinable()) mDBRecvThread.join();
-        if (mDBPingThread.joinable()) mDBPingThread.join();
+        if (mDBPingTimer != 0)
+        {
+            mTimerQueue.Cancel(mDBPingTimer);
+            mDBPingTimer = 0;
+        }
 
         // English: Initialize Winsock exactly once (thread-safe via call_once)
         // 한글: Winsock을 정확히 한 번 초기화 (call_once로 스레드 안전)
@@ -360,10 +416,20 @@ namespace Network::TestServer
         mDBServerSocket = clientSocket;
         mDBRunning.store(true);
 
-        // English: Start DB recv/ping threads
-        // 한글: DB 수신/핑 스레드 시작
+        // English: Start DB recv thread.
+        //          DB ping is now handled by TimerQueue (fires every PING_INTERVAL_MS).
+        //          The repeat callback returns mDBRunning so the timer auto-cancels on disconnect.
+        // 한글: DB 수신 스레드 시작.
+        //       DB 핑은 TimerQueue가 담당 (PING_INTERVAL_MS 마다 발동).
+        //       반복 콜백이 mDBRunning을 반환하므로 연결 해제 시 타이머 자동 취소.
         mDBRecvThread = std::thread(&TestServer::DBRecvLoop, this);
-        mDBPingThread = std::thread(&TestServer::DBPingLoop, this);
+        mDBPingTimer  = mTimerQueue.ScheduleRepeat(
+            [this]() -> bool
+            {
+                SendDBPing();
+                return mDBRunning.load();
+            },
+            Core::PING_INTERVAL_MS);
 
         Logger::Info("Successfully connected to DB server at " + host + ":" + std::to_string(port));
         return true;
@@ -440,8 +506,16 @@ namespace Network::TestServer
 
         mDBRunning.store(false);
 
-        // English: Wake up DBPingLoop immediately (avoids up to 5s sleep wait)
-        // 한글: DBPingLoop 즉시 깨우기 (최대 5초 sleep 대기 방지)
+        // English: Cancel DB ping timer immediately (auto-cancel via return value may lag one interval).
+        // 한글: DB 핑 타이머 즉시 취소 (반환값 기반 자동 취소는 한 주기 지연될 수 있음).
+        if (mDBPingTimer != 0)
+        {
+            mTimerQueue.Cancel(mDBPingTimer);
+            mDBPingTimer = 0;
+        }
+
+        // English: Wake reconnect loop immediately if waiting in backoff sleep.
+        // 한글: 재연결 루프가 백오프 대기 중이면 즉시 깨움.
         mDBShutdownCV.notify_all();
 
         if (mDBServerSocket != INVALID_SOCKET)
@@ -452,11 +526,6 @@ namespace Network::TestServer
         if (mDBRecvThread.joinable())
         {
             mDBRecvThread.join();
-        }
-
-        if (mDBPingThread.joinable())
-        {
-            mDBPingThread.join();
         }
 
         if (mDBServerSession)
@@ -587,40 +656,10 @@ namespace Network::TestServer
 #endif
     }
 
-    void TestServer::DBPingLoop()
-    {
-#ifdef _WIN32
-        constexpr uint32_t kPingIntervalMs = 5000;
-        constexpr uint32_t kSaveInterval = 5;
-
-        while (mDBRunning.load())
-        {
-            Core::PKT_ServerPingReq pingPacket;
-            pingPacket.sequence = ++mDBPingSequence;
-            pingPacket.timestamp = Timer::GetCurrentTimestamp();
-            SendDBPacket(&pingPacket, sizeof(pingPacket));
-
-            if (mDBPingSequence.load() % kSaveInterval == 0)
-            {
-                Core::PKT_DBSavePingTimeReq savePacket;
-                savePacket.serverId = 1;
-                savePacket.timestamp = Timer::GetCurrentTimestamp();
-                strncpy_s(savePacket.serverName, sizeof(savePacket.serverName),
-                          "TestServer", _TRUNCATE);
-                SendDBPacket(&savePacket, sizeof(savePacket));
-            }
-
-            // English: Use condition variable wait instead of sleep_for so that
-            //          DisconnectFromDBServer() can wake this thread immediately
-            // 한글: DisconnectFromDBServer()가 즉시 깨울 수 있도록 sleep_for 대신
-            //       조건 변수 wait 사용
-            std::unique_lock<std::mutex> lock(mDBShutdownMutex);
-            mDBShutdownCV.wait_for(lock,
-                std::chrono::milliseconds(kPingIntervalMs),
-                [this] { return !mDBRunning.load(); });
-        }
-#endif
-    }
+    // English: DBPingLoop() removed — DB ping is now handled by mTimerQueue.ScheduleRepeat()
+    //          in ConnectToDBServer(). See SendDBPing() for the ping logic.
+    // 한글: DBPingLoop() 제거 — DB 핑은 ConnectToDBServer()의 mTimerQueue.ScheduleRepeat()가 담당.
+    //       핑 로직은 SendDBPing() 참조.
 
     void TestServer::DBReconnectLoop()
     {

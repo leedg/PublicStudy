@@ -30,4 +30,16 @@ constexpr size_t MAX_CONNECTIONS = 1000;
 constexpr int DEFAULT_TIMEOUT_MS = 30000;
 constexpr Timestamp INVALID_TIMESTAMP = 0;
 
+// English: Soft backpressure threshold for Session::Send().
+//          When the per-session send queue reaches this depth, Send() returns
+//          SendResult::QueueFull so the caller can react (log, drop, close).
+//          Tune this value based on expected burst size and memory budget.
+//          Hard limit (MAX_SEND_QUEUE_DEPTH = 1000) is defined in PacketDefine.h.
+// 한글: Session::Send()용 소프트 백프레셔 임계값.
+//       세션별 송신 큐가 이 깊이에 도달하면 Send()가 SendResult::QueueFull을 반환하여
+//       호출자가 로그/드롭/종료 등으로 반응할 수 있도록 함.
+//       예상 버스트 크기와 메모리 예산에 따라 조정.
+//       하드 한도 (MAX_SEND_QUEUE_DEPTH = 1000)는 PacketDefine.h에 정의.
+constexpr size_t SEND_QUEUE_BACKPRESSURE_THRESHOLD = 64;
+
 } // namespace Network::Utils

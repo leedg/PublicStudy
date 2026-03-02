@@ -2,6 +2,7 @@
 // 한글: 기본 NetworkEngine 구현
 
 #include "BaseNetworkEngine.h"
+#include "NetworkEventBus.h"
 #include "SessionPool.h"
 #include "../../Utils/Logger.h"
 #include "../../Utils/Timer.h"
@@ -10,8 +11,7 @@ namespace Network::Core
 {
 
 BaseNetworkEngine::BaseNetworkEngine()
-	: mPort(0), mMaxConnections(0), mRunning(false), mInitialized(false),
-	  mLogicThreadPool(4, MAX_LOGIC_QUEUE_DEPTH)
+	: mPort(0), mMaxConnections(0), mRunning(false), mInitialized(false)
 {
 	std::memset(&mStats, 0, sizeof(mStats));
 }
@@ -45,6 +45,61 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 		Utils::Logger::Error("SessionPool initialization failed");
 		return false;
 	}
+
+	// English: Initialize logic dispatcher (KeyedDispatcher — session-affinity worker pool).
+	// 한글: 로직 디스패처 초기화 (KeyedDispatcher — 세션 친화도 워커 풀).
+	{
+		Network::Concurrency::KeyedDispatcher::Options opts;
+		opts.mWorkerCount = 4;
+		opts.mQueueOptions.mBackend     = Network::Concurrency::QueueBackend::LockFree;
+		opts.mQueueOptions.mCapacity    = MAX_LOGIC_QUEUE_DEPTH;
+		opts.mQueueOptions.mBackpressure = Network::Concurrency::BackpressurePolicy::RejectNewest;
+		opts.mName = "LogicDispatcher";
+		if (!mLogicDispatcher.Initialize(opts))
+		{
+			Utils::Logger::Error("LogicDispatcher initialization failed");
+			return false;
+		}
+	}
+
+	// English: Initialize engine-level timer queue.
+	// 한글: 엔진 수준 타이머 큐 초기화.
+	if (!mTimerQueue.Initialize())
+	{
+		Utils::Logger::Error("TimerQueue initialization failed");
+		return false;
+	}
+
+	// English: Schedule periodic session-timeout check every PING_TIMEOUT_MS/2.
+	// 한글: PING_TIMEOUT_MS/2 주기로 세션 타임아웃 점검 등록.
+	mTimerQueue.ScheduleRepeat(
+		[this]() -> bool
+		{
+			// English: Check inactive sessions and close timed-out ones.
+			// 한글: 비활성 세션 점검 및 타임아웃 세션 종료.
+			if (!mRunning.load(std::memory_order_acquire))
+			{
+				return false;
+			}
+			const auto now = Utils::Timer::GetCurrentTimestamp();
+			auto allSessions = SessionManager::Instance().GetAllSessions();
+			for (auto &session : allSessions)
+			{
+				if (!session || !session->IsConnected())
+				{
+					continue;
+				}
+				const auto lastPing = session->GetLastPingTime();
+				if (lastPing != 0 && (now - lastPing) > PING_TIMEOUT_MS)
+				{
+					Utils::Logger::Warn(
+						"Session timeout - ID: " + std::to_string(session->GetId()));
+					CloseConnection(session->GetId());
+				}
+			}
+			return mRunning.load(std::memory_order_acquire);
+		},
+		PING_TIMEOUT_MS / 2);
 
 	// English: Call platform-specific initialization
 	// 한글: 플랫폼별 초기화 호출
@@ -98,6 +153,10 @@ void BaseNetworkEngine::Stop()
 
 	mRunning.store(false, std::memory_order_relaxed);
 
+	// English: Stop timer queue first (cancels periodic session-timeout checks).
+	// 한글: 타이머 큐 먼저 종료 (주기 세션 타임아웃 점검 취소).
+	mTimerQueue.Shutdown();
+
 	// English: Stop platform-specific I/O
 	// 한글: 플랫폼별 I/O 중지
 	StopPlatformIO();
@@ -105,6 +164,10 @@ void BaseNetworkEngine::Stop()
 	// English: Close all sessions
 	// 한글: 모든 세션 종료
 	SessionManager::Instance().CloseAllSessions();
+
+	// English: Shutdown logic dispatcher after all sessions are closed.
+	// 한글: 모든 세션 종료 후 로직 디스패처 종료.
+	mLogicDispatcher.Shutdown();
 
 	// English: Shutdown platform resources
 	// 한글: 플랫폼 리소스 종료
@@ -147,11 +210,10 @@ bool BaseNetworkEngine::SendData(Utils::ConnectionId connectionId,
 		return false;
 	}
 
-	// English: Session::Send is void - check IsConnected() after to detect immediate failures
-	// 한글: Session::Send는 void이므로 즉각적인 실패 감지를 위해 이후 IsConnected() 확인
-	session->Send(data, static_cast<uint32_t>(size));
-
-	if (!session->IsConnected())
+	// English: Session::Send now returns SendResult — check result directly.
+	// 한글: Session::Send가 SendResult를 반환하므로 결과를 직접 확인.
+	const auto sendResult = session->Send(data, static_cast<uint32_t>(size));
+	if (sendResult != Session::SendResult::Ok)
 	{
 		return false;
 	}
@@ -169,22 +231,26 @@ void BaseNetworkEngine::CloseConnection(Utils::ConnectionId connectionId)
 		return;
 	}
 
-	// English: Submit OnDisconnected + FireEvent to the logic thread pool.
-	//          This matches ProcessRecvCompletion's disconnect path so that all
-	//          OnDisconnected callbacks always execute on the same thread pool —
-	//          callers never need to worry about which thread invoked CloseConnection.
+	// English: Dispatch OnDisconnected + FireEvent to the same worker as this session's
+	//          ProcessRawRecv tasks (KeyedDispatcher key = sessionId).
+	//          This ensures Close() and ProcessRawRecv are always serialized for the session.
 	//          The session shared_ptr keeps the object alive until the task runs.
-	// 한글: OnDisconnected + FireEvent를 로직 스레드풀에 제출.
-	//       ProcessRecvCompletion의 연결 종료 경로와 동일하게 처리하여
-	//       OnDisconnected 콜백이 항상 같은 스레드풀에서 실행되도록 보장.
+	// 한글: OnDisconnected + FireEvent를 이 세션의 ProcessRawRecv 작업과 동일한
+	//       워커로 디스패치 (KeyedDispatcher key = sessionId).
+	//       Close()와 ProcessRawRecv가 항상 세션 단위로 직렬화됨.
 	//       세션 shared_ptr이 작업 실행 전까지 객체를 살아있게 유지.
 	auto sessionCopy = session;
-	mLogicThreadPool.Submit(
-		[this, sessionCopy, connectionId]()
-		{
-			sessionCopy->OnDisconnected();
-			FireEvent(NetworkEvent::Disconnected, connectionId);
-		});
+	if (!mLogicDispatcher.Dispatch(
+			connectionId,
+			[this, sessionCopy, connectionId]()
+			{
+				sessionCopy->OnDisconnected();
+				FireEvent(NetworkEvent::Disconnected, connectionId);
+			}))
+	{
+		Utils::Logger::Warn("LogicDispatcher full - disconnect event dropped, Session: " +
+		                    std::to_string(connectionId));
+	}
 
 	// English: Remove from manager immediately (caller's thread) — same as ProcessRecvCompletion
 	// 한글: 호출 스레드에서 즉시 매니저에서 제거 — ProcessRecvCompletion과 동일한 패턴
@@ -259,6 +325,25 @@ void BaseNetworkEngine::FireEvent(NetworkEvent eventType,
 	// English: Call callback
 	// 한글: 콜백 호출
 	callback(eventData);
+
+	// English: Publish to multi-subscriber event bus (NetworkEventBus).
+	//          NetworkBusEventData is copyable so it can be sent to multiple channels.
+	// 한글: 다중 구독자 이벤트 버스에 발행 (NetworkEventBus).
+	//       NetworkBusEventData는 복사 가능하여 다수의 채널에 전달 가능.
+	{
+		NetworkBusEventData busData;
+		busData.eventType    = eventData.eventType;
+		busData.connectionId = eventData.connectionId;
+		busData.dataSize     = eventData.dataSize;
+		busData.errorCode    = eventData.errorCode;
+		busData.timestamp    = eventData.timestamp;
+		if (eventData.data && eventData.dataSize > 0)
+		{
+			busData.data.assign(eventData.data.get(),
+			                    eventData.data.get() + eventData.dataSize);
+		}
+		NetworkEventBus::Instance().Publish(eventData.eventType, busData);
+	}
 }
 
 void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
@@ -272,15 +357,22 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 
 	if (bytesReceived <= 0)
 	{
-		// English: Connection closed or error
-		// 한글: 연결 종료 또는 에러
-		auto sessionCopy = session;
-		mLogicThreadPool.Submit(
-			[this, sessionCopy]()
-			{
-				sessionCopy->OnDisconnected();
-				FireEvent(NetworkEvent::Disconnected, sessionCopy->GetId());
-			});
+		// English: Connection closed or error — dispatch to session's dedicated worker.
+		// 한글: 연결 종료 또는 에러 — 세션 전용 워커로 디스패치.
+		const auto connId = session->GetId();
+		auto sessionCopy  = session;
+		if (!mLogicDispatcher.Dispatch(
+				connId,
+				[this, sessionCopy, connId]()
+				{
+					sessionCopy->OnDisconnected();
+					FireEvent(NetworkEvent::Disconnected, connId);
+				}))
+		{
+			Utils::Logger::Warn(
+				"LogicDispatcher full - disconnect event dropped, Session: " +
+				std::to_string(connId));
+		}
 
 		SessionManager::Instance().RemoveSession(session);
 		return;
@@ -290,24 +382,30 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 	// 한글: 통계 업데이트 (atomic, 락 불필요)
 	mTotalBytesReceived.fetch_add(bytesReceived, std::memory_order_relaxed);
 
-	// English: Process on logic thread
-	// 한글: 로직 스레드에서 처리
-	auto sessionCopy = session;
-	auto dataCopy = std::make_shared<std::vector<char>>(
-		static_cast<size_t>(bytesReceived));
+	// English: Dispatch via AsyncScope so that pending tasks are skipped after session Close().
+	//          KeyedDispatcher key = sessionId guarantees FIFO order per session.
+	// 한글: AsyncScope를 통해 디스패치하여 세션 Close() 이후 대기 작업 건너뜀.
+	//       KeyedDispatcher key = sessionId로 세션 단위 FIFO 순서 보장.
+	const auto connId = session->GetId();
+	auto sessionCopy  = session;
+	auto dataCopy     = std::make_shared<std::vector<char>>(
+        static_cast<size_t>(bytesReceived));
 	std::memcpy(dataCopy->data(), data, static_cast<size_t>(bytesReceived));
 
-	if (!mLogicThreadPool.Submit(
-		[this, sessionCopy, dataCopy, bytesReceived]()
-		{
-			const char *recvData = dataCopy->data();
-			sessionCopy->ProcessRawRecv(recvData, bytesReceived);
-			FireEvent(NetworkEvent::DataReceived, sessionCopy->GetId(),
-					  reinterpret_cast<const uint8_t *>(recvData), bytesReceived);
-		}))
+	if (!session->mAsyncScope.Submit(
+			mLogicDispatcher,
+			connId,
+			[this, sessionCopy, dataCopy, bytesReceived]()
+			{
+				const char *recvData = dataCopy->data();
+				sessionCopy->ProcessRawRecv(recvData,
+				                            static_cast<uint32_t>(bytesReceived));
+				FireEvent(NetworkEvent::DataReceived, sessionCopy->GetId(),
+				          reinterpret_cast<const uint8_t *>(recvData), bytesReceived);
+			}))
 	{
 		Utils::Logger::Warn("Logic queue full - recv dropped, disconnecting Session: " +
-							std::to_string(session->GetId()));
+		                    std::to_string(connId));
 		SessionManager::Instance().RemoveSession(session);
 	}
 }

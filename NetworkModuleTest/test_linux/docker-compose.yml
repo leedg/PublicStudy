@@ -1,0 +1,114 @@
+# =============================================================================
+# NetworkModuleTest - Docker Compose (3-tier integration test)
+# =============================================================================
+# English: Services: dbserver → server → client_epoll / client_iouring
+# 한글: 서비스: dbserver → server → client_epoll / client_iouring
+#
+# Usage (from NetworkModuleTest/ root):
+#   docker-compose -f test_linux/docker-compose.yml build
+#   docker-compose -f test_linux/docker-compose.yml run --rm client_epoll
+#   docker-compose -f test_linux/docker-compose.yml run --rm client_iouring
+#
+# Or use the PowerShell launcher:
+#   .\test_linux\run_docker_test.ps1
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # English: Build stage — compiles all binaries; not started as a runtime service.
+  #          Other services reuse this image via the same build context.
+  # 한글: 빌드 스테이지 — 모든 바이너리 컴파일. 빌드 컨텍스트 공유로 이미지 재사용.
+  # ---------------------------------------------------------------------------
+  build:
+    build:
+      context: ..
+      dockerfile: test_linux/Dockerfile
+    command: ["/workspace/test_linux/scripts/build.sh"]
+    profiles: ["build"]
+
+  # ---------------------------------------------------------------------------
+  # English: DBServer — runs on port 9001
+  # 한글: DBServer — 포트 9001에서 실행
+  # ---------------------------------------------------------------------------
+  dbserver:
+    build:
+      context: ..
+      dockerfile: test_linux/Dockerfile
+    command: >
+      bash -c "/workspace/test_linux/scripts/build.sh &&
+               /workspace/build/linux/DBServer -p 9001 -l INFO"
+    networks:
+      - testnet
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/9001"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # English: TestServer — runs on port 9000, connects to dbserver:9001
+  # 한글: TestServer — 포트 9000 실행, dbserver:9001 연결
+  # ---------------------------------------------------------------------------
+  server:
+    build:
+      context: ..
+      dockerfile: test_linux/Dockerfile
+    command: >
+      bash -c "/workspace/test_linux/scripts/build.sh &&
+               /workspace/build/linux/TestServer -p 9000 --db-host dbserver --db-port 9001 -l INFO"
+    depends_on:
+      dbserver:
+        condition: service_healthy
+    networks:
+      - testnet
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/9000"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # English: Client (epoll backend) — 10 clients, 5 ping-pong rounds each
+  # 한글: 클라이언트 (epoll 백엔드) — 10 클라이언트, 각 5회 핑퐁
+  # ---------------------------------------------------------------------------
+  client_epoll:
+    build:
+      context: ..
+      dockerfile: test_linux/Dockerfile
+    entrypoint: ["/workspace/test_linux/scripts/entrypoint_client.sh"]
+    environment:
+      SERVER_HOST: server
+      SERVER_PORT: "9000"
+      BACKEND: epoll
+      NUM_CLIENTS: "10"
+      NUM_PINGS: "5"
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - testnet
+
+  # ---------------------------------------------------------------------------
+  # English: Client (io_uring backend) — same test with io_uring
+  # 한글: 클라이언트 (io_uring 백엔드) — io_uring으로 동일 테스트
+  # ---------------------------------------------------------------------------
+  client_iouring:
+    build:
+      context: ..
+      dockerfile: test_linux/Dockerfile
+    entrypoint: ["/workspace/test_linux/scripts/entrypoint_client.sh"]
+    environment:
+      SERVER_HOST: server
+      SERVER_PORT: "9000"
+      BACKEND: iouring
+      NUM_CLIENTS: "10"
+      NUM_PINGS: "5"
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - testnet
+
+networks:
+  testnet:
+    driver: bridge

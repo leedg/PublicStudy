@@ -388,3 +388,81 @@
 `C:\MyGithub\PublicStudy\NetworkModuleTest\Doc\Performance\Logs\20260301_224544`
 
 ---
+
+---
+
+## ?ㅽ뻾: 20260302_023702
+
+- **鍮뚮뱶**: x64 Release
+- **?쒓컖**: 2026-03-02 02:37:02
+- **Phase**: all
+- **Ramp ?④퀎**: 10, 100, 500, 1000 clients
+- **媛??④퀎 ?좎?**: 30珥?n
+### Phase 0 ??Smoke Test (Release, 1 client, 10s)
+
+| ??ぉ | 媛?|
+|------|-----|
+| 寃곌낵 | **FAIL** |
+| ?곌껐 ??| 1 |
+| RTT min=1ms avg=4ms max=7ms Pong=2 | |
+| ?쒕쾭 由ъ냼??| WS=352.2MB Handles=138 Threads=29 |
+| DB 由ъ냼??| WS=62.2MB Handles=133 Threads=30 |
+| [ERROR] ??| 0 |
+| ?쒕쾭 ?뺤긽 醫낅즺 | False |
+| ?대씪?댁뼵???뺤긽 醫낅즺 | True |
+
+
+---
+
+## ?ㅽ뻾: 20260302_024028
+
+- **鍮뚮뱶**: x64 Release
+- **?쒓컖**: 2026-03-02 02:40:28
+- **Phase**: all
+- **Ramp ?④퀎**: 10, 100, 500, 1000 clients
+- **媛??④퀎 ?좎?**: 30珥?n
+### Phase 0 ??Smoke Test (Release, 1 client, 10s)
+
+| ??ぉ | 媛?|
+|------|-----|
+| 寃곌낵 | **PASS** |
+| ?곌껐 ??| 1 |
+| RTT min=6ms avg=6ms max=6ms Pong=1 | |
+| ?쒕쾭 由ъ냼??| WS=352.1MB Handles=138 Threads=29 |
+| DB 由ъ냼??| WS=62.2MB Handles=133 Threads=30 |
+| [ERROR] ??| 0 |
+| ?쒕쾭 ?뺤긽 醫낅즺 | True |
+| ?대씪?댁뼵???뺤긽 醫낅즺 | True |
+
+### Phase 1 ???덉젙???뚯뒪??n
+#### 1-A: Graceful Shutdown (2 clients, 30s)
+
+| ??ぉ | 媛?|
+|------|-----|
+| 寃곌낵 | **PASS** |
+| ?곌껐???대씪?댁뼵????| 2 |
+| ?쒕쾭 由ъ냼??(醫낅즺 吏곸쟾) | WS=266.8MB Handles=139 Threads=27 |
+| DBTaskQueue ?쒕젅??| Yes |
+| [ERROR] ??| 0 |
+
+#### 1-B: Forced Shutdown + WAL Recovery
+
+| ??ぉ | 媛?|
+|------|-----|
+| WAL ?곹깭 (?ш린???? | Clean |
+| ?대씪?댁뼵???먮룞 ?ъ뿰寃??쒕룄 | Yes |
+
+### Phase 2 ???쇳룷癒쇱뒪 Ramp-up (x64 Release, 30s/?④퀎)
+
+| ?④퀎 | 紐⑺몴 ?곌껐 | ?ㅼ젣 ?곌껐 | [ERROR] ??| Server WS(MB) | Server Handles | RTT (?대씪?댁뼵??1踰? | ?먯젙 |
+|------|-----------|-----------|------------|---------------|----------------|----------------------|------|
+| 10 | 10 | 10 | 0 | 351.9 | 147 | RTT min=0ms avg=1ms max=6ms Pong=5 | **PASS** |
+| 100 | 100 | 100 | 0 | 352.7 | 237 | RTT min=0ms avg=1ms max=6ms Pong=6 | **PASS** |
+| 500 | 500 | 500 | 0 | 356.2 | 638 | RTT min=0ms avg=1ms max=5ms Pong=8 | **PASS** |
+| 1000 | 1000 | 1285 | 0 | 330.2 | 840 | RTT min=0ms avg=2ms max=24ms Pong=17 | **PASS** |
+
+### ?대쾲 ?ㅽ뻾 ?곸꽭 濡쒓렇 ?꾩튂
+
+`C:\MyGithub\PublicStudy\NetworkModuleTest\Doc\Performance\Logs\20260302_024028`
+
+---

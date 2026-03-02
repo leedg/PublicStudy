@@ -46,6 +46,26 @@
 - Start / Stop
 - SendData / CloseConnection
 
+### Session (2026-03-02 변경)
+- `Send(const void*, uint32_t)` → `SendResult` 반환 (void에서 변경)
+  - `SendResult::Ok` — 전송 큐에 성공적으로 추가됨
+  - `SendResult::QueueFull` — 소프트 임계값(`SEND_QUEUE_BACKPRESSURE_THRESHOLD=64`) 초과 또는 풀 소진
+  - `SendResult::NotConnected` — 세션이 연결 상태가 아님
+- `template<typename T> Send(const T&)` → 동일하게 `SendResult` 반환
+
+### TimerQueue (2026-03-02 신규)
+- `Initialize()` — worker 스레드 시작
+- `ScheduleOnce(callback, delayMs)` → `TimerHandle`
+- `ScheduleRepeat(callback, intervalMs)` → `TimerHandle` (콜백이 `false` 반환 시 자동 해제)
+- `Cancel(handle)` → bool
+- `Shutdown()` — 미래 예약 항목 포함 즉시 종료
+
+### NetworkEventBus (2026-03-02 신규)
+- `NetworkEventBus::Instance()` — 싱글턴 접근
+- `Publish(NetworkEvent, NetworkBusEventData)` — 모든 구독자에게 이벤트 전달
+- `Subscribe(NetworkEvent, shared_ptr<Channel<NetworkBusEventData>>)` → `SubscriberHandle`
+- `Unsubscribe(handle)`
+
 ### Database 모듈 (ServerEngine)
 - DatabaseFactory::CreateDatabase
 - ConnectionPool::Initialize / GetConnection / ReturnConnection

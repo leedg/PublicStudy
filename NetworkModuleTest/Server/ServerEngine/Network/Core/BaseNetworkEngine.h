@@ -11,8 +11,9 @@
 // - 공통 로직은 기본 클래스 (Session 관리, 이벤트, 통계)
 // - 플랫폼별 로직은 파생 클래스 (소켓, I/O)
 
+#include "../../Concurrency/KeyedDispatcher.h"
+#include "../../Concurrency/TimerQueue.h"
 #include "../../Utils/NetworkUtils.h"
-#include "../../Utils/ThreadPool.h"
 #include "AsyncIOProvider.h"
 #include "NetworkEngine.h"
 #include "Session.h"
@@ -159,9 +160,15 @@ class BaseNetworkEngine : public INetworkEngine
 	std::unordered_map<NetworkEvent, NetworkEventCallback> mCallbacks;
 	mutable std::mutex mCallbackMutex;
 
-	// English: Logic thread pool (for async business logic)
-	// 한글: 로직 스레드 풀 (비동기 비즈니스 로직용)
-	Utils::ThreadPool mLogicThreadPool;
+	// English: Key-affinity dispatcher for ordered async logic execution.
+	//          Same sessionId always routes to the same worker → per-session FIFO order.
+	// 한글: 순서 보장 비동기 로직 실행을 위한 키 친화도 디스패처.
+	//       동일 sessionId는 항상 같은 워커로 라우팅 → 세션 단위 FIFO 순서 보장.
+	Network::Concurrency::KeyedDispatcher mLogicDispatcher;
+
+	// English: Engine-level timer queue for session-timeout checks and other periodic tasks.
+	// 한글: 세션 타임아웃 점검 등 엔진 수준 주기 작업을 위한 타이머 큐.
+	Network::Concurrency::TimerQueue mTimerQueue;
 
 	// English: Statistics - hot-path counters are atomic; cold-path data uses mutex
 	// 한글: 통계 - 핫 패스 카운터는 atomic; 콜드 패스 데이터는 mutex 사용

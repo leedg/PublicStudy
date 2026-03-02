@@ -5,11 +5,11 @@
 #include "../Interfaces/DatabaseException.h"
 #include "../Interfaces/DatabaseUtils.h"
 #include "MockDatabase.h"
-#include "ODBCDatabase.h"
-#include "SQLiteDatabase.h"
 #ifdef _WIN32
+#include "ODBCDatabase.h"
 #include "OLEDBDatabase.h"
 #endif
+#include "SQLiteDatabase.h"
 #include <iostream>
 #include <map>
 #include <stdexcept>
@@ -23,8 +23,10 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateDatabase(DatabaseType type)
 {
 	switch (type)
 	{
+#ifdef _WIN32
 	case DatabaseType::ODBC:
 		return CreateODBCDatabase();
+#endif
 	case DatabaseType::OLEDB:
 		return CreateOLEDBDatabase();
 	case DatabaseType::Mock:
@@ -38,7 +40,13 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateDatabase(DatabaseType type)
 
 std::unique_ptr<IDatabase> DatabaseFactory::CreateODBCDatabase()
 {
+#ifdef _WIN32
 	return std::make_unique<ODBCDatabase>();
+#else
+	std::cerr << "[DatabaseFactory] ODBC backend is only available on Windows. "
+	             "Returning nullptr — use SQLite or Mock instead.\n";
+	return nullptr;
+#endif
 }
 
 std::unique_ptr<IDatabase> DatabaseFactory::CreateOLEDBDatabase()

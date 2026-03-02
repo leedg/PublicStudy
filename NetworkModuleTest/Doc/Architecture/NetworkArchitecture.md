@@ -26,7 +26,9 @@ This document describes the current architecture of the network module and how t
 - Accept thread for incoming connections
 - Session lifecycle management (Connect/Disconnect)
 - Event-driven callbacks (Connected, Disconnected, DataReceived)
-- Thread pool for business logic
+- **KeyedDispatcher** for business logic (key-affinity, session ordering without mRecvMutex) — 2026-03-02
+- **TimerQueue** for session timeout checks and periodic tasks — 2026-03-02
+- **NetworkEventBus** for multi-subscriber event broadcasting — 2026-03-02
 - Statistics tracking
 
 **When to Use / 사용 시기:**
@@ -81,12 +83,13 @@ Server/ServerEngine/
 ├── Network/
 │   ├── Core/
 │   │   ├── NetworkEngine.h              # INetworkEngine
-│   │   ├── BaseNetworkEngine.h/.cpp     # common logic
+│   │   ├── BaseNetworkEngine.h/.cpp     # common logic (KeyedDispatcher+TimerQueue 내장)
 │   │   ├── NetworkEngineFactory.cpp     # CreateNetworkEngine
 │   │   ├── AsyncIOProvider.h            # low-level I/O interface
-│   │   ├── Session.h/.cpp
+│   │   ├── Session.h/.cpp               # Send()→SendResult, AsyncScope 통합 (2026-03-02)
 │   │   ├── SessionManager.h/.cpp
 │   │   ├── SendBufferPool.h/.cpp        # IOCP 전송 풀 (2026-03-01 추가)
+│   │   ├── NetworkEventBus.h/.cpp       # 다중 구독자 이벤트 버스 (2026-03-02 신규)
 │   │   └── PacketDefine.h
 │   └── Platforms/
 │       ├── WindowsNetworkEngine.h/.cpp
@@ -195,6 +198,10 @@ IOCP 전송 경로의 per-send 힙 할당을 제거하기 위한 싱글턴 풀.
 | 2026-03-01 | SendBufferPool zero-copy IOCP 전송 | per-send alloc 제거 |
 | 2026-03-01 | Core/Memory 버퍼 모듈 (RIOBufferPool 분리) | RIOAsyncIOProvider 내부 slab → 독립 풀 클래스 |
 | 2026-03-01 | PingPong 검증 페이로드 추가 | 매 왕복 버퍼 무결성 자동 검증 |
+| 2026-03-02 | KeyedDispatcher 교체 (mRecvMutex 제거) | 세션별 직렬화 락 제거, recv 경합 0 |
+| 2026-03-02 | TimerQueue 신규 / DB 핑 스레드 교체 | sleep 기반 스레드 제거, 단일 타이머 스레드 |
+| 2026-03-02 | AsyncScope 통합 / Send 백프레셔 | Close 후 큐 작업 억제, 큐 포화 명시적 반환 |
+| 2026-03-02 | NetworkEventBus 신규 | 이벤트당 단일→다중 구독자 지원 |
 
 ---
 
@@ -221,12 +228,33 @@ void       Release(index)
 
 ---
 
+## NetworkEventBus (2026-03-02 신규)
+
+**파일**: `Network/Core/NetworkEventBus.h/.cpp`
+
+`BaseNetworkEngine::FireEvent()` 는 기존 단일 콜백(`RegisterEventCallback`) 호출 후 `NetworkEventBus::Instance().Publish()` 도 호출한다. 다중 구독자가 같은 이벤트를 독립 채널로 수신 가능.
+
+```cpp
+auto ch = std::make_shared<Concurrency::Channel<Core::NetworkBusEventData>>(/* opts */);
+auto handle = Core::NetworkEventBus::Instance().Subscribe(
+    Core::NetworkEvent::Connected, ch);
+
+// 별도 스레드에서 소비
+while (auto evt = ch->Receive(100)) {
+    Logger::Info("New conn: " + std::to_string(evt->connectionId));
+}
+Core::NetworkEventBus::Instance().Unsubscribe(handle);
+```
+
+**`NetworkBusEventData`** 는 `vector<uint8_t> data` (copyable) 를 사용 — `NetworkEventData` 의 `unique_ptr<uint8_t[]>` 와 다름.
+
 ## Conclusion / 결론
 
-- **NetworkEngine**: production-facing server abstraction
+- **NetworkEngine**: production-facing server abstraction (KeyedDispatcher + TimerQueue + NetworkEventBus 내장)
 - **AsyncIOProvider**: low-level, reusable async I/O building block
 - **Core/Memory**: platform-agnostic buffer pool module (`IBufferPool` + 3 concrete implementations)
 - **SendBufferPool**: IOCP 전용 zero-copy 전송 버퍼 관리자
+- **NetworkEventBus**: 다중 구독자 이벤트 버스 싱글턴 (2026-03-02 신규)
 
 Choose the layer that fits your use case.
 

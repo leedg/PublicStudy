@@ -24,8 +24,15 @@ NetworkModuleTest/
           StandardBufferPool.h/.cpp
           RIOBufferPool.h/.cpp
           IOUringBufferPool.h/.cpp
+      Concurrency/
+        ExecutionQueue.h      # Mutex/LockFree 선택 큐
+        KeyedDispatcher.h     # key affinity 디스패처
+        Channel.h             # 타입 메시지 채널
+        AsyncScope.h          # 협력 취소 scope
+        TimerQueue.h/.cpp     # min-heap 타이머 (2026-03-02 신규)
       Network/Core/
         SendBufferPool.h/.cpp # IOCP 전송 풀 (2026-03-01)
+        NetworkEventBus.h/.cpp# 다중 구독자 이벤트 버스 (2026-03-02 신규)
       Platforms/Windows|Linux|macOS/
       Database/
       Implementations/Protocols/
@@ -49,7 +56,8 @@ NetworkModuleTest/
 - SendBufferPool: IOCP 경로 zero-copy 전송 버퍼 싱글턴
 - PacketDefine: SessionConnect/Ping/Pong 바이너리 프레이밍
 - Database: ConnectionPool, ODBC/OLEDB 구현
-- Concurrency: ExecutionQueue, KeyedDispatcher, Channel, AsyncScope, BoundedLockFreeQueue (상세: `Doc/03_ConcurrencyRuntime.md`)
+- Concurrency: ExecutionQueue, KeyedDispatcher, Channel, AsyncScope, BoundedLockFreeQueue, **TimerQueue** (상세: `Doc/03_ConcurrencyRuntime.md`)
+- **NetworkEventBus**: `Network/Core/NetworkEventBus.h/.cpp` — 다중 구독자 이벤트 버스 싱글턴 (2026-03-02 신규)
 - Utils: Logger, Timer, ThreadPool 등
 
 ## 5. Client <-> Server 플로우
@@ -81,7 +89,17 @@ Pong: [uint64 timestamp][uint64 pingTs][uint32 pingSeq][string msg]
 - `DBTaskQueue` 워커 수: 2 → **1** (같은 세션 RecordConnect/Disconnect 순서 보장)
 - `OrderedTaskQueue` (TestDBServer 전용): serverId 기반 해시 스레드 친화도 — 같은 serverId의 작업은 항상 동일 워커 스레드에서 순서대로 실행 (`Concurrency::KeyedDispatcher` 래핑)
 
-## 7. 제약 및 향후 과제
+## 7. 비동기 로직 고도화 이력 (2026-03-02)
+
+| 영역 | 변경 내용 |
+|------|---------|
+| **LogicDispatcher** | `BaseNetworkEngine::mLogicThreadPool` → `KeyedDispatcher mLogicDispatcher` 교체. `Session::mRecvMutex` 제거 (key-affinity 직렬화 보장) |
+| **TimerQueue** | `Concurrency/TimerQueue` 신규. DB ping 스레드 루프 → `ScheduleRepeat` 교체. 세션 타임아웃 체크도 타이머로 관리 |
+| **AsyncScope** | `Session::mAsyncScope` 추가. `Close()` 시 `Cancel()` 호출 → 이미 큐에 들어간 recv 작업 억제 |
+| **Send 백프레셔** | `Session::Send()` → `SendResult` (Ok/QueueFull/NotConnected) 반환. `SEND_QUEUE_BACKPRESSURE_THRESHOLD=64` (소프트 임계값) |
+| **NetworkEventBus** | `Network/Core/NetworkEventBus` 신규 싱글턴. `BaseNetworkEngine::FireEvent()` 에서 `Publish()` 호출 → 다중 구독자 동시 이벤트 수신 가능 |
+
+## 8. 제약 및 향후 과제
 - Linux/macOS 경로는 기본 send/recv 구현 완료 (테스트/안정성 검증 필요)
 - TestServer ↔ TestDBServer 패킷 처리 연결 강화 필요
 - DB CRUD 실연동 필요

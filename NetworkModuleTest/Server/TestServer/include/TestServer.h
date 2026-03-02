@@ -10,6 +10,7 @@ namespace Network { namespace Database { class IDatabase; } }
 #include "ClientPacketHandler.h"
 #include "DBServerSession.h"
 #include "DBTaskQueue.h"
+#include "Concurrency/TimerQueue.h"
 #include "Network/Core/NetworkEngine.h"
 #include "Network/Core/SessionManager.h"
 #include "Utils/NetworkUtils.h"
@@ -58,7 +59,7 @@ namespace Network::TestServer
         void DisconnectFromDBServer();
         bool SendDBPacket(const void* data, uint32_t size);
         void DBRecvLoop();
-        void DBPingLoop();
+        void SendDBPing();   // English: Send one DB ping packet (called by timer) / 한글: DB 핑 1회 전송 (타이머 콜백)
         void DBReconnectLoop();
 
     private:
@@ -107,10 +108,13 @@ namespace Network::TestServer
         std::atomic<bool>                           mDBRunning;
         std::atomic<uint32_t>                       mDBPingSequence;
         std::thread                                 mDBRecvThread;
-        std::thread                                 mDBPingThread;
+        // English: mDBPingThread replaced by TimerQueue — mDBPingTimer holds the handle.
+        // 한글: mDBPingThread를 TimerQueue로 교체 — mDBPingTimer가 핸들 보유.
+        Network::Concurrency::TimerQueue            mTimerQueue;
+        Network::Concurrency::TimerQueue::TimerHandle mDBPingTimer{0};
         std::mutex                                  mDBSendMutex;
-        // English: Condition variable to interrupt DBPingLoop sleep on shutdown
-        // 한글: 종료 시 DBPingLoop sleep 즉시 깨우기 위한 조건 변수
+        // English: Condition variable to interrupt reconnect loop sleep on shutdown
+        // 한글: 종료 시 재연결 루프 sleep 즉시 깨우기 위한 조건 변수
         std::condition_variable                     mDBShutdownCV;
         std::mutex                                  mDBShutdownMutex;
         std::vector<char>                           mDBRecvBuffer;

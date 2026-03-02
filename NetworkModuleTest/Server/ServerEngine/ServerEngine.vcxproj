@@ -133,6 +133,8 @@
     <ClInclude Include="Network\Core\Session.h" />
     <ClInclude Include="Network\Core\SessionManager.h" />
     <ClInclude Include="Network\Core\SessionPool.h" />
+    <ClInclude Include="Network\Core\NetworkEventBus.h" />
+    <ClCompile Include="Network\Core\NetworkEventBus.cpp" />
     <ClCompile Include="Network\Core\AsyncIOProvider.cpp" />
     <ClCompile Include="Network\Core\BaseNetworkEngine.cpp" />
     <ClCompile Include="Network\Core\NetworkEngineFactory.cpp" />
@@ -221,6 +223,8 @@
     <ClInclude Include="Concurrency\ConcurrencyRuntime.h" />
     <ClInclude Include="Concurrency\ExecutionQueue.h" />
     <ClInclude Include="Concurrency\KeyedDispatcher.h" />
+    <ClInclude Include="Concurrency\TimerQueue.h" />
+    <ClCompile Include="Concurrency\TimerQueue.cpp" />
   </ItemGroup>
   <ItemGroup>
     <!-- Utility Source Files -->
@@ -246,9 +250,11 @@
     <None Include="..\..\Doc\01_ProjectOverview.md" />
     <None Include="..\..\Doc\02_Architecture.md" />
     <None Include="..\..\Doc\03_Protocol.md" />
+    <None Include="..\..\Doc\03_ConcurrencyRuntime.md" />
     <None Include="..\..\Doc\04_API.md" />
     <None Include="..\..\Doc\05_DevelopmentGuide.md" />
     <None Include="..\..\Doc\06_SolutionGuide.md" />
+    <None Include="..\..\Doc\07_VisualMap.md" />
     <!-- 아키텍처 문서 -->
     <None Include="..\..\Doc\Architecture\AsyncDB.md" />
     <None Include="..\..\Doc\Architecture\CrossPlatform.md" />
@@ -260,6 +266,10 @@
     <None Include="..\..\Doc\Performance\Benchmarking.md" />
     <None Include="..\..\Doc\Performance\LockContentionAnalysis.md" />
     <None Include="..\..\Doc\Performance\VALUE_COPY_OPTIMIZATION.md" />
+    <None Include="..\..\Doc\Performance\PerformanceTestGuideline.md" />
+    <None Include="..\..\Doc\Performance\ServerEngineNetworkLoadTestChecklist.md" />
+    <None Include="..\..\Doc\Performance\ServerEngineNetworkLoadTestLogTemplate.md" />
+    <None Include="..\..\Doc\Performance\Logs\PERF_HISTORY.md" />
     <!-- 데이터베이스 문서 -->
     <None Include="..\..\Doc\Database\MigrationGuide.md" />
     <None Include="..\..\Doc\Database\README.md" />

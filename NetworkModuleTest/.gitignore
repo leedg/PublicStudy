@@ -21,6 +21,15 @@ build-wsl/
 out/
 bin/
 obj/
+Release/
+Debug/
+
+# Visual Studio build artifacts
+*.pdb
+*.ilk
+*.exp
+*.iobj
+*.ipdb
 
 # IDE
 .idea/

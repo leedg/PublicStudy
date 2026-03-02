@@ -3,6 +3,7 @@
 // English: Client session class for connection management
 // 한글: 클라이언트 세션 클래스 — 연결 관리
 
+#include "../../Concurrency/AsyncScope.h"
 #include "../../Utils/NetworkUtils.h"
 #include "AsyncIOProvider.h"
 #include "PacketDefine.h"
@@ -98,13 +99,22 @@ class Session : public std::enable_shared_from_this<Session>
 	//       ID·상태·카운터 초기화. mAsyncProvider·버퍼는 Close()에서 이미 정리됨.
 	void Reset();
 
-	// English: Send packet
-	// 한글: 패킷 전송
-	void Send(const void *data, uint32_t size);
-
-	template <typename T> void Send(const T &packet)
+	// English: Send result — returned by Send() to give the caller backpressure feedback.
+	// 한글: 전송 결과 — 호출자에게 백프레셔 피드백을 제공하는 Send() 반환값.
+	enum class SendResult : uint8_t
 	{
-		Send(&packet, sizeof(T));
+		Ok,           // English: Packet enqueued/sent successfully / 한글: 패킷 큐잉/전송 성공
+		QueueFull,    // English: Send queue above backpressure threshold / 한글: 송신 큐 백프레셔 임계값 초과
+		NotConnected, // English: Session not connected / 한글: 세션 미연결
+	};
+
+	// English: Send packet. Returns SendResult for backpressure feedback.
+	// 한글: 패킷 전송. 백프레셔 피드백을 위해 SendResult 반환.
+	SendResult Send(const void *data, uint32_t size);
+
+	template <typename T> SendResult Send(const T &packet)
+	{
+		return Send(&packet, sizeof(T));
 	}
 
 	// English: Post receive request to IOCP
@@ -247,30 +257,27 @@ class Session : public std::enable_shared_from_this<Session>
 	//       실제 I/O 호출 중 mSendMutex를 보유하지 않도록 한다.
 	std::shared_ptr<AsyncIO::AsyncIOProvider> mAsyncProvider;
 
-	// English: TCP reassembly accumulation buffer + mutex + read offset
+	// English: TCP reassembly accumulation buffer + read offset.
 	//
-	//   mRecvMutex  — serializes concurrent ProcessRawRecv calls.
-	//                 PostRecv() is re-issued immediately after each completion, so a
-	//                 second recv can complete before the first is processed by the logic
-	//                 thread pool. Without this lock, two workers would race on the buffer.
+	//   mRecvMutex removed — serialization is now guaranteed by KeyedDispatcher affinity.
+	//   Same sessionId always routes to the same worker thread, so ProcessRawRecv calls
+	//   for a given session are inherently sequential (no concurrent workers).
 	//
 	//   mRecvAccumOffset — O(1) read pointer (position B pattern).
 	//                      Instead of erasing (O(n) memmove) after every packet, we advance
 	//                      an offset and compact only when the offset exceeds half the buffer.
-	//                      Matches the same strategy used in TestServer::DBRecvLoop.
 	//
-	// 한글: TCP 재조립 누적 버퍼 + 뮤텍스 + 읽기 오프셋
+	// 한글: TCP 재조립 누적 버퍼 + 읽기 오프셋.
 	//
-	//   mRecvMutex  — 동시 ProcessRawRecv 호출 직렬화.
-	//                 PostRecv() 즉시 재발행으로 두 번째 recv가 먼저 완료될 수 있음.
+	//   mRecvMutex 제거 — KeyedDispatcher 친화도로 직렬화 보장.
+	//   동일 sessionId는 항상 동일 워커로 라우팅되므로 동일 세션의
+	//   ProcessRawRecv 호출은 본질적으로 순차 실행 (동시 워커 없음).
 	//
 	//   mRecvAccumOffset — O(1) 읽기 포인터.
 	//                      패킷마다 erase(O(n) memmove) 대신 오프셋만 전진하고,
 	//                      오프셋이 버퍼 절반을 초과하면 compact.
-	//                      TestServer::DBRecvLoop의 mDBRecvOffset 전략과 동일.
 	std::vector<char> mRecvAccumBuffer;
 	size_t            mRecvAccumOffset{0};
-	std::mutex        mRecvMutex;
 
 	// English: Reusable batch buffer for ProcessRawRecv general path.
 	//          Reserved in Initialize() to amortise allocations across calls.
@@ -289,6 +296,17 @@ class Session : public std::enable_shared_from_this<Session>
 	//       PostRecv() 이전에 1회 설정 (첫 recv 완료보다 happens-before 보장).
 	//       Reset()에서 초기화하여 스테일 캡처 없이 슬롯 재사용 가능.
 	OnRecvCallback mOnRecvCb;
+
+	// English: Async scope for cooperative cancellation of queued logic tasks.
+	//          BaseNetworkEngine calls mAsyncScope.Submit(...) instead of Dispatch() directly,
+	//          so that tasks queued after Close() are silently skipped.
+	//          RAII dtor calls Cancel() + WaitForDrain() ensuring no tasks run after Session dtor.
+	// 한글: 큐잉된 로직 작업의 협력 취소를 위한 비동기 스코프.
+	//       BaseNetworkEngine이 Dispatch() 대신 mAsyncScope.Submit(...)을 호출하여
+	//       Close() 이후 큐잉된 작업이 조용히 건너뜀.
+	//       RAII 소멸자가 Cancel() + WaitForDrain()을 자동 호출하여
+	//       Session 소멸 후 작업이 실행되지 않도록 보장.
+	Network::Concurrency::AsyncScope mAsyncScope;
 };
 
 using SessionRef = std::shared_ptr<Session>;

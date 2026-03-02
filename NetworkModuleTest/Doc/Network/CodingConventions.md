@@ -115,6 +115,21 @@ void MyFunction()
 // ✗ 2칸 들여쓰기 금지
 ```
 
+### 2.2 개행 문자 (Line Endings)
+
+**Windows 프로젝트 전체 통일 규칙: CRLF (`\r\n`)**
+
+```
+✓ CRLF (\r\n)  — Windows 표준, MSVC C4335 경고 없음
+✗ LF   (\n)    — Mac/Linux 포맷, MSVC 빌드 시 C4335 경고 발생
+✗ CR   (\r)    — 구형 Mac 포맷, 사용 금지
+```
+
+- Git 설정: `core.autocrlf = true` (Windows) 또는 `.gitattributes`에 `* text=auto eol=crlf` 적용 권장
+- 신규 파일 생성 시: Visual Studio 기본값(CRLF) 사용
+- 외부 파일 통합 시: 편집기/스크립트로 LF → CRLF 변환 후 커밋
+- **확인 방법**: MSVC 빌드에서 `warning C4335: Mac 파일 형식이 발견되었습니다` 가 없으면 정상
+
 ### 2.2 라인 길이
 
 ```cpp
@@ -729,6 +744,7 @@ LOG(LL_ERROR, LC_DEFAULT, L"Error");             // ✗ 어떤 에러?
 - [ ] **플랫폼 분기 주석** - #ifdef 블록 설명
 - [ ] **std::unique_ptr 사용** - 메모리 안전성
 - [ ] **const 정확성** - 참조 제한
+- [ ] **CRLF 개행** - 모든 소스 파일 (`\r\n`), LF 금지 (MSVC C4335)
 
 ### 강력 권장 (SHOULD)
 
@@ -742,6 +758,7 @@ LOG(LL_ERROR, LC_DEFAULT, L"Error");             // ✗ 어떤 에러?
 
 - [ ] ✗ 1TBS 스타일
 - [ ] ✗ 탭 들여쓰기
+- [ ] ✗ LF/CR 개행 (CRLF만 허용)
 - [ ] ✗ 라인 끝 공백
 - [ ] ✗ 주석 없는 코드
 - [ ] ✗ 신규 코드의 C 스타일 배열

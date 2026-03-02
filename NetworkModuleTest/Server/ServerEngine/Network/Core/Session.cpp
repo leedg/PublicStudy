@@ -170,27 +170,37 @@ void Session::Close()
 #endif
 		mSendQueueSize.store(0, std::memory_order_relaxed);
 	}
-	{
-		std::lock_guard<std::mutex> recvLock(mRecvMutex);
-		mRecvAccumBuffer.clear();
-		mRecvAccumOffset = 0;
-	}
+	// English: Clear recv accumulation state. mRecvMutex removed — KeyedDispatcher affinity
+	//          ensures ProcessRawRecv and Close() for the same session are serialized
+	//          on the same worker thread.
+	// 한글: recv 누적 상태 초기화. mRecvMutex 제거 — KeyedDispatcher 친화도로
+	//       동일 세션의 ProcessRawRecv와 Close()가 같은 워커 스레드에서 직렬화됨.
+	mRecvAccumBuffer.clear();
+	mRecvAccumOffset = 0;
+
+	// English: Cancel queued logic tasks. Tasks already running will finish normally;
+	//          tasks still in the dispatcher queue will be silently skipped.
+	//          WaitForDrain() is deferred to AsyncScope's RAII dtor (Session destruction).
+	// 한글: 큐잉된 로직 작업 취소. 이미 실행 중인 작업은 정상 완료;
+	//       아직 디스패처 큐에 있는 작업은 조용히 건너뜀.
+	//       WaitForDrain()은 AsyncScope RAII 소멸자(Session 소멸 시)로 미룸.
+	mAsyncScope.Cancel();
 
 	Utils::Logger::Info("Session closed - ID: " + std::to_string(mId));
 }
 
-void Session::Send(const void *data, uint32_t size)
+Session::SendResult Session::Send(const void *data, uint32_t size)
 {
 	if (!IsConnected() || data == nullptr || size == 0)
 	{
-		return;
+		return SendResult::NotConnected;
 	}
 
 	if (size > MAX_PACKET_TOTAL_SIZE)
 	{
 		Utils::Logger::Warn("Send size exceeds MAX_PACKET_TOTAL_SIZE - packet dropped (Session: " +
 							std::to_string(mId) + ", Size: " + std::to_string(size) + ")");
-		return;
+		return SendResult::QueueFull;
 	}
 
 #ifdef _WIN32
@@ -198,7 +208,7 @@ void Session::Send(const void *data, uint32_t size)
 		const SocketHandle socket = mSocket.load(std::memory_order_acquire);
 		if (socket == GetInvalidSocket())
 		{
-			return;
+			return SendResult::NotConnected;
 		}
 
 		// English: Copy shared_ptr under mSendMutex, then use snapshot outside lock.
@@ -222,23 +232,27 @@ void Session::Send(const void *data, uint32_t size)
 				Utils::Logger::Error(
 					"RIO send failed - Session: " + std::to_string(mId) +
 					", Error: " + std::string(providerSnapshot->GetLastError()));
+				return SendResult::QueueFull;
 			}
 			else
 			{
 				(void)providerSnapshot->FlushRequests();
 			}
-			return;
+			return SendResult::Ok;
 		}
 	}
 #endif
 
-	// English: Back-pressure: drop packet if send queue is full
-	// 한글: 백압력: 송신 큐가 가득 찬 경우 패킷 드롭
-	if (mSendQueueSize.load(std::memory_order_relaxed) >= MAX_SEND_QUEUE_DEPTH)
+	// English: Back-pressure: return QueueFull if send queue exceeds threshold.
+	//          Caller receives explicit feedback instead of a silent drop.
+	// 한글: 백프레셔: 송신 큐가 임계값을 초과하면 QueueFull 반환.
+	//       호출자에게 묵시적 드롭 대신 명시적 피드백 제공.
+	if (mSendQueueSize.load(std::memory_order_relaxed) >=
+	    Utils::SEND_QUEUE_BACKPRESSURE_THRESHOLD)
 	{
-		Utils::Logger::Warn("Send queue full - packet dropped (Session: " +
-							std::to_string(mId) + ")");
-		return;
+		Utils::Logger::Warn("Send backpressure triggered - Session: " +
+							std::to_string(mId));
+		return SendResult::QueueFull;
 	}
 
 	// English: Lock contention optimization using atomic queue size counter
@@ -252,7 +266,7 @@ void Session::Send(const void *data, uint32_t size)
 	{
 		Utils::Logger::Warn("SendBufferPool exhausted - packet dropped (Session: " +
 							std::to_string(mId) + ")");
-		return;
+		return SendResult::QueueFull;
 	}
 	std::memcpy(slot.ptr, data, size);
 
@@ -277,6 +291,7 @@ void Session::Send(const void *data, uint32_t size)
 	// English: Always try to flush (CAS inside will prevent double send)
 	// 한글: 항상 플러시 시도 (내부 CAS가 이중 전송 방지)
 	FlushSendQueue();
+	return SendResult::Ok;
 }
 
 void Session::FlushSendQueue()
@@ -517,21 +532,20 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 	struct PacketSpan { uint32_t offset; uint32_t size; };
 
 	// English: Fast-path check — no accumulated data and exactly one complete packet.
-	//          Holds the lock only during the check; releases before invoking OnRecv.
+	//          No lock needed: KeyedDispatcher guarantees this method is only called
+	//          from the session's dedicated worker thread.
 	// 한글: 패스트패스 검사 — 누적 데이터 없고 정확히 1개의 완성 패킷인 경우.
-	//       검사 중에만 락 보유; OnRecv 호출 전에 해제.
+	//       락 불필요: KeyedDispatcher가 이 메서드가 세션 전용 워커 스레드에서만
+	//       호출됨을 보장.
 	bool fastPath = false;
+	if (mRecvAccumBuffer.empty() && size >= PACKET_HEADER_SIZE)
 	{
-		std::lock_guard<std::mutex> recvLock(mRecvMutex);
-		if (mRecvAccumBuffer.empty() && size >= PACKET_HEADER_SIZE)
+		const auto *hdr = reinterpret_cast<const PacketHeader *>(data);
+		if (hdr->size >= PACKET_HEADER_SIZE &&
+		    hdr->size <= MAX_PACKET_TOTAL_SIZE &&
+		    static_cast<uint32_t>(hdr->size) == size)
 		{
-			const auto *hdr = reinterpret_cast<const PacketHeader *>(data);
-			if (hdr->size >= PACKET_HEADER_SIZE &&
-				hdr->size <= MAX_PACKET_TOTAL_SIZE &&
-				static_cast<uint32_t>(hdr->size) == size)
-			{
-				fastPath = true;
-			}
+			fastPath = true;
 		}
 	}
 
@@ -544,15 +558,16 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 	}
 
 	// English: General path — batch complete packets into mRecvBatchBuf (reused across calls),
-	//          swap with a local variable to dispatch outside mRecvMutex.
+	//          swap with a local variable before dispatching.
+	//          No lock needed: serialization is guaranteed by KeyedDispatcher affinity.
 	// 한글: 일반 경로 — 완성 패킷을 mRecvBatchBuf(호출 간 재사용)에 배치 처리하고,
-	//       지역 변수와 swap하여 mRecvMutex 밖에서 디스패치.
+	//       디스패치 전 지역 변수와 swap.
+	//       락 불필요: KeyedDispatcher 친화도로 직렬화 보장.
 	std::vector<char>       localBatch;
 	std::vector<PacketSpan> spans;
 	bool shouldClose = false;
 
 	{
-		std::lock_guard<std::mutex> recvLock(mRecvMutex);
 
 		// English: Overflow guard (slow-loris / flood defense).
 		// 한글: 오버플로우 방어 (slow-loris / 플러드 방어).

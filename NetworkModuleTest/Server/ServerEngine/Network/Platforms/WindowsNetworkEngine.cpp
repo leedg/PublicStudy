@@ -200,7 +200,7 @@ void WindowsNetworkEngine::AcceptLoop()
 		mTotalConnections.fetch_add(1, std::memory_order_relaxed);
 
 		auto sessionCopy = session;
-		mLogicThreadPool.Submit(
+		mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 			[this, sessionCopy]()
 			{
 				sessionCopy->OnConnected();
@@ -275,7 +275,7 @@ void WindowsNetworkEngine::ProcessCompletions()
 		if (entry.mOsError != 0 || entry.mResult <= 0)
 		{
 			auto sessionCopy = session;
-			mLogicThreadPool.Submit(
+			mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 				[this, sessionCopy]()
 				{
 					sessionCopy->OnDisconnected();
@@ -322,7 +322,7 @@ void WindowsNetworkEngine::ProcessCompletions()
 					std::string(mProvider->GetLastError()));
 
 				auto sessionCopy = session;
-				mLogicThreadPool.Submit(
+				mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 					[this, sessionCopy]()
 					{
 						sessionCopy->OnDisconnected();
