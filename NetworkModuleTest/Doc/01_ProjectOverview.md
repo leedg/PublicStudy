@@ -13,16 +13,44 @@ DB 연동은 프로토타입(로그/플레이스홀더 중심) 단계입니다.
 - DBServer (DBServer.cpp): AsyncIOProvider 기반 실험/레거시 구현 (기본 실행 경로 아님)
 - MultiPlatformNetwork: 보관 | 참고 구현
 
-## 상태 (2026-03-01)
+## 상태 (2026-03-02)
 | 모듈 | 상태 | 비고 |
 | --- | --- | --- |
-| ServerEngine | 진행 중 | Windows x64 Release 1000 클라이언트 PASS 확인 |
+| ServerEngine | 진행 중 | Windows x64 Release 1000 클라이언트 PASS / Linux Docker epoll+io_uring PASS |
 | TestServer | 프로토타입 | 세션/핑 처리, DB 옵션(`ENABLE_DATABASE_SUPPORT`) |
 | TestDBServer | 프로토타입 | Ping/Pong 및 PingTime 기록, DB 저장은 플레이스홀더 |
-| TestClient | 프로토타입 | RTT 통계 포함 |
+| TestClient | 프로토타입 | RTT 통계, 자동화 테스트 모드(maxPings) 포함 |
 | MultiPlatformNetwork | 보관 | 참고 구현 |
 
-## 최근 업데이트 (2026-03-01) — Core/Memory 버퍼 모듈 + 핑퐁 검증 페이로드
+## 최근 업데이트 (2026-03-02) — 비동기 로직 고도화 + Linux Docker 통합 테스트
+
+### 비동기 로직 고도화 (A~E)
+- **A. KeyedDispatcher**: `BaseNetworkEngine::mLogicThreadPool` → `KeyedDispatcher mLogicDispatcher` 교체. `Session::mRecvMutex` 제거 (key-affinity 직렬화 보장)
+- **B. TimerQueue**: `Concurrency/TimerQueue.h/.cpp` 신규. DB ping 스레드 루프 → `ScheduleRepeat` 교체. WorkerLoop `mRunning=false` 시 즉시 break 버그 수정 포함
+- **C. AsyncScope**: `Session::mAsyncScope` 추가. `Close()` 시 `Cancel()` 호출 → recv 작업 억제. **풀 재사용 버그 수정**: `Session::Reset()`에서 `mAsyncScope.Reset()` 호출 추가 (`mCancelled=true` 잔존 문제 해결)
+- **D. Send 백프레셔**: `Session::Send()` → `SendResult` 반환 (Ok/QueueFull/NotConnected). `SEND_QUEUE_BACKPRESSURE_THRESHOLD=64`
+- **E. NetworkEventBus**: `Network/Core/NetworkEventBus.h/.cpp` 신규 싱글턴. 다중 구독자 이벤트 수신 지원
+
+### Linux Docker 통합 테스트 인프라 (`test_linux/`)
+- `Dockerfile` (Ubuntu 22.04, gcc-12, liburing-dev, libsqlite3-dev)
+- `docker-compose.yml` — 3 서비스: dbserver(9001) → server(9000) → client_epoll / client_iouring
+- `CMakeLists.txt` — ServerEngine(정적) + TestServer + DBServer + TestClient
+- `scripts/run_integration.sh`, `scripts/entrypoint_client.sh` (TCP 탐침 → TestClient 실행)
+- `run_docker_test.ps1` — Windows 런처 (`-Backend epoll|iouring|both`, `-NoBuild`, `-Single`)
+- 테스트 결과: epoll **PASS** (Session 5) / io_uring **PASS** (Session 20), RTT 0~1ms (kernel 6.6.87.2-WSL2)
+- 상세 로그: `Doc/Performance/Logs/20260302_191739_linux/`
+
+### AsyncScope 풀 재사용 버그 수정 (2026-03-02)
+- **증상**: io_uring 클라이언트만 `SessionConnectRes` 수신 실패 (EAGAIN, error 11)
+- **원인**: `Session::Close()` → `mAsyncScope.Cancel()` 설정 후 `Session::Reset()`에서 `mCancelled` 초기화 누락 → 풀 재사용 시 모든 로직 태스크 silently skip
+- **수정**: `AsyncScope::Reset()` 메서드 추가 + `Session::Reset()`에서 호출
+- **TestClient 수정**: 자동화 테스트 모드(`--pings N`)에서 퐁을 하나도 못 받으면 exit code 1 반환 (meta PASS/FAIL 정확도 향상)
+
+### 퍼포먼스 테스트 결과 (20260301_163405, Core/Memory 최적화 후)
+- 1000/1000 PASS, Errors=0, Server WS=**143.6 MB** (이전 193.7 MB → 약 50 MB 감소)
+- RTT: avg=2ms, max=20ms @1000 clients
+
+## 이전 업데이트 (2026-03-01) — Core/Memory 버퍼 모듈 + 핑퐁 검증 페이로드
 
 ### Core/Memory 독립 버퍼 모듈
 - **Dead code 제거**: `Platforms/AsyncBufferPool.h/.cpp`, `Platforms/Windows/RIOBufferPool.h`, `Platforms/Linux/IOUringBufferPool.h`, `Interfaces/IBufferPool.h` 삭제

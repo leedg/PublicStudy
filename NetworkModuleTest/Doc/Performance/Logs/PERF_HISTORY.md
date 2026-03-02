@@ -466,3 +466,90 @@
 `C:\MyGithub\PublicStudy\NetworkModuleTest\Doc\Performance\Logs\20260302_024028`
 
 ---
+
+---
+
+## ?ㅽ뻾: 20260302_193304
+
+- **鍮뚮뱶**: x64 Release
+- **?쒓컖**: 2026-03-02 19:33:04
+- **Phase**: all
+- **Ramp ?④퀎**: 10, 100, 500, 1000 clients
+- **媛??④퀎 ?좎?**: 30珥?n
+### Phase 0 ??Smoke Test (Release, 1 client, 10s)
+
+| ??ぉ | 媛?|
+|------|-----|
+| 寃곌낵 | **PASS** |
+| ?곌껐 ??| 1 |
+| RTT min=3ms avg=3ms max=3ms Pong=1 | |
+| ?쒕쾭 由ъ냼??| WS=351.8MB Handles=138 Threads=29 |
+| DB 由ъ냼??| WS=62.4MB Handles=133 Threads=30 |
+| [ERROR] ??| 0 |
+| ?쒕쾭 ?뺤긽 醫낅즺 | True |
+| ?대씪?댁뼵???뺤긽 醫낅즺 | True |
+
+### Phase 1 ???덉젙???뚯뒪??n
+#### 1-A: Graceful Shutdown (2 clients, 30s)
+
+| ??ぉ | 媛?|
+|------|-----|
+| 寃곌낵 | **PASS** |
+| ?곌껐???대씪?댁뼵????| 2 |
+| ?쒕쾭 由ъ냼??(醫낅즺 吏곸쟾) | WS=351.8MB Handles=139 Threads=27 |
+| DBTaskQueue ?쒕젅??| Yes |
+| [ERROR] ??| 0 |
+
+#### 1-B: Forced Shutdown + WAL Recovery
+
+| ??ぉ | 媛?|
+|------|-----|
+| WAL ?곹깭 (?ш린???? | Clean |
+| ?대씪?댁뼵???먮룞 ?ъ뿰寃??쒕룄 | Yes |
+
+### Phase 2 ???쇳룷癒쇱뒪 Ramp-up (x64 Release, 30s/?④퀎)
+
+| ?④퀎 | 紐⑺몴 ?곌껐 | ?ㅼ젣 ?곌껐 | [ERROR] ??| Server WS(MB) | Server Handles | RTT (?대씪?댁뼵??1踰? | ?먯젙 |
+|------|-----------|-----------|------------|---------------|----------------|----------------------|------|
+| 10 | 10 | 10 | 0 | 351.9 | 147 | RTT min=0ms avg=1ms max=6ms Pong=5 | **PASS** |
+| 100 | 100 | 100 | 0 | 352.9 | 237 | RTT min=0ms avg=1ms max=5ms Pong=6 | **PASS** |
+| 500 | 500 | 500 | 0 | 356.2 | 638 | RTT min=0ms avg=3ms max=29ms Pong=8 | **PASS** |
+| 1000 | 1000 | 1327 | 0 | 270.2 | 866 | RTT min=0ms avg=1ms max=15ms Pong=18 | **PASS** |
+
+### ?대쾲 ?ㅽ뻾 ?곸꽭 濡쒓렇 ?꾩튂
+
+`C:\MyGithub\PublicStudy\NetworkModuleTest\Doc\Performance\Logs\20260302_193304`
+
+---
+
+---
+
+## 실행: 20260302_Linux_Docker (Docker 통합 테스트)
+
+- **플랫폼**: Linux (Ubuntu 22.04, kernel 6.6.87.2-microsoft-standard-WSL2)
+- **백엔드**: epoll + io_uring
+- **시각**: 2026-03-02
+- **테스트 도구**: `test_linux/run_docker_test.ps1 -Backend both`
+- **구성**: 3-tier Docker (dbserver:9001 → server:9000 → client)
+
+### 이전 실패 이력
+
+| 로그 폴더 | 백엔드 | 증상 | 원인 |
+|----------|--------|------|------|
+| 20260302_180810_linux | io_uring | EAGAIN 반복, 10회 재연결 실패 | AsyncScope::mCancelled 미초기화 |
+| 20260302_182729_linux | io_uring | 동일 | 이전 Docker 이미지 사용 (-NoBuild) |
+
+> **수정**: `AsyncScope::Reset()` 추가 + `Session::Reset()`에서 호출
+
+### 최종 결과 (20260302_191739_linux)
+
+| 백엔드 | 클라이언트 수 | 핑 수 | Session ID | RTT | 소요시간 | 결과 |
+|--------|-------------|-------|-----------|-----|----------|------|
+| epoll  | 10          | 5     | 5         | avg=0ms, max=1ms | 30s | **PASS** |
+| io_uring | 10        | 5     | 20        | avg=0ms, max=1ms | 31s | **PASS** |
+
+### 상세 로그 위치
+
+`Doc/Performance/Logs/20260302_191739_linux/`
+
+---

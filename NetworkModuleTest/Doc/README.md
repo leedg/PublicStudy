@@ -2,7 +2,7 @@
 
 **프로젝트**: 고성능 멀티플랫폼 네트워크 엔진 및 게임 서버
 **언어**: C++17
-**플랫폼**: Windows (주 개발/테스트), Linux/macOS (스캐폴딩/실험)
+**플랫폼**: Windows (주 개발/테스트, RIO/IOCP), Linux (Docker 통합 테스트 PASS, epoll/io_uring), macOS (스캐폴딩)
 
 ---
 
@@ -120,8 +120,8 @@
 ## 🎯 주요 기능
 
 ### 멀티플랫폼 네트워크 엔진
-- ✅ **Windows**: IOCP, RIO (자동 감지, 주 개발/테스트)
-- ⚠️ **Linux**: epoll, io_uring (기본 send/recv 구현, 테스트 필요)
+- ✅ **Windows**: IOCP, RIO (자동 감지, 주 개발/테스트, 1000 클라이언트 PASS)
+- ✅ **Linux**: epoll, io_uring (Docker 통합 테스트 PASS, `test_linux/`)
 - ⚠️ **macOS**: kqueue (기본 send/recv 구현, 테스트 필요)
 
 ### 비동기 DB 아키텍처
@@ -151,6 +151,21 @@
 ---
 
 ## 🔧 최근 업데이트
+
+### 2026-03-02
+- ✅ 비동기 고도화 A~E (KeyedDispatcher, TimerQueue, AsyncScope, Send 백프레셔, NetworkEventBus)
+- ✅ AsyncScope 풀 재사용 버그 수정 (`Reset()` 추가, io_uring EAGAIN 해결)
+- ✅ Linux Docker 통합 테스트 인프라 (`test_linux/`) — epoll + io_uring PASS
+- ✅ TestClient 자동화 모드 exit code 수정 (`--pings N` 실패 시 exit 1)
+
+### 2026-03-01
+- ✅ Core/Memory 버퍼 모듈 독립화 (IBufferPool + 구현 3종)
+- ✅ 핑퐁 검증 페이로드 추가 (자동 왕복 검증)
+- ✅ SessionFactory 제거 → SetOnRecv / SetSessionConfigurator 패턴
+
+### 2026-02-28
+- ✅ RIO slab pool (WSA 10055 수정, 1000 클라이언트 PASS)
+- ✅ MAX_CONNECTIONS=1000 조정
 
 ### 2026-02-10
 - ✅ TestServer ↔ TestDBServer 패킷 연결 경로 추가
@@ -212,6 +227,6 @@
 
 ---
 
-**마지막 업데이트**: 2026-02-10
+**마지막 업데이트**: 2026-03-02
 **버전**: 2.0.0
 **관리자**: [작성 필요]

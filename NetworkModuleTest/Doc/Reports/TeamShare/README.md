@@ -1,10 +1,17 @@
 # Network / Async / DB 처리 구조 분석 보고서
 
-- 작성일: 2026-02-26
+- 최초 작성: 2026-02-26  최종 업데이트: 2026-03-02
 - 기준 리포지토리: `NetworkModuleTest`
 - 분석 기준: `ServerEngine`, `TestServer`, `DBServer` 실제 구현 코드
 - 목적: 네트워크 처리, 비동기 처리, DB 처리의 현재 구조와 데이터 흐름을 코드 기준으로 정리
 
+## 주요 업데이트 (2026-03-02)
+
+- **비동기 고도화**: KeyedDispatcher(직렬화), TimerQueue(타이머), AsyncScope(협력 취소), Send 백프레셔, NetworkEventBus(이벤트 버스) 추가
+- **AsyncScope 풀 재사용 버그 수정**: 세션 풀 재사용 시 `mCancelled=true` 잔존 문제 → `AsyncScope::Reset()` 추가로 해결
+- **Linux Docker 테스트**: Ubuntu 22.04 컨테이너에서 epoll + io_uring 양 백엔드 통합 테스트 **PASS**
+- **Core/Memory 버퍼 모듈**: 플랫폼 독립 `IBufferPool` + `StandardBufferPool` / `RIOBufferPool` / `IOUringBufferPool`
+- **성능**: Windows 1000 클라이언트 PASS, Server WS 143.6 MB (최적화 후)
 
 ## Diagram Map
 

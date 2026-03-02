@@ -35,6 +35,25 @@ dispatcher.Dispatch(sessionId, [this] {
 });
 ```
 
+## AsyncScope 주의사항 — 풀 재사용 (2026-03-02)
+
+`AsyncScope`는 `Cancel()` 후 `Reset()`을 명시적으로 호출해야 재사용 가능합니다.
+
+```cpp
+// Session 풀 반환 흐름 (SessionPool::ReleaseInternal)
+session.Close();        // → mAsyncScope.Cancel() 호출됨
+session.Reset();        // → mAsyncScope.Reset() 반드시 호출 필요
+// 이후 풀에 슬롯 반환 → 다음 Acquire에서 사용
+```
+
+**버그 사례 (2026-03-02 수정):**
+- `Session::Reset()`에서 `mAsyncScope.Reset()` 호출 누락
+- 결과: 재사용 세션의 `mCancelled=true` 잔존 → `Submit()` 내 `if (!IsCancelled())` 체크로 모든 로직 태스크가 silently skip
+- 증상: io_uring 백엔드에서만 `SessionConnectRes` 미수신 (epoll은 첫 실행이라 신선한 슬롯 사용)
+
+**안전 보장:**
+- `Reset()` 시점에 `mInFlight == 0` 이 보장됨 (모든 in-flight 람다가 `sessionCopy` shared_ptr를 보유하므로 세션 ref count가 0이 될 때까지 이미 완료됨)
+
 ## TimerQueue (2026-03-02 신규)
 
 **파일**: `Concurrency/TimerQueue.h/.cpp`

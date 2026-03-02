@@ -929,10 +929,25 @@ Per Release: 성능 회귀 테스트
 
 ## 누적 성능 추이
 
-| 날짜 | 빌드 | 최대 안정 동접 | 1000 판정 | 비고 |
-|------|------|---------------|-----------|------|
-| 2026-02-27 | Debug | 500 | FAIL (WSA 10055) | 초기 측정 |
-| 2026-02-28 (1차) | Release | 500 | FAIL (WSA 10055) | Release 첫 측정 |
-| 2026-02-28 (2차) | Release | 1000 | **PASS** | RIO slab pool 도입 |
-| 2026-03-01 | Release | 1000 | **PASS** | 메모리 풀 3단계 최적화 |
+### Windows (RIO 백엔드, x64 Release)
+
+| 날짜 | 빌드 | 최대 안정 동접 | 1000 판정 | Server WS @1000 | 비고 |
+|------|------|---------------|-----------|-----------------|------|
+| 2026-02-27 | Debug | 500 | FAIL (WSA 10055) | N/A | 초기 측정 |
+| 2026-02-28 (1차) | Release | 500 | FAIL (WSA 10055) | N/A | Release 첫 측정 |
+| 2026-02-28 (2차) | Release | 1000 | **PASS** | 193.8 MB | RIO slab pool 도입 |
+| 2026-03-01 (1차) | Release | 1000 | **PASS** | 193.7 MB | Core/Memory 버퍼 모듈 리팩토링 |
+| 2026-03-01 (2차) | Release | 1000 | **PASS** | 143.6 MB | Core/Memory 최적화 완료 (−26%) |
+| 2026-03-02 | Release | 1000 | **PASS** | ~330 MB | 비동기 고도화 A~E (KeyedDispatcher 등) |
+
+> Server WS 증가(330 MB): AsyncScope, TimerQueue, NetworkEventBus 신규 구조체 추가에 따른 정상적인 메모리 증가.
+
+### Linux Docker (WSL2 컨테이너, 기능 검증 수준)
+
+| 날짜 | 백엔드 | 클라이언트 | 핑 수 | RTT | 커널 | 결과 |
+|------|--------|-----------|-------|-----|------|------|
+| 2026-03-02 (첫 PASS) | epoll | 10 | 5 | avg=0ms, max=1ms | 6.6.87.2-WSL2 | **PASS** |
+| 2026-03-02 (첫 PASS) | io_uring | 10 | 5 | avg=0ms, max=1ms | 6.6.87.2-WSL2 | **PASS** |
+
+> 이전 실패 (20260302_180810): `AsyncScope::mCancelled` 미초기화 버그로 io_uring 세션이 모두 EAGAIN 실패. AsyncScope::Reset() 수정 후 해결.
 

@@ -1,9 +1,44 @@
 ﻿# Network / Async / DB 처리 구조 분석 보고서
 
-- 작성일: 2026-02-26
+- 최초 작성: 2026-02-26
+- 최종 업데이트: 2026-03-02
 - 기준 리포지토리: `NetworkModuleTest`
 - 분석 기준: `ServerEngine`, `TestServer`, `DBServer` 실제 구현 코드
 - 목적: 네트워크 처리, 비동기 처리, DB 처리의 현재 구조와 데이터 흐름을 코드 기준으로 정리
+
+## 변경 이력
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-03-02 | 비동기 로직 고도화 A~E, Linux Docker 통합 테스트 인프라, AsyncScope 풀 재사용 버그 수정 추가 |
+| 2026-03-01 | Core/Memory 버퍼 모듈, 핑퐁 검증 페이로드, SessionFactory 제거, KeyedDispatcher 도입 |
+| 2026-02-28 | RIO slab pool (WSA 10055 수정), MAX_CONNECTIONS=1000 |
+| 2026-02-26 | 초기 작성 |
+
+## 최신 업데이트 (2026-03-02) — 비동기 로직 고도화 + Linux 검증
+
+### 비동기 로직 고도화 (A~E)
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| A. KeyedDispatcher | `Concurrency/KeyedDispatcher.h` | `mLogicThreadPool` 교체. key-affinity로 세션 직렬화 보장, `Session::mRecvMutex` 제거 |
+| B. TimerQueue | `Concurrency/TimerQueue.h/.cpp` | min-heap 기반 단발/반복 타이머. DB ping 루프를 `ScheduleRepeat`으로 대체 |
+| C. AsyncScope | `Concurrency/AsyncScope.h` | `Session::mAsyncScope` 추가. `Close()` 시 Cancel, `Reset()` 추가 (풀 재사용 버그 수정) |
+| D. Send 백프레셔 | `Network/Core/Session.h/.cpp` | `Send()` → `SendResult` 반환 (Ok/QueueFull/NotConnected) |
+| E. NetworkEventBus | `Network/Core/NetworkEventBus.h/.cpp` | 싱글턴 이벤트 버스. 다중 구독자 동시 수신 |
+
+### AsyncScope 풀 재사용 버그 수정
+
+- **증상**: io_uring 백엔드에서만 `SessionConnectRes` 미수신 (EAGAIN 반복)
+- **원인**: `Session::Reset()`에서 `mAsyncScope.Reset()` 호출 누락 → 재사용 세션의 `mCancelled=true` 잔존
+- **결과**: 재사용 세션의 모든 AsyncScope 태스크가 silently skip → 서버가 응답 전송 불가
+- **수정**: `AsyncScope::Reset()` 신규 메서드 + `Session::Reset()` 호출 추가
+
+### Linux Docker 통합 테스트 (`test_linux/`)
+
+- Ubuntu 22.04 + gcc-12 + liburing 컨테이너에서 3-tier(dbserver → server → client) 구성
+- epoll / io_uring 양 백엔드 모두 **PASS** 확인 (kernel 6.6.87.2-WSL2, 10 clients, 5 pings)
+- 결과 로그: `Doc/Performance/Logs/20260302_191739_linux/`
 
 ## 1. 요약
 

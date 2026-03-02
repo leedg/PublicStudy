@@ -475,5 +475,31 @@ ServerEngine/
 ---
 
 **구현 완료일**: 2026-02-05
-**빌드 환경**: Visual Studio 2022, Windows 10, x64 Debug
+**빌드 환경**: Visual Studio 2022, Windows 10, x64 Debug / Ubuntu 22.04 Docker (gcc-12)
 **언어 표준**: C++17
+
+---
+
+## 업데이트 이력
+
+### 2026-03-02 — 비동기 고도화 + Linux Docker 검증
+
+**LinuxNetworkEngine 수정:**
+- `mLogicThreadPool.Submit` → `mLogicDispatcher.Dispatch(sessionId, lambda)` 교체
+- io_uring 초기화 실패 시 epoll 폴백 추가 (`InitializePlatform()`)
+- `EpollAsyncIOProvider`: `Logger::Error` → `Utils::Logger::Error` 네임스페이스 수정
+
+**BaseNetworkEngine 공통 변경:**
+- `mLogicThreadPool` → `KeyedDispatcher mLogicDispatcher` (key-affinity 직렬화)
+- `TimerQueue mTimerQueue` 추가 (세션 타임아웃, DB 핑 타이머)
+- `NetworkEventBus::Publish()` 연동 (다중 구독자 이벤트)
+
+**AsyncScope 풀 재사용 버그 수정:**
+- `Session::Close()` → `mAsyncScope.Cancel()` (기존)
+- `Session::Reset()` → `mAsyncScope.Reset()` **추가** (풀 재사용 전 초기화)
+- 미수정 시: io_uring처럼 두 번째 이후 세션에서 모든 로직 태스크 skip
+
+**Linux Docker 통합 테스트 결과:**
+- 환경: Ubuntu 22.04, gcc-12, kernel 6.6.87.2-WSL2
+- epoll + io_uring 양 백엔드 10 클라이언트 5 핑 **PASS**
+- 로그: `Doc/Performance/Logs/20260302_191739_linux/`

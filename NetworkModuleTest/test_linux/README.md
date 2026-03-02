@@ -146,6 +146,26 @@ TestClient의 전체 stdout/stderr 출력 (접속 성공/실패, 레이턴시 �
 
 ---
 
+## 검증된 테스트 결과
+
+| 날짜 | 로그 폴더 | 백엔드 | 결과 | 비고 |
+|------|----------|--------|------|------|
+| 2026-03-02 | `20260302_183433_linux` | epoll + io_uring | **PASS** | AsyncScope 버그 수정 후 첫 PASS |
+| 2026-03-02 | `20260302_191739_linux` | epoll + io_uring | **PASS** | 최종 확인 (exit code 수정 포함) |
+
+### 과거 실패 이력
+| 날짜 | 로그 폴더 | 증상 | 원인 |
+|------|----------|------|------|
+| 2026-03-02 | `20260302_180810_linux` | io_uring FAIL (EAGAIN) | `AsyncScope::mCancelled` 미초기화 |
+| 2026-03-02 | `20260302_182729_linux` | io_uring FAIL (EAGAIN) | 동일 (빌드 전 이미지 사용) |
+
+**수정 내용 (2026-03-02)**:
+- `AsyncScope::Reset()` 메서드 추가 (`Server/ServerEngine/Concurrency/AsyncScope.h`)
+- `Session::Reset()`에서 `mAsyncScope.Reset()` 호출 (`Server/ServerEngine/Network/Core/Session.cpp`)
+- 이유: 세션 풀 재사용 시 `mCancelled=true`가 잔존하여 모든 로직 태스크 silently skip
+
+---
+
 ## 문제 해결
 
 | 증상 | 원인 | 해결 |
@@ -153,7 +173,7 @@ TestClient의 전체 stdout/stderr 출력 (접속 성공/실패, 레이턴시 �
 | `volume mount denied` | Docker Desktop 파일 공유 미설정 | Settings → Resources → File Sharing → `C:\MyGithub` 추가 |
 | `liburing not found` 빌드 실패 | Dockerfile 캐시 오래됨 | `docker-compose build --no-cache` |
 | 결과 파일이 빈 파일 | 서버 start 실패 | `client_<backend>.txt` 내용 확인, server 컨테이너 로그 확인 |
-| `io_uring` FAIL, `epoll` PASS | 커널 5.1+ 미만 또는 io_uring 제한 | Docker Desktop 커널 버전 확인 (`uname -r`) |
+| `io_uring` FAIL, `epoll` PASS | 커널 5.1+ 미만 또는 세션 풀 재사용 버그 | `AsyncScope::Reset()` 수정 적용 여부 확인; Docker Desktop 커널 버전 확인 (`uname -r`) |
 
 ---
 

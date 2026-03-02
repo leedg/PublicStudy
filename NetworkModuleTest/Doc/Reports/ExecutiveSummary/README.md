@@ -1,12 +1,24 @@
 # Network / Async / DB 처리 구조 분석 보고서
 
-- 작성일: 2026-02-26
+- 최초 작성: 2026-02-26
+
+- 최종 업데이트: 2026-03-02
 
 - 기준 리포지토리: `NetworkModuleTest`
 
 - 분석 기준: `ServerEngine`, `TestServer`, `DBServer` 실제 구현 코드
 
 - 목적: 네트워크 처리, 비동기 처리, DB 처리의 현재 구조와 데이터 흐름을 코드 기준으로 정리
+
+## 최신 업데이트 요약 (2026-03-02)
+
+| 항목 | 상태 |
+|------|------|
+| Windows 1000 클라이언트 RIO | **PASS** (Server WS 143.6 MB) |
+| Linux Docker epoll | **PASS** (kernel 6.6.87.2-WSL2) |
+| Linux Docker io_uring | **PASS** (kernel 6.6.87.2-WSL2) |
+| 비동기 고도화 (A~E) | 완료 (KeyedDispatcher, TimerQueue, AsyncScope, 백프레셔, EventBus) |
+| AsyncScope 풀 재사용 버그 | 수정 완료 (Reset() 추가) |
 
 ## Key Diagrams
 
