@@ -26,8 +26,13 @@ namespace Network::TestClient
 TestClient::TestClient()
 	: mSocket(INVALID_SOCKET_HANDLE), mState(ClientState::Disconnected),
 		  mStopRequested(false), mPlatformInitialized(false), mSessionId(0),
-		  mPingSequence(0), mPort(0)
+		  mPingSequence(0), mMaxPings(0), mPort(0)
 {
+}
+
+void TestClient::SetMaxPings(uint32_t maxPings)
+{
+	mMaxPings = maxPings;
 }
 
 TestClient::~TestClient() { Shutdown(); }
@@ -242,6 +247,11 @@ void TestClient::NetworkWorkerThread()
 		auto now = Timer::GetCurrentTimestamp();
 		if (now - lastPingTime >= PING_INTERVAL_MS)
 		{
+			if (mMaxPings > 0 && mPingSequence >= mMaxPings)
+			{
+				mStopRequested.store(true);
+				break;
+			}
 			SendPing();
 			lastPingTime = now;
 		}

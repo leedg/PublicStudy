@@ -57,9 +57,23 @@ bool LinuxNetworkEngine::InitializePlatform()
 
 	if (error != AsyncIO::AsyncIOError::Success)
 	{
-		Utils::Logger::Error("Failed to initialize AsyncIOProvider: " +
-							 std::string(mProvider->GetLastError()));
-		return false;
+		if (mMode == Mode::IOUring)
+		{
+			Utils::Logger::Warn("io_uring init failed (" +
+								std::string(mProvider->GetLastError()) +
+								"), falling back to epoll");
+			mProvider = std::make_shared<AsyncIO::Linux::EpollAsyncIOProvider>();
+			mMode     = Mode::Epoll;
+			error     = mProvider->Initialize(
+				1024,
+				mMaxConnections > 0 ? static_cast<size_t>(mMaxConnections) : 128);
+		}
+		if (error != AsyncIO::AsyncIOError::Success)
+		{
+			Utils::Logger::Error("Failed to initialize AsyncIOProvider: " +
+								 std::string(mProvider->GetLastError()));
+			return false;
+		}
 	}
 
 	// English: Create listen socket
@@ -228,7 +242,7 @@ void LinuxNetworkEngine::AcceptLoop()
 		// English: Fire Connected event asynchronously on logic thread
 		// 한글: 로직 스레드에서 비동기로 Connected 이벤트 발생
 		auto sessionCopy = session;
-		mLogicThreadPool.Submit(
+		mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 			[this, sessionCopy]()
 			{
 				sessionCopy->OnConnected();
@@ -306,7 +320,7 @@ void LinuxNetworkEngine::ProcessCompletions()
 			// English: Connection error or closed
 			// 한글: 연결 에러 또는 닫힘
 			auto sessionCopy = session;
-			mLogicThreadPool.Submit(
+			mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 				[this, sessionCopy]()
 				{
 					sessionCopy->OnDisconnected();

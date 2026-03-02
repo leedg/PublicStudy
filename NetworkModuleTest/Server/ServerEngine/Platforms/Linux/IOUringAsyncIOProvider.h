@@ -164,8 +164,8 @@ class IOUringAsyncIOProvider : public AsyncIOProvider
 	// 한글: 사전 할당 버퍼 풀.
 	//       mRecvPool: 고정 버퍼 recv (io_uring_register_buffers); 커널 미지원 시 일반 모드 폴백.
 	//       mSendPool: 송신 데이터 스테이징용 표준 정렬 풀.
-	Core::Memory::IOUringBufferPool  mRecvPool;
-	Core::Memory::StandardBufferPool mSendPool;
+	::Core::Memory::IOUringBufferPool  mRecvPool;
+	::Core::Memory::StandardBufferPool mSendPool;
 
 	// =====================================================================
 	// English: Helper Methods

@@ -62,6 +62,8 @@ void PrintUsage(const char *programName)
 	std::cout << "  --host <addr>   Server address (default: 127.0.0.1)"
 				  << std::endl;
 	std::cout << "  --port <port>   Server port (default: 9000)" << std::endl;
+	std::cout << "  --pings <n>     Exit after sending N pings (default: 0 = unlimited)" << std::endl;
+	std::cout << "  --clients <n>   Number of client instances (currently ignored)" << std::endl;
 	std::cout << "  -l <level>      Log level: DEBUG, INFO, WARN, ERROR "
 				 "(default: INFO)"
 				  << std::endl;
@@ -114,6 +116,7 @@ int main(int argc, char *argv[])
 	std::string host = "127.0.0.1";
 	uint16_t port = 9000;
 	LogLevel logLevel = LogLevel::Info;
+	uint32_t maxPings = 0;
 
 	// English: Parse command line arguments
 	// 한글: 커맨드라인 인자 파싱
@@ -143,6 +146,14 @@ int main(int argc, char *argv[])
 			else if (level == "ERROR")
 				logLevel = LogLevel::Err;
 			// English: Default: Info / 한글: 기본값: Info
+		}
+		else if (arg == "--pings" && i + 1 < argc)
+		{
+			maxPings = static_cast<uint32_t>(std::stoi(argv[++i]));
+		}
+		else if (arg == "--clients" && i + 1 < argc)
+		{
+			++i; // English: ignored — single-connection mode / 한글: 무시 (단일 연결 모드)
 		}
 		else
 		{
@@ -175,6 +186,8 @@ int main(int argc, char *argv[])
 	// 한글: 클라이언트 생성 및 실행
 	TestClient client;
 	g_pClient = &client;
+	if (maxPings > 0)
+		client.SetMaxPings(maxPings);
 
 	if (!client.Initialize())
 	{

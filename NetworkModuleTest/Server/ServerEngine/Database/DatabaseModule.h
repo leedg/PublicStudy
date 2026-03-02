@@ -65,8 +65,10 @@
 
 // Database implementations
 #include "MockDatabase.h"
+#ifdef _WIN32
 #include "ODBCDatabase.h"
 #include "OLEDBDatabase.h"
+#endif
 #include "SQLiteDatabase.h"
 
 // Factory and utilities

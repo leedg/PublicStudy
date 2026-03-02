@@ -97,6 +97,13 @@ void Session::Reset()
 	mIsSending.store(false, std::memory_order_relaxed);
 	mSendQueueSize.store(0, std::memory_order_relaxed);
 	mOnRecvCb = nullptr;
+	// English: Reset AsyncScope so reused pool slots accept new tasks.
+	//          Safe here: all in-flight lambdas held sessionCopy refs and have
+	//          already completed before ReleaseInternal drops the last ref.
+	// 한글: 재사용 풀 슬롯이 새 태스크를 수락하도록 AsyncScope 초기화.
+	//       안전: 모든 in-flight 람다가 sessionCopy ref를 보유하고
+	//       ReleaseInternal이 마지막 ref를 해제하기 전 완료됨이 보장됨.
+	mAsyncScope.Reset();
 #ifdef _WIN32
 	mCurrentSendSlotIdx = ~size_t(0);
 #endif

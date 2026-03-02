@@ -3,6 +3,7 @@
 
 #include "PlatformDetect.h"
 #include <cstring>
+#include <cstdio>
 
 #ifdef _WIN32
 #include <versionhelpers.h>

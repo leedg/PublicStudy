@@ -111,6 +111,17 @@ target_sources(ServerEngine PRIVATE
     ${ENGINE_ROOT}/Platforms/Linux/IOUringAsyncIOProvider.cpp
 
     # -------------------------------------------------------------------------
+    # Implementations
+    # -------------------------------------------------------------------------
+    ${ENGINE_ROOT}/Implementations/Protocols/BaseMessageHandler.cpp
+
+    # -------------------------------------------------------------------------
+    # Tests/Protocols (shared protocol handlers used by TestServer/DBServer)
+    # -------------------------------------------------------------------------
+    ${ENGINE_ROOT}/Tests/Protocols/MessageHandler.cpp
+    ${ENGINE_ROOT}/Tests/Protocols/PingPong.cpp
+
+    # -------------------------------------------------------------------------
     # Database
     # -------------------------------------------------------------------------
     ${ENGINE_ROOT}/Database/DatabaseFactory.cpp
@@ -121,7 +132,12 @@ target_sources(ServerEngine PRIVATE
 
 # English: ServerEngine include root — lets sources use "Network/Core/...", "Utils/..." etc.
 # 한글: ServerEngine 인클루드 루트 — "Network/Core/...", "Utils/..." 등 경로 사용
-target_include_directories(ServerEngine PUBLIC ${ENGINE_ROOT})
+target_include_directories(ServerEngine PUBLIC
+    ${ENGINE_ROOT}
+    ${ENGINE_ROOT}/Network/Core
+    ${ENGINE_ROOT}/Tests/Protocols
+    ${ENGINE_ROOT}/Implementations/Protocols
+)
 
 # io_uring definitions and link
 if(HAVE_IO_URING)

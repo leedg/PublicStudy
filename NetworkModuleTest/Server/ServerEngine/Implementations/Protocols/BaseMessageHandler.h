@@ -1,8 +1,8 @@
 #pragma once
 
-#include "..\..\Interfaces\IMessageHandler.h"
-#include "..\..\Interfaces\Message.h"
-#include "..\..\Interfaces\MessageType_enum.h"
+#include "../../Interfaces/IMessageHandler.h"
+#include "../../Interfaces/Message.h"
+#include "../../Interfaces/MessageType_enum.h"
 #include <functional>
 #include <mutex>
 #include <unordered_map>

@@ -54,6 +54,11 @@ echo "========================================"
 if [ ! -f "${CLIENT_BIN}" ]; then
     echo "[client] Binaries not found — building..."
     /workspace/test_linux/scripts/build.sh
+    # English: Re-resolve CLIENT_BIN after build
+    CLIENT_BIN="${BUILD_DIR}/TestClient/TestClient"
+    if [ ! -f "${CLIENT_BIN}" ]; then
+        CLIENT_BIN="${BUILD_DIR}/TestClient"
+    fi
 fi
 
 # English: Create log directory (shared mount → writes appear on Windows host)

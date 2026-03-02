@@ -48,7 +48,7 @@ void SQLiteDatabase::Connect(const DatabaseConfig &config)
 	{
 		std::string walErr = walErrMsg ? walErrMsg : "unknown error";
 		sqlite3_free(walErrMsg);
-		Logger::Warn("SQLiteDatabase: Failed to set WAL mode: " + walErr);
+		Utils::Logger::Warn("SQLiteDatabase: Failed to set WAL mode: " + walErr);
 	}
 
 	mConnected = true;

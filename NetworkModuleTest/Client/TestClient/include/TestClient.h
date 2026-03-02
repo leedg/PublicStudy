@@ -75,6 +75,10 @@ class TestClient
 	void RequestStop();
 	bool IsStopRequested() const;
 
+	// English: Set maximum ping count; client stops after sending this many pings (0 = unlimited)
+	// 한글: 최대 핑 횟수 설정; 이 횟수만큼 핑을 보낸 후 종료 (0 = 무제한)
+	void SetMaxPings(uint32_t maxPings);
+
   private:
 	// =====================================================================
 	// English: Internal methods
@@ -103,6 +107,7 @@ class TestClient
 
 	uint64_t mSessionId;
 	uint32_t mPingSequence;
+	uint32_t mMaxPings;
 
 	std::thread mWorkerThread;
 	mutable std::mutex mStatsMutex;

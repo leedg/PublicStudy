@@ -36,6 +36,17 @@ class AsyncScope
 		mCancelled.store(true, std::memory_order_release);
 	}
 
+	// English: Reset for pool reuse. Safe only when mInFlight == 0, which is
+	//          guaranteed by the time SessionPool::ReleaseInternal calls Session::Reset()
+	//          because all in-flight lambdas hold a sessionCopy ref and have already run.
+	// 한글: 풀 재사용을 위한 초기화. mInFlight == 0일 때만 안전하며,
+	//       모든 in-flight 람다가 sessionCopy ref를 보유하고 이미 실행됐을 때
+	//       SessionPool::ReleaseInternal → Session::Reset() 호출 시 보장됨.
+	void Reset()
+	{
+		mCancelled.store(false, std::memory_order_release);
+	}
+
 	bool IsCancelled() const
 	{
 		return mCancelled.load(std::memory_order_acquire);

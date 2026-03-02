@@ -113,7 +113,7 @@ AsyncIOError EpollAsyncIOProvider::AssociateSocket(SocketHandle socket,
 	if (epoll_ctl(mEpollFd, EPOLL_CTL_ADD, socket, &ev) < 0)
 	{
 		mLastError = "epoll_ctl EPOLL_CTL_ADD failed";
-		Logger::Error("EpollAsyncIOProvider::AssociateSocket - epoll_ctl EPOLL_CTL_ADD failed: " + std::string(strerror(errno)));
+		Utils::Logger::Error("EpollAsyncIOProvider::AssociateSocket - epoll_ctl EPOLL_CTL_ADD failed: " + std::string(strerror(errno)));
 		return AsyncIOError::OperationFailed;
 	}
 
@@ -178,7 +178,7 @@ AsyncIOError EpollAsyncIOProvider::SendAsync(SocketHandle socket,
 	ev.data.fd = socket;
 	if (epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev) < 0)
 	{
-		Logger::Error("EpollAsyncIOProvider::SendAsync - epoll_ctl EPOLL_CTL_MOD failed: " + std::string(strerror(errno)));
+		Utils::Logger::Error("EpollAsyncIOProvider::SendAsync - epoll_ctl EPOLL_CTL_MOD failed: " + std::string(strerror(errno)));
 		mPendingSendOps.erase(socket);
 		mStats.mPendingRequests--;
 		return AsyncIOError::OperationFailed;
@@ -388,7 +388,7 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 				ev.data.fd = socket;
 				if (epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev) < 0)
 				{
-					Logger::Error("EpollAsyncIOProvider::ProcessCompletions - epoll_ctl EPOLL_CTL_MOD (found) failed: " + std::string(strerror(errno)));
+					Utils::Logger::Error("EpollAsyncIOProvider::ProcessCompletions - epoll_ctl EPOLL_CTL_MOD (found) failed: " + std::string(strerror(errno)));
 				}
 
 				int32_t result = 0;
