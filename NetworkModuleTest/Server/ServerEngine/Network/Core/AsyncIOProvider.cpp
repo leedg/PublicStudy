@@ -28,7 +28,9 @@ namespace AsyncIO
 namespace Linux
 {
 std::unique_ptr<AsyncIOProvider> CreateEpollProvider();
+#ifdef NETWORK_ENABLE_IO_URING
 std::unique_ptr<AsyncIOProvider> CreateIOUringProvider();
+#endif
 } // namespace Linux
 } // namespace AsyncIO
 } // namespace Network
@@ -104,6 +106,7 @@ std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider()
 		// English: Linux fallback chain: io_uring -> epoll -> nullptr
 		// 한글: Linux 폴백 체인: io_uring -> epoll -> nullptr
 
+#ifdef NETWORK_ENABLE_IO_URING
 		// English: Try io_uring first (high-performance, kernel 5.1+)
 		// 한글: 먼저 io_uring 시도 (고성능, 커널 5.1+)
 		if (Platform::IsLinuxIOUringSupported())
@@ -114,6 +117,7 @@ std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider()
 			// English: io_uring creation failed -> try epoll next
 			// 한글: io_uring 생성 실패 -> 다음 epoll 시도
 		}
+#endif
 
 		// English: Use epoll (always available on Linux)
 		// 한글: epoll 사용 (Linux에서 항상 사용 가능)
@@ -169,10 +173,12 @@ std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider(const char *platformHint)
 	{
 		return Linux::CreateEpollProvider();
 	}
+#ifdef NETWORK_ENABLE_IO_URING
 	if (std::strcmp(platformHint, "io_uring") == 0)
 	{
 		return Linux::CreateIOUringProvider();
 	}
+#endif
 #endif
 
 #ifdef __APPLE__
@@ -203,8 +209,10 @@ bool IsPlatformSupported(const char *platformHint)
 #ifdef __linux__
 	if (std::strcmp(platformHint, "epoll") == 0)
 		return Platform::IsLinuxEpollSupported();
+#ifdef NETWORK_ENABLE_IO_URING
 	if (std::strcmp(platformHint, "io_uring") == 0)
 		return Platform::IsLinuxIOUringSupported();
+#endif
 #endif
 
 #ifdef __APPLE__
@@ -222,7 +230,10 @@ static const char *sSupportedPlatforms[] = {
 	"IOCP",   "RIO",
 #endif
 #ifdef __linux__
-	"epoll",  "io_uring",
+	"epoll",
+#ifdef NETWORK_ENABLE_IO_URING
+	"io_uring",
+#endif
 #endif
 #ifdef __APPLE__
 	"kqueue",

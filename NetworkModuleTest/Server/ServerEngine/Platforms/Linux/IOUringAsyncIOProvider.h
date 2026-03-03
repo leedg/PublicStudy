@@ -9,7 +9,7 @@
 //       빌드 시스템(CMake find_library)이 HAVE_LIBURING을 정의한 경우에만 활성화.
 //       liburing이 없으면 팩토리가 자동으로 epoll로 폴백.
 
-#include "AsyncIOProvider.h"
+#include "Network/Core/AsyncIOProvider.h"
 
 #if defined(__linux__) && (defined(HAVE_IO_URING) || defined(HAVE_LIBURING))
 #include "../../Core/Memory/IOUringBufferPool.h"

@@ -2,6 +2,7 @@
 // 한글: 플랫폼 감지 구현
 
 #include "PlatformDetect.h"
+#include <cstdio>
 #include <cstring>
 #include <cstdio>
 
