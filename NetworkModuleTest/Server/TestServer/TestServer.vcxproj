@@ -70,6 +70,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
   <!-- Win32 Debug -->
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -83,7 +86,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ServerEngine.lib;WS2_32.lib;odbc32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>WS2_32.lib;odbc32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)..\ServerEngine\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -102,7 +105,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ServerEngine.lib;WS2_32.lib;odbc32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>WS2_32.lib;odbc32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)..\ServerEngine\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -119,8 +122,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ServerEngine.lib;WS2_32.lib;odbc32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>WS2_32.lib;odbc32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\ServerEngine\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <!-- x64 Release -->
@@ -138,23 +141,29 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ServerEngine.lib;WS2_32.lib;odbc32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>WS2_32.lib;odbc32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\ServerEngine\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="src\GameSession.cpp" />
-    <ClCompile Include="src\TestClientPacketHandler.cpp" />
-    <ClCompile Include="src\TestDbServerMessageHandler.cpp" />
+    <ClCompile Include="src\ClientSession.cpp" />
+    <ClCompile Include="src\ServerSession.cpp" />
+    <ClCompile Include="src\DBServerSession.cpp" />
+    <ClCompile Include="src\ClientPacketHandler.cpp" />
+    <ClCompile Include="src\DBServerPacketHandler.cpp" />
+    <ClCompile Include="src\DBTaskQueue.cpp" />
     <ClCompile Include="src\TestServer.cpp" />
     <ClCompile Include="src\TestMessageHandler.cpp" />
     <ClCompile Include="src\TestDatabaseManager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\GameSession.h" />
-    <ClInclude Include="include\TestClientPacketHandler.h" />
-    <ClInclude Include="include\TestDbServerMessageHandler.h" />
+    <ClInclude Include="include\ClientSession.h" />
+    <ClInclude Include="include\ServerSession.h" />
+    <ClInclude Include="include\DBServerSession.h" />
+    <ClInclude Include="include\ClientPacketHandler.h" />
+    <ClInclude Include="include\DBServerPacketHandler.h" />
+    <ClInclude Include="include\DBTaskQueue.h" />
     <ClInclude Include="include\TestServer.h" />
     <ClInclude Include="include\TestMessageHandler.h" />
     <ClInclude Include="include\TestDatabaseManager.h" />
@@ -168,4 +177,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <None Include="NAMING_CONVENTIONS.md" />
+  </ItemGroup>
 </Project>

@@ -1,0 +1,23 @@
+%%{init: {'theme':'base', 'themeVariables': {
+'fontFamily':'Segoe UI, Noto Sans KR, sans-serif',
+'primaryTextColor':'#0F172A',
+'lineColor':'#64748B'
+}}}%%
+flowchart TD
+    A[Stop called] --> B[set mIsRunning false]
+    B --> C[notify DB shutdown CV]
+    C --> D[join reconnect thread]
+    D --> E[enqueue disconnect records]
+    E --> F[shutdown DBTaskQueue and drain]
+    F --> G[disconnect local DB]
+    G --> H[disconnect DB server socket]
+    H --> I[stop client network engine]
+    I --> J[Stop complete]
+
+    classDef phase fill:#FFF7ED,stroke:#C2410C,color:#7C2D12,stroke-width:1.2px;
+    classDef data fill:#ECFDF5,stroke:#059669,color:#064E3B,stroke-width:1.2px;
+    classDef net fill:#E0F2FE,stroke:#0284C7,color:#0C4A6E,stroke-width:1.2px;
+
+    class A,B,C,D phase;
+    class E,F,G data;
+    class H,I,J net;

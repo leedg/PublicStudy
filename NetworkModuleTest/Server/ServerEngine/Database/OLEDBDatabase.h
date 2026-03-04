@@ -70,6 +70,7 @@ class OLEDBDatabase : public IDatabase
   private:
 	DatabaseConfig mConfig;
 	bool mConnected;
+	bool mInTransaction = false;
 };
 
 // =============================================================================
@@ -104,6 +105,7 @@ class OLEDBConnection : public IConnection
 
   private:
 	bool mConnected;
+	bool mInTransaction = false;
 	std::string mLastError;
 	int mLastErrorCode;
 };

@@ -97,6 +97,8 @@ bool EpollAsyncIOProvider::IsInitialized() const { return mInitialized; }
 
 int64_t EpollAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 {
+	(void)ptr;
+	(void)size;
 	// English: epoll doesn't support pre-registered buffers (no-op)
 	// ?쒓?: epoll? ?ъ쟾 ?깅줉 踰꾪띁瑜?吏?먰븯吏 ?딆쓬
 	// (no-op)
@@ -105,6 +107,7 @@ int64_t EpollAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 
 AsyncIOError EpollAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
 {
+	(void)bufferId;
 	// English: Not supported on epoll
 	// ?쒓?: epoll?먯꽌 吏?먰븯吏 ?딆쓬
 	return AsyncIOError::PlatformNotSupported;
@@ -120,6 +123,7 @@ AsyncIOError EpollAsyncIOProvider::SendAsync(SocketHandle socket,
 											 RequestContext context,
 											 uint32_t flags)
 {
+	(void)flags;
 	if (!mInitialized)
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)
@@ -148,6 +152,8 @@ AsyncIOError EpollAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 											 RequestContext context,
 											 uint32_t flags)
 {
+	(void)buffer;
+	(void)flags;
 	if (!mInitialized)
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)

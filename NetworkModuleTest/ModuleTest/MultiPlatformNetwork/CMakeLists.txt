@@ -23,6 +23,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Build Configuration
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+option(ENABLE_IO_URING "Enable io_uring backend (requires liburing)" OFF)
 
 # =============================================================================
 # Platform Detection
@@ -65,9 +66,15 @@ elseif(PLATFORM_LINUX)
     list(APPEND ASYNCIO_SOURCES
         EpollAsyncIOProvider.h
         EpollAsyncIOProvider.cpp
-        IOUringAsyncIOProvider.h
-        IOUringAsyncIOProvider.cpp
     )
+    if (ENABLE_IO_URING)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(LIBURING REQUIRED liburing)
+        list(APPEND ASYNCIO_SOURCES
+            IOUringAsyncIOProvider.h
+            IOUringAsyncIOProvider.cpp
+        )
+    endif()
 elseif(PLATFORM_MACOS)
     list(APPEND ASYNCIO_SOURCES
         KqueueAsyncIOProvider.h
@@ -119,9 +126,13 @@ elseif(PLATFORM_LINUX)
         -fPIC
     )
     target_link_libraries(AsyncIOLib PUBLIC
-        uring       # io_uring library
         pthread     # POSIX threads
     )
+    if (ENABLE_IO_URING AND LIBURING_FOUND)
+        target_compile_definitions(AsyncIOLib PRIVATE NETWORK_ENABLE_IO_URING=1)
+        target_include_directories(AsyncIOLib PRIVATE ${LIBURING_INCLUDE_DIRS})
+        target_link_libraries(AsyncIOLib PUBLIC ${LIBURING_LIBRARIES})
+    endif()
 elseif(PLATFORM_MACOS)
     target_compile_options(AsyncIOLib PRIVATE
         -fPIC

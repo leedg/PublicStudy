@@ -56,4 +56,20 @@
     <ClCompile Include="IocpAsyncIOProvider.cpp" />
     <ClCompile Include="RIOAsyncIOProvider.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Documentation">
+      <UniqueIdentifier>{EBC8A248-A58E-4A48-9716-E8A8EE599181}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Documentation\Doc">
+      <UniqueIdentifier>{8EAF8D0B-EC86-4850-8182-D0ACEE95365E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Doc\ANALYSIS_SUMMARY.txt">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+    <None Include="Doc\README.md">
+      <Filter>Documentation\Doc</Filter>
+    </None>
+  </ItemGroup>
 </Project>

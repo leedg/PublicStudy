@@ -1,0 +1,28 @@
+====================================
+  TestClient - Network Test Client
+====================================
+[09:37:03] [INFO] Socket platform initialized
+[09:37:03] [INFO] Connecting to server:9000...
+[09:37:03] [INFO] Connecting to server:9000...
+[09:37:03] [INFO] TCP connected
+[09:37:03] [INFO] SessionConnectReq sent, waiting for response...
+[09:37:03] [INFO] Session established - ID: 5, ServerTime: 1772444223
+[09:37:03] [INFO] Network worker thread started
+
+Connected! Press 'q' to quit, 's' for statistics.
+
+[09:37:08] [INFO] [Client] Ping sent (every 10th) - Seq: 0, Total: 1
+[09:37:08] [INFO] [Client] Pong received (every 10th) - Seq: 0, RTT: 0ms
+
+--- Latency Statistics ---
+  Session ID : 5
+  Ping sent  : 5
+  Pong recv  : 5
+  Last RTT   : 0 ms
+  Min RTT    : 0 ms
+  Max RTT    : 1 ms
+  Avg RTT    : 0 ms
+--------------------------
+
+[09:37:34] [INFO] Disconnected
+[09:37:34] [INFO] TestClient shutdown complete.

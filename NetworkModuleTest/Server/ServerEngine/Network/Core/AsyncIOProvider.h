@@ -3,6 +3,33 @@
 
 // English: Unified async I/O provider interface for all platforms
 // 한글: 모든 플랫폼의 비동기 I/O를 통일하는 인터페이스
+//
+// =============================================================================
+// Design Philosophy / 설계 철학
+// =============================================================================
+//
+// English:
+// This is a LOW-LEVEL abstraction for cross-platform async I/O.
+// Use this when:
+//   - Building multi-platform network libraries
+//   - Need Session-independent I/O operations
+//   - Want to switch between IOCP/RIO/epoll/io_uring dynamically
+//
+// Don't use this when:
+//   - Building Windows-only servers (use IOCPNetworkEngine directly)
+//   - Need Session lifecycle management (use IOCPNetworkEngine + Session)
+//
+// 한글:
+// 크로스 플랫폼 비동기 I/O를 위한 저수준 추상화입니다.
+// 다음 경우에 사용:
+//   - 멀티플랫폼 네트워크 라이브러리 구축
+//   - Session과 독립적인 I/O 작업 필요
+//   - IOCP/RIO/epoll/io_uring 간 동적 전환 필요
+//
+// 다음 경우에는 사용하지 마세요:
+//   - Windows 전용 서버 구축 (IOCPNetworkEngine 직접 사용)
+//   - Session 생명주기 관리 필요 (IOCPNetworkEngine + Session 사용)
+// =============================================================================
 
 #include <cstdint>
 #include <functional>
@@ -414,6 +441,34 @@ class AsyncIOProvider
 	 * @return Error code
 	 */
 	virtual AsyncIOError UnregisterBuffer(int64_t bufferId) = 0;
+
+	// =====================================================================
+	// English: Socket Association
+	// 한글: 소켓 연결
+	// =====================================================================
+
+	/**
+	 * English: Associate a socket with the I/O provider for async operations
+	 * 한글: 비동기 작업을 위해 소켓을 I/O 공급자에 연결
+	 *
+	 * This MUST be called after accept() and before any async I/O
+	 * (SendAsync/RecvAsync/PostRecv) on the socket.
+	 *
+	 * accept() 후, 소켓에 대한 비동기 I/O (SendAsync/RecvAsync/PostRecv)
+	 * 호출 전에 반드시 호출해야 합니다.
+	 *
+	 * Platform behavior:
+	 * - IOCP: CreateIoCompletionPort(socket, completionPort, context, 0)
+	 * - epoll: epoll_ctl(EPOLL_CTL_ADD)
+	 * - kqueue: kevent() with EV_ADD
+	 * - RIO/io_uring: Platform-specific registration
+	 *
+	 * @param socket Socket handle to associate
+	 * @param context Request context (typically ConnectionId)
+	 * @return Error code (Success if association succeeded)
+	 */
+	virtual AsyncIOError AssociateSocket(SocketHandle socket,
+										 RequestContext context) = 0;
 
 	// =====================================================================
 	// English: Async I/O Requests

@@ -17,9 +17,19 @@
 # Build directories
 x64/
 build/
+build-wsl/
 out/
 bin/
 obj/
+Release/
+Debug/
+
+# Visual Studio build artifacts
+*.pdb
+*.ilk
+*.exp
+*.iobj
+*.ipdb
 
 # IDE
 .idea/
@@ -35,3 +45,21 @@ obj/
 *.tmp
 *.temp
 *.log
+
+# Build output logs
+*_out.txt
+*_err.txt
+_build_output*
+
+# Temporary/generated scripts and files
+_build_temp*
+_*_temp*
+
+# Windows artifacts
+nul
+
+# Test artifacts
+crash_logs/
+
+# Claude
+.claude/

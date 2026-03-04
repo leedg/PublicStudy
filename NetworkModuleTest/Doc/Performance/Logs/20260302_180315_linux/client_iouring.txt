@@ -1,0 +1,10 @@
+====================================
+  TestClient - Network Test Client
+====================================
+Unknown option: --clients
+Usage: /workspace/build/linux/TestClient/TestClient [options]
+Options:
+  --host <addr>   Server address (default: 127.0.0.1)
+  --port <port>   Server port (default: 9000)
+  -l <level>      Log level: DEBUG, INFO, WARN, ERROR (default: INFO)
+  -h, --help      Show this help

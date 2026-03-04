@@ -28,25 +28,43 @@
     <ClCompile Include="src\TestServer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\GameSession.cpp">
+    <ClCompile Include="src\ClientSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\TestClientPacketHandler.cpp">
+    <ClCompile Include="src\ServerSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\TestDbServerMessageHandler.cpp">
+    <ClCompile Include="src\DBServerSession.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DBTaskQueue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ClientPacketHandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DBServerPacketHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClInclude Include="include\TestServer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\GameSession.h">
+    <ClInclude Include="include\ClientSession.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\TestClientPacketHandler.h">
+    <ClInclude Include="include\ServerSession.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\TestDbServerMessageHandler.h">
+    <ClInclude Include="include\DBServerSession.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\DBTaskQueue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ClientPacketHandler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\DBServerPacketHandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -69,5 +87,10 @@
     <ClInclude Include="include\TestDatabaseManager.h">
       <Filter>Implementations\Database</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Documentation">
+      <UniqueIdentifier>{E84E3D7F-3AF4-4715-8243-0DC95DDAE433}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

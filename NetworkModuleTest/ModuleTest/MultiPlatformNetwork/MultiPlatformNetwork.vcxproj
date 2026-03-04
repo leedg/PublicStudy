@@ -177,4 +177,27 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <None Include="Doc\01_IOCP_Architecture_Analysis.md" />
+    <None Include="Doc\02_Coding_Conventions_Guide.md" />
+    <None Include="Doc\03_Implementation_Roadmap.md" />
+    <None Include="Doc\04_Reference_Files_Guide.md" />
+    <None Include="Doc\05_RIO_IO_URING_Migration_Plan.md" />
+    <None Include="Doc\06_Cross_Platform_Architecture.md" />
+    <None Include="Doc\07_API_Design_Document.md" />
+    <None Include="Doc\08_Performance_Benchmarking_Guide.md" />
+    <None Include="Doc\09_PHASE3_COMPLETION_SUMMARY.md" />
+    <None Include="Doc\10_Document_Integrity_Review.md" />
+    <None Include="Doc\11_Architecture_Decision_Session_Naming.md" />
+    <None Include="Doc\12_Document_Enhancement_Execution_Plan.md" />
+    <None Include="Doc\13_Unit_Testing_Strategy.md" />
+    <None Include="Doc\14_CMake_Build_Configuration.md" />
+    <None Include="Doc\15_Memory_Leak_Prevention.md" />
+    <None Include="Doc\16_Fallback_Mechanisms.md" />
+    <None Include="Doc\17_Platform_Selection_Logic_Fix.md" />
+    <None Include="Doc\ANALYSIS_SUMMARY.txt" />
+    <None Include="Doc\COMPREHENSIVE_REVIEW_2026-01-27.md" />
+    <None Include="Doc\PHASE2_COMPLETION_SUMMARY.md" />
+    <None Include="Doc\README.md" />
+  </ItemGroup>
 </Project>

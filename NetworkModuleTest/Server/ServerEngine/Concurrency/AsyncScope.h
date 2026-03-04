@@ -1,0 +1,132 @@
+#pragma once
+
+// English: Structured async scope (task tracking + cooperative cancel).
+// 한글: 구조화된 비동기 스코프(태스크 추적 + 협력 취소).
+
+#include "KeyedDispatcher.h"
+#include <atomic>
+#include <cassert>
+#include <chrono>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <utility>
+
+namespace Network::Concurrency
+{
+class AsyncScope
+{
+  public:
+	AsyncScope()
+		: mCancelled(false),
+		  mInFlight(0)
+	{
+	}
+
+	~AsyncScope()
+	{
+		Cancel();
+		WaitForDrain(-1);
+	}
+
+	AsyncScope(const AsyncScope &) = delete;
+	AsyncScope &operator=(const AsyncScope &) = delete;
+
+	void Cancel()
+	{
+		mCancelled.store(true, std::memory_order_release);
+	}
+
+	// English: Reset for pool reuse. Safe only when mInFlight == 0, which is
+	//          guaranteed by the time SessionPool::ReleaseInternal calls Session::Reset()
+	//          because all in-flight lambdas hold a sessionCopy ref and have already run.
+	// 한글: 풀 재사용을 위한 초기화. mInFlight == 0일 때만 안전하며,
+	//       모든 in-flight 람다가 sessionCopy ref를 보유하고 이미 실행됐을 때
+	//       SessionPool::ReleaseInternal → Session::Reset() 호출 시 보장됨.
+	void Reset()
+	{
+		// English: Precondition: mInFlight MUST be 0. Call WaitForDrain(-1) before Reset().
+		//          Violating this corrupts the in-flight counter of the reused scope.
+		// 한글: 선행 조건: mInFlight가 반드시 0이어야 함. Reset() 전 WaitForDrain(-1) 필수.
+		//       위반 시 재사용 스코프의 in-flight 카운터 오염.
+		assert(mInFlight.load(std::memory_order_acquire) == 0 &&
+		       "AsyncScope::Reset() called while tasks are in-flight");
+		mCancelled.store(false, std::memory_order_release);
+	}
+
+	bool IsCancelled() const
+	{
+		return mCancelled.load(std::memory_order_acquire);
+	}
+
+	template <typename Fn>
+	bool Submit(KeyedDispatcher &dispatcher, uint64_t key, Fn &&task, int timeoutMs = -1)
+	{
+		BeginTask();
+
+		auto wrapped = [this, fn = std::forward<Fn>(task)]() mutable {
+			if (!IsCancelled())
+			{
+				fn();
+			}
+			EndTask();
+		};
+
+		if (!dispatcher.Dispatch(key, std::move(wrapped), timeoutMs))
+		{
+			EndTask();
+			return false;
+		}
+
+		return true;
+	}
+
+	bool WaitForDrain(int timeoutMs)
+	{
+		std::unique_lock<std::mutex> lock(mDrainMutex);
+		if (timeoutMs < 0)
+		{
+			mDrainCV.wait(lock, [this] {
+				return mInFlight.load(std::memory_order_acquire) == 0;
+			});
+			return true;
+		}
+
+		const auto deadline =
+			std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+		return mDrainCV.wait_until(lock, deadline, [this] {
+			return mInFlight.load(std::memory_order_acquire) == 0;
+		});
+	}
+
+	size_t InFlightCount() const
+	{
+		return mInFlight.load(std::memory_order_acquire);
+	}
+
+  private:
+	void BeginTask()
+	{
+		mInFlight.fetch_add(1, std::memory_order_acq_rel);
+	}
+
+	void EndTask()
+	{
+		const size_t prev = mInFlight.fetch_sub(1, std::memory_order_acq_rel);
+		if (prev == 1)
+		{
+			// English: notify_all does not require the mutex to be held.
+			//          Acquiring it here would add unnecessary contention with WaitForDrain.
+			// 한글: notify_all은 mutex를 보유할 필요가 없음.
+			//       lock을 잡으면 WaitForDrain과 불필요한 contention 발생.
+			mDrainCV.notify_all();
+		}
+	}
+
+	std::atomic<bool> mCancelled;
+	std::atomic<size_t> mInFlight;
+	mutable std::mutex mDrainMutex;
+	std::condition_variable mDrainCV;
+};
+
+} // namespace Network::Concurrency

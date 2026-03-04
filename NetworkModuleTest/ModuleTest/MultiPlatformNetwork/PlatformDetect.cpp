@@ -2,6 +2,7 @@
 // Korean: Platform detection utilities implementation
 
 #include "PlatformDetect.h"
+#include <cstdio>
 #include <cstring>
 
 #ifdef _WIN32
@@ -165,6 +166,9 @@ bool GetLinuxKernelVersion(uint32_t &outMajor, uint32_t &outMinor,
 		sscanf(buf.release, "%u.%u.%u", &outMajor, &outMinor, &outPatch);
 	return parsed >= 2;
 #else
+	(void)outMajor;
+	(void)outMinor;
+	(void)outPatch;
 	return false;
 #endif
 }
@@ -180,6 +184,9 @@ bool GetMacOSVersion(uint32_t &outMajor, uint32_t &outMinor, uint32_t &outPatch)
 	int parsed = sscanf(release, "%u.%u.%u", &outMajor, &outMinor, &outPatch);
 	return parsed >= 2;
 #else
+	(void)outMajor;
+	(void)outMinor;
+	(void)outPatch;
 	return false;
 #endif
 }

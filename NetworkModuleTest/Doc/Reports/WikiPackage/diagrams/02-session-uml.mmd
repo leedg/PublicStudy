@@ -1,0 +1,71 @@
+classDiagram
+    class Session {
+        +Initialize(id, socket)
+        +Send(data, size)
+        +PostRecv()
+        +ProcessRawRecv(data, size)
+        +OnConnected()
+        +OnDisconnected()
+        +OnRecv(data, size)
+    }
+
+    class ClientSession {
+        -weak_ptr~DBTaskQueue~ mDBTaskQueue
+        -ClientPacketHandler mPacketHandler
+        +OnConnected()
+        +OnDisconnected()
+        +OnRecv(data, size)
+    }
+
+    class ServerSession
+    class DBServerSession {
+        -DBServerPacketHandler mPacketHandler
+        +OnConnected()
+        +OnDisconnected()
+        +OnRecv(data, size)
+    }
+
+    class SessionManager {
+        +CreateSession(socket)
+        +RemoveSession(id)
+        +GetSession(id)
+        +CloseAllSessions()
+    }
+
+    class TestServer {
+        -INetworkEngine mClientEngine
+        -shared_ptr~DBTaskQueue~ mDBTaskQueue
+        -DBServerSession mDBServerSession
+        +Initialize(port, dbPath)
+        +Start()
+        +Stop()
+        +ConnectToDBServer(host, port)
+    }
+
+    class TestDBServer {
+        -INetworkEngine mEngine
+        -OrderedTaskQueue mOrderedTaskQueue
+        -ServerLatencyManager mLatencyManager
+        +Initialize(port)
+        +Start()
+        +Stop()
+    }
+
+    class DBTaskQueue
+    class ClientPacketHandler
+    class DBServerPacketHandler
+    class OrderedTaskQueue
+    class ServerLatencyManager
+
+    Session <|-- ClientSession
+    Session <|-- ServerSession
+    ServerSession <|-- DBServerSession
+    SessionManager o-- Session
+    ClientSession --> ClientPacketHandler
+    ClientSession --> DBTaskQueue : weak_ptr
+    DBServerSession --> DBServerPacketHandler
+    TestServer --> SessionManager
+    TestServer --> DBTaskQueue
+    TestServer --> DBServerSession
+    TestDBServer --> OrderedTaskQueue
+    TestDBServer --> ServerLatencyManager

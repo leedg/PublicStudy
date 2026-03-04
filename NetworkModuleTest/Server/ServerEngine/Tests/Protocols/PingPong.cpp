@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <cstring>
+#include <random>
 #include <sstream>
 
 #ifndef HAS_PROTOBUF
@@ -64,6 +65,52 @@ bool ReadString(const std::vector<uint8_t> &buffer, size_t &offset,
 	offset += length;
 	return true;
 }
+// English: Write a variable-length validation array: [uint8_t count][T × count]
+// 한글: 가변 길이 검증 배열 직렬화: [uint8_t count][T × count]
+template <typename T>
+void WriteValidationArray(std::vector<uint8_t> &buffer, const std::vector<T> &arr)
+{
+	WriteScalar(buffer, static_cast<uint8_t>(arr.size()));
+	for (const T &v : arr)
+		WriteScalar(buffer, v);
+}
+
+template <typename T>
+bool ReadValidationArray(const std::vector<uint8_t> &buffer, size_t &offset,
+                         std::vector<T> &out)
+{
+	uint8_t count = 0;
+	if (!ReadScalar(buffer, offset, count))
+		return false;
+	out.resize(count);
+	for (uint8_t i = 0; i < count; ++i)
+		if (!ReadScalar(buffer, offset, out[i]))
+			return false;
+	return true;
+}
+
+// English: Generate 1–5 random uint32 numbers and 1–5 random printable ASCII chars.
+// 한글: 랜덤 uint32 숫자 1~5개 및 출력 가능한 ASCII 문자 1~5개 생성.
+inline void GenerateValidationPayload(std::vector<uint32_t> &nums,
+                                      std::vector<char> &chars)
+{
+	static thread_local std::mt19937 rng{std::random_device{}()};
+	std::uniform_int_distribution<int>      countDist(1, 5);
+	std::uniform_int_distribution<uint32_t> numDist(0, UINT32_MAX);
+	// Printable ASCII: 0x21('!') – 0x7E('~')
+	std::uniform_int_distribution<int>      charDist(0x21, 0x7E);
+
+	const int numCount  = countDist(rng);
+	const int charCount = countDist(rng);
+
+	nums.resize(numCount);
+	for (int i = 0; i < numCount; ++i)
+		nums[i] = numDist(rng);
+
+	chars.resize(charCount);
+	for (int i = 0; i < charCount; ++i)
+		chars[i] = static_cast<char>(charDist(rng));
+}
 } // namespace
 #endif
 
@@ -116,12 +163,15 @@ std::vector<uint8_t> PingPongHandler::CreatePing(const std::string &message,
 	const auto actualMessage = message.empty() ? "ping" : message;
 	const auto actualSequence = sequence == 0 ? mNextSequence++ : sequence;
 
+	GenerateValidationPayload(mLastPingValidationNums, mLastPingValidationChars);
+	mLastValidationOk = false;
+
 	std::vector<uint8_t> data;
-	data.reserve(sizeof(uint64_t) + sizeof(uint32_t) + sizeof(uint32_t) +
-				 actualMessage.size());
 	WriteScalar(data, timestamp);
 	WriteScalar(data, actualSequence);
 	WriteString(data, actualMessage);
+	WriteValidationArray(data, mLastPingValidationNums);
+	WriteValidationArray(data, mLastPingValidationChars);
 
 	mLastPingTimestamp = timestamp;
 	mLastPingSequence = actualSequence;
@@ -165,12 +215,14 @@ PingPongHandler::CreatePong(const std::vector<uint8_t> &pingData,
 	const auto actualResponse = response.empty() ? "pong" : response;
 
 	std::vector<uint8_t> data;
-	data.reserve(sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint32_t) +
-				 sizeof(uint32_t) + actualResponse.size());
 	WriteScalar(data, timestamp);
 	WriteScalar(data, mLastPingTimestamp);
 	WriteScalar(data, mLastPingSequence);
 	WriteString(data, actualResponse);
+	// Echo the validation payload parsed from the ping back to the sender.
+	// 수신한 ping의 검증 페이로드를 그대로 에코 반환.
+	WriteValidationArray(data, mLastPingValidationNums);
+	WriteValidationArray(data, mLastPingValidationChars);
 
 	mLastPongTimestamp = timestamp;
 	mLastPongPingTimestamp = mLastPingTimestamp;
@@ -219,6 +271,12 @@ bool PingPongHandler::ParsePing(const std::vector<uint8_t> &data)
 		return false;
 	if (!ReadString(data, offset, message))
 		return false;
+	// Read and store validation payload so CreatePong can echo it back.
+	// 검증 페이로드를 읽어 저장 — CreatePong이 에코할 때 사용.
+	if (!ReadValidationArray(data, offset, mLastPingValidationNums))
+		return false;
+	if (!ReadValidationArray(data, offset, mLastPingValidationChars))
+		return false;
 
 	mLastPingTimestamp = timestamp;
 	mLastPingSequence = sequence;
@@ -265,6 +323,17 @@ bool PingPongHandler::ParsePong(const std::vector<uint8_t> &data)
 		return false;
 	if (!ReadString(data, offset, message))
 		return false;
+
+	// Read echoed validation payload and verify against the original sent in CreatePing.
+	// 에코된 검증 페이로드를 읽어 CreatePing에서 송신한 원본과 대조.
+	std::vector<uint32_t> echoNums;
+	std::vector<char>     echoChars;
+	if (!ReadValidationArray(data, offset, echoNums))
+		return false;
+	if (!ReadValidationArray(data, offset, echoChars))
+		return false;
+	mLastValidationOk = (echoNums == mLastPingValidationNums) &&
+	                    (echoChars == mLastPingValidationChars);
 
 	mLastPongTimestamp = timestamp;
 	mLastPongPingTimestamp = pingTimestamp;

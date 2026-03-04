@@ -92,6 +92,8 @@ bool KqueueAsyncIOProvider::IsInitialized() const { return mInitialized; }
 
 int64_t KqueueAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 {
+	(void)ptr;
+	(void)size;
 	// English: kqueue doesn't support pre-registered buffers (no-op)
 	// ?쒓?: kqueue???ъ쟾 ?깅줉 踰꾪띁瑜?吏?먰븯吏 ?딆쓬
 	// (no-op)
@@ -100,6 +102,7 @@ int64_t KqueueAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 
 AsyncIOError KqueueAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
 {
+	(void)bufferId;
 	return AsyncIOError::PlatformNotSupported;
 }
 
@@ -113,6 +116,7 @@ AsyncIOError KqueueAsyncIOProvider::SendAsync(SocketHandle socket,
 												  RequestContext context,
 												  uint32_t flags)
 {
+	(void)flags;
 	if (!mInitialized)
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)
@@ -142,6 +146,8 @@ AsyncIOError KqueueAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 												  RequestContext context,
 												  uint32_t flags)
 {
+	(void)buffer;
+	(void)flags;
 	if (!mInitialized)
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)

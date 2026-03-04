@@ -1,0 +1,1 @@
+/workspace/test_linux/scripts/entrypoint_client.sh: line 100: /workspace/build/linux/TestClient: Is a directory

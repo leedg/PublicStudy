@@ -1,0 +1,59 @@
+====================================
+  TestDBServer - Database Server
+====================================
+[16:34:56] [INFO] Initializing TestDBServer on port 8002
+[16:34:56] [INFO] Initializing ServerLatencyManager...
+[16:34:56] [INFO] ServerLatencyManager initialized successfully
+[16:34:56] [INFO] OrderedTaskQueue: initialized with 4 workers
+[16:34:56] [INFO] OrderedTaskQueue initialized successfully
+[16:34:56] [INFO] SessionManager initialized
+[16:34:56] [INFO] Windows RIO supported, using RIO backend (auto)
+[16:34:56] [INFO] WindowsNetworkEngine created with mode: RIO
+[16:34:56] [INFO] Winsock initialized (version 2.2)
+[16:34:56] [INFO] Using RIO backend
+[16:34:56] [INFO] Listen socket created and bound to port 8002
+[16:34:56] [INFO] BaseNetworkEngine initialized on port 8002
+[16:34:56] [INFO] TestDBServer initialized on port 8002
+[16:34:56] [INFO] Started 16 worker threads + 1 accept thread
+[16:34:56] [INFO] BaseNetworkEngine started
+[16:34:56] [INFO] TestDBServer started
+[16:34:56] [INFO] TestDBServer is running. Press Ctrl+C to stop.
+[16:34:56] [INFO] Accept thread started
+[16:34:57] [INFO] Session initialized - ID: 1
+[16:34:57] [INFO] Session created - ID: 1, Total: 1
+[16:34:57] [INFO] Client connected - IP: 127.0.0.1:58993 (Session 1)
+[16:34:57] [INFO] DBSession connected - ID: 1
+[16:34:57] [INFO] Game server connected - Connection: 1
+[16:34:57] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 1
+[16:35:02] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 2
+[16:35:04] [INFO] DBSession disconnected - ID: 1
+[16:35:04] [INFO] Game server disconnected - Connection: 1
+[16:35:04] [INFO] Session closed - ID: 1
+[16:35:04] [INFO] Session removed - ID: 1, Remaining: 0
+[16:35:04] [INFO] Session initialized - ID: 2
+[16:35:04] [INFO] Session created - ID: 2, Total: 1
+[16:35:04] [INFO] Client connected - IP: 127.0.0.1:58996 (Session 2)
+[16:35:04] [INFO] DBSession connected - ID: 2
+[16:35:04] [INFO] Game server connected - Connection: 2
+[16:35:04] [INFO] Latency recorded - ServerId: 2, ServerName: Server_2, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 1
+[16:35:09] [INFO] DBSession disconnected - ID: 2
+[16:35:09] [INFO] Game server disconnected - Connection: 2
+[16:35:09] [INFO] Session closed - ID: 2
+[16:35:09] [INFO] Session removed - ID: 2, Remaining: 0
+[16:35:09] [INFO] Shutdown event signaled - stopping DBServer
+[16:35:09] [INFO] Shutting down TestDBServer...
+[16:35:09] [INFO] Accept thread stopped
+[16:35:09] [INFO] All I/O threads stopped
+[16:35:09] [INFO] All sessions closed - Count: 0
+[16:35:09] [INFO] WindowsNetworkEngine platform shutdown complete
+[16:35:09] [INFO] BaseNetworkEngine stopped
+[16:35:09] [INFO] Shutting down ordered task queue...
+[16:35:09] [INFO] Shutting down OrderedTaskQueue...
+[16:35:09] [INFO] OrderedTaskQueue: shutdown complete - submitted=3, completed=3, failed=0, rejected=0
+[16:35:09] [INFO] OrderedTaskQueue shutdown complete - Enqueued: 3, Processed: 3, Failed: 0
+[16:35:09] [INFO] OrderedTaskQueue statistics - Enqueued: 3, Processed: 3
+[16:35:09] [INFO] Shutting down ServerLatencyManager...
+[16:35:09] [INFO] ServerLatencyManager shut down
+[16:35:09] [INFO] TestDBServer stopped
+[16:35:09] [INFO] TestDBServer stopped.
+Server shutdown complete.

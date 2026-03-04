@@ -1,4 +1,25 @@
 @echo off
+:: ==============================================================================
+:: build_database_module.bat
+:: 역할: DB 관련 모듈 두 개를 MSBuild 로 순차 빌드한다.
+::       반드시 Visual Studio Developer Command Prompt 에서 실행해야 한다.
+::
+:: 빌드 대상 (순서대로):
+::   1. ModuleTest\DBModuleTest\DBModuleTest.vcxproj   (DB 모듈 단독 테스트 프로젝트)
+::   2. Server\ServerEngine\ServerEngine.vcxproj        (서버 엔진 라이브러리)
+::
+:: 사용법:
+::   build_database_module.bat [debug|release] [x86|x64] [verbose]
+::
+:: 인자 (순서 무관, 모두 선택):
+::   debug   / release : 빌드 구성 (기본값: Release)
+::   x86     / x64     : 빌드 플랫폼 (기본값: x64)
+::   verbose           : MSBuild 상세 출력 활성화 (기본값: minimal)
+::
+:: 빌드 성공 시 결과물:
+::   ModuleTest\DBModuleTest\x64\Release\DBModuleTest.lib
+::   Server\ServerEngine\x64\Release\ServerEngine.lib
+:: ==============================================================================
 REM Database Module Build Script
 REM Builds both DBModuleTest and ServerEngine Database modules
 

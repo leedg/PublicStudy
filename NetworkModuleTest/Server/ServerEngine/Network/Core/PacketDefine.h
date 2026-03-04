@@ -4,6 +4,7 @@
 // 한글: 네트워크 프레이밍용 바이너리 패킷 정의
 
 #include <cstdint>
+#include <limits>
 
 namespace Network::Core
 {
@@ -150,7 +151,32 @@ struct PKT_PongRes
 constexpr uint32_t MAX_PACKET_SIZE = 4096;
 constexpr uint32_t RECV_BUFFER_SIZE = 8192;
 constexpr uint32_t SEND_BUFFER_SIZE = 8192;
+
+// [Fix A-2] IOContext::buffer는 RECV_BUFFER_SIZE를 기준으로 정의됨.
+// Send 경로는 SEND_BUFFER_SIZE로 검증하므로, 두 값이 다를 경우 버퍼 오버플로우가 발생한다.
+// 상수 수정 시 반드시 두 값을 함께 조정해야 한다.
+static_assert(SEND_BUFFER_SIZE == RECV_BUFFER_SIZE,
+    "SEND_BUFFER_SIZE must equal RECV_BUFFER_SIZE: IOContext::buffer uses RECV_BUFFER_SIZE "
+    "but Send() validates against SEND_BUFFER_SIZE. Mismatch causes buffer overflow.");
 constexpr uint32_t PING_INTERVAL_MS = 5000;
 constexpr uint32_t PING_TIMEOUT_MS = 30000;
+
+constexpr size_t MAX_SEND_QUEUE_DEPTH = 1000;
+constexpr size_t MAX_LOGIC_QUEUE_DEPTH = 10000;
+
+// ─── 패킷 크기 명시적 상수 ────────────────────────────────────────────────────
+// MAX_PACKET_SIZE = 전체 와이어 크기 (PacketHeader + payload 합산)
+constexpr uint32_t PACKET_HEADER_SIZE      = sizeof(PacketHeader);
+constexpr uint32_t MAX_PACKET_TOTAL_SIZE   = MAX_PACKET_SIZE;   // 명시적 alias
+constexpr uint32_t MAX_PACKET_PAYLOAD_SIZE = MAX_PACKET_SIZE - PACKET_HEADER_SIZE;
+
+// ─── 컴파일 타임 불변식 ──────────────────────────────────────────────────────
+static_assert(MAX_PACKET_SIZE > PACKET_HEADER_SIZE,
+    "MAX_PACKET_SIZE must be > PACKET_HEADER_SIZE");
+static_assert(MAX_PACKET_SIZE <= (std::numeric_limits<uint16_t>::max)(),
+    "MAX_PACKET_SIZE exceeds uint16_t; update PacketHeader::size to uint32_t "
+    "or reduce MAX_PACKET_SIZE");
+static_assert(MAX_PACKET_SIZE <= SEND_BUFFER_SIZE,
+    "MAX_PACKET_SIZE must fit within SEND_BUFFER_SIZE");
 
 } // namespace Network::Core

@@ -1,0 +1,1258 @@
+====================================
+  TestDBServer - Database Server
+====================================
+[19:43:44] [INFO] Initializing TestDBServer on port 8002
+[19:43:44] [INFO] Initializing ServerLatencyManager...
+[19:43:44] [INFO] ServerLatencyManager initialized successfully
+[19:43:44] [INFO] OrderedTaskQueue: initialized with 4 workers
+[19:43:44] [INFO] OrderedTaskQueue initialized successfully
+[19:43:44] [INFO] Windows RIO supported, using RIO backend (auto)
+[19:43:44] [INFO] WindowsNetworkEngine created with mode: RIO
+[19:43:44] [INFO] SessionPool initialized: capacity=1000
+[19:43:44] [INFO] LogicDispatcher: initialized with 4 workers
+[19:43:44] [INFO] TimerQueue: initialized
+[19:43:44] [INFO] Winsock initialized (version 2.2)
+[19:43:44] [INFO] Using RIO backend
+[19:43:44] [INFO] Listen socket created and bound to port 8002
+[19:43:44] [INFO] BaseNetworkEngine initialized on port 8002
+[19:43:44] [INFO] TestDBServer initialized on port 8002
+[19:43:44] [INFO] Started 16 worker threads + 1 accept thread
+[19:43:44] [INFO] BaseNetworkEngine started
+[19:43:44] [INFO] TestDBServer started
+[19:43:44] [INFO] TestDBServer is running. Press Ctrl+C to stop.
+[19:43:44] [INFO] Accept thread started
+[19:43:46] [INFO] Session initialized - ID: 1
+[19:43:46] [INFO] Session created - ID: 1, Total: 1
+[19:43:46] [INFO] Client connected - IP: 127.0.0.1:57778 (Session 1)
+[19:43:46] [INFO] Game server connected - Connection: 1
+[19:43:51] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 1ms, Min: 1ms, Max: 1ms, Count: 1
+[19:43:56] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 2
+[19:44:01] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 3
+[19:44:06] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 4
+[19:44:11] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 5
+[19:44:11] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[19:44:11] [INFO] Ping time saved for ServerId: 1
+[19:44:16] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 6
+[19:44:21] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 7
+[19:44:26] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 8
+[19:44:29] [WARN] Session timeout - ID: 1
+[19:44:29] [INFO] Session removed - ID: 1, Remaining: 0
+[19:44:29] [INFO] Game server disconnected - Connection: 1
+[19:44:29] [INFO] Game server disconnected - Connection: 1
+[19:44:29] [INFO] Session closed - ID: 1
+[19:44:30] [INFO] Session initialized - ID: 2
+[19:44:30] [INFO] Session created - ID: 2, Total: 1
+[19:44:30] [INFO] Client connected - IP: 127.0.0.1:58244 (Session 2)
+[19:44:30] [INFO] Game server connected - Connection: 2
+[19:44:35] [INFO] Latency recorded - ServerId: 2, ServerName: Server_2, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 1
+[19:44:40] [INFO] [DBServer] Ping received (every 10th) - Seq: 10, Latency: 0ms
+[19:44:40] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[19:44:40] [INFO] Latency recorded - ServerId: 2, ServerName: Server_2, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 2
+[19:44:40] [INFO] Ping time saved for ServerId: 1
+[19:44:45] [INFO] Latency recorded - ServerId: 2, ServerName: Server_2, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 3
+[19:44:50] [INFO] Latency recorded - ServerId: 2, ServerName: Server_2, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 4
+[19:44:55] [INFO] Latency recorded - ServerId: 2, ServerName: Server_2, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 5
+[19:45:00] [INFO] Latency recorded - ServerId: 2, ServerName: Server_2, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 6
+[19:45:05] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[19:45:05] [INFO] Latency recorded - ServerId: 2, ServerName: Server_2, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 7
+[19:45:05] [INFO] Ping time saved for ServerId: 1
+[19:45:10] [INFO] Latency recorded - ServerId: 2, ServerName: Server_2, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 8
+[19:45:14] [WARN] Session timeout - ID: 2
+[19:45:14] [INFO] Game server disconnected - Connection: 2
+[19:45:14] [INFO] Session removed - ID: 2, Remaining: 0
+[19:45:14] [INFO] Game server disconnected - Connection: 2
+[19:45:14] [INFO] Session closed - ID: 2
+[19:45:15] [INFO] Session initialized - ID: 3
+[19:45:15] [INFO] Session created - ID: 3, Total: 1
+[19:45:15] [INFO] Game server connected - Connection: 3
+[19:45:15] [INFO] Client connected - IP: 127.0.0.1:58491 (Session 3)
+[19:45:20] [INFO] Latency recorded - ServerId: 3, ServerName: Server_3, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 1
+[19:45:25] [INFO] Latency recorded - ServerId: 3, ServerName: Server_3, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 2
+[19:45:30] [INFO] Latency recorded - ServerId: 3, ServerName: Server_3, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 3
+[19:45:35] [INFO] [DBServer] Ping received (every 10th) - Seq: 20, Latency: 0ms
+[19:45:35] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[19:45:35] [INFO] Latency recorded - ServerId: 3, ServerName: Server_3, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 4
+[19:45:35] [INFO] Ping time saved for ServerId: 1
+[19:45:40] [INFO] Latency recorded - ServerId: 3, ServerName: Server_3, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 5
+[19:45:45] [INFO] Latency recorded - ServerId: 3, ServerName: Server_3, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 6
+[19:45:50] [INFO] Latency recorded - ServerId: 3, ServerName: Server_3, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 7
+[19:45:55] [INFO] Latency recorded - ServerId: 3, ServerName: Server_3, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 8
+[19:45:59] [WARN] Session timeout - ID: 3
+[19:45:59] [INFO] Game server disconnected - Connection: 3
+[19:45:59] [INFO] Game server disconnected - Connection: 3
+[19:45:59] [INFO] Session closed - ID: 3
+[19:45:59] [INFO] Session removed - ID: 3, Remaining: 0
+[19:46:00] [INFO] Session initialized - ID: 4
+[19:46:00] [INFO] Session created - ID: 4, Total: 1
+[19:46:00] [INFO] Client connected - IP: 127.0.0.1:62698 (Session 4)
+[19:46:00] [INFO] Game server connected - Connection: 4
+[19:46:05] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[19:46:05] [INFO] Latency recorded - ServerId: 4, ServerName: Server_4, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 1
+[19:46:05] [INFO] Ping time saved for ServerId: 1
+[19:46:10] [INFO] Latency recorded - ServerId: 4, ServerName: Server_4, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 2
+[19:46:15] [INFO] Latency recorded - ServerId: 4, ServerName: Server_4, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 3
+[19:46:20] [INFO] Latency recorded - ServerId: 4, ServerName: Server_4, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 4
+[19:46:25] [INFO] Latency recorded - ServerId: 4, ServerName: Server_4, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 5
+[19:46:30] [INFO] [DBServer] Ping received (every 10th) - Seq: 30, Latency: 0ms
+[19:46:30] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[19:46:30] [INFO] Latency recorded - ServerId: 4, ServerName: Server_4, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 6
+[19:46:30] [INFO] Ping time saved for ServerId: 1
+[19:46:35] [INFO] Latency recorded - ServerId: 4, ServerName: Server_4, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 7
+[19:46:40] [INFO] Latency recorded - ServerId: 4, ServerName: Server_4, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 8
+[19:46:44] [WARN] Session timeout - ID: 4
+[19:46:44] [INFO] Game server disconnected - Connection: 4
+[19:46:44] [INFO] Session removed - ID: 4, Remaining: 0
+[19:46:44] [INFO] Session closed - ID: 4
+[19:46:44] [INFO] Game server disconnected - Connection: 4
+[19:46:45] [INFO] Session initialized - ID: 5
+[19:46:45] [INFO] Session created - ID: 5, Total: 1
+[19:46:45] [INFO] Client connected - IP: 127.0.0.1:62739 (Session 5)
+[19:46:45] [INFO] Game server connected - Connection: 5
+[19:46:50] [INFO] Latency recorded - ServerId: 5, ServerName: Server_5, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 1
+[19:46:55] [INFO] Latency recorded - ServerId: 5, ServerName: Server_5, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 2
+[19:47:00] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[19:47:00] [INFO] Latency recorded - ServerId: 5, ServerName: Server_5, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 3
+[19:47:00] [INFO] Ping time saved for ServerId: 1
+[19:47:05] [INFO] Latency recorded - ServerId: 5, ServerName: Server_5, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 4
+[19:47:10] [INFO] Latency recorded - ServerId: 5, ServerName: Server_5, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 5
+[19:47:15] [INFO] Latency recorded - ServerId: 5, ServerName: Server_5, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 6
+[19:47:20] [INFO] Latency recorded - ServerId: 5, ServerName: Server_5, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 7
+[19:47:26] [INFO] [DBServer] Ping received (every 10th) - Seq: 40, Latency: 0ms
+[19:47:26] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[19:47:26] [INFO] Latency recorded - ServerId: 5, ServerName: Server_5, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 8
+[19:47:26] [INFO] Ping time saved for ServerId: 1
+[19:47:29] [WARN] Session timeout - ID: 5
+[19:47:29] [INFO] Game server disconnected - Connection: 5
+[19:47:29] [INFO] Game server disconnected - Connection: 5
+[19:47:29] [INFO] Session closed - ID: 5
+[19:47:29] [INFO] Session removed - ID: 5, Remaining: 0
+[19:47:30] [INFO] Session initialized - ID: 6
+[19:47:30] [INFO] Session created - ID: 6, Total: 1
+[19:47:30] [INFO] Client connected - IP: 127.0.0.1:62786 (Session 6)
+[19:47:30] [INFO] Game server connected - Connection: 6
+[19:48:14] [WARN] Session timeout - ID: 6
+[19:48:14] [INFO] Session removed - ID: 6, Remaining: 0
+[19:48:14] [INFO] Game server disconnected - Connection: 6
+[19:48:14] [INFO] Game server disconnected - Connection: 6
+[19:48:14] [INFO] Session closed - ID: 6
+[19:48:16] [INFO] Session initialized - ID: 7
+[19:48:16] [INFO] Session created - ID: 7, Total: 1
+[19:48:16] [INFO] Client connected - IP: 127.0.0.1:62818 (Session 7)
+[19:48:16] [INFO] Game server connected - Connection: 7
+[19:49:00] [WARN] Session timeout - ID: 7
+[19:49:00] [INFO] Game server disconnected - Connection: 7
+[19:49:00] [INFO] Session removed - ID: 7, Remaining: 0
+[19:49:00] [INFO] Session closed - ID: 7
+[19:49:00] [INFO] Game server disconnected - Connection: 7
+[19:49:01] [INFO] Session initialized - ID: 8
+[19:49:01] [INFO] Session created - ID: 8, Total: 1
+[19:49:01] [INFO] Client connected - IP: 127.0.0.1:62845 (Session 8)
+[19:49:01] [INFO] Game server connected - Connection: 8
+[19:49:45] [WARN] Session timeout - ID: 8
+[19:49:45] [INFO] Session removed - ID: 8, Remaining: 0
+[19:49:45] [INFO] Game server disconnected - Connection: 8
+[19:49:45] [INFO] Game server disconnected - Connection: 8
+[19:49:45] [INFO] Session closed - ID: 8
+[19:49:46] [INFO] Session initialized - ID: 9
+[19:49:46] [INFO] Session created - ID: 9, Total: 1
+[19:49:46] [INFO] Client connected - IP: 127.0.0.1:62850 (Session 9)
+[19:49:46] [INFO] Game server connected - Connection: 9
+[19:50:30] [WARN] Session timeout - ID: 9
+[19:50:30] [INFO] Session removed - ID: 9, Remaining: 0
+[19:50:30] [INFO] Game server disconnected - Connection: 9
+[19:50:30] [INFO] Session closed - ID: 9
+[19:50:30] [INFO] Game server disconnected - Connection: 9
+[19:50:31] [INFO] Session initialized - ID: 10
+[19:50:31] [INFO] Session created - ID: 10, Total: 1
+[19:50:31] [INFO] Client connected - IP: 127.0.0.1:62852 (Session 10)
+[19:50:31] [INFO] Game server connected - Connection: 10
+[19:50:36] [INFO] Latency recorded - ServerId: 10, ServerName: Server_10, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 1
+[19:50:41] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[19:50:41] [INFO] Latency recorded - ServerId: 10, ServerName: Server_10, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 2
+[19:50:41] [INFO] Ping time saved for ServerId: 1
+[19:50:46] [INFO] Latency recorded - ServerId: 10, ServerName: Server_10, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 3
+[19:50:51] [INFO] Latency recorded - ServerId: 10, ServerName: Server_10, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 4
+[19:50:56] [INFO] Latency recorded - ServerId: 10, ServerName: Server_10, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 5
+[19:51:01] [INFO] Latency recorded - ServerId: 10, ServerName: Server_10, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 6
+[19:51:06] [INFO] [DBServer] Ping received (every 10th) - Seq: 80, Latency: 1ms
+[19:51:06] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[19:51:06] [INFO] Latency recorded - ServerId: 10, ServerName: Server_10, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 7
+[19:51:06] [INFO] Ping time saved for ServerId: 1
+[19:51:11] [INFO] Latency recorded - ServerId: 10, ServerName: Server_10, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 8
+[19:51:15] [WARN] Session timeout - ID: 10
+[19:51:15] [INFO] Game server disconnected - Connection: 10
+[19:51:15] [INFO] Game server disconnected - Connection: 10
+[19:51:15] [INFO] Session closed - ID: 10
+[19:51:15] [INFO] Session removed - ID: 10, Remaining: 0
+[19:51:16] [INFO] Session initialized - ID: 11
+[19:51:16] [INFO] Session created - ID: 11, Total: 1
+[19:51:16] [INFO] Client connected - IP: 127.0.0.1:62855 (Session 11)
+[19:51:16] [INFO] Game server connected - Connection: 11
+[19:52:00] [WARN] Session timeout - ID: 11
+[19:52:00] [INFO] Game server disconnected - Connection: 11
+[19:52:00] [INFO] Game server disconnected - Connection: 11
+[19:52:00] [INFO] Session removed - ID: 11, Remaining: 0
+[19:52:00] [INFO] Session closed - ID: 11
+[19:52:01] [INFO] Session initialized - ID: 12
+[19:52:01] [INFO] Session created - ID: 12, Total: 1
+[19:52:01] [INFO] Client connected - IP: 127.0.0.1:62857 (Session 12)
+[19:52:01] [INFO] Game server connected - Connection: 12
+[19:52:45] [WARN] Session timeout - ID: 12
+[19:52:45] [INFO] Session closed - ID: 12
+[19:52:45] [INFO] Game server disconnected - Connection: 12
+[19:52:45] [INFO] Session removed - ID: 12, Remaining: 0
+[19:52:45] [INFO] Game server disconnected - Connection: 12
+[19:52:46] [INFO] Session initialized - ID: 13
+[19:52:46] [INFO] Session created - ID: 13, Total: 1
+[19:52:46] [INFO] Client connected - IP: 127.0.0.1:55720 (Session 13)
+[19:52:46] [INFO] Game server connected - Connection: 13
+[19:53:30] [WARN] Session timeout - ID: 13
+[19:53:30] [INFO] Game server disconnected - Connection: 13
+[19:53:30] [INFO] Session removed - ID: 13, Remaining: 0
+[19:53:30] [INFO] Session closed - ID: 13
+[19:53:30] [INFO] Game server disconnected - Connection: 13
+[19:53:31] [INFO] Session initialized - ID: 14
+[19:53:31] [INFO] Session created - ID: 14, Total: 1
+[19:53:31] [INFO] Client connected - IP: 127.0.0.1:55725 (Session 14)
+[19:53:31] [INFO] Game server connected - Connection: 14
+[19:54:15] [WARN] Session timeout - ID: 14
+[19:54:15] [INFO] Game server disconnected - Connection: 14
+[19:54:15] [INFO] Session closed - ID: 14
+[19:54:15] [INFO] Session removed - ID: 14, Remaining: 0
+[19:54:15] [INFO] Game server disconnected - Connection: 14
+[19:54:16] [INFO] Session initialized - ID: 15
+[19:54:16] [INFO] Session created - ID: 15, Total: 1
+[19:54:16] [INFO] Client connected - IP: 127.0.0.1:55730 (Session 15)
+[19:54:16] [INFO] Game server connected - Connection: 15
+[19:55:00] [WARN] Session timeout - ID: 15
+[19:55:00] [INFO] Session removed - ID: 15, Remaining: 0
+[19:55:00] [INFO] Session closed - ID: 15
+[19:55:00] [INFO] Game server disconnected - Connection: 15
+[19:55:00] [INFO] Game server disconnected - Connection: 15
+[19:55:01] [INFO] Session initialized - ID: 16
+[19:55:01] [INFO] Session created - ID: 16, Total: 1
+[19:55:01] [INFO] Client connected - IP: 127.0.0.1:55737 (Session 16)
+[19:55:01] [INFO] Game server connected - Connection: 16
+[19:55:35] [INFO] Game server disconnected - Connection: 16
+[19:55:35] [INFO] Session closed - ID: 16
+[19:55:35] [INFO] Session removed - ID: 16, Remaining: 0
+[19:55:36] [INFO] Shutdown event signaled - stopping DBServer
+[19:55:36] [INFO] Shutting down TestDBServer...
+[19:55:36] [INFO] TimerQueue: shutdown complete
+[19:55:36] [INFO] Accept thread stopped
+[19:55:36] [INFO] All I/O threads stopped
+[19:55:36] [INFO] All sessions closed - Count: 0
+[19:55:36] [INFO] LogicDispatcher: shutdown complete - submitted=198, completed=198, failed=0, rejected=0
+[19:55:36] [INFO] WindowsNetworkEngine platform shutdown complete
+[19:55:36] [INFO] BaseNetworkEngine stopped
+[19:55:36] [INFO] Shutting down ordered task queue...
+[19:55:36] [INFO] Shutting down OrderedTaskQueue...
+[19:55:36] [INFO] OrderedTaskQueue: shutdown complete - submitted=58, completed=58, failed=0, rejected=0
+[19:55:36] [INFO] OrderedTaskQueue shutdown complete - Enqueued: 58, Processed: 58, Failed: 0
+[19:55:36] [INFO] OrderedTaskQueue statistics - Enqueued: 58, Processed: 58
+[19:55:36] [INFO] Shutting down ServerLatencyManager...
+[19:55:36] [INFO] ServerLatencyManager shut down
+[19:55:36] [INFO] TestDBServer stopped
+[19:55:36] [INFO] TestDBServer stopped.
+Server shutdown complete.
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] Session closed - ID: 0
+[19:55:36] [INFO] SessionPool shut down
