@@ -210,7 +210,7 @@ AsyncIOError IOUringAsyncIOProvider::SendAsync(SocketHandle socket,
 
 	// English: Acquire send pool slot before taking the main lock.
 	// 한글: 메인 락 취득 전 송신 풀 슬롯 획득.
-	Core::Memory::BufferSlot sendSlot = mSendPool.Acquire();
+	Network::Core::Memory::BufferSlot sendSlot = mSendPool.Acquire();
 	if (!sendSlot.ptr)
 		return AsyncIOError::NoResources;
 
@@ -279,7 +279,7 @@ AsyncIOError IOUringAsyncIOProvider::RecvAsync(SocketHandle socket,
 
 	// English: Acquire recv pool slot before taking the main lock.
 	// 한글: 메인 락 취득 전 수신 풀 슬롯 획득.
-	Core::Memory::BufferSlot recvSlot = mRecvPool.Acquire();
+	Network::Core::Memory::BufferSlot recvSlot = mRecvPool.Acquire();
 	if (!recvSlot.ptr)
 		return AsyncIOError::NoResources;
 

@@ -16,8 +16,12 @@
 #include <mutex>
 #include <vector>
 
-namespace Core {
-namespace Memory {
+namespace Network
+{
+namespace Core
+{
+namespace Memory
+{
 
 class RIOBufferPool : public IBufferPool {
 public:
@@ -64,5 +68,6 @@ private:
 
 } // namespace Memory
 } // namespace Core
+} // namespace Network
 
 #endif // _WIN32

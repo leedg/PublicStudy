@@ -8,8 +8,12 @@
 #include <cstdlib>  // posix_memalign, free
 #endif
 
-namespace Core {
-namespace Memory {
+namespace Network
+{
+namespace Core
+{
+namespace Memory
+{
 
 namespace {
 
@@ -105,3 +109,4 @@ size_t StandardBufferPool::FreeCount() const
 
 } // namespace Memory
 } // namespace Core
+} // namespace Network

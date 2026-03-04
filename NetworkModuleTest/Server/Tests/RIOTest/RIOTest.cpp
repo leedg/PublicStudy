@@ -49,7 +49,7 @@ void TestRIOProviderInit()
 void TestRIOBufferPoolInit()
 {
     const char *name = "RIOBufferPoolInit";
-    ::Core::Memory::RIOBufferPool pool;
+    ::Network::Core::Memory::RIOBufferPool pool;
     // Initialize(poolSize, slotSize) — pool loads RIO fn ptrs itself.
     // Initialize(poolSize, slotSize) — 풀이 직접 RIO 함수 포인터를 로드.
     if (!pool.Initialize(8, 65536))
@@ -68,7 +68,7 @@ void TestRIOBufferPoolInit()
 void TestRIOBufferPoolAcquireRelease()
 {
     const char *name = "RIOBufferPoolAcquireRelease";
-    ::Core::Memory::RIOBufferPool pool;
+    ::Network::Core::Memory::RIOBufferPool pool;
     if (!pool.Initialize(4, 65536))
     {
         std::cout << "[SKIP] " << name << " - RIO not available\n";
@@ -98,7 +98,7 @@ void TestRIOBufferPoolAcquireRelease()
 void TestRIOBufferPoolExhaustion()
 {
     const char *name = "RIOBufferPoolExhaustion";
-    ::Core::Memory::RIOBufferPool pool;
+    ::Network::Core::Memory::RIOBufferPool pool;
     if (!pool.Initialize(2, 4096))
     {
         std::cout << "[SKIP] " << name << " - RIO not available\n";

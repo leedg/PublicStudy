@@ -3,8 +3,12 @@
 
 #include <numeric>
 
-namespace Core {
-namespace Memory {
+namespace Network
+{
+namespace Core
+{
+namespace Memory
+{
 
 RIOBufferPool::~RIOBufferPool()
 {
@@ -125,5 +129,6 @@ char* RIOBufferPool::SlotPtr(size_t index) const
 
 } // namespace Memory
 } // namespace Core
+} // namespace Network
 
 #endif // _WIN32

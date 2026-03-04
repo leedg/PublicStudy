@@ -4,8 +4,12 @@
 #include <cstdlib>  // posix_memalign, free
 #include <numeric>
 
-namespace Core {
-namespace Memory {
+namespace Network
+{
+namespace Core
+{
+namespace Memory
+{
 
 IOUringBufferPool::~IOUringBufferPool()
 {
@@ -103,5 +107,6 @@ size_t IOUringBufferPool::FreeCount() const
 
 } // namespace Memory
 } // namespace Core
+} // namespace Network
 
 #endif // defined(__linux__)

@@ -108,8 +108,8 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 
 	// Pre-registered slab pools (mRecvPool / mSendPool own VirtualAlloc + 1x RIORegisterBuffer each)
 	// 사전 등록 슬랩 풀 (각 풀이 VirtualAlloc + 1회 RIORegisterBuffer 보유)
-	::Core::Memory::RIOBufferPool mRecvPool;
-	::Core::Memory::RIOBufferPool mSendPool;
+	::Network::Core::Memory::RIOBufferPool mRecvPool;
+	::Network::Core::Memory::RIOBufferPool mSendPool;
 	std::unordered_map<SocketHandle, size_t> mSocketRecvSlot; // guarded by mMutex
 
 	PfnRIOCloseCompletionQueue mPfnRIOCloseCompletionQueue;
