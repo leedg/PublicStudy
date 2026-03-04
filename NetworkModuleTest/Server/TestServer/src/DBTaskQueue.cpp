@@ -389,8 +389,8 @@ namespace Network::TestServer
                 break;
 
             default:
-                result = "Unknown task type";
-                Logger::Error("Unknown DB task type");
+                result = "Unknown task type (SaveGameProgress and Custom are not yet implemented)";
+                Logger::Error("Unknown DB task type - SaveGameProgress and Custom tasks are not yet implemented");
                 break;
             }
 
