@@ -23,7 +23,8 @@ namespace Core
 namespace Memory
 {
 
-class RIOBufferPool : public IBufferPool {
+class RIOBufferPool : public IBufferPool
+{
 public:
     RIOBufferPool()  = default;
     ~RIOBufferPool() override;

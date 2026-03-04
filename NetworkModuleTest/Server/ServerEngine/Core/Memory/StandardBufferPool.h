@@ -14,7 +14,8 @@ namespace Core
 namespace Memory
 {
 
-class StandardBufferPool : public IBufferPool {
+class StandardBufferPool : public IBufferPool
+{
 public:
     StandardBufferPool()  = default;
     ~StandardBufferPool() override;

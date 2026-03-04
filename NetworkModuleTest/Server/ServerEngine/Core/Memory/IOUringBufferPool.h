@@ -19,7 +19,8 @@ namespace Core
 namespace Memory
 {
 
-class IOUringBufferPool : public IBufferPool {
+class IOUringBufferPool : public IBufferPool
+{
 public:
     IOUringBufferPool()  = default;
     ~IOUringBufferPool() override;
