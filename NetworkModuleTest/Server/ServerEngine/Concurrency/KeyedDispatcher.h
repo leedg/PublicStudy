@@ -10,6 +10,7 @@
 #include <exception>
 #include <functional>
 #include <memory>
+#include <shared_mutex>
 #include <string>
 #include <thread>
 #include <utility>
@@ -132,11 +133,22 @@ class KeyedDispatcher
 							", rejected=" +
 							std::to_string(mRejected.load(std::memory_order_relaxed)));
 
-		mWorkers.clear();
+		{
+			// English: Exclusive lock — prevents Dispatch() from accessing mWorkers while we clear.
+			// 한글: exclusive lock — clear 중 Dispatch()가 mWorkers에 접근하지 못하도록 함.
+			std::unique_lock<std::shared_mutex> exclusiveLock(mWorkersMutex);
+			mWorkers.clear();
+		}
 	}
 
 	bool Dispatch(uint64_t key, std::function<void()> task, int timeoutMs = -1)
 	{
+		// English: Shared lock prevents TOCTOU race with Shutdown() calling mWorkers.clear().
+		//          Checked under the lock so mWorkers cannot be cleared between check and access.
+		// 한글: shared lock으로 Shutdown()의 mWorkers.clear()와의 TOCTOU 경쟁 방지.
+		//       lock 범위 안에서 확인하므로 체크와 접근 사이에 mWorkers가 소멸되지 않음.
+		std::shared_lock<std::shared_mutex> sharedLock(mWorkersMutex);
+
 		if (!mRunning.load(std::memory_order_acquire) || !task || mWorkers.empty())
 		{
 			mRejected.fetch_add(1, std::memory_order_relaxed);
@@ -254,6 +266,8 @@ class KeyedDispatcher
 	std::string mName;
 	std::atomic<bool> mRunning;
 	std::vector<std::unique_ptr<Worker>> mWorkers;
+	mutable std::shared_mutex mWorkersMutex;  // English: Protects mWorkers during concurrent Dispatch/Shutdown
+	                                           // 한글: 동시 Dispatch/Shutdown으로부터 mWorkers 보호
 
 	std::atomic<size_t> mSubmitted;
 	std::atomic<size_t> mRejected;
