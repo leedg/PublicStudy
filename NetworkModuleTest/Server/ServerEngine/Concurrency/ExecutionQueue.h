@@ -577,7 +577,10 @@ class ExecutionQueue
 		mNotEmptyCV.notify_all();
 
 
-		mNotFullCV.notify_all();
+		mNotFullMutexCV.notify_all();
+
+
+		mNotFullLFCV.notify_all();
 
 
 	}
@@ -796,7 +799,7 @@ class ExecutionQueue
 		{
 
 
-			mNotFullCV.wait(lock, [this] {
+			mNotFullMutexCV.wait(lock, [this] {
 
 
 				return mShutdown.load(std::memory_order_acquire) ||
@@ -826,7 +829,7 @@ class ExecutionQueue
 				std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
 
-			if (!mNotFullCV.wait_until(lock, deadline, [this] {
+			if (!mNotFullMutexCV.wait_until(lock, deadline, [this] {
 
 
 					return mShutdown.load(std::memory_order_acquire) ||
@@ -1027,7 +1030,7 @@ class ExecutionQueue
 
 
 
-				mNotFullCV.wait(lock, [this] {
+				mNotFullLFCV.wait(lock, [this] {
 
 
 
@@ -1062,7 +1065,7 @@ class ExecutionQueue
 
 
 
-				if (!mNotFullCV.wait_until(lock, deadline, [this] {
+				if (!mNotFullLFCV.wait_until(lock, deadline, [this] {
 
 
 
@@ -1145,7 +1148,7 @@ class ExecutionQueue
 
 
 
-		mNotFullCV.notify_one();
+		mNotFullMutexCV.notify_one();
 
 
 		return true;
@@ -1196,7 +1199,7 @@ class ExecutionQueue
 		mSize.fetch_sub(1, std::memory_order_release);
 
 
-		mNotFullCV.notify_one();
+		mNotFullLFCV.notify_one();
 
 
 		return true;
@@ -1280,7 +1283,10 @@ class ExecutionQueue
 	std::condition_variable mNotEmptyCV;
 
 
-	std::condition_variable mNotFullCV;
+	std::condition_variable mNotFullMutexCV;  // English: Used with mMutexQueueMutex (mutex backend)
+                                              // 한글: 뮤텍스 백엔드용 — mMutexQueueMutex와 함께 사용
+	std::condition_variable mNotFullLFCV;     // English: Used with mWaitMutex (lock-free backend)
+                                              // 한글: lock-free 백엔드용 — mWaitMutex와 함께 사용
 
 
 };
