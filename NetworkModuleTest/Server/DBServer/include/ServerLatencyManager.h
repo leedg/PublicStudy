@@ -146,6 +146,7 @@ namespace Network::DBServer
                                              uint64_t timestamp);
 
         // English: Escape SQL literal by doubling single quotes.
+        // 한글: SQL 문자열의 ?????(')? ? ??? ??? ???? ??.
         static std::string EscapeSqlLiteral(const std::string& value);
 
         // English: Format millisecond timestamp as "YYYY-MM-DD HH:MM:SS GMT" string

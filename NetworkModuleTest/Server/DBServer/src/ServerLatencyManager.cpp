@@ -292,6 +292,8 @@ namespace Network::DBServer
         return query.str();
     }
 
+    // English: Escapes SQL string literal by doubling single quotes.
+    // 한글: SQL ??? ??? ? ?????? ????? ??.
     std::string ServerLatencyManager::EscapeSqlLiteral(const std::string& value)
     {
         std::string escaped;
