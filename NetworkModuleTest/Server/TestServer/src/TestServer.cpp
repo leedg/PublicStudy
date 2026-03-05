@@ -173,8 +173,8 @@ namespace Network::TestServer
             return false;
         }
 
-        constexpr size_t MAX_CONNECTIONS = 10000;
-        if (!mClientEngine->Initialize(MAX_CONNECTIONS, port))
+        constexpr size_t kMaxConnections = Utils::MAX_CONNECTIONS;
+        if (!mClientEngine->Initialize(kMaxConnections, port))
         {
             Logger::Error("Failed to initialize client network engine");
             return false;
