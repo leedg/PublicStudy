@@ -104,33 +104,51 @@ try {
     #       동일 디렉토리(예: 20260302_153000_linux/)에 저장됨
     # -------------------------------------------------------------------------
     $env:LOG_SESSION = $LogSession
+    $env:SERVER_ENGINE = "auto"
     $results = @{}
 
-    function Run-ClientTest([string]$service) {
+    function Run-ClientTest([string]$service, [string]$serverEngine) {
+        [int]$exitCode = 1
+        $env:SERVER_ENGINE = $serverEngine
         Write-Host ""
+        Write-Host "[run] server engine: $serverEngine" -ForegroundColor DarkGray
         Write-Host "[run] docker-compose run --rm $service ..." -ForegroundColor Yellow
-        docker-compose -f $ComposeFile run --rm $service
-        return $LASTEXITCODE
+        try {
+            # English: Restart dependency stack so each backend run uses its own server engine.
+            # ?쒓?: 백엔드별 서버 엔진 적용을 위해 의존 스택을 매 실행마다 재기동.
+            docker-compose -f $ComposeFile down --remove-orphans | Out-Host
+            if ($LASTEXITCODE -ne 0) {
+                throw "docker-compose down failed (exit $LASTEXITCODE)"
+            }
+
+            docker-compose -f $ComposeFile run --rm $service | Out-Host
+            $exitCode = $LASTEXITCODE
+        } finally {
+            docker-compose -f $ComposeFile down --remove-orphans | Out-Null
+            Remove-Item Env:\SERVER_ENGINE -ErrorAction SilentlyContinue
+        }
+        return $exitCode
     }
 
     $stepNum = 2
     if ($Backend -eq "both" -or $Backend -eq "epoll") {
         Write-Host ""
         Write-Host "[step $stepNum] Running epoll backend test..." -ForegroundColor Yellow
-        $results["epoll"] = Run-ClientTest "client_epoll"
+        $results["epoll"] = Run-ClientTest "client_epoll" "epoll"
         $stepNum++
     }
 
     if ($Backend -eq "both" -or $Backend -eq "iouring") {
         Write-Host ""
         Write-Host "[step $stepNum] Running io_uring backend test..." -ForegroundColor Yellow
-        $results["iouring"] = Run-ClientTest "client_iouring"
+        $results["iouring"] = Run-ClientTest "client_iouring" "io_uring"
         $stepNum++
     }
 
     # English: Clear the env var to avoid leaking into subsequent commands
     # 한글: 이후 커맨드에 누출되지 않도록 환경 변수 제거
     Remove-Item Env:\LOG_SESSION -ErrorAction SilentlyContinue
+    Remove-Item Env:\SERVER_ENGINE -ErrorAction SilentlyContinue
 
     # -------------------------------------------------------------------------
     # English: Print test summary
@@ -215,4 +233,5 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 } finally {
     Pop-Location
     Remove-Item Env:\LOG_SESSION -ErrorAction SilentlyContinue
+    Remove-Item Env:\SERVER_ENGINE -ErrorAction SilentlyContinue
 }

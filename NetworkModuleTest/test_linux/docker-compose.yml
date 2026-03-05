@@ -61,9 +61,11 @@ services:
     build:
       context: ..
       dockerfile: test_linux/Dockerfile
+    environment:
+      SERVER_ENGINE: "${SERVER_ENGINE:-auto}"
     command: >
       bash -c "/workspace/test_linux/scripts/build.sh &&
-               /workspace/build/linux/TestServer -p 9000 --db-host dbserver --db-port 9001 -l INFO"
+               /workspace/build/linux/TestServer -p 9000 --db-host dbserver --db-port 9001 --engine ${SERVER_ENGINE:-auto} -l INFO"
     depends_on:
       dbserver:
         condition: service_healthy
