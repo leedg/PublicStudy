@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <cerrno>
 
 namespace Network::Platforms
 {
@@ -111,7 +112,11 @@ bool LinuxNetworkEngine::StartPlatformIO()
 	// English: Start worker threads for completion processing
 	// 한글: 완료 처리를 위한 워커 스레드 시작
 	uint32_t workerCount = std::thread::hardware_concurrency();
-	if (workerCount == 0)
+	if (mMode == Mode::IOUring)
+	{
+		workerCount = 1;
+	}
+	else if (workerCount == 0)
 	{
 		workerCount = 4;
 	}
@@ -177,14 +182,23 @@ void LinuxNetworkEngine::AcceptLoop()
 
 		if (clientSocket < 0)
 		{
-			if (errno == EINTR || errno == EBADF)
+			const int acceptError = errno;
+			if (acceptError == EINTR || acceptError == EBADF)
 			{
 				// English: Socket closed (shutdown signal)
 				// 한글: 소켓 닫힘 (종료 신호)
 				break;
 			}
 
-			Utils::Logger::Error("Accept failed: " + std::string(strerror(errno)));
+			if (acceptError == EAGAIN || acceptError == EWOULDBLOCK)
+			{
+				// English: Non-blocking listen socket with no pending connection.
+				// ?쒓?: 비블로킹 listen 소켓에 대기 연결이 없는 정상 상태.
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				continue;
+			}
+
+			Utils::Logger::Error("Accept failed: " + std::string(strerror(acceptError)));
 
 			// English: Exponential backoff on error (member var, not static)
 			// 한글: 에러 시 지수 백오프 (static 대신 멤버 변수 사용)
@@ -200,7 +214,17 @@ void LinuxNetworkEngine::AcceptLoop()
 		// English: Set socket to non-blocking mode
 		// 한글: 소켓을 논블로킹 모드로 설정
 		int flags = fcntl(clientSocket, F_GETFL, 0);
-		fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK);
+		if (flags != -1)
+		{
+			if (mMode == Mode::Epoll)
+			{
+				fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK);
+			}
+			else
+			{
+				fcntl(clientSocket, F_SETFL, flags & ~O_NONBLOCK);
+			}
+		}
 
 		// English: Create session
 		// 한글: 세션 생성

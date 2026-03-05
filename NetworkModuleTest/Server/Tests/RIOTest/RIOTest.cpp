@@ -16,6 +16,32 @@ using namespace Network::AsyncIO::Windows;
 
 static int gPassed = 0, gFailed = 0;
 
+class WinsockGuard
+{
+  public:
+    WinsockGuard()
+    {
+        mReady = (WSAStartup(MAKEWORD(2, 2), &mWsaData) == 0);
+    }
+
+    ~WinsockGuard()
+    {
+        if (mReady)
+        {
+            WSACleanup();
+        }
+    }
+
+    bool IsReady() const
+    {
+        return mReady;
+    }
+
+  private:
+    WSADATA mWsaData{};
+    bool mReady = false;
+};
+
 static void Pass(const char *name)
 {
     std::cout << "[PASS] " << name << "\n";
@@ -121,6 +147,13 @@ void TestRIOBufferPoolExhaustion()
 // -----------------------------------------------------------------------
 int main()
 {
+    WinsockGuard winsock;
+    if (!winsock.IsReady())
+    {
+        std::cout << "[FAIL] WinsockInit - WSAStartup failed\n";
+        return 1;
+    }
+
     std::cout << "=== RIO AsyncIOProvider + BufferPool Tests ===\n\n";
     TestRIOProviderInit();
     TestRIOBufferPoolInit();
