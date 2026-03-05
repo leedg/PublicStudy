@@ -45,6 +45,7 @@ Debug/
 *.tmp
 *.temp
 *.log
+~$*
 
 # Build output logs
 *_out.txt
