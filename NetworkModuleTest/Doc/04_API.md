@@ -1,12 +1,12 @@
-﻿# API (현재 코드 기준)
+# API (현재 코드 기준)
 
 ## 1. 실행 파일 CLI
 
 ### 1.1 TestServer
 
-- `-p <port>`: 서버 포트 (기본 `9000`)
+- `-p <port>`: 서버 포트 (기본: Windows `19010`, Linux/macOS `9000`)
 - `-d <path>`: 로컬 DB 경로 (지정 시 SQLite, 미지정 시 Mock)
-- `--db`: 원격 DB 서버 연결 시도 (기본 `127.0.0.1:8001`)
+- `--db`: 원격 DB 서버 연결 시도 (기본: Windows `127.0.0.1:18002`, Linux/macOS `127.0.0.1:8001`)
 - `--db-host <addr>`: 원격 DB 서버 주소
 - `--db-port <port>`: 원격 DB 서버 포트
 - `-l <level>`: `DEBUG|INFO|WARN|ERROR`
@@ -14,17 +14,17 @@
 
 ### 1.2 TestDBServer
 
-- `-p <port>`: 서버 포트 (코드 기본 `8001`)
+- `-p <port>`: 서버 포트 (기본: Windows `18002`, Linux/macOS `8001`)
 - `-l <level>`: `DEBUG|INFO|WARN|ERROR`
 - `-h, --help`: 도움말
 
 참고
-- `run_dbServer.ps1` 등 실행 스크립트 기본 포트는 `8002`입니다.
+- `run_*.ps1` 실행 스크립트는 기본 포트 충돌 시 자동으로 다음 빈 포트를 사용합니다.
 
 ### 1.3 TestClient
 
 - `--host <addr>`: 서버 주소 (기본 `127.0.0.1`)
-- `--port <port>`: 서버 포트 (기본 `9000`)
+- `--port <port>`: 서버 포트 (기본: Windows `19010`, Linux/macOS `9000`)
 - `--pings <n>`: n회 ping 후 종료 (`0`=무제한)
 - `--clients <n>`: 현재 무시되는 옵션 (단일 연결 모드)
 - `-l <level>`: `DEBUG|INFO|WARN|ERROR`

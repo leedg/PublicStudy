@@ -61,7 +61,7 @@ void PrintUsage(const char *programName)
 	std::cout << "Options:" << std::endl;
 	std::cout << "  --host <addr>   Server address (default: 127.0.0.1)"
 				  << std::endl;
-	std::cout << "  --port <port>   Server port (default: 9000)" << std::endl;
+	std::cout << "  --port <port>   Server port (default: " << DEFAULT_TEST_SERVER_PORT << ")" << std::endl;
 	std::cout << "  --pings <n>     Exit after sending N pings (default: 0 = unlimited)" << std::endl;
 	std::cout << "  --clients <n>   Number of client instances (currently ignored)" << std::endl;
 	std::cout << "  -l <level>      Log level: DEBUG, INFO, WARN, ERROR "
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 	// English: Default settings
 	// 한글: 기본 설정
 	std::string host = "127.0.0.1";
-	uint16_t port = 9000;
+	uint16_t port = DEFAULT_TEST_SERVER_PORT;
 	LogLevel logLevel = LogLevel::Info;
 	uint32_t maxPings = 0;
 

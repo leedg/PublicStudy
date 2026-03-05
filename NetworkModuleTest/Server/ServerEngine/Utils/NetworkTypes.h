@@ -25,6 +25,13 @@ using Timestamp = uint64_t;
 // =============================================================================
 
 constexpr uint32_t DEFAULT_PORT = 8000;
+#if defined(_WIN32)
+constexpr uint16_t DEFAULT_TEST_SERVER_PORT = 19010;
+constexpr uint16_t DEFAULT_TEST_DB_PORT = 18002;
+#else
+constexpr uint16_t DEFAULT_TEST_SERVER_PORT = 9000;
+constexpr uint16_t DEFAULT_TEST_DB_PORT = 8001;
+#endif
 constexpr size_t DEFAULT_BUFFER_SIZE = 4096;
 constexpr size_t MAX_CONNECTIONS = 1000;
 constexpr int DEFAULT_TIMEOUT_MS = 30000;

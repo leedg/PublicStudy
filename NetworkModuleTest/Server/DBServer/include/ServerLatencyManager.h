@@ -145,6 +145,10 @@ namespace Network::DBServer
         std::string BuildPingTimeInsertQuery(uint32_t serverId, const std::string& serverName,
                                              uint64_t timestamp);
 
+        // English: Escape SQL literal by doubling single quotes.
+        // 한글: SQL 문자열의 ?????(')? ? ??? ??? ???? ??.
+        static std::string EscapeSqlLiteral(const std::string& value);
+
         // English: Format millisecond timestamp as "YYYY-MM-DD HH:MM:SS GMT" string
         // 한글: 밀리초 타임스탬프를 "YYYY-MM-DD HH:MM:SS GMT" 문자열로 포맷
         std::string FormatTimestamp(uint64_t timestampMs) const;

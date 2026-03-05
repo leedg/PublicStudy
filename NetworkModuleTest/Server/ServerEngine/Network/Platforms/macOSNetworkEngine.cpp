@@ -200,7 +200,8 @@ void macOSNetworkEngine::AcceptLoop()
 				std::to_string(session->GetId()) + ": " +
 				std::string(mProvider->GetLastError()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			close(clientSocket);
+			// English: Session owns socket lifetime; avoid duplicate close here.
+			// 한글: 소켓 수명은 Session이 관리하므로 여기서 중복 close를 호출하지 않는다.
 			continue;
 		}
 
@@ -215,7 +216,7 @@ void macOSNetworkEngine::AcceptLoop()
 		// English: Fire Connected event asynchronously on logic thread
 		// 한글: 로직 스레드에서 비동기로 Connected 이벤트 발생
 		auto sessionCopy = session;
-		mLogicThreadPool.Submit(
+		mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 			[this, sessionCopy]()
 			{
 				sessionCopy->OnConnected();
@@ -229,7 +230,8 @@ void macOSNetworkEngine::AcceptLoop()
 			Utils::Logger::Error("Failed to queue recv - Session " +
 								 std::to_string(session->GetId()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			close(clientSocket);
+			// English: Session owns socket lifetime; avoid duplicate close here.
+			// 한글: 소켓 수명은 Session이 관리하므로 여기서 중복 close를 호출하지 않는다.
 			continue;
 		}
 
@@ -291,7 +293,7 @@ void macOSNetworkEngine::ProcessCompletions()
 			// English: Connection error or closed
 			// 한글: 연결 에러 또는 닫힘
 			auto sessionCopy = session;
-			mLogicThreadPool.Submit(
+			mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 				[this, sessionCopy]()
 				{
 					sessionCopy->OnDisconnected();
@@ -316,7 +318,12 @@ void macOSNetworkEngine::ProcessCompletions()
 
 			// English: Post next receive
 			// 한글: 다음 수신 등록
-			QueueRecv(session);
+			if (!QueueRecv(session))
+			{
+				Utils::Logger::Error("Failed to re-queue recv - Session " +
+								 std::to_string(session->GetId()));
+				Core::SessionManager::Instance().RemoveSession(session);
+			}
 			break;
 		}
 

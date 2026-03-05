@@ -194,11 +194,11 @@ class INetworkEngine
 /**
  * English: Create network engine instance
  * 한글: 네트워크 엔진 인스턴스 생성
- * @param engineType Engine type (e.g., "asyncio", "epoll", "iocp")
+ * @param engineType Engine type (e.g., "auto", "epoll", "iocp")
  * @return Network engine instance or nullptr
  */
 std::unique_ptr<INetworkEngine>
-CreateNetworkEngine(const std::string &engineType = "asyncio");
+CreateNetworkEngine(const std::string &engineType = "auto");
 
 /**
  * English: Get list of available engine types

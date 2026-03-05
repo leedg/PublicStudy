@@ -1,4 +1,11 @@
-$msbuild = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"
-$sln = "C:\MyGithub\PublicStudy\NetworkModuleTest\NetworkModuleTest.sln"
-& $msbuild $sln /p:Configuration=Release /p:Platform=x64 /nologo /verbosity:minimal /m
-exit $LASTEXITCODE
+param(
+    [string]$Configuration = "Release",
+    [string]$Platform = "x64"
+)
+
+$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $root "build_common.ps1")
+
+$solutionPath = Join-Path $root "NetworkModuleTest.sln"
+$exitCode = Invoke-MSBuild -TargetPath $solutionPath -Configuration $Configuration -Platform $Platform -MultiProc
+exit $exitCode
