@@ -345,7 +345,12 @@ void LinuxNetworkEngine::ProcessCompletions()
 
 			// English: Post next receive
 			// 한글: 다음 수신 등록
-			QueueRecv(session);
+			if (!QueueRecv(session))
+			{
+				Utils::Logger::Error("Failed to re-queue recv - Session " +
+								 std::to_string(session->GetId()));
+				Core::SessionManager::Instance().RemoveSession(session);
+			}
 			break;
 		}
 
