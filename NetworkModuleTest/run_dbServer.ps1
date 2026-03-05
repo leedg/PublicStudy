@@ -1,5 +1,7 @@
-# 실행 요약: TestDBServer를 실행하며 포트 충돌 시 자동 fallback 합니다.
-# 사용 팁: 기본 포트를 강제하려면 -DisablePortFallback 를 사용하세요.
+﻿# 스크립트 목적: TestDBServer를 기동합니다.
+# 포트 정책: DB 포트 충돌 시 자동으로 다음 빈 포트로 이동합니다.
+# 고정 포트: -DisablePortFallback 사용 시 입력 포트를 강제합니다.
+# 예시 실행: .\\run_dbServer.ps1 -DbPort 18002
 
 param(
     [string]$Configuration = "Debug",
@@ -41,7 +43,7 @@ function Resolve-AvailablePort {
         }
     }
 
-    throw "No available port found near $PreferredPort"
+    throw "포트를 찾지 못했습니다. 기준 포트: $PreferredPort"
 }
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -49,7 +51,7 @@ $binDir = Join-Path $root "$Platform\$Configuration"
 $dbExe = Join-Path $binDir "TestDBServer.exe"
 
 if (-not (Test-Path -Path $dbExe -PathType Leaf)) {
-    Write-Error "Executable not found: $dbExe"
+    Write-Error "실행 파일을 찾을 수 없습니다: $dbExe"
     exit 1
 }
 
@@ -59,7 +61,7 @@ if (-not $DisablePortFallback) {
 }
 
 if ($resolvedDbPort -ne $DbPort) {
-    Write-Warning "DB port $DbPort is already in use. Falling back to $resolvedDbPort"
+    Write-Warning "DB 포트 $DbPort 가 이미 사용 중입니다. $resolvedDbPort 로 자동 변경합니다."
 }
 
 $dbProc = Start-Process -FilePath $dbExe `
@@ -68,7 +70,7 @@ $dbProc = Start-Process -FilePath $dbExe `
     -NoNewWindow:$NoNewWindow `
     -PassThru
 
-Write-Host "Started TestDBServer (PID: $($dbProc.Id)) on port $resolvedDbPort"
+Write-Host "[DB] 기동 완료: PID=$($dbProc.Id), Port=$resolvedDbPort"
 if ($DisablePortFallback) {
-    Write-Host "Port fallback disabled. If startup failed, choose a different -DbPort."
+    Write-Host "[안내] 포트 fallback이 비활성화되어 있습니다. 기동 실패 시 -DbPort 값을 변경하세요."
 }

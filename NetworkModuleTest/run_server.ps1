@@ -1,5 +1,7 @@
-# 실행 요약: TestServer를 실행하며 포트 충돌 시 자동 fallback 합니다.
-# 사용 팁: DB 포트와 서버 포트를 고정하려면 -DisablePortFallback 를 함께 사용하세요.
+﻿# 스크립트 목적: TestServer를 기동합니다.
+# 포트 정책: 서버 포트 충돌 시 자동으로 다음 빈 포트로 이동합니다.
+# 고정 포트: -DisablePortFallback 사용 시 입력 포트를 강제합니다.
+# 예시 실행: .\\run_server.ps1 -ServerPort 19010 -DbPort 18002
 
 param(
     [string]$Configuration = "Debug",
@@ -43,7 +45,7 @@ function Resolve-AvailablePort {
         }
     }
 
-    throw "No available port found near $PreferredPort"
+    throw "포트를 찾지 못했습니다. 기준 포트: $PreferredPort"
 }
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -51,7 +53,7 @@ $binDir = Join-Path $root "$Platform\$Configuration"
 $serverExe = Join-Path $binDir "TestServer.exe"
 
 if (-not (Test-Path -Path $serverExe -PathType Leaf)) {
-    Write-Error "Executable not found: $serverExe"
+    Write-Error "실행 파일을 찾을 수 없습니다: $serverExe"
     exit 1
 }
 
@@ -61,7 +63,7 @@ if (-not $DisablePortFallback) {
 }
 
 if ($resolvedServerPort -ne $ServerPort) {
-    Write-Warning "Server port $ServerPort is already in use. Falling back to $resolvedServerPort"
+    Write-Warning "서버 포트 $ServerPort 가 이미 사용 중입니다. $resolvedServerPort 로 자동 변경합니다."
 }
 
 $serverProc = Start-Process -FilePath $serverExe `
@@ -70,7 +72,7 @@ $serverProc = Start-Process -FilePath $serverExe `
     -NoNewWindow:$NoNewWindow `
     -PassThru
 
-Write-Host "Started TestServer (PID: $($serverProc.Id)) on port $resolvedServerPort (DB: $DbHost`:$DbPort)"
+Write-Host "[Server] 기동 완료: PID=$($serverProc.Id), Port=$resolvedServerPort, DB=$DbHost`:$DbPort"
 if ($resolvedServerPort -ne $ServerPort) {
-    Write-Host "Use run_client.ps1 -ServerPort $resolvedServerPort to connect."
+    Write-Host "[안내] run_client.ps1 -ServerPort $resolvedServerPort 로 접속하세요."
 }

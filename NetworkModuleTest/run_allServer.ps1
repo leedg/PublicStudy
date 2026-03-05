@@ -1,5 +1,7 @@
-# 실행 요약: TestDBServer -> TestServer 순서로 기동하고, 포트 충돌 시 자동으로 빈 포트로 이동합니다.
-# 사용 팁: 정확한 포트를 강제하려면 -DisablePortFallback 스위치를 사용하세요.
+﻿# 스크립트 목적: TestDBServer -> TestServer 순서로 기동합니다.
+# 포트 정책: 기본 포트가 사용 중이면 자동으로 다음 빈 포트로 이동합니다.
+# 고정 포트: -DisablePortFallback 사용 시 입력한 포트를 그대로 사용합니다.
+# 예시 실행: .\\run_allServer.ps1 -Configuration Debug -Platform x64
 
 param(
     [string]$Configuration = "Debug",
@@ -43,7 +45,7 @@ function Resolve-AvailablePort {
         }
     }
 
-    throw "No available port found near $PreferredPort"
+    throw "포트를 찾지 못했습니다. 기준 포트: $PreferredPort"
 }
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -52,12 +54,12 @@ $dbExe = Join-Path $binDir "TestDBServer.exe"
 $serverExe = Join-Path $binDir "TestServer.exe"
 
 if (-not (Test-Path -Path $dbExe -PathType Leaf)) {
-    Write-Error "Executable not found: $dbExe"
+    Write-Error "실행 파일을 찾을 수 없습니다: $dbExe"
     exit 1
 }
 
 if (-not (Test-Path -Path $serverExe -PathType Leaf)) {
-    Write-Error "Executable not found: $serverExe"
+    Write-Error "실행 파일을 찾을 수 없습니다: $serverExe"
     exit 1
 }
 
@@ -69,11 +71,11 @@ if (-not $DisablePortFallback) {
 }
 
 if ($resolvedDbPort -ne $DbPort) {
-    Write-Warning "DB port $DbPort is already in use. Falling back to $resolvedDbPort"
+    Write-Warning "DB 포트 $DbPort 가 이미 사용 중입니다. $resolvedDbPort 로 자동 변경합니다."
 }
 
 if ($resolvedServerPort -ne $ServerPort) {
-    Write-Warning "Server port $ServerPort is already in use. Falling back to $resolvedServerPort"
+    Write-Warning "서버 포트 $ServerPort 가 이미 사용 중입니다. $resolvedServerPort 로 자동 변경합니다."
 }
 
 $dbProc = Start-Process -FilePath $dbExe `
@@ -90,6 +92,6 @@ $serverProc = Start-Process -FilePath $serverExe `
     -NoNewWindow:$NoNewWindow `
     -PassThru
 
-Write-Host "Started TestDBServer (PID: $($dbProc.Id)) on port $resolvedDbPort"
-Write-Host "Started TestServer (PID: $($serverProc.Id)) on port $resolvedServerPort (DB: $DbHost`:$resolvedDbPort)"
-Write-Host "Client command: .\run_client.ps1 -Configuration $Configuration -Platform $Platform -ServerPort $resolvedServerPort"
+Write-Host "[DB] 기동 완료: PID=$($dbProc.Id), Port=$resolvedDbPort"
+Write-Host "[Server] 기동 완료: PID=$($serverProc.Id), Port=$resolvedServerPort, DB=$DbHost`:$resolvedDbPort"
+Write-Host "[Client 연결 예시] .\run_client.ps1 -Configuration $Configuration -Platform $Platform -ServerPort $resolvedServerPort"

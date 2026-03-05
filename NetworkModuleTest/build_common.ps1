@@ -1,4 +1,4 @@
-# 빌드 요약: msbuild 경로를 PATH -> vswhere -> 고정 후보 순으로 탐지합니다.
+﻿# 빌드 요약: msbuild 경로를 PATH -> vswhere -> 고정 후보 순으로 탐지합니다.
 # 목적: 로컬 절대경로 하드코딩 없이 어느 워크스페이스에서도 동일하게 빌드 스크립트가 동작하도록 보장합니다.
 
 Set-StrictMode -Version Latest
@@ -42,7 +42,7 @@ function Resolve-MSBuildPath {
         }
     }
 
-    throw "MSBuild not found. Install Visual Studio 2022 (MSBuild component) or add msbuild to PATH."
+    throw "MSBuild를 찾지 못했습니다. Visual Studio 2022(MSBuild 구성요소) 설치 또는 PATH 등록이 필요합니다."
 }
 
 function Invoke-MSBuild {
@@ -55,7 +55,7 @@ function Invoke-MSBuild {
     )
 
     if (-not (Test-Path -Path $TargetPath -PathType Leaf)) {
-        throw "Build target not found: $TargetPath"
+        throw "빌드 대상을 찾지 못했습니다: $TargetPath"
     }
 
     $msbuild = Resolve-MSBuildPath
@@ -71,9 +71,9 @@ function Invoke-MSBuild {
         $args += "/m"
     }
 
-    Write-Host "Using MSBuild: $msbuild"
-    Write-Host "Target: $TargetPath"
-    Write-Host "Config: $Configuration / Platform: $Platform"
+    Write-Host "MSBuild 경로: $msbuild"
+    Write-Host "빌드 대상: $TargetPath"
+    Write-Host "빌드 설정: Configuration=$Configuration / Platform=$Platform"
 
     & $msbuild @args
     return $LASTEXITCODE

@@ -1,5 +1,6 @@
-# 실행 요약: TestClient 인스턴스를 지정 개수만큼 순차 실행합니다.
-# 참고: 서버가 fallback된 포트로 떠 있다면 -ServerPort 값을 동일하게 맞춰주세요.
+﻿# 스크립트 목적: TestClient를 지정 개수만큼 순차 실행합니다.
+# 접속 포트: 서버가 fallback으로 다른 포트로 떠 있으면 -ServerPort를 동일하게 맞춰주세요.
+# 예시 실행: .\\run_client.ps1 -ServerPort 19010 -ClientCount 2
 
 param(
     [string]$Configuration = "Debug",
@@ -15,16 +16,16 @@ $binDir = Join-Path $root "$Platform\$Configuration"
 $clientExe = Join-Path $binDir "TestClient.exe"
 
 if (-not (Test-Path -Path $clientExe -PathType Leaf)) {
-    Write-Error "Executable not found: $clientExe"
+    Write-Error "실행 파일을 찾을 수 없습니다: $clientExe"
     exit 1
 }
 
 if ($ClientCount -lt 1) {
-    Write-Error "ClientCount must be >= 1"
+    Write-Error "ClientCount 값은 1 이상이어야 합니다."
     exit 1
 }
 
-Write-Host "Starting $ClientCount client(s) to $TargetHost`:$ServerPort"
+Write-Host "클라이언트 $ClientCount 개를 $TargetHost`:$ServerPort 로 실행합니다."
 
 for ($i = 1; $i -le $ClientCount; $i++) {
     $clientProc = Start-Process -FilePath $clientExe `
@@ -33,6 +34,6 @@ for ($i = 1; $i -le $ClientCount; $i++) {
         -NoNewWindow:$NoNewWindow `
         -PassThru
 
-    Write-Host "Started client $i (PID: $($clientProc.Id))"
+    Write-Host "클라이언트 $i 기동 완료 (PID: $($clientProc.Id))"
     Start-Sleep -Milliseconds 300
 }
