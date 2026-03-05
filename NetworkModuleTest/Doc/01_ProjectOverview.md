@@ -61,11 +61,10 @@ DB 연동은 프로토타입(로그/플레이스홀더 중심) 단계입니다.
   - `IOUringBufferPool.h/.cpp` — `posix_memalign` + `io_uring_register_buffers`, `#if __linux__` 전용
 - **RIOAsyncIOProvider 리팩토링**: inline slab 멤버 제거 → `Core::Memory::RIOBufferPool mRecvPool, mSendPool` 으로 교체 (락 순서: `mMutex` → 풀 내부 lock, deadlock 없음)
 
-### 핑퐁 검증 페이로드 추가
-- Ping 패킷에 **랜덤 숫자 1~5개 (`uint32_t`) + 랜덤 문자 1~5개** 추가 (`mt19937` 생성)
-- Pong이 검증 필드를 에코 → `ParsePong()` 에서 원본과 대조 → `GetLastValidationResult()` 반환
-- 버퍼 손상 없이 왕복이 정상인지를 매 핑퐁 사이클마다 자동 검증
-
+### 핑퐁 검증 페이로드 추가 (테스트 경로)
+- `ServerEngine/Tests/Protocols/PingPong.*` 테스트 프로토콜에 검증 필드(랜덤 숫자/문자 에코) 추가
+- `ParsePong()`에서 원본 대조로 검증 가능 (`GetLastValidationResult()`)
+- 기본 운영 경로(`PacketDefine.h` 기반 TestClient/TestServer 패킷)와는 분리된 테스트 전용 포맷
 ### 퍼포먼스 테스트 결과 (20260301_163405)
 - 1000/1000 PASS, Errors=0, Server WS=**143.6 MB** (이전 193.7 MB → 약 50 MB 감소)
 - RTT: avg=2ms, max=20ms @1000 clients
@@ -91,6 +90,8 @@ DB 연동은 프로토타입(로그/플레이스홀더 중심) 단계입니다.
 - `mPingSequence` `uint32_t` → `std::atomic<uint32_t>` (핑 타이머-IO 스레드 경쟁 조건 해소)
 - `ClientSession` 의존성 주입: `static sDBTaskQueue` 전역 제거 → 생성자 주입, `MakeClientSessionFactory()` 람다 패턴
 - `DBTaskQueue` 워커 수 2 → 1 (세션별 Connect/Disconnect 작업 순서 보장)
-- `CloseConnection` 이벤트 경로: `mLogicThreadPool.Submit()` 통일
+- `CloseConnection` 이벤트 경로: `mLogicDispatcher` 기반 직렬 처리로 정리
 - `DBPingTimeManager` → `ServerLatencyManager` 통합
 - `PlatformDetect.h`: `PLATFORM_WINDOWS/LINUX/MACOS` + `DB_BACKEND_ODBC/OLEDB` 컴파일 타임 매크로 추가
+
+
