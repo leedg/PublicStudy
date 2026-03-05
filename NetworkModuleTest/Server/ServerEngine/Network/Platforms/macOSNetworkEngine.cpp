@@ -215,7 +215,7 @@ void macOSNetworkEngine::AcceptLoop()
 		// English: Fire Connected event asynchronously on logic thread
 		// 한글: 로직 스레드에서 비동기로 Connected 이벤트 발생
 		auto sessionCopy = session;
-		mLogicThreadPool.Submit(
+		mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 			[this, sessionCopy]()
 			{
 				sessionCopy->OnConnected();
@@ -291,7 +291,7 @@ void macOSNetworkEngine::ProcessCompletions()
 			// English: Connection error or closed
 			// 한글: 연결 에러 또는 닫힘
 			auto sessionCopy = session;
-			mLogicThreadPool.Submit(
+			mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 				[this, sessionCopy]()
 				{
 					sessionCopy->OnDisconnected();
