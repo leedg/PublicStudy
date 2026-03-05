@@ -12,7 +12,7 @@
 ::   %1 Config      : 빌드 구성 (기본값: Debug)
 ::   %2 Platform    : 빌드 플랫폼 (기본값: x64)
 ::   %3 TargetHost  : 접속할 서버 주소 (기본값: 127.0.0.1)
-::   %4 ServerPort  : 접속할 서버 포트 (기본값: 9000)
+::   %4 ServerPort  : 접속할 서버 포트 (기본값: 19010)
 ::   %5 ClientCount : 실행할 클라이언트 수, 양의 정수 (기본값: 1)
 :: ==============================================================================
 setlocal enabledelayedexpansion
@@ -20,7 +20,7 @@ setlocal enabledelayedexpansion
 set "CONFIG=Debug"
 set "PLATFORM=x64"
 set "TARGET_HOST=127.0.0.1"
-set "SERVER_PORT=9000"
+set "SERVER_PORT=19010"
 set "CLIENT_COUNT=1"
 
 if not "%~1"=="" set "CONFIG=%~1"
