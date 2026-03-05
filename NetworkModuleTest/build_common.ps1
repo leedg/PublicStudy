@@ -1,0 +1,77 @@
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Resolve-MSBuildPath {
+    $msbuildCmd = Get-Command msbuild -ErrorAction SilentlyContinue
+    if ($msbuildCmd) {
+        return $msbuildCmd.Source
+    }
+
+    $vswhereCandidates = @(
+        "$env:ProgramFiles(x86)\Microsoft Visual Studio\Installer\vswhere.exe",
+        "$env:ProgramFiles\Microsoft Visual Studio\Installer\vswhere.exe"
+    )
+
+    foreach ($vswhere in $vswhereCandidates) {
+        if (-not (Test-Path -Path $vswhere -PathType Leaf)) {
+            continue
+        }
+
+        $installationPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($installationPath)) {
+            $candidate = Join-Path $installationPath "MSBuild\Current\Bin\MSBuild.exe"
+            if (Test-Path -Path $candidate -PathType Leaf) {
+                return $candidate
+            }
+        }
+    }
+
+    $fallbackCandidates = @(
+        "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe",
+        "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe",
+        "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe",
+        "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe"
+    )
+
+    foreach ($candidate in $fallbackCandidates) {
+        if (Test-Path -Path $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+
+    throw "MSBuild not found. Install Visual Studio 2022 (MSBuild component) or add msbuild to PATH."
+}
+
+function Invoke-MSBuild {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TargetPath,
+        [string]$Configuration = "Release",
+        [string]$Platform = "x64",
+        [switch]$MultiProc
+    )
+
+    if (-not (Test-Path -Path $TargetPath -PathType Leaf)) {
+        throw "Build target not found: $TargetPath"
+    }
+
+    $msbuild = Resolve-MSBuildPath
+    $args = @(
+        $TargetPath,
+        "/p:Configuration=$Configuration",
+        "/p:Platform=$Platform",
+        "/nologo",
+        "/verbosity:minimal"
+    )
+
+    if ($MultiProc) {
+        $args += "/m"
+    }
+
+    Write-Host "Using MSBuild: $msbuild"
+    Write-Host "Target: $TargetPath"
+    Write-Host "Config: $Configuration / Platform: $Platform"
+
+    & $msbuild @args
+    return $LASTEXITCODE
+}

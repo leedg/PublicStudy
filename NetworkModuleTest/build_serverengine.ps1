@@ -1,4 +1,11 @@
-$msbuild = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe"
-$proj = "C:\MyGithub\PublicStudy\NetworkModuleTest\Server\ServerEngine\ServerEngine.vcxproj"
-& $msbuild $proj /p:Configuration=Release /p:Platform=x64 /nologo /verbosity:minimal
-exit $LASTEXITCODE
+param(
+    [string]$Configuration = "Release",
+    [string]$Platform = "x64"
+)
+
+$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $root "build_common.ps1")
+
+$projectPath = Join-Path $root "Server\ServerEngine\ServerEngine.vcxproj"
+$exitCode = Invoke-MSBuild -TargetPath $projectPath -Configuration $Configuration -Platform $Platform
+exit $exitCode

@@ -1,4 +1,4 @@
-﻿# 아키텍처 (현재 코드 기준)
+# 아키텍처 (현재 코드 기준)
 
 ## 1. 목표
 
@@ -13,9 +13,9 @@ TestClient --(PacketDefine)--> TestServer --(ServerPacketDefine, 옵션)--> Test
 ```
 
 기본 포트
-- TestServer: `9000`
-- TestDBServer 코드 기본값: `8001`
-- 실행 스크립트 기본 DB 포트: `8002`
+- TestServer: Windows `19010`, Linux/macOS `9000`
+- TestDBServer 기본값: Windows `18002`, Linux/macOS `8001`
+- PowerShell 실행 스크립트: 포트 충돌 시 다음 빈 포트로 자동 fallback
 
 ## 3. 주요 디렉터리
 
@@ -75,4 +75,4 @@ NetworkModuleTest/
 
 - `BaseNetworkEngine::FireEvent`는 현재 구현상 콜백 맵 미등록 시 EventBus publish도 함께 건너뛸 수 있습니다.
 - `SessionManager` 상한(`Utils::MAX_CONNECTIONS=1000`)과 `TestServer` 초기화 상수(`10000`)가 불일치합니다.
-- 코드 기본 포트(8001)와 스크립트 기본 포트(8002)가 다르므로 실행 시 포트 명시를 권장합니다.
+- 기본 포트는 플랫폼 define으로 분기됩니다. Windows는 19010/18002, Linux/macOS는 9000/8001입니다.

@@ -1,4 +1,4 @@
-﻿# 코드-문서 시각 맵 (현재 기준)
+# 코드-문서 시각 맵 (현재 기준)
 
 코드 구조와 핵심 문서가 어디를 설명하는지 빠르게 연결해 보는 인덱스입니다.
 
@@ -92,5 +92,5 @@ Client/TestClient/
 
 ## 5. 주의 사항
 
-- TestDBServer 코드 기본 포트는 `8001`, 스크립트 기본값은 `8002`입니다.
+- 기본 포트는 플랫폼 define 기반입니다. Windows: Server `19010`, DB `18002`; Linux/macOS: Server `9000`, DB `8001`.
 - 검증 페이로드가 포함된 PingPong 포맷은 `ServerEngine/Tests/Protocols`의 테스트 경로이며, 기본 운영 패킷과 분리됩니다.

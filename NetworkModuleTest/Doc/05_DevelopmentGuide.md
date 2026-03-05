@@ -1,4 +1,4 @@
-﻿# 개발 가이드 (상세)
+# 개발 가이드 (상세)
 
 ## 1. 준비 사항
 - Visual Studio 2022, C++17
@@ -12,12 +12,12 @@
 3. 권장 빌드 순서: ServerEngine -> TestDBServer -> TestServer -> TestClient
 
 ## 3. 실행 순서
-1. `TestDBServer.exe -p 8001` (기본)
-2. `TestServer.exe -p 9000 --db-host 127.0.0.1 --db-port 8001 -d "<connstr>"` (옵션)
-3. `TestClient.exe --host 127.0.0.1 --port 9000`
+1. `TestDBServer.exe -p 18002` (Windows 기본, Linux/macOS는 8001)
+2. `TestServer.exe -p 19010 --db-host 127.0.0.1 --db-port 18002 -d "<connstr>"` (Windows 기본, Linux/macOS는 9000/8001)
+3. `TestClient.exe --host 127.0.0.1 --port 19010` (Windows 기본, Linux/macOS는 9000)
 4. 자동 실행: `run_allServer.ps1` 또는 `run_allServer.bat`
 
-> 참고: 실행 스크립트(`run_dbServer.ps1` 등)의 기본 DB 포트는 `8002`입니다. (코드 기본값은 `8001`)
+> 참고: PowerShell 실행 스크립트(`run_dbServer.ps1` 등)는 기본 포트 충돌 시 자동으로 다음 빈 포트로 fallback 합니다. 필요하면 `-DisablePortFallback`으로 고정할 수 있습니다.
 
 ## 4. CMake 사용
 - 루트 CMake는 `ModuleTest/MultiPlatformNetwork`만 빌드
