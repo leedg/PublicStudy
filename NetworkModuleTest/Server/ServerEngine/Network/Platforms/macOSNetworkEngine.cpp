@@ -200,7 +200,7 @@ void macOSNetworkEngine::AcceptLoop()
 				std::to_string(session->GetId()) + ": " +
 				std::string(mProvider->GetLastError()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			close(clientSocket);
+			// Session owns socket lifetime; avoid duplicate close here.
 			continue;
 		}
 
@@ -229,7 +229,7 @@ void macOSNetworkEngine::AcceptLoop()
 			Utils::Logger::Error("Failed to queue recv - Session " +
 								 std::to_string(session->GetId()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			close(clientSocket);
+			// Session owns socket lifetime; avoid duplicate close here.
 			continue;
 		}
 
