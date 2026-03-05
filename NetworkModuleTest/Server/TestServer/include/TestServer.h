@@ -38,7 +38,7 @@ namespace Network::TestServer
 
         // English: Lifecycle
         // 한글: 생명주기
-        bool Initialize(uint16_t port = 9000, const std::string& dbConnectionString = "");
+        bool Initialize(uint16_t port = Utils::DEFAULT_TEST_SERVER_PORT, const std::string& dbConnectionString = "");
         bool Start();
         void Stop();
         bool IsRunning() const;
