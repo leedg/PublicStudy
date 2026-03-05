@@ -38,4 +38,14 @@
   - `.\run_test_auto.ps1 -RunSeconds 5`
   - 기본 동작: 실행 전 서버 구조 동기화 검증을 먼저 수행
   - 동기화 검증 생략: `.\run_test_auto.ps1 -RunSeconds 5 -SkipStructureSyncCheck`
-- AsyncIOProvider 테스트는 GTest 연동 시 사용 가능
+- Windows AsyncIO 백엔드 테스트(독립 실행, GTest 불필요):
+  - 대상: `IOCPTest`, `RIOTest`
+  - 사전 조건: Visual Studio 2022 Build Tools(v143), Windows SDK
+  - 빌드:
+    - `& "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe" ".\Server\Tests\IOCPTest\IOCPTest.vcxproj" /t:Build /p:Configuration=Debug /p:Platform=x64`
+    - `& "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe" ".\Server\Tests\RIOTest\RIOTest.vcxproj" /t:Build /p:Configuration=Debug /p:Platform=x64`
+  - 실행:
+    - `.\Server\Tests\IOCPTest\x64\Debug\IOCPTest.exe`
+    - `.\Server\Tests\RIOTest\x64\Debug\RIOTest.exe`
+  - 성공 기준:
+    - `Result: N passed, 0 failed`
