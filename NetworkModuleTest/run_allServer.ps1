@@ -1,3 +1,6 @@
+# 실행 요약: TestDBServer -> TestServer 순서로 기동하고, 포트 충돌 시 자동으로 빈 포트로 이동합니다.
+# 사용 팁: 정확한 포트를 강제하려면 -DisablePortFallback 스위치를 사용하세요.
+
 param(
     [string]$Configuration = "Debug",
     [string]$Platform = "x64",

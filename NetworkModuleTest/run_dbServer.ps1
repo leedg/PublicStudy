@@ -1,3 +1,6 @@
+# 실행 요약: TestDBServer를 실행하며 포트 충돌 시 자동 fallback 합니다.
+# 사용 팁: 기본 포트를 강제하려면 -DisablePortFallback 를 사용하세요.
+
 param(
     [string]$Configuration = "Debug",
     [string]$Platform = "x64",

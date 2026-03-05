@@ -1,3 +1,6 @@
+# 빌드 요약: msbuild 경로를 PATH -> vswhere -> 고정 후보 순으로 탐지합니다.
+# 목적: 로컬 절대경로 하드코딩 없이 어느 워크스페이스에서도 동일하게 빌드 스크립트가 동작하도록 보장합니다.
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 

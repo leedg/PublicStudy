@@ -1,3 +1,6 @@
+# 실행 요약: TestServer를 실행하며 포트 충돌 시 자동 fallback 합니다.
+# 사용 팁: DB 포트와 서버 포트를 고정하려면 -DisablePortFallback 를 함께 사용하세요.
+
 param(
     [string]$Configuration = "Debug",
     [string]$Platform = "x64",

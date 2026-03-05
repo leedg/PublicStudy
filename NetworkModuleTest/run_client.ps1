@@ -1,3 +1,6 @@
+# 실행 요약: TestClient 인스턴스를 지정 개수만큼 순차 실행합니다.
+# 참고: 서버가 fallback된 포트로 떠 있다면 -ServerPort 값을 동일하게 맞춰주세요.
+
 param(
     [string]$Configuration = "Debug",
     [string]$Platform = "x64",
