@@ -1,357 +1,167 @@
-#include "IDatabase.h"
-#include <iomanip>
+#include "DatabaseFactory.h"
+#include <cmath>
+#include <cstdlib>
 #include <iostream>
+#include <stdexcept>
+#include <string>
 
 using namespace DocDBModule;
 
-void printSeparator(const std::string &title)
+namespace
 {
-	std::cout << "\n" << std::string(60, '=') << std::endl;
-	std::cout << " " << title << std::endl;
-	std::cout << std::string(60, '=') << std::endl;
+void PrintSeparator(const std::string &title)
+{
+    std::cout << "\n" << std::string(72, '=') << "\n";
+    std::cout << title << "\n";
+    std::cout << std::string(72, '=') << "\n";
 }
 
-void printResultSet(IResultSet *resultSet)
+void Expect(bool condition, const std::string &message)
 {
-	if (!resultSet)
-	{
-		std::cout << "No result set returned." << std::endl;
-		return;
-	}
-
-	// Print column headers
-	size_t columnCount = resultSet->getColumnCount();
-	std::vector<size_t> columnWidths(columnCount);
-
-	// Calculate column widths
-	for (size_t i = 0; i < columnCount; ++i)
-	{
-		columnWidths[i] = resultSet->getColumnName(i + 1).length();
-	}
-
-	// Find actual widths from data
-	std::vector<std::vector<std::string>> rows;
-	while (resultSet->next())
-	{
-		std::vector<std::string> row;
-		for (size_t i = 0; i < columnCount; ++i)
-		{
-			std::string value =
-				resultSet->isNull(i + 1) ? "NULL" : resultSet->getString(i + 1);
-			columnWidths[i] = std::max(columnWidths[i], value.length());
-			row.push_back(value);
-		}
-		rows.push_back(row);
-	}
-
-	// Print headers
-	for (size_t i = 0; i < columnCount; ++i)
-	{
-		std::cout << std::left << std::setw(columnWidths[i] + 2)
-				  << resultSet->getColumnName(i + 1);
-	}
-	std::cout << std::endl;
-
-	// Print separator
-	for (size_t i = 0; i < columnCount; ++i)
-	{
-		std::cout << std::string(columnWidths[i] + 2, '-');
-	}
-	std::cout << std::endl;
-
-	// Print data rows
-	for (const auto &row : rows)
-	{
-		for (size_t i = 0; i < columnCount; ++i)
-		{
-			std::cout << std::left << std::setw(columnWidths[i] + 2) << row[i];
-		}
-		std::cout << std::endl;
-	}
-
-	std::cout << "\nTotal rows: " << rows.size() << std::endl;
+    if (!condition)
+    {
+        throw std::runtime_error("[ASSERT] " + message);
+    }
 }
+
+bool NearlyEqual(double lhs, double rhs, double epsilon = 1e-6)
+{
+    return std::fabs(lhs - rhs) <= epsilon;
+}
+
+std::string GetEnvOrDefault(const char *name, const std::string &fallback)
+{
+    const char *value = std::getenv(name);
+    if (value != nullptr && value[0] != '\0')
+    {
+        return value;
+    }
+
+    return fallback;
+}
+
+DatabaseConfig BuildOledbConfig()
+{
+    DatabaseConfig config;
+    config.type = DatabaseType::OLEDB;
+
+    // Korean: 환경변수 DOCDB_OLEDB_CONN 우선. 없으면 로컬 기본값 사용.
+    config.connectionString = GetEnvOrDefault(
+        "DOCDB_OLEDB_CONN",
+        "Provider=MSOLEDBSQL;Server=localhost;Database=master;Integrated Security=SSPI");
+
+    config.connectionTimeout = 30;
+    config.commandTimeout = 30;
+    config.autoCommit = true;
+    return config;
+}
+
+void RunTypeRoundTrip(IStatement &statement)
+{
+    statement.setQuery(
+        "SELECT "
+        "? AS v_text, "
+        "? AS v_int, "
+        "? AS v_bigint, "
+        "? AS v_double, "
+        "? AS v_bool, "
+        "? AS v_nullable");
+
+    statement.bindParameter(1, std::string("gamma"));
+    statement.bindParameter(2, 77);
+    statement.bindParameter(3, 1234567890123LL);
+    statement.bindParameter(4, 0.125);
+    statement.bindParameter(5, true);
+    statement.bindNullParameter(6);
+
+    auto result = statement.executeQuery();
+    Expect(result != nullptr, "ResultSet must not be null");
+    Expect(result->next(), "SELECT should return one row");
+
+    Expect(result->getString("v_text") == "gamma", "v_text mismatch");
+    Expect(result->getInt("v_int") == 77, "v_int mismatch");
+    Expect(result->getLong("v_bigint") == 1234567890123LL, "v_bigint mismatch");
+    Expect(NearlyEqual(result->getDouble("v_double"), 0.125, 1e-6), "v_double mismatch");
+    Expect(result->getBool("v_bool"), "v_bool mismatch");
+    Expect(result->isNull("v_nullable"), "v_nullable should be NULL");
+
+    Expect(!result->next(), "SELECT should return only one row");
+}
+
+void RunTypeRoundTripFalseBool(IStatement &statement)
+{
+    statement.clearParameters();
+    statement.setQuery(
+        "SELECT "
+        "? AS v_text, "
+        "? AS v_int, "
+        "? AS v_bigint, "
+        "? AS v_double, "
+        "? AS v_bool, "
+        "? AS v_nullable");
+
+    statement.bindParameter(1, std::string("delta"));
+    statement.bindParameter(2, -11);
+    statement.bindParameter(3, -444444444444LL);
+    statement.bindParameter(4, -3.5);
+    statement.bindParameter(5, false);
+    statement.bindParameter(6, std::string("not-null"));
+
+    auto result = statement.executeQuery();
+    Expect(result != nullptr, "ResultSet must not be null (2nd run)");
+    Expect(result->next(), "SELECT should return one row (2nd run)");
+
+    Expect(result->getString("v_text") == "delta", "v_text mismatch (2nd run)");
+    Expect(result->getInt("v_int") == -11, "v_int mismatch (2nd run)");
+    Expect(result->getLong("v_bigint") == -444444444444LL, "v_bigint mismatch (2nd run)");
+    Expect(NearlyEqual(result->getDouble("v_double"), -3.5, 1e-6), "v_double mismatch (2nd run)");
+    Expect(!result->getBool("v_bool"), "v_bool mismatch (2nd run)");
+    Expect(!result->isNull("v_nullable"), "v_nullable should not be NULL (2nd run)");
+}
+} // namespace
 
 int main()
 {
-	try
-	{
-		printSeparator("DocDBModule OLEDB Sample");
+#if defined(_WIN32)
+    try
+    {
+        PrintSeparator("DocDBModule OLEDB Type Round-Trip Sample");
 
-		// Build connection string
-		std::map<std::string, std::string> connParams;
-		connParams["Provider"] = "SQLOLEDB";
-		connParams["Server"] = "localhost";
-		connParams["Database"] = "TestDB";
-		connParams["Integrated Security"] = "SSPI";
+        DatabaseConfig config = BuildOledbConfig();
+        std::cout << "Connection String: " << config.connectionString << "\n";
 
-		std::string connectionString =
-			Utils::buildOLEDBConnectionString(connParams);
-		std::cout << "Connection String: " << connectionString << std::endl;
+        auto database = DatabaseFactory::createOLEDBDatabase();
+        database->connect(config);
 
-		// Create database instance
-		auto database = DatabaseFactory::createOLEDBDatabase();
+        Expect(database->isConnected(), "Database should be connected");
 
-		// Configure database
-		DatabaseConfig config;
-		config.connectionString = connectionString;
-		config.type = DatabaseType::OLEDB;
-		config.connectionTimeout = 30;
-		config.commandTimeout = 30;
-		config.autoCommit = true;
+        auto statement = database->createStatement();
 
-		std::cout << "\nConnecting to database..." << std::endl;
-		database->connect(config);
-		std::cout << "Connected successfully!" << std::endl;
+        PrintSeparator("Case 1: true + NULL");
+        RunTypeRoundTrip(*statement);
 
-		// Test 1: Simple query
-		printSeparator("Test 1: Simple Query");
-		auto statement = database->createStatement();
-		statement->setQuery("SELECT @@VERSION as version");
-		auto resultSet = statement->executeQuery();
-		printResultSet(resultSet.get());
+        PrintSeparator("Case 2: false + non-NULL");
+        RunTypeRoundTripFalseBool(*statement);
 
-		// Test 2: Parameterized query
-		printSeparator("Test 2: Parameterized Query");
-		statement->setQuery(
-			"SELECT ? as test_number, ? as test_string, ? as test_date");
-		statement->bindParameter(1, 42);
-		statement->bindParameter(2, "Hello, OLEDB!");
-		statement->bindParameter(3, "2024-01-01");
-		resultSet = statement->executeQuery();
-		printResultSet(resultSet.get());
+        database->disconnect();
+        Expect(!database->isConnected(), "Database should be disconnected");
 
-		// Test 3: Create table and insert data
-		printSeparator("Test 3: Table Operations");
-		statement = database->createStatement();
-
-		// Drop table if exists
-		try
-		{
-			statement->setQuery("DROP TABLE test_table_oledb");
-			statement->executeUpdate();
-			std::cout << "Dropped existing table 'test_table_oledb'"
-						  << std::endl;
-		}
-		catch (const DatabaseException &e)
-		{
-			std::cout << "Note: " << e.what() << std::endl;
-		}
-
-		// Create table
-		statement->setQuery(R"(
-			CREATE TABLE test_table_oledb (
-				id INT IDENTITY(1,1) PRIMARY KEY,
-				name NVARCHAR(100) NOT NULL,
-				age INT,
-				salary DECIMAL(10,2),
-				created_date DATETIME DEFAULT GETDATE()
-			)
-		)");
-		int result = statement->executeUpdate();
-		std::cout << "Created table 'test_table_oledb'. Rows affected: "
-				  << result << std::endl;
-
-		// Insert data
-		statement->setQuery("INSERT INTO test_table_oledb (name, age, salary) "
-							"VALUES (?, ?, ?)");
-
-		std::vector<std::tuple<std::string, int, double>> employees = {
-			{"Alice Wilson", 32, 55000.75},
-			{"Bob Martinez", 27, 48000.50},
-			{"Carol Davis", 38, 62000.00},
-			{"David Lee", 29, 51000.25}};
-
-		for (const auto &emp : employees)
-		{
-			statement->bindParameter(1, std::get<0>(emp)); // name
-			statement->bindParameter(2, std::get<1>(emp)); // age
-			statement->bindParameter(3, std::get<2>(emp)); // salary
-			result = statement->executeUpdate();
-			std::cout << "Inserted: " << std::get<0>(emp)
-						  << ". Rows affected: " << result << std::endl;
-		}
-
-		// Query the data
-		printSeparator("Test 4: Query Inserted Data");
-		statement->setQuery("SELECT id, name, age, salary, created_date FROM "
-							"test_table_oledb ORDER BY id");
-		resultSet = statement->executeQuery();
-		printResultSet(resultSet.get());
-
-		// Test 5: Update operations
-		printSeparator("Test 5: Update Operations");
-		statement->setQuery("UPDATE test_table_oledb SET salary = salary * "
-							"1.15 WHERE age < 30");
-		result = statement->executeUpdate();
-		std::cout << "Updated salaries for employees under 30. Rows affected: "
-				  << result << std::endl;
-
-		// Verify update
-		statement->setQuery("SELECT name, age, salary FROM test_table_oledb "
-							"WHERE age < 30 ORDER BY name");
-		resultSet = statement->executeQuery();
-		printResultSet(resultSet.get());
-
-		// Test 6: Transaction test
-		printSeparator("Test 6: Transaction Test");
-		database->beginTransaction();
-
-		try
-		{
-			statement = database->createStatement();
-			statement->setQuery("INSERT INTO test_table_oledb (name, age, "
-								"salary) VALUES (?, ?, ?)");
-			statement->bindParameter(1, "OLEDB Transaction User");
-			statement->bindParameter(2, 45);
-			statement->bindParameter(3, 75000.00);
-			result = statement->executeUpdate();
-			std::cout << "Inserted transaction record. Rows affected: "
-						  << result << std::endl;
-
-			database->commitTransaction();
-			std::cout << "Transaction committed successfully!" << std::endl;
-		}
-		catch (const DatabaseException &e)
-		{
-			database->rollbackTransaction();
-			std::cout << "Transaction rolled back due to error: " << e.what()
-						  << std::endl;
-		}
-
-		// Verify transaction
-		statement->setQuery("SELECT COUNT(*) as count FROM test_table_oledb "
-							"WHERE name = 'OLEDB Transaction User'");
-		resultSet = statement->executeQuery();
-		if (resultSet->next())
-		{
-			int count = resultSet->getInt(1);
-			std::cout << "Transaction user record exists: "
-						  << (count > 0 ? "YES" : "NO") << std::endl;
-		}
-
-		// Test 7: Batch operations
-		printSeparator("Test 7: Batch Operations");
-		statement->setQuery("INSERT INTO test_table_oledb (name, age, salary) "
-							"VALUES (?, ?, ?)");
-
-		std::vector<std::tuple<std::string, int, double>> batchEmployees = {
-			{"Eva Thompson", 31, 53000.00},
-			{"Frank Garcia", 26, 47000.75},
-			{"Grace Kim", 33, 58000.50}};
-
-		for (const auto &emp : batchEmployees)
-		{
-			statement->bindParameter(1, std::get<0>(emp));
-			statement->bindParameter(2, std::get<1>(emp));
-			statement->bindParameter(3, std::get<2>(emp));
-			statement->addBatch();
-		}
-
-		std::vector<int> batchResults = statement->executeBatch();
-		std::cout << "Batch insert completed. Results: ";
-		for (size_t i = 0; i < batchResults.size(); ++i)
-		{
-			std::cout << batchResults[i];
-			if (i < batchResults.size() - 1)
-				std::cout << ", ";
-		}
-		std::cout << std::endl;
-
-		// Test 8: Complex query with JOIN
-		printSeparator("Test 8: Complex Query with JOIN");
-
-		// Create a second table for JOIN test
-		try
-		{
-			statement->setQuery(R"(
-				CREATE TABLE departments (
-					id INT IDENTITY(1,1) PRIMARY KEY,
-					name NVARCHAR(50) NOT NULL,
-					manager_id INT
-				)
-			)");
-			statement->executeUpdate();
-			std::cout << "Created departments table" << std::endl;
-
-			// Insert department data
-			statement->setQuery(
-				"INSERT INTO departments (name, manager_id) VALUES (?, ?)");
-			statement->bindParameter(1, "Engineering");
-			statement->bindParameter(2, 1);
-			statement->executeUpdate();
-
-			statement->bindParameter(1, "Marketing");
-			statement->bindParameter(2, 2);
-			statement->executeUpdate();
-
-			// Add department column to test_table_oledb
-			statement->setQuery(
-				"ALTER TABLE test_table_oledb ADD department_id INT");
-			statement->executeUpdate();
-
-			// Update some records with department
-			statement->setQuery("UPDATE test_table_oledb SET department_id = 1 "
-								"WHERE id % 2 = 1");
-			statement->executeUpdate();
-
-			statement->setQuery("UPDATE test_table_oledb SET department_id = 2 "
-								"WHERE id % 2 = 0");
-			statement->executeUpdate();
-
-			// Complex JOIN query
-			statement->setQuery(R"(
-				SELECT 
-					e.name as employee_name,
-					e.age,
-					e.salary,
-					d.name as department_name
-				FROM test_table_oledb e
-				LEFT JOIN departments d ON e.department_id = d.id
-				ORDER BY e.name
-			)");
-			resultSet = statement->executeQuery();
-			printResultSet(resultSet.get());
-		}
-		catch (const DatabaseException &e)
-		{
-			std::cout << "Complex query test failed: " << e.what() << std::endl;
-		}
-
-		// Cleanup
-		printSeparator("Cleanup");
-		statement = database->createStatement();
-		try
-		{
-			statement->setQuery("DROP TABLE test_table_oledb");
-			statement->executeUpdate();
-			std::cout << "Dropped test table" << std::endl;
-
-			statement->setQuery("DROP TABLE departments");
-			statement->executeUpdate();
-			std::cout << "Dropped departments table" << std::endl;
-		}
-		catch (const DatabaseException &e)
-		{
-			std::cout << "Cleanup failed: " << e.what() << std::endl;
-		}
-
-		database->disconnect();
-		std::cout << "Disconnected from database." << std::endl;
-
-		printSeparator("OLEDB Sample Completed Successfully");
-	}
-	catch (const DatabaseException &e)
-	{
-		std::cerr << "Database Error: " << e.what()
-				  << " (Code: " << e.getErrorCode() << ")" << std::endl;
-		return 1;
-	}
-	catch (const std::exception &e)
-	{
-		std::cerr << "Error: " << e.what() << std::endl;
-		return 1;
-	}
-
-	return 0;
+        PrintSeparator("OLEDB sample completed successfully");
+        return 0;
+    }
+    catch (const DatabaseException &e)
+    {
+        std::cerr << "Database Error: " << e.what() << " (Code: " << e.getErrorCode() << ")\n";
+        std::cerr << "Hint: Set DOCDB_OLEDB_CONN if custom provider settings are required.\n";
+        return 1;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Error: " << e.what() << "\n";
+        return 1;
+    }
+#else
+    std::cout << "oledb_sample is Windows-only (_WIN32). Skipping.\n";
+    return 0;
+#endif
 }

@@ -1,5 +1,5 @@
-// English: OLEDBDatabase implementation
-// 한글: OLEDBDatabase 구현
+﻿// English: OLEDBDatabase implementation
+// ?쒓?: OLEDBDatabase 援ы쁽
 
 #include "OLEDBDatabase.h"
 #include <stdexcept>
@@ -11,7 +11,7 @@ namespace Database
 
 // =============================================================================
 // English: OLEDBDatabase Implementation
-// 한글: OLEDBDatabase 구현
+// ?쒓?: OLEDBDatabase 援ы쁽
 // =============================================================================
 
 OLEDBDatabase::OLEDBDatabase() : mConnected(false) {}
@@ -48,28 +48,28 @@ std::unique_ptr<IStatement> OLEDBDatabase::CreateStatement()
 
 void OLEDBDatabase::BeginTransaction()
 {
-	// English: OLEDB transaction — toggle in-transaction flag
-	// 한글: OLEDB 트랜잭션 — 트랜잭션 상태 플래그 토글
+	// English: OLEDB transaction ??toggle in-transaction flag
+	// ?쒓?: OLEDB ?몃옖??뀡 ???몃옖??뀡 ?곹깭 ?뚮옒洹??좉?
 	mInTransaction = true;
 }
 
 void OLEDBDatabase::CommitTransaction()
 {
-	// English: OLEDB commit — clear in-transaction flag
-	// 한글: OLEDB 커밋 — 트랜잭션 상태 플래그 초기화
+	// English: OLEDB commit ??clear in-transaction flag
+	// ?쒓?: OLEDB 而ㅻ컠 ???몃옖??뀡 ?곹깭 ?뚮옒洹?珥덇린??
 	mInTransaction = false;
 }
 
 void OLEDBDatabase::RollbackTransaction()
 {
-	// English: OLEDB rollback — clear in-transaction flag
-	// 한글: OLEDB 롤백 — 트랜잭션 상태 플래그 초기화
+	// English: OLEDB rollback ??clear in-transaction flag
+	// ?쒓?: OLEDB 濡ㅻ갚 ???몃옖??뀡 ?곹깭 ?뚮옒洹?珥덇린??
 	mInTransaction = false;
 }
 
 // =============================================================================
 // English: OLEDBConnection Implementation
-// 한글: OLEDBConnection 구현
+// ?쒓?: OLEDBConnection 援ы쁽
 // =============================================================================
 
 OLEDBConnection::OLEDBConnection() : mConnected(false), mLastErrorCode(0) {}
@@ -80,11 +80,11 @@ void OLEDBConnection::Open([[maybe_unused]] const std::string &connectionString)
 {
 	if (mConnected)
 	{
-		return; // English: Already connected / 한글: 이미 연결됨
+		return; // English: Already connected / ?쒓?: ?대? ?곌껐??
 	}
 
 	// English: OLEDB connection implementation
-	// 한글: OLEDB 연결 구현
+	// ?쒓?: OLEDB ?곌껐 援ы쁽
 	mConnected = true;
 }
 
@@ -103,28 +103,28 @@ std::unique_ptr<IStatement> OLEDBConnection::CreateStatement()
 
 void OLEDBConnection::BeginTransaction()
 {
-	// English: OLEDB connection transaction — toggle in-transaction flag
-	// 한글: OLEDB 커넥션 트랜잭션 — 트랜잭션 상태 플래그 토글
+	// English: OLEDB connection transaction ??toggle in-transaction flag
+	// ?쒓?: OLEDB 而ㅻ꽖???몃옖??뀡 ???몃옖??뀡 ?곹깭 ?뚮옒洹??좉?
 	mInTransaction = true;
 }
 
 void OLEDBConnection::CommitTransaction()
 {
-	// English: OLEDB connection commit — clear in-transaction flag
-	// 한글: OLEDB 커넥션 커밋 — 트랜잭션 상태 플래그 초기화
+	// English: OLEDB connection commit ??clear in-transaction flag
+	// ?쒓?: OLEDB 而ㅻ꽖??而ㅻ컠 ???몃옖??뀡 ?곹깭 ?뚮옒洹?珥덇린??
 	mInTransaction = false;
 }
 
 void OLEDBConnection::RollbackTransaction()
 {
-	// English: OLEDB connection rollback — clear in-transaction flag
-	// 한글: OLEDB 커넥션 롤백 — 트랜잭션 상태 플래그 초기화
+	// English: OLEDB connection rollback ??clear in-transaction flag
+	// ?쒓?: OLEDB 而ㅻ꽖??濡ㅻ갚 ???몃옖??뀡 ?곹깭 ?뚮옒洹?珥덇린??
 	mInTransaction = false;
 }
 
 // =============================================================================
 // English: OLEDBStatement Implementation
-// 한글: OLEDBStatement 구현
+// ?쒓?: OLEDBStatement 援ы쁽
 // =============================================================================
 
 OLEDBStatement::OLEDBStatement() : mPrepared(false), mTimeout(30) {}
@@ -136,7 +136,7 @@ void OLEDBStatement::SetQuery(const std::string &query) { mQuery = query; }
 void OLEDBStatement::SetTimeout(int seconds) { mTimeout = seconds; }
 
 // English: Simple in-memory parameter binding for module tests
-// 한글: 모듈 테스트용 단순 인메모리 파라미터 바인딩
+// ?쒓?: 紐⑤뱢 ?뚯뒪?몄슜 ?⑥닚 ?몃찓紐⑤━ ?뚮씪誘명꽣 諛붿씤??
 void OLEDBStatement::BindParameter(size_t index, const std::string &value)
 {
 	if (index == 0)
@@ -165,7 +165,7 @@ void OLEDBStatement::BindParameter(size_t index, double value)
 
 void OLEDBStatement::BindParameter(size_t index, bool value)
 {
-	BindParameter(index, value ? "1" : "0");
+	BindParameter(index, std::string(value ? "1" : "0"));
 }
 
 void OLEDBStatement::BindNullParameter(size_t index)
@@ -176,7 +176,7 @@ void OLEDBStatement::BindNullParameter(size_t index)
 std::unique_ptr<IResultSet> OLEDBStatement::ExecuteQuery()
 {
 	// English: For module tests return an empty result set
-	// 한글: 모듈 테스트용 빈 결과 집합 반환
+	// ?쒓?: 紐⑤뱢 ?뚯뒪?몄슜 鍮?寃곌낵 吏묓빀 諛섑솚
 	mPrepared = true;
 	return std::make_unique<OLEDBResultSet>();
 }
@@ -184,7 +184,7 @@ std::unique_ptr<IResultSet> OLEDBStatement::ExecuteQuery()
 int OLEDBStatement::ExecuteUpdate()
 {
 	// English: No-op update simulation
-	// 한글: 업데이트 시뮬레이션
+	// ?쒓?: ?낅뜲?댄듃 ?쒕??덉씠??
 	mPrepared = true;
 	return 0;
 }
@@ -192,7 +192,7 @@ int OLEDBStatement::ExecuteUpdate()
 bool OLEDBStatement::Execute()
 {
 	// English: Execute statement without returning results
-	// 한글: 결과 없이 구문 실행
+	// ?쒓?: 寃곌낵 ?놁씠 援щЦ ?ㅽ뻾
 	mPrepared = true;
 	return true;
 }
@@ -200,16 +200,16 @@ bool OLEDBStatement::Execute()
 void OLEDBStatement::AddBatch()
 {
 	// English: Add current query+params to batch
-	// 한글: 현재 쿼리+파라미터를 배치에 추가
+	// ?쒓?: ?꾩옱 荑쇰━+?뚮씪誘명꽣瑜?諛곗튂??異붽?
 	if (!mQuery.empty())
 	{
 		// English: Simple serialization: query|p1|p2|...
-		// 한글: 단순 직렬화: query|p1|p2|...
+		// ?쒓?: ?⑥닚 吏곷젹?? query|p1|p2|...
 		std::string entry = mQuery;
 		for (const auto &p : mParameters)
 		{
 			entry.push_back(
-				'\x1F'); // English: unit separator / 한글: 단위 구분자
+				'\x1F'); // English: unit separator / ?쒓?: ?⑥쐞 援щ텇??
 			entry += p;
 		}
 		mBatch.push_back(std::move(entry));
@@ -222,7 +222,7 @@ std::vector<int> OLEDBStatement::ExecuteBatch()
 	for (size_t i = 0; i < mBatch.size(); ++i)
 	{
 		// English: Simulate execution success
-		// 한글: 실행 성공 시뮬레이션
+		// ?쒓?: ?ㅽ뻾 ?깃났 ?쒕??덉씠??
 		results.push_back(0);
 	}
 	mBatch.clear();
@@ -238,12 +238,12 @@ void OLEDBStatement::ClearParameters()
 void OLEDBStatement::Close()
 {
 	// English: OLEDB close implementation
-	// 한글: OLEDB 닫기 구현
+	// ?쒓?: OLEDB ?リ린 援ы쁽
 }
 
 // =============================================================================
 // English: OLEDBResultSet Implementation
-// 한글: OLEDBResultSet 구현
+// ?쒓?: OLEDBResultSet 援ы쁽
 // =============================================================================
 
 OLEDBResultSet::OLEDBResultSet() : mHasData(false), mMetadataLoaded(false) {}
@@ -253,14 +253,14 @@ OLEDBResultSet::~OLEDBResultSet() { Close(); }
 void OLEDBResultSet::LoadMetadata()
 {
 	// English: No metadata available in the module test stub
-	// 한글: 모듈 테스트 스텁에서는 메타데이터 없음
+	// ?쒓?: 紐⑤뱢 ?뚯뒪???ㅽ뀅?먯꽌??硫뷀??곗씠???놁쓬
 	mMetadataLoaded = true;
 }
 
 bool OLEDBResultSet::Next()
 {
 	// English: No rows in stub
-	// 한글: 스텁에는 행 없음
+	// ?쒓?: ?ㅽ뀅?먮뒗 ???놁쓬
 	mHasData = false;
 	return false;
 }
@@ -394,7 +394,7 @@ size_t OLEDBResultSet::FindColumn(const std::string &columnName) const
 void OLEDBResultSet::Close()
 {
 	// English: OLEDB close implementation
-	// 한글: OLEDB 닫기 구현
+	// ?쒓?: OLEDB ?リ린 援ы쁽
 }
 
 } // namespace Database
