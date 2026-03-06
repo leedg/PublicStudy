@@ -234,79 +234,28 @@ class ExecutionQueue
 
 		}
 
-		const auto deadline =
+		// English: Route to backend-specific wait to prevent missed-notification race.
+		//          Mutex backend: CV must be waited under mMutexQueueMutex (same mutex
+		//          the producer holds during push+notify) so notify cannot slip between
+		//          the consumer's empty-check and its wait registration.
+		//          Lock-free backend: CV is waited under mWaitMutex; producer must
+		//          notify while holding mWaitMutex (see TryPushLockFree).
+		// 한글: missed-notification 경쟁을 방지하기 위해 백엔드별 대기 경로 분기.
+		//       Mutex 백엔드: CV를 mMutexQueueMutex 하에서 대기해야 함. 생산자가
+		//       push+notify 시 동일 뮤텍스를 보유하므로 비어있음 확인과 대기 등록
+		//       사이에 notify가 끼어들 수 없음.
+		//       Lock-free 백엔드: CV를 mWaitMutex 하에서 대기; 생산자는
+		//       mWaitMutex 보유 중에 notify 해야 함 (TryPushLockFree 참조).
 
-			(timeoutMs < 0)
-
-				? (std::chrono::steady_clock::time_point::max)()
-
-				: (std::chrono::steady_clock::now() +
-
-				   std::chrono::milliseconds(timeoutMs));
-
-		while (!mShutdown.load(std::memory_order_acquire))
+		if (mOptions.mBackend == QueueBackend::Mutex)
 
 		{
 
-			std::unique_lock<std::mutex> lock(mWaitMutex);
-
-			if (timeoutMs < 0)
-
-			{
-
-				mNotEmptyCV.wait(lock, [this] {
-
-					return mShutdown.load(std::memory_order_acquire) ||
-
-						   mSize.load(std::memory_order_acquire) > 0;
-
-				});
-
-			}
-
-			else
-
-			{
-
-				if (!mNotEmptyCV.wait_until(lock, deadline, [this] {
-
-						return mShutdown.load(std::memory_order_acquire) ||
-
-							   mSize.load(std::memory_order_acquire) > 0;
-
-					}))
-
-				{
-
-					return false;
-
-				}
-
-			}
-
-			if (TryPop(out))
-
-			{
-
-				return true;
-
-			}
-
-			if (timeoutMs >= 0 && std::chrono::steady_clock::now() >= deadline)
-
-			{
-
-				return false;
-
-			}
+			return PopMutexWait(out, timeoutMs);
 
 		}
 
-		// English: After shutdown, only allow draining existing items.
-
-		// 한글: shutdown 이후에는 잔여 아이템만 drain 허용.
-
-		return TryPop(out);
+		return PopLockFreeWait(out, timeoutMs);
 
 	}
 
@@ -434,7 +383,17 @@ class ExecutionQueue
 
 		mSize.fetch_add(1, std::memory_order_release);
 
-		mNotEmptyCV.notify_one();
+		// English: Notify under mWaitMutex to prevent missed-notification race with
+		//          PopLockFreeWait's predicate check + wait (both under mWaitMutex).
+		// 한글: PopLockFreeWait의 조건 확인+대기(둘 다 mWaitMutex 하에서)와의
+		//       missed-notification 경쟁 방지를 위해 mWaitMutex 보유 중 notify.
+		{
+
+			std::lock_guard<std::mutex> wl(mWaitMutex);
+
+			mNotEmptyCV.notify_one();
+
+		}
 
 		return true;
 
@@ -681,6 +640,204 @@ class ExecutionQueue
 		mNotFullLFCV.notify_one();
 
 		return true;
+
+	}
+
+	// English: Mutex-backend blocking wait for Pop().
+	//          Waits mNotEmptyCV under mMutexQueueMutex — the same mutex held by the
+	//          producer during push, eliminating the missed-notification race that occurs
+	//          when producer and consumer use different mutexes.
+	// 한글: Mutex 백엔드용 블로킹 Pop() 대기.
+	//       생산자가 push 시 보유하는 것과 동일한 뮤텍스(mMutexQueueMutex) 하에서
+	//       mNotEmptyCV를 대기하여, 서로 다른 뮤텍스 사용 시 발생하는
+	//       missed-notification 경쟁을 제거함.
+	bool PopMutexWait(T &out, int timeoutMs)
+
+	{
+
+		const auto deadline =
+
+			(timeoutMs < 0)
+
+				? (std::chrono::steady_clock::time_point::max)()
+
+				: (std::chrono::steady_clock::now() +
+
+				   std::chrono::milliseconds(timeoutMs));
+
+		while (!mShutdown.load(std::memory_order_acquire))
+
+		{
+
+			std::unique_lock<std::mutex> lock(mMutexQueueMutex);
+
+			if (timeoutMs < 0)
+
+			{
+
+				mNotEmptyCV.wait(lock, [this] {
+
+					return mShutdown.load(std::memory_order_acquire) ||
+
+						   !mMutexQueue.empty();
+
+				});
+
+			}
+
+			else
+
+			{
+
+				if (!mNotEmptyCV.wait_until(lock, deadline, [this] {
+
+						return mShutdown.load(std::memory_order_acquire) ||
+
+							   !mMutexQueue.empty();
+
+					}))
+
+				{
+
+					return false;
+
+				}
+
+			}
+
+			if (mShutdown.load(std::memory_order_acquire))
+
+			{
+
+				break;
+
+			}
+
+			if (!mMutexQueue.empty())
+
+			{
+
+				out = std::move(mMutexQueue.front());
+
+				mMutexQueue.pop();
+
+				mSize.fetch_sub(1, std::memory_order_release);
+
+				lock.unlock();
+
+				mNotFullMutexCV.notify_one();
+
+				return true;
+
+			}
+
+		}
+
+		// English: After shutdown, drain remaining items.
+		// 한글: shutdown 이후 잔여 아이템 drain.
+		std::lock_guard<std::mutex> lock(mMutexQueueMutex);
+
+		if (!mMutexQueue.empty())
+
+		{
+
+			out = std::move(mMutexQueue.front());
+
+			mMutexQueue.pop();
+
+			mSize.fetch_sub(1, std::memory_order_release);
+
+			return true;
+
+		}
+
+		return false;
+
+	}
+
+	// English: Lock-free-backend blocking wait for Pop().
+	//          Waits mNotEmptyCV under mWaitMutex; producer must notify under the same
+	//          mutex (see TryPushLockFree) to prevent missed-notification race.
+	// 한글: Lock-free 백엔드용 블로킹 Pop() 대기.
+	//       mWaitMutex 하에서 mNotEmptyCV를 대기; 생산자는 동일 뮤텍스 보유 중에
+	//       notify 해야 함 (TryPushLockFree 참조).
+	bool PopLockFreeWait(T &out, int timeoutMs)
+
+	{
+
+		const auto deadline =
+
+			(timeoutMs < 0)
+
+				? (std::chrono::steady_clock::time_point::max)()
+
+				: (std::chrono::steady_clock::now() +
+
+				   std::chrono::milliseconds(timeoutMs));
+
+		while (!mShutdown.load(std::memory_order_acquire))
+
+		{
+
+			std::unique_lock<std::mutex> lock(mWaitMutex);
+
+			if (timeoutMs < 0)
+
+			{
+
+				mNotEmptyCV.wait(lock, [this] {
+
+					return mShutdown.load(std::memory_order_acquire) ||
+
+						   mSize.load(std::memory_order_acquire) > 0;
+
+				});
+
+			}
+
+			else
+
+			{
+
+				if (!mNotEmptyCV.wait_until(lock, deadline, [this] {
+
+						return mShutdown.load(std::memory_order_acquire) ||
+
+							   mSize.load(std::memory_order_acquire) > 0;
+
+					}))
+
+				{
+
+					return false;
+
+				}
+
+			}
+
+			lock.unlock();
+
+			if (TryPop(out))
+
+			{
+
+				return true;
+
+			}
+
+			if (timeoutMs >= 0 && std::chrono::steady_clock::now() >= deadline)
+
+			{
+
+				return false;
+
+			}
+
+		}
+
+		// English: After shutdown, only allow draining existing items.
+		// 한글: shutdown 이후에는 잔여 아이템만 drain 허용.
+		return TryPop(out);
 
 	}
 
