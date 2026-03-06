@@ -66,13 +66,27 @@ void ODBCDatabase::checkSQLReturn(SQLRETURN ret, const std::string &operation,
 
 void ODBCDatabase::connect(const DatabaseConfig &config)
 {
+	if (connected_)
+	{
+		disconnect();
+	}
+
 	config_ = config;
-	auto connection = std::make_unique<ODBCConnection>(environment_);
-	connection->open(config.connectionString);
+	sharedConnection_ = std::make_unique<ODBCConnection>(environment_);
+	sharedConnection_->open(config.connectionString);
 	connected_ = true;
 }
 
-void ODBCDatabase::disconnect() { connected_ = false; }
+void ODBCDatabase::disconnect()
+{
+	if (sharedConnection_)
+	{
+		sharedConnection_->close();
+		sharedConnection_.reset();
+	}
+
+	connected_ = false;
+}
 
 bool ODBCDatabase::isConnected() const { return connected_; }
 
@@ -87,34 +101,42 @@ std::unique_ptr<IConnection> ODBCDatabase::createConnection()
 
 std::unique_ptr<IStatement> ODBCDatabase::createStatement()
 {
-	if (!connected_)
+	if (!connected_ || !sharedConnection_ || !sharedConnection_->isOpen())
 	{
 		throw DatabaseException("Database not connected");
 	}
-	auto connection = createConnection();
-	connection->open(config_.connectionString);
-	return connection->createStatement();
+
+	return sharedConnection_->createStatement();
 }
 
 void ODBCDatabase::beginTransaction()
 {
-	auto connection = createConnection();
-	connection->open(config_.connectionString);
-	connection->beginTransaction();
+	if (!connected_ || !sharedConnection_ || !sharedConnection_->isOpen())
+	{
+		throw DatabaseException("Database not connected");
+	}
+
+	sharedConnection_->beginTransaction();
 }
 
 void ODBCDatabase::commitTransaction()
 {
-	auto connection = createConnection();
-	connection->open(config_.connectionString);
-	connection->commitTransaction();
+	if (!connected_ || !sharedConnection_ || !sharedConnection_->isOpen())
+	{
+		throw DatabaseException("Database not connected");
+	}
+
+	sharedConnection_->commitTransaction();
 }
 
 void ODBCDatabase::rollbackTransaction()
 {
-	auto connection = createConnection();
-	connection->open(config_.connectionString);
-	connection->rollbackTransaction();
+	if (!connected_ || !sharedConnection_ || !sharedConnection_->isOpen())
+	{
+		throw DatabaseException("Database not connected");
+	}
+
+	sharedConnection_->rollbackTransaction();
 }
 
 // ODBCConnection Implementation
@@ -268,7 +290,7 @@ void ODBCStatement::bindParameter(size_t index, int value)
 	parameters_.resize(newSize);
 	parameters_[index - 1] = std::to_string(value);
 	parameterLengths_.resize(newSize);
-	parameterLengths_[index - 1] = 0;
+	parameterLengths_[index - 1] = SQL_NTS;
 }
 
 void ODBCStatement::bindParameter(size_t index, long long value)
@@ -277,7 +299,7 @@ void ODBCStatement::bindParameter(size_t index, long long value)
 	parameters_.resize(newSize);
 	parameters_[index - 1] = std::to_string(value);
 	parameterLengths_.resize(newSize);
-	parameterLengths_[index - 1] = 0;
+	parameterLengths_[index - 1] = SQL_NTS;
 }
 
 void ODBCStatement::bindParameter(size_t index, double value)
@@ -286,7 +308,7 @@ void ODBCStatement::bindParameter(size_t index, double value)
 	parameters_.resize(newSize);
 	parameters_[index - 1] = std::to_string(value);
 	parameterLengths_.resize(newSize);
-	parameterLengths_[index - 1] = 0;
+	parameterLengths_[index - 1] = SQL_NTS;
 }
 
 void ODBCStatement::bindParameter(size_t index, bool value)
@@ -295,7 +317,7 @@ void ODBCStatement::bindParameter(size_t index, bool value)
 	parameters_.resize(newSize);
 	parameters_[index - 1] = value ? "1" : "0";
 	parameterLengths_.resize(newSize);
-	parameterLengths_[index - 1] = 0;
+	parameterLengths_[index - 1] = SQL_NTS;
 }
 
 void ODBCStatement::bindNullParameter(size_t index)
@@ -323,6 +345,12 @@ std::unique_ptr<IResultSet> ODBCStatement::executeQuery()
 {
 	if (!prepared_)
 	{
+		SQLRETURN closeRet = SQLFreeStmt(statement_, SQL_CLOSE);
+		if (closeRet != SQL_SUCCESS && closeRet != SQL_SUCCESS_WITH_INFO && closeRet != SQL_NO_DATA)
+		{
+			checkSQLReturn(closeRet, "Close cursor");
+		}
+
 		bindParameters();
 		SQLRETURN ret =
 			SQLExecDirectA(statement_, (SQLCHAR *)query_.c_str(), SQL_NTS);
@@ -336,6 +364,12 @@ int ODBCStatement::executeUpdate()
 {
 	if (!prepared_)
 	{
+		SQLRETURN closeRet = SQLFreeStmt(statement_, SQL_CLOSE);
+		if (closeRet != SQL_SUCCESS && closeRet != SQL_SUCCESS_WITH_INFO && closeRet != SQL_NO_DATA)
+		{
+			checkSQLReturn(closeRet, "Close cursor");
+		}
+
 		bindParameters();
 		SQLRETURN ret =
 			SQLExecDirectA(statement_, (SQLCHAR *)query_.c_str(), SQL_NTS);
@@ -353,6 +387,12 @@ bool ODBCStatement::execute()
 {
 	if (!prepared_)
 	{
+		SQLRETURN closeRet = SQLFreeStmt(statement_, SQL_CLOSE);
+		if (closeRet != SQL_SUCCESS && closeRet != SQL_SUCCESS_WITH_INFO && closeRet != SQL_NO_DATA)
+		{
+			checkSQLReturn(closeRet, "Close cursor");
+		}
+
 		bindParameters();
 		SQLRETURN ret =
 			SQLExecDirectA(statement_, (SQLCHAR *)query_.c_str(), SQL_NTS);

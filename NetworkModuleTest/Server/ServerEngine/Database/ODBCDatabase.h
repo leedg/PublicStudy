@@ -1,7 +1,7 @@
 #pragma once
 
 // English: ODBC implementation of database interfaces
-// 한글: 데이터베이스 인터페이스의 ODBC 구현
+// ?쒓?: ?곗씠?곕쿋?댁뒪 ?명꽣?섏씠?ㅼ쓽 ODBC 援ы쁽
 
 #include "../Interfaces/DatabaseConfig.h"
 #include "../Interfaces/DatabaseException.h"
@@ -16,7 +16,7 @@
 
 #include <algorithm>
 #include <memory>
-// 한글: ODBC 헤더가 필요로 하는 Windows 타입을 먼저 정의한다.
+// ?쒓?: ODBC ?ㅻ뜑媛 ?꾩슂濡??섎뒗 Windows ??낆쓣 癒쇱? ?뺤쓽?쒕떎.
 #include <windows.h>
 #include <sql.h>
 #include <sqlext.h>
@@ -28,19 +28,19 @@ namespace Database
 {
 
 // English: Forward declarations
-// 한글: 전방 선언
+// ?쒓?: ?꾨갑 ?좎뼵
 class ODBCConnection;
 class ODBCStatement;
 class ODBCResultSet;
 
 // =============================================================================
 // English: ODBCDatabase class
-// 한글: ODBCDatabase 클래스
+// ?쒓?: ODBCDatabase ?대옒??
 // =============================================================================
 
 /**
  * English: ODBC implementation of IDatabase
- * 한글: IDatabase의 ODBC 구현
+ * ?쒓?: IDatabase??ODBC 援ы쁽
  */
 class ODBCDatabase : public IDatabase
 {
@@ -49,7 +49,7 @@ class ODBCDatabase : public IDatabase
 	virtual ~ODBCDatabase();
 
 	// English: IDatabase interface
-	// 한글: IDatabase 인터페이스
+	// ?쒓?: IDatabase ?명꽣?섏씠??
 	void Connect(const DatabaseConfig &config) override;
 	void Disconnect() override;
 	bool IsConnected() const override;
@@ -69,7 +69,7 @@ class ODBCDatabase : public IDatabase
 
   private:
 	// English: Helper methods
-	// 한글: 헬퍼 메서드
+	// ?쒓?: ?ы띁 硫붿꽌??
 	void InitializeEnvironment();
 	void CleanupEnvironment();
 	void CheckSQLReturn(SQLRETURN ret, const std::string &operation,
@@ -79,16 +79,17 @@ class ODBCDatabase : public IDatabase
 	DatabaseConfig mConfig;
 	SQLHENV mEnvironment;
 	bool mConnected;
+	std::unique_ptr<ODBCConnection> mSharedConnection;
 };
 
 // =============================================================================
 // English: ODBCConnection class
-// 한글: ODBCConnection 클래스
+// ?쒓?: ODBCConnection ?대옒??
 // =============================================================================
 
 /**
  * English: ODBC implementation of IConnection
- * 한글: IConnection의 ODBC 구현
+ * ?쒓?: IConnection??ODBC 援ы쁽
  */
 class ODBCConnection : public IConnection
 {
@@ -97,7 +98,7 @@ class ODBCConnection : public IConnection
 	virtual ~ODBCConnection();
 
 	// English: IConnection interface
-	// 한글: IConnection 인터페이스
+	// ?쒓?: IConnection ?명꽣?섏씠??
 	void Open(const std::string &connectionString) override;
 	void Close() override;
 	bool IsOpen() const override;
@@ -115,7 +116,7 @@ class ODBCConnection : public IConnection
 
   private:
 	// English: Helper methods
-	// 한글: 헬퍼 메서드
+	// ?쒓?: ?ы띁 硫붿꽌??
 	void CheckSQLReturn(SQLRETURN ret, const std::string &operation);
 	std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
 
@@ -129,12 +130,12 @@ class ODBCConnection : public IConnection
 
 // =============================================================================
 // English: ODBCStatement class
-// 한글: ODBCStatement 클래스
+// ?쒓?: ODBCStatement ?대옒??
 // =============================================================================
 
 /**
  * English: ODBC implementation of IStatement
- * 한글: IStatement의 ODBC 구현
+ * ?쒓?: IStatement??ODBC 援ы쁽
  */
 class ODBCStatement : public IStatement
 {
@@ -143,7 +144,7 @@ class ODBCStatement : public IStatement
 	virtual ~ODBCStatement();
 
 	// English: IStatement interface
-	// 한글: IStatement 인터페이스
+	// ?쒓?: IStatement ?명꽣?섏씠??
 	void SetQuery(const std::string &query) override;
 	void SetTimeout(int seconds) override;
 
@@ -166,14 +167,14 @@ class ODBCStatement : public IStatement
 
   private:
 	// English: Helper methods
-	// 한글: 헬퍼 메서드
+	// ?쒓?: ?ы띁 硫붿꽌??
 	void CheckSQLReturn(SQLRETURN ret, const std::string &operation);
 	std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
 	void BindParameters();
 
   private:
-	// English: Batch entry — snapshot of parameters for one batch item
-	// 한글: 배치 항목 — 배치 아이템 하나의 파라미터 스냅샷
+	// English: Batch entry ??snapshot of parameters for one batch item
+	// ?쒓?: 諛곗튂 ??ぉ ??諛곗튂 ?꾩씠???섎굹???뚮씪誘명꽣 ?ㅻ깄??
 	struct BatchEntry
 	{
 		std::vector<std::string> parameters;
@@ -193,12 +194,12 @@ class ODBCStatement : public IStatement
 
 // =============================================================================
 // English: ODBCResultSet class
-// 한글: ODBCResultSet 클래스
+// ?쒓?: ODBCResultSet ?대옒??
 // =============================================================================
 
 /**
  * English: ODBC implementation of IResultSet
- * 한글: IResultSet의 ODBC 구현
+ * ?쒓?: IResultSet??ODBC 援ы쁽
  */
 class ODBCResultSet : public IResultSet
 {
@@ -207,7 +208,7 @@ class ODBCResultSet : public IResultSet
 	virtual ~ODBCResultSet();
 
 	// English: IResultSet interface
-	// 한글: IResultSet 인터페이스
+	// ?쒓?: IResultSet ?명꽣?섏씠??
 	bool Next() override;
 	bool IsNull(size_t columnIndex) override;
 	bool IsNull(const std::string &columnName) override;
@@ -235,7 +236,7 @@ class ODBCResultSet : public IResultSet
 
   private:
 	// English: Helper methods
-	// 한글: 헬퍼 메서드
+	// ?쒓?: ?ы띁 硫붿꽌??
 	void LoadMetadata();
 	void CheckSQLReturn(SQLRETURN ret, const std::string &operation);
 	std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);

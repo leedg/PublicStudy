@@ -6,12 +6,21 @@ param(
     [ValidateSet("x64", "Win32")]
     [string]$Platform = "x64",
 
+    [ValidateSet("Mssql", "Mysql", "Both")]
+    [string]$DbTarget = "Both",
+
     [switch]$RequireDatabase,
     [switch]$RunSamples,
     [switch]$SkipPrereqCheck,
+    [switch]$SkipOleDbMssql,
 
+    # Legacy compatibility: maps to MSSQL ODBC/OLEDB
     [string]$OdbcConnectionString,
-    [string]$OledbConnectionString
+    [string]$OledbConnectionString,
+
+    [string]$MssqlOdbcConnectionString,
+    [string]$MysqlOdbcConnectionString,
+    [string]$MssqlOledbConnectionString
 )
 
 Set-StrictMode -Version Latest
@@ -190,16 +199,45 @@ function Restore-EnvValue {
     }
 }
 
+function Resolve-ConnectionValue {
+    param(
+        [AllowNull()][string]$Primary,
+        [AllowNull()][string]$Secondary,
+        [AllowNull()][string]$EnvSpecific,
+        [AllowNull()][string]$EnvLegacy,
+        [Parameter(Mandatory = $true)][string]$Fallback
+    )
+
+    if ($Primary) { return $Primary }
+    if ($Secondary) { return $Secondary }
+    if ($EnvSpecific) { return $EnvSpecific }
+    if ($EnvLegacy) { return $EnvLegacy }
+    return $Fallback
+}
+
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectDir = Split-Path -Parent $scriptDir
 $checkScript = Join-Path $scriptDir "check-db-prereqs.ps1"
 $buildDir = Join-Path $projectDir ("build\cmake-{0}-{1}" -f $Platform, $Configuration)
+
+$runMssql = $DbTarget -eq "Mssql" -or $DbTarget -eq "Both"
+$runMysql = $DbTarget -eq "Mysql" -or $DbTarget -eq "Both"
+$runOledbMssql = $runMssql -and (-not $SkipOleDbMssql)
+
+$mssqlOdbcDefault = "DRIVER={ODBC Driver 18 for SQL Server};SERVER=(localdb)\MSSQLLocalDB;DATABASE=master;Trusted_Connection=Yes;Encrypt=no"
+$mysqlOdbcDefault = "DRIVER={MySQL ODBC 8.0 Unicode Driver};SERVER=127.0.0.1;PORT=3306;DATABASE=mysql;USER=root;PASSWORD=;OPTION=3"
+$mssqlOledbDefault = "Provider=MSOLEDBSQL;Server=(localdb)\MSSQLLocalDB;Database=master;Integrated Security=SSPI;Encrypt=Optional"
+
+$mssqlOdbcConn = Resolve-ConnectionValue -Primary $MssqlOdbcConnectionString -Secondary $OdbcConnectionString -EnvSpecific $env:DOCDB_ODBC_CONN_MSSQL -EnvLegacy $env:DOCDB_ODBC_CONN -Fallback $mssqlOdbcDefault
+$mysqlOdbcConn = Resolve-ConnectionValue -Primary $MysqlOdbcConnectionString -Secondary $null -EnvSpecific $env:DOCDB_ODBC_CONN_MYSQL -EnvLegacy $null -Fallback $mysqlOdbcDefault
+$mssqlOledbConn = Resolve-ConnectionValue -Primary $MssqlOledbConnectionString -Secondary $OledbConnectionString -EnvSpecific $env:DOCDB_OLEDB_CONN_MSSQL -EnvLegacy $env:DOCDB_OLEDB_CONN -Fallback $mssqlOledbDefault
 
 Write-Host ""
 Write-Host "=== DBModuleTest runner ==="
 Write-Host ("ProjectDir   : {0}" -f $projectDir)
 Write-Host ("BuildDir     : {0}" -f $buildDir)
 Write-Host ("Config/Plat  : {0}/{1}" -f $Configuration, $Platform)
+Write-Host ("DbTarget     : {0}" -f $DbTarget)
 
 if (-not $SkipPrereqCheck) {
     if (-not (Test-Path -LiteralPath $checkScript)) {
@@ -208,7 +246,7 @@ if (-not $SkipPrereqCheck) {
 
     Write-Host ""
     Write-Host "[1/4] Prerequisite check"
-    & $checkScript -RequireDatabase:$RequireDatabase
+    & $checkScript -RequireDatabase:$RequireDatabase -DbTarget $DbTarget
     if ($LASTEXITCODE -ne 0) {
         throw "Prerequisite check failed (exit code $LASTEXITCODE)"
     }
@@ -238,20 +276,42 @@ Invoke-External -Exe $cmakePath -Arguments @(
     "--target", "db_tests", "odbc_sample", "oledb_sample"
 ) -Step "cmake build"
 
-$oldOdbc = $env:DOCDB_ODBC_CONN
-$oldOledb = $env:DOCDB_OLEDB_CONN
-$oldRequireDb = $env:DOCDB_REQUIRE_DB
+$trackedEnvNames = @(
+    "DOCDB_ODBC_CONN",
+    "DOCDB_OLEDB_CONN",
+    "DOCDB_ODBC_CONN_MSSQL",
+    "DOCDB_ODBC_CONN_MYSQL",
+    "DOCDB_OLEDB_CONN_MSSQL",
+    "DOCDB_REQUIRE_DB",
+    "DOCDB_RUN_MSSQL",
+    "DOCDB_RUN_MYSQL",
+    "DOCDB_RUN_OLEDB"
+)
+
+$oldEnv = @{}
+foreach ($name in $trackedEnvNames) {
+    $envItem = Get-Item -Path "Env:$name" -ErrorAction SilentlyContinue
+    if ($null -ne $envItem) {
+        $oldEnv[$name] = $envItem.Value
+    }
+    else {
+        $oldEnv[$name] = $null
+    }
+}
 
 try {
-    if ($PSBoundParameters.ContainsKey("OdbcConnectionString")) {
-        $env:DOCDB_ODBC_CONN = $OdbcConnectionString
-    }
+    $env:DOCDB_ODBC_CONN_MSSQL = $mssqlOdbcConn
+    $env:DOCDB_ODBC_CONN_MYSQL = $mysqlOdbcConn
+    $env:DOCDB_OLEDB_CONN_MSSQL = $mssqlOledbConn
 
-    if ($PSBoundParameters.ContainsKey("OledbConnectionString")) {
-        $env:DOCDB_OLEDB_CONN = $OledbConnectionString
-    }
+    # Legacy vars (sample compatibility)
+    $env:DOCDB_ODBC_CONN = if ($runMssql) { $mssqlOdbcConn } else { $mysqlOdbcConn }
+    $env:DOCDB_OLEDB_CONN = $mssqlOledbConn
 
     $env:DOCDB_REQUIRE_DB = if ($RequireDatabase) { "1" } else { "0" }
+    $env:DOCDB_RUN_MSSQL = if ($runMssql) { "1" } else { "0" }
+    $env:DOCDB_RUN_MYSQL = if ($runMysql) { "1" } else { "0" }
+    $env:DOCDB_RUN_OLEDB = if ($runOledbMssql) { "1" } else { "0" }
 
     Write-Host ""
     Write-Host "[4/4] Run tests"
@@ -264,8 +324,20 @@ try {
         $odbcSampleExe = Resolve-TestExecutable -BuildDir $buildDir -Configuration $Configuration -TargetName "odbc_sample"
         $oledbSampleExe = Resolve-TestExecutable -BuildDir $buildDir -Configuration $Configuration -TargetName "oledb_sample"
 
-        $results += Invoke-TestBinary -Path $odbcSampleExe -Name "odbc_sample"
-        $results += Invoke-TestBinary -Path $oledbSampleExe -Name "oledb_sample"
+        if ($runMssql) {
+            $env:DOCDB_ODBC_CONN = $mssqlOdbcConn
+            $results += Invoke-TestBinary -Path $odbcSampleExe -Name "odbc_sample(MSSQL)"
+        }
+
+        if ($runMysql) {
+            $env:DOCDB_ODBC_CONN = $mysqlOdbcConn
+            $results += Invoke-TestBinary -Path $odbcSampleExe -Name "odbc_sample(MySQL)"
+        }
+
+        if ($runOledbMssql) {
+            $env:DOCDB_OLEDB_CONN = $mssqlOledbConn
+            $results += Invoke-TestBinary -Path $oledbSampleExe -Name "oledb_sample(MSSQL)"
+        }
     }
 
     Write-Host ""
@@ -283,7 +355,7 @@ try {
     exit 0
 }
 finally {
-    Restore-EnvValue -Name "DOCDB_ODBC_CONN" -Value $oldOdbc
-    Restore-EnvValue -Name "DOCDB_OLEDB_CONN" -Value $oldOledb
-    Restore-EnvValue -Name "DOCDB_REQUIRE_DB" -Value $oldRequireDb
+    foreach ($name in $trackedEnvNames) {
+        Restore-EnvValue -Name $name -Value $oldEnv[$name]
+    }
 }

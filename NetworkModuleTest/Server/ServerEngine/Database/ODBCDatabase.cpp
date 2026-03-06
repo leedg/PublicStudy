@@ -1,5 +1,5 @@
 // English: ODBCDatabase implementation
-// 한글: ODBCDatabase 구현
+// ???: ODBCDatabase ??�뗭�?
 
 #include "ODBCDatabase.h"
 #include <sstream>
@@ -12,7 +12,7 @@ namespace Database
 
 // =============================================================================
 // English: ODBCDatabase Implementation
-// 한글: ODBCDatabase 구현
+// ???: ODBCDatabase ??�뗭�?
 // =============================================================================
 
 ODBCDatabase::ODBCDatabase() : mEnvironment(SQL_NULL_HANDLE), mConnected(false)
@@ -76,13 +76,27 @@ void ODBCDatabase::CheckSQLReturn(SQLRETURN ret, const std::string &operation,
 
 void ODBCDatabase::Connect(const DatabaseConfig &config)
 {
+	if (mConnected)
+	{
+		Disconnect();
+	}
+
 	mConfig = config;
-	auto pConnection = std::make_unique<ODBCConnection>(mEnvironment);
-	pConnection->Open(config.mConnectionString);
+	mSharedConnection = std::make_unique<ODBCConnection>(mEnvironment);
+	mSharedConnection->Open(config.mConnectionString);
 	mConnected = true;
 }
 
-void ODBCDatabase::Disconnect() { mConnected = false; }
+void ODBCDatabase::Disconnect()
+{
+	if (mSharedConnection)
+	{
+		mSharedConnection->Close();
+		mSharedConnection.reset();
+	}
+
+	mConnected = false;
+}
 
 bool ODBCDatabase::IsConnected() const { return mConnected; }
 
@@ -97,39 +111,47 @@ std::unique_ptr<IConnection> ODBCDatabase::CreateConnection()
 
 std::unique_ptr<IStatement> ODBCDatabase::CreateStatement()
 {
-	if (!mConnected)
+	if (!mConnected || !mSharedConnection || !mSharedConnection->IsOpen())
 	{
 		throw DatabaseException("Database not connected");
 	}
-	auto pConnection = CreateConnection();
-	pConnection->Open(mConfig.mConnectionString);
-	return pConnection->CreateStatement();
+
+	return mSharedConnection->CreateStatement();
 }
 
 void ODBCDatabase::BeginTransaction()
 {
-	auto pConnection = CreateConnection();
-	pConnection->Open(mConfig.mConnectionString);
-	pConnection->BeginTransaction();
+	if (!mConnected || !mSharedConnection || !mSharedConnection->IsOpen())
+	{
+		throw DatabaseException("Database not connected");
+	}
+
+	mSharedConnection->BeginTransaction();
 }
 
 void ODBCDatabase::CommitTransaction()
 {
-	auto pConnection = CreateConnection();
-	pConnection->Open(mConfig.mConnectionString);
-	pConnection->CommitTransaction();
+	if (!mConnected || !mSharedConnection || !mSharedConnection->IsOpen())
+	{
+		throw DatabaseException("Database not connected");
+	}
+
+	mSharedConnection->CommitTransaction();
 }
 
 void ODBCDatabase::RollbackTransaction()
 {
-	auto pConnection = CreateConnection();
-	pConnection->Open(mConfig.mConnectionString);
-	pConnection->RollbackTransaction();
+	if (!mConnected || !mSharedConnection || !mSharedConnection->IsOpen())
+	{
+		throw DatabaseException("Database not connected");
+	}
+
+	mSharedConnection->RollbackTransaction();
 }
 
 // =============================================================================
 // English: ODBCConnection Implementation
-// 한글: ODBCConnection 구현
+// ???: ODBCConnection ??�뗭�?
 // =============================================================================
 
 ODBCConnection::ODBCConnection(SQLHENV env)
@@ -149,7 +171,7 @@ void ODBCConnection::Open(const std::string &connectionString)
 {
 	if (mConnected)
 	{
-		return; // English: Already connected / 한글: 이미 연결됨
+		return; // English: Already connected / ???: ???? ??�뚭???
 	}
 
 	SQLCHAR connStrOut[1024];
@@ -253,7 +275,7 @@ std::string ODBCConnection::GetSQLErrorMessage(SQLHANDLE handle,
 
 // =============================================================================
 // English: ODBCStatement Implementation
-// 한글: ODBCStatement 구현
+// ???: ODBCStatement ??�뗭�?
 // =============================================================================
 
 ODBCStatement::ODBCStatement(SQLHDBC conn)
@@ -298,7 +320,7 @@ void ODBCStatement::BindParameter(size_t index, int value)
 	mParameters.resize(newSize);
 	mParameters[index - 1] = std::to_string(value);
 	mParameterLengths.resize(newSize);
-	mParameterLengths[index - 1] = 0;
+	mParameterLengths[index - 1] = SQL_NTS;
 }
 
 void ODBCStatement::BindParameter(size_t index, long long value)
@@ -307,7 +329,7 @@ void ODBCStatement::BindParameter(size_t index, long long value)
 	mParameters.resize(newSize);
 	mParameters[index - 1] = std::to_string(value);
 	mParameterLengths.resize(newSize);
-	mParameterLengths[index - 1] = 0;
+	mParameterLengths[index - 1] = SQL_NTS;
 }
 
 void ODBCStatement::BindParameter(size_t index, double value)
@@ -316,7 +338,7 @@ void ODBCStatement::BindParameter(size_t index, double value)
 	mParameters.resize(newSize);
 	mParameters[index - 1] = std::to_string(value);
 	mParameterLengths.resize(newSize);
-	mParameterLengths[index - 1] = 0;
+	mParameterLengths[index - 1] = SQL_NTS;
 }
 
 void ODBCStatement::BindParameter(size_t index, bool value)
@@ -325,7 +347,7 @@ void ODBCStatement::BindParameter(size_t index, bool value)
 	mParameters.resize(newSize);
 	mParameters[index - 1] = value ? "1" : "0";
 	mParameterLengths.resize(newSize);
-	mParameterLengths[index - 1] = 0;
+	mParameterLengths[index - 1] = SQL_NTS;
 }
 
 void ODBCStatement::BindNullParameter(size_t index)
@@ -353,6 +375,12 @@ std::unique_ptr<IResultSet> ODBCStatement::ExecuteQuery()
 {
 	if (!mPrepared)
 	{
+		SQLRETURN closeRet = SQLFreeStmt(mStatement, SQL_CLOSE);
+		if (closeRet != SQL_SUCCESS && closeRet != SQL_SUCCESS_WITH_INFO && closeRet != SQL_NO_DATA)
+		{
+			CheckSQLReturn(closeRet, "Close cursor");
+		}
+
 		BindParameters();
 		SQLRETURN ret =
 			SQLExecDirectA(mStatement, (SQLCHAR *)mQuery.c_str(), SQL_NTS);
@@ -366,6 +394,12 @@ int ODBCStatement::ExecuteUpdate()
 {
 	if (!mPrepared)
 	{
+		SQLRETURN closeRet = SQLFreeStmt(mStatement, SQL_CLOSE);
+		if (closeRet != SQL_SUCCESS && closeRet != SQL_SUCCESS_WITH_INFO && closeRet != SQL_NO_DATA)
+		{
+			CheckSQLReturn(closeRet, "Close cursor");
+		}
+
 		BindParameters();
 		SQLRETURN ret =
 			SQLExecDirectA(mStatement, (SQLCHAR *)mQuery.c_str(), SQL_NTS);
@@ -383,6 +417,12 @@ bool ODBCStatement::Execute()
 {
 	if (!mPrepared)
 	{
+		SQLRETURN closeRet = SQLFreeStmt(mStatement, SQL_CLOSE);
+		if (closeRet != SQL_SUCCESS && closeRet != SQL_SUCCESS_WITH_INFO && closeRet != SQL_NO_DATA)
+		{
+			CheckSQLReturn(closeRet, "Close cursor");
+		}
+
 		BindParameters();
 		SQLRETURN ret =
 			SQLExecDirectA(mStatement, (SQLCHAR *)mQuery.c_str(), SQL_NTS);
@@ -400,7 +440,7 @@ bool ODBCStatement::Execute()
 void ODBCStatement::AddBatch()
 {
 	// English: Snapshot current query+parameters as one batch entry, then reset for next item
-	// 한글: 현재 쿼리+파라미터를 배치 항목으로 저장 후 다음 항목을 위해 초기화
+	// ???: ?袁⑹???묒눖?????뵬沃?�챸?�ｇ�??�쏄????????곗쨮 ?????????�벉 ??????袁る???λ?�由??
 	if (!mQuery.empty())
 	{
 		BatchEntry entry;
@@ -416,14 +456,14 @@ void ODBCStatement::AddBatch()
 std::vector<int> ODBCStatement::ExecuteBatch()
 {
 	// English: Execute each batch entry sequentially via SQLExecDirectA, collect row counts
-	// 한글: SQLExecDirectA로 각 배치 항목을 순서대로 실행하고 행 수 수집
+	// ???: SQLExecDirectA?????�쏄??????????�?��???????�뻬???�???????륁춿
 	std::vector<int> results;
 	results.reserve(mBatches.size());
 
 	for (auto &entry : mBatches)
 	{
 		// English: Restore batch parameters to mParameters/mParameterLengths for BindParameters()
-		// 한글: BindParameters() 호출을 위해 배치 파라미터를 mParameters로 복원
+		// ???: BindParameters() ?紐꾪????袁る???�쏄??????뵬沃?�챸?�ｇ�?mParameters???�귣�??
 		mParameters = entry.parameters;
 		mParameterLengths = entry.parameterLengths;
 		mPrepared = false;
@@ -444,7 +484,7 @@ std::vector<int> ODBCStatement::ExecuteBatch()
 		}
 
 		// English: Close cursor / reset statement state for the next batch item
-		// 한글: 다음 배치 항목을 위해 커서/구문 상태 초기화
+		// ???: ???�벉 ?�쏄?????????袁る????�끉????�됎???�밴�??λ?�由??
 		SQLFreeStmt(mStatement, SQL_CLOSE);
 	}
 
@@ -496,7 +536,7 @@ std::string ODBCStatement::GetSQLErrorMessage(SQLHANDLE handle,
 
 // =============================================================================
 // English: ODBCResultSet Implementation
-// 한글: ODBCResultSet 구현
+// ???: ODBCResultSet ??�뗭�?
 // =============================================================================
 
 ODBCResultSet::ODBCResultSet(SQLHSTMT stmt)
@@ -599,7 +639,7 @@ std::string ODBCResultSet::GetString(size_t columnIndex)
 		indicator > static_cast<SQLLEN>(sizeof(buffer) - 1))
 	{
 		// English: Handle long data - simplified for this example
-		// 한글: 긴 데이터 처리 - 예제용 단순화
+		// ???: ????�쀬뵠??筌ｌ�??- ???�젫????λ???
 		value = std::string(buffer, sizeof(buffer) - 1);
 	}
 	else
@@ -711,7 +751,7 @@ size_t ODBCResultSet::FindColumn(const std::string &columnName) const
 void ODBCResultSet::Close()
 {
 	// English: Statement handle is managed by the parent statement
-	// 한글: Statement 핸들은 부모 statement에서 관리됨
+	// ???: Statement ?紐껊�?? ?봔�?statement???????�?귐됰�?
 }
 
 void ODBCResultSet::CheckSQLReturn(SQLRETURN ret, const std::string &operation)

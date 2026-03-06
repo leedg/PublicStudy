@@ -1,9 +1,11 @@
 #include "DatabaseFactory.h"
+#include <cstdint>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 using namespace DocDBModule;
 
@@ -29,6 +31,22 @@ bool NearlyEqual(double lhs, double rhs, double epsilon = 1e-6)
     return std::fabs(lhs - rhs) <= epsilon;
 }
 
+std::string ToHexLiteral(const std::vector<std::uint8_t> &bytes)
+{
+    static const char kHexDigits[] = "0123456789ABCDEF";
+
+    std::string result = "0x";
+    result.reserve(2 + (bytes.size() * 2));
+
+    for (std::uint8_t value : bytes)
+    {
+        result.push_back(kHexDigits[(value >> 4U) & 0x0FU]);
+        result.push_back(kHexDigits[value & 0x0FU]);
+    }
+
+    return result;
+}
+
 std::string GetEnvOrDefault(const char *name, const std::string &fallback)
 {
     const char *value = std::getenv(name);
@@ -45,7 +63,6 @@ DatabaseConfig BuildOdbcConfig()
     DatabaseConfig config;
     config.type = DatabaseType::ODBC;
 
-    // Korean: 환경변수 DOCDB_ODBC_CONN 우선. 없으면 로컬 기본값 사용.
     config.connectionString = GetEnvOrDefault(
         "DOCDB_ODBC_CONN",
         "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost;DATABASE=master;Trusted_Connection=Yes");
@@ -118,6 +135,73 @@ void RunTypeRoundTripFalseBool(IStatement &statement)
     Expect(!result->getBool("v_bool"), "v_bool mismatch (2nd run)");
     Expect(!result->isNull("v_nullable"), "v_nullable should not be NULL (2nd run)");
 }
+
+void RunExtendedCppTypeRoundTrip(IStatement &statement)
+{
+    const std::int16_t valueInt16 = -32123;
+    const std::uint16_t valueUInt16 = 65000;
+    const std::int32_t valueInt32 = -2000000000;
+    const std::uint32_t valueUInt32 = 4000000000U;
+    const std::int64_t valueInt64 = -8000000000123LL;
+    const std::uint64_t valueUInt64 = 8000000000123ULL;
+    const float valueFloat = 6.25F;
+    const long double valueLongDouble = -0.333333333L;
+    const char valueChar = 'Q';
+    const std::string valueDate = "2026-03-06";
+    const std::string valueTime = "17:30:45.777";
+    const std::vector<std::uint8_t> valueBinary = {0xCAU, 0xFEU, 0xBAU, 0xBEU};
+    const std::string valueBinaryHex = ToHexLiteral(valueBinary);
+
+    statement.clearParameters();
+    statement.setQuery(
+        "SELECT "
+        "? AS v_i16, "
+        "? AS v_u16, "
+        "? AS v_i32, "
+        "? AS v_u32, "
+        "? AS v_i64, "
+        "? AS v_u64, "
+        "? AS v_float, "
+        "? AS v_longdouble, "
+        "? AS v_char, "
+        "? AS v_date, "
+        "? AS v_time, "
+        "? AS v_binary_hex, "
+        "? AS v_nullable");
+
+    statement.bindParameter(1, static_cast<int>(valueInt16));
+    statement.bindParameter(2, static_cast<int>(valueUInt16));
+    statement.bindParameter(3, static_cast<int>(valueInt32));
+    statement.bindParameter(4, static_cast<long long>(valueUInt32));
+    statement.bindParameter(5, static_cast<long long>(valueInt64));
+    statement.bindParameter(6, static_cast<long long>(valueUInt64));
+    statement.bindParameter(7, static_cast<double>(valueFloat));
+    statement.bindParameter(8, static_cast<double>(valueLongDouble));
+    statement.bindParameter(9, std::string(1, valueChar));
+    statement.bindParameter(10, valueDate);
+    statement.bindParameter(11, valueTime);
+    statement.bindParameter(12, valueBinaryHex);
+    statement.bindNullParameter(13);
+
+    auto result = statement.executeQuery();
+    Expect(result != nullptr, "ResultSet must not be null (extended)");
+    Expect(result->next(), "SELECT should return one row (extended)");
+
+    Expect(result->getInt("v_i16") == static_cast<int>(valueInt16), "v_i16 mismatch");
+    Expect(result->getInt("v_u16") == static_cast<int>(valueUInt16), "v_u16 mismatch");
+    Expect(result->getInt("v_i32") == static_cast<int>(valueInt32), "v_i32 mismatch");
+    Expect(result->getLong("v_u32") == static_cast<long long>(valueUInt32), "v_u32 mismatch");
+    Expect(result->getLong("v_i64") == static_cast<long long>(valueInt64), "v_i64 mismatch");
+    Expect(result->getLong("v_u64") == static_cast<long long>(valueUInt64), "v_u64 mismatch");
+    Expect(NearlyEqual(result->getDouble("v_float"), static_cast<double>(valueFloat), 1e-4), "v_float mismatch");
+    Expect(NearlyEqual(result->getDouble("v_longdouble"), static_cast<double>(valueLongDouble), 1e-5), "v_longdouble mismatch");
+    Expect(result->getString("v_char") == std::string(1, valueChar), "v_char mismatch");
+    Expect(result->getString("v_date") == valueDate, "v_date mismatch");
+    Expect(result->getString("v_time") == valueTime, "v_time mismatch");
+    Expect(result->getString("v_binary_hex") == valueBinaryHex, "v_binary_hex mismatch");
+    Expect(result->isNull("v_nullable"), "v_nullable should be NULL (extended)");
+    Expect(!result->next(), "SELECT should return only one row (extended)");
+}
 } // namespace
 
 int main()
@@ -142,6 +226,9 @@ int main()
 
         PrintSeparator("Case 2: false + non-NULL");
         RunTypeRoundTripFalseBool(*statement);
+
+        PrintSeparator("Case 3: extended C++ types");
+        RunExtendedCppTypeRoundTrip(*statement);
 
         database->disconnect();
         Expect(!database->isConnected(), "Database should be disconnected");
