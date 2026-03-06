@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <cerrno>
 
 namespace Network::Platforms
 {
@@ -153,14 +154,23 @@ void macOSNetworkEngine::AcceptLoop()
 
 		if (clientSocket < 0)
 		{
-			if (errno == EINTR || errno == EBADF)
+			const int acceptError = errno;
+			if (acceptError == EINTR || acceptError == EBADF)
 			{
 				// English: Socket closed (shutdown signal)
 				// 한글: 소켓 닫힘 (종료 신호)
 				break;
 			}
 
-			Utils::Logger::Error("Accept failed: " + std::string(strerror(errno)));
+			if (acceptError == EAGAIN || acceptError == EWOULDBLOCK)
+			{
+				// English: Non-blocking listen socket with no pending connection.
+				// 한글: 비블로킹 listen 소켓에 대기 연결이 없는 정상 상태.
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				continue;
+			}
+
+			Utils::Logger::Error("Accept failed: " + std::string(strerror(acceptError)));
 
 			// English: Exponential backoff on error (member var, not static)
 			// 한글: 에러 시 지수 백오프 (static 대신 멤버 변수 사용)
