@@ -240,7 +240,12 @@ void BaseNetworkEngine::CloseConnection(Utils::ConnectionId connectionId)
 	//       Close()와 ProcessRawRecv가 항상 세션 단위로 직렬화됨.
 	//       세션 shared_ptr이 작업 실행 전까지 객체를 살아있게 유지.
 	auto sessionCopy = session;
-	if (!mLogicDispatcher.Dispatch(
+	// English: Route through AsyncScope — consistent with ProcessRecvCompletion disconnect path.
+	//          If Close() was already called (Cancel() set), the event is silently dropped.
+	// 한글: AsyncScope 경유 — ProcessRecvCompletion disconnect path와 일관성 유지.
+	//       Close()가 이미 호출된 경우 (Cancel() 완료) 이벤트를 조용히 건너뜀.
+	if (!session->mAsyncScope.Submit(
+			mLogicDispatcher,
 			connectionId,
 			[this, sessionCopy, connectionId]()
 			{
@@ -248,7 +253,7 @@ void BaseNetworkEngine::CloseConnection(Utils::ConnectionId connectionId)
 				FireEvent(NetworkEvent::Disconnected, connectionId);
 			}))
 	{
-		Utils::Logger::Warn("LogicDispatcher full - disconnect event dropped, Session: " +
+		Utils::Logger::Warn("LogicDispatcher full or scope cancelled - disconnect event dropped, Session: " +
 		                    std::to_string(connectionId));
 	}
 
@@ -357,11 +362,15 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 
 	if (bytesReceived <= 0)
 	{
-		// English: Connection closed or error — dispatch to session's dedicated worker.
-		// 한글: 연결 종료 또는 에러 — 세션 전용 워커로 디스패치.
+		// English: Connection closed or error — route through AsyncScope so that if
+		//          Close() was called first (Cancel() already set), the event is silently
+		//          dropped instead of firing OnDisconnected() on an already-closed session.
+		// 한글: 연결 종료 또는 에러 — AsyncScope를 경유해 Close()가 먼저 호출된 경우
+		//       (Cancel() 완료) OnDisconnected()가 이미 닫힌 세션에서 실행되지 않도록 보장.
 		const auto connId = session->GetId();
 		auto sessionCopy  = session;
-		if (!mLogicDispatcher.Dispatch(
+		if (!session->mAsyncScope.Submit(
+				mLogicDispatcher,
 				connId,
 				[this, sessionCopy, connId]()
 				{
@@ -370,7 +379,7 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 				}))
 		{
 			Utils::Logger::Warn(
-				"LogicDispatcher full - disconnect event dropped, Session: " +
+				"LogicDispatcher full or scope cancelled - disconnect event dropped, Session: " +
 				std::to_string(connId));
 		}
 
