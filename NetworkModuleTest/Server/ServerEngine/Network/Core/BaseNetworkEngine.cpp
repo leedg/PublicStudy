@@ -109,7 +109,7 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 		return false;
 	}
 
-	mInitialized.store(true, std::memory_order_relaxed);
+	mInitialized.store(true, std::memory_order_release);
 	Utils::Logger::Info("BaseNetworkEngine initialized on port " +
 						std::to_string(mPort));
 	return true;
@@ -129,14 +129,14 @@ bool BaseNetworkEngine::Start()
 		return false;
 	}
 
-	mRunning.store(true, std::memory_order_relaxed);
+	mRunning.store(true, std::memory_order_release);
 
 	// English: Start platform-specific I/O
 	// 한글: 플랫폼별 I/O 시작
 	if (!StartPlatformIO())
 	{
 		Utils::Logger::Error("Failed to start platform I/O");
-		mRunning.store(false, std::memory_order_relaxed);
+		mRunning.store(false, std::memory_order_release);
 		return false;
 	}
 
@@ -151,7 +151,7 @@ void BaseNetworkEngine::Stop()
 		return;
 	}
 
-	mRunning.store(false, std::memory_order_relaxed);
+	mRunning.store(false, std::memory_order_release);
 
 	// English: Stop timer queue first (cancels periodic session-timeout checks).
 	// 한글: 타이머 큐 먼저 종료 (주기 세션 타임아웃 점검 취소).
@@ -173,7 +173,7 @@ void BaseNetworkEngine::Stop()
 	// 한글: 플랫폼 리소스 종료
 	ShutdownPlatform();
 
-	mInitialized.store(false, std::memory_order_relaxed);
+	mInitialized.store(false, std::memory_order_release);
 	Utils::Logger::Info("BaseNetworkEngine stopped");
 }
 
