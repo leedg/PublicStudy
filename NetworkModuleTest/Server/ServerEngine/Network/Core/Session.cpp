@@ -644,9 +644,13 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 				mRecvAccumOffset = 0;
 			}
 
-			// English: Transfer ownership to localBatch for dispatch outside the lock.
-			// 한글: 락 밖에서 디스패치하기 위해 localBatch로 소유권 이전.
+			// English: Transfer batch to localBatch, then immediately re-arm mRecvBatchBuf
+			//          with pre-reserved capacity so the next call skips the reserve() call.
+			//          swap() alone resets mRecvBatchBuf.capacity() to 0 (defeats the intent).
+			// 한글: 배치를 localBatch로 이전 후, mRecvBatchBuf를 즉시 재무장.
+			//       swap()만 하면 capacity()가 0이 되어 다음 호출 시 reserve() 재실행.
 			mRecvBatchBuf.swap(localBatch);
+			mRecvBatchBuf.reserve(MAX_PACKET_SIZE * 4);
 		}
 	}
 

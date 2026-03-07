@@ -96,8 +96,16 @@ bool TimerQueue::Cancel(TimerHandle handle)
 		return false;
 	}
 
-	std::lock_guard<std::mutex> lock(mMutex);
-	mCancelledHandles.insert(handle);
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+		mCancelledHandles.insert(handle);
+	}
+	// English: Notify the worker so it can re-evaluate the heap top immediately.
+	//          If the cancelled entry is the next to fire, the worker would otherwise
+	//          sleep until its fire time before discovering it is cancelled.
+	// 한글: 워커가 힙 최상단을 즉시 재평가할 수 있도록 알림.
+	//       취소된 항목이 다음 실행 예정이면, 알림 없이는 워커가 그 시간까지 잠듦.
+	mCV.notify_one();
 	return true;
 }
 
@@ -171,11 +179,13 @@ void TimerQueue::WorkerLoop()
 		// 한글: 락 보유 중 준비된 항목 꺼내기.
 		TimerEntry entry = PopTop();
 
-		// English: Check if cancelled.
-		// 한글: 취소 여부 확인.
-		if (mCancelledHandles.count(entry.handle))
+		// English: Always erase from cancelled set — prevents stale handle accumulation
+		//          when Cancel() is called after a one-shot timer has already fired.
+		// 한글: 취소 집합에서 항상 제거 — 원샷 타이머 실행 완료 후 Cancel()이
+		//       호출될 때 핸들이 mCancelledHandles에 영구 잔류하는 누수를 방지.
+		const bool wasCancelled = mCancelledHandles.erase(entry.handle) > 0;
+		if (wasCancelled)
 		{
-			mCancelledHandles.erase(entry.handle);
 			continue;
 		}
 

@@ -57,6 +57,18 @@ class AsyncScope
 	{
 		BeginTask();
 
+		// English: Fast-path: if already cancelled, avoid dispatching a no-op task.
+		//          A concurrent Cancel() between here and Dispatch() is still safe —
+		//          the wrapped lambda checks IsCancelled() at execution time.
+		// 한글: 패스트패스: 이미 취소된 경우 no-op 태스크 디스패치를 피함.
+		//       BeginTask와 Dispatch 사이의 동시 Cancel()은 안전 —
+		//       래퍼 람다가 실행 시점에 IsCancelled()를 재확인함.
+		if (IsCancelled())
+		{
+			EndTask();
+			return false;
+		}
+
 		auto wrapped = [this, fn = std::forward<Fn>(task)]() mutable {
 			if (!IsCancelled())
 			{
