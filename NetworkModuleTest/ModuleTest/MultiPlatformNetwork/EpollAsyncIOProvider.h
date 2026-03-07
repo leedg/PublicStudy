@@ -125,6 +125,8 @@ class EpollAsyncIOProvider : public AsyncIOProvider
 	bool mInitialized; // English: Initialization flag / ?쒓?: 珥덇린???뚮옒洹?
 };
 
-} // namespace Network::AsyncIO::Linux
+} // namespace Linux
+} // namespace AsyncIO
+} // namespace Network
 
 #endif // __linux__

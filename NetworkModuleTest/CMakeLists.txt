@@ -34,6 +34,35 @@ add_subdirectory(ModuleTest/MultiPlatformNetwork)
 add_subdirectory(Client/TestClient)
 
 # =============================================================================
+# Server Targets (Cross-platform)
+# =============================================================================
+
+option(BUILD_SERVER_ENGINE "Build ServerEngine library" ON)
+option(BUILD_TEST_SERVER "Build TestServer" ON)
+option(BUILD_DB_SERVER "Build DBServer" ON)
+option(ENABLE_DATABASE_SUPPORT "Enable database support" OFF)
+
+if (BUILD_TEST_SERVER AND NOT BUILD_SERVER_ENGINE)
+    message(FATAL_ERROR "TestServer requires BUILD_SERVER_ENGINE=ON")
+endif()
+
+if (BUILD_DB_SERVER AND NOT BUILD_SERVER_ENGINE)
+    message(FATAL_ERROR "DBServer requires BUILD_SERVER_ENGINE=ON")
+endif()
+
+if (BUILD_SERVER_ENGINE)
+    add_subdirectory(Server/ServerEngine)
+endif()
+
+if (BUILD_TEST_SERVER)
+    add_subdirectory(Server/TestServer)
+endif()
+
+if (BUILD_DB_SERVER)
+    add_subdirectory(Server/DBServer)
+endif()
+
+# =============================================================================
 # Summary
 # =============================================================================
 

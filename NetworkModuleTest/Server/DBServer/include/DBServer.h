@@ -14,6 +14,7 @@ namespace Network { namespace Database { class IDatabase; } }
 // English: DatabaseType for local config
 // 한글: 로컬 config용 DatabaseType
 #include "../ServerEngine/Interfaces/DatabaseType_enum.h"
+#include "../ServerEngine/Utils/NetworkTypes.h"
 #include "../ServerEngine/Network/Core/AsyncIOProvider.h"
 #include "../ServerEngine/Tests/Protocols/MessageHandler.h"
 #include "../ServerEngine/Tests/Protocols/PingPong.h"
@@ -56,7 +57,7 @@ class DBServer
 	 * @param maxConnections Maximum allowed connections
 	 * @return True if initialization succeeded
 	 */
-	bool Initialize(uint16_t port = 8002, size_t maxConnections = 1000);
+	bool Initialize(uint16_t port = Network::Utils::DEFAULT_TEST_DB_PORT, size_t maxConnections = 1000);
 
 	/**
 	 * English: Start the database server

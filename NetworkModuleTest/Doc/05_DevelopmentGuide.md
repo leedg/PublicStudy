@@ -1,4 +1,4 @@
-﻿# 개발 가이드 (상세)
+# 개발 가이드 (상세)
 
 ## 1. 준비 사항
 - Visual Studio 2022, C++17
@@ -12,12 +12,12 @@
 3. 권장 빌드 순서: ServerEngine -> TestDBServer -> TestServer -> TestClient
 
 ## 3. 실행 순서
-1. `TestDBServer.exe -p 8001` (기본)
-2. `TestServer.exe -p 9000 --db-host 127.0.0.1 --db-port 8001 -d "<connstr>"` (옵션)
-3. `TestClient.exe --host 127.0.0.1 --port 9000`
+1. `TestDBServer.exe -p 18002` (Windows 기본, Linux/macOS는 8001)
+2. `TestServer.exe -p 19010 --db-host 127.0.0.1 --db-port 18002 -d "<connstr>"` (Windows 기본, Linux/macOS는 9000/8001)
+3. `TestClient.exe --host 127.0.0.1 --port 19010` (Windows 기본, Linux/macOS는 9000)
 4. 자동 실행: `run_allServer.ps1` 또는 `run_allServer.bat`
 
-> 참고: 실행 스크립트(`run_dbServer.ps1` 등)의 기본 DB 포트는 `8002`입니다. (코드 기본값은 `8001`)
+> 참고: PowerShell 실행 스크립트(`run_dbServer.ps1` 등)는 기본 포트 충돌 시 자동으로 다음 빈 포트로 fallback 합니다. 필요하면 `-DisablePortFallback`으로 고정할 수 있습니다.
 
 ## 4. CMake 사용
 - 루트 CMake는 `ModuleTest/MultiPlatformNetwork`만 빌드
@@ -38,4 +38,14 @@
   - `.\run_test_auto.ps1 -RunSeconds 5`
   - 기본 동작: 실행 전 서버 구조 동기화 검증을 먼저 수행
   - 동기화 검증 생략: `.\run_test_auto.ps1 -RunSeconds 5 -SkipStructureSyncCheck`
-- AsyncIOProvider 테스트는 GTest 연동 시 사용 가능
+- Windows AsyncIO 백엔드 테스트(독립 실행, GTest 불필요):
+  - 대상: `IOCPTest`, `RIOTest`
+  - 사전 조건: Visual Studio 2022 Build Tools(v143), Windows SDK
+  - 빌드:
+    - `& "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe" ".\Server\Tests\IOCPTest\IOCPTest.vcxproj" /t:Build /p:Configuration=Debug /p:Platform=x64`
+    - `& "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe" ".\Server\Tests\RIOTest\RIOTest.vcxproj" /t:Build /p:Configuration=Debug /p:Platform=x64`
+  - 실행:
+    - `.\Server\Tests\IOCPTest\x64\Debug\IOCPTest.exe`
+    - `.\Server\Tests\RIOTest\x64\Debug\RIOTest.exe`
+  - 성공 기준:
+    - `Result: N passed, 0 failed`

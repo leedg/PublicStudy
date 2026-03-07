@@ -139,6 +139,8 @@ class KqueueAsyncIOProvider : public AsyncIOProvider
 	bool UnregisterSocketEvents(SocketHandle socket);
 };
 
-} // namespace Network::AsyncIO::BSD
+} // namespace BSD
+} // namespace AsyncIO
+} // namespace Network
 
 #endif // __APPLE__

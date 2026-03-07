@@ -6,7 +6,7 @@
 #endif
 #include <algorithm>
 #include <memory>
-// 한글: ODBC 헤더가 필요로 하는 Windows 타입을 먼저 정의한다.
+// ?쒓?: ODBC ?ㅻ뜑媛 ?꾩슂濡??섎뒗 Windows ??낆쓣 癒쇱? ?뺤쓽?쒕떎.
 #include <windows.h>
 #include <sql.h>
 #include <sqlext.h>
@@ -28,6 +28,7 @@ class ODBCDatabase : public IDatabase
 	DatabaseConfig config_;
 	SQLHENV environment_;
 	bool connected_;
+	std::unique_ptr<ODBCConnection> sharedConnection_;
 
 	void initializeEnvironment();
 	void cleanupEnvironment();

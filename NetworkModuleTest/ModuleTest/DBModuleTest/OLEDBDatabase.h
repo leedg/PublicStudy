@@ -2,11 +2,11 @@
 
 #include "IDatabase.h"
 #include <memory>
-// 한글: OLEDB 헤더가 필요로 하는 Windows 타입을 먼저 정의한다.
-#include <windows.h>
-#include <oledb.h>
 #include <string>
 #include <vector>
+// Korean: OLEDB headers require Windows types.
+#include <windows.h>
+#include <oledb.h>
 
 namespace DocDBModule
 {
@@ -22,27 +22,27 @@ class OLEDBResultSet;
 class OLEDBDatabase : public IDatabase
 {
   private:
-	DatabaseConfig config_;
-	bool connected_;
+    DatabaseConfig config_;
+    bool connected_;
 
   public:
-	OLEDBDatabase();
-	virtual ~OLEDBDatabase();
+    OLEDBDatabase();
+    virtual ~OLEDBDatabase();
 
-	// IDatabase interface
-	void connect(const DatabaseConfig &config) override;
-	void disconnect() override;
-	bool isConnected() const override;
+    // IDatabase interface
+    void connect(const DatabaseConfig &config) override;
+    void disconnect() override;
+    bool isConnected() const override;
 
-	std::unique_ptr<IConnection> createConnection() override;
-	std::unique_ptr<IStatement> createStatement() override;
+    std::unique_ptr<IConnection> createConnection() override;
+    std::unique_ptr<IStatement> createStatement() override;
 
-	void beginTransaction() override;
-	void commitTransaction() override;
-	void rollbackTransaction() override;
+    void beginTransaction() override;
+    void commitTransaction() override;
+    void rollbackTransaction() override;
 
-	DatabaseType getType() const override { return DatabaseType::OLEDB; }
-	const DatabaseConfig &getConfig() const override { return config_; }
+    DatabaseType getType() const override { return DatabaseType::OLEDB; }
+    const DatabaseConfig &getConfig() const override { return config_; }
 };
 
 /**
@@ -51,26 +51,26 @@ class OLEDBDatabase : public IDatabase
 class OLEDBConnection : public IConnection
 {
   private:
-	bool connected_;
-	std::string lastError_;
-	int lastErrorCode_;
+    bool connected_;
+    std::string lastError_;
+    int lastErrorCode_;
 
   public:
-	OLEDBConnection();
-	virtual ~OLEDBConnection();
+    OLEDBConnection();
+    virtual ~OLEDBConnection();
 
-	// IConnection interface
-	void open(const std::string &connectionString) override;
-	void close() override;
-	bool isOpen() const override;
+    // IConnection interface
+    void open(const std::string &connectionString) override;
+    void close() override;
+    bool isOpen() const override;
 
-	std::unique_ptr<IStatement> createStatement() override;
-	void beginTransaction() override;
-	void commitTransaction() override;
-	void rollbackTransaction() override;
+    std::unique_ptr<IStatement> createStatement() override;
+    void beginTransaction() override;
+    void commitTransaction() override;
+    void rollbackTransaction() override;
 
-	int getLastErrorCode() const override { return lastErrorCode_; }
-	std::string getLastError() const override { return lastError_; }
+    int getLastErrorCode() const override { return lastErrorCode_; }
+    std::string getLastError() const override { return lastError_; }
 };
 
 /**
@@ -79,36 +79,37 @@ class OLEDBConnection : public IConnection
 class OLEDBStatement : public IStatement
 {
   private:
-	std::string query_;
-	bool prepared_;
-	int timeout_;
-	std::vector<std::string> parameters_;
-	std::vector<std::string> batch_;
+    std::string query_;
+    bool prepared_;
+    int timeout_;
+    std::vector<std::string> parameters_;
+    std::vector<bool> parameterNulls_;
+    std::vector<std::string> batch_;
 
   public:
-	OLEDBStatement();
-	virtual ~OLEDBStatement();
+    OLEDBStatement();
+    virtual ~OLEDBStatement();
 
-	// IStatement interface
-	void setQuery(const std::string &query) override;
-	void setTimeout(int seconds) override;
+    // IStatement interface
+    void setQuery(const std::string &query) override;
+    void setTimeout(int seconds) override;
 
-	void bindParameter(size_t index, const std::string &value) override;
-	void bindParameter(size_t index, int value) override;
-	void bindParameter(size_t index, long long value) override;
-	void bindParameter(size_t index, double value) override;
-	void bindParameter(size_t index, bool value) override;
-	void bindNullParameter(size_t index) override;
+    void bindParameter(size_t index, const std::string &value) override;
+    void bindParameter(size_t index, int value) override;
+    void bindParameter(size_t index, long long value) override;
+    void bindParameter(size_t index, double value) override;
+    void bindParameter(size_t index, bool value) override;
+    void bindNullParameter(size_t index) override;
 
-	std::unique_ptr<IResultSet> executeQuery() override;
-	int executeUpdate() override;
-	bool execute() override;
+    std::unique_ptr<IResultSet> executeQuery() override;
+    int executeUpdate() override;
+    bool execute() override;
 
-	void addBatch() override;
-	std::vector<int> executeBatch() override;
+    void addBatch() override;
+    std::vector<int> executeBatch() override;
 
-	void clearParameters() override;
-	void close() override;
+    void clearParameters() override;
+    void close() override;
 };
 
 /**
@@ -117,41 +118,49 @@ class OLEDBStatement : public IStatement
 class OLEDBResultSet : public IResultSet
 {
   private:
-	bool hasData_;
-	std::vector<std::string> columnNames_;
-	bool metadataLoaded_;
+    bool hasData_;
+    std::vector<std::string> columnNames_;
+    std::vector<std::vector<std::string>> rows_;
+    std::vector<std::vector<bool>> nullFlags_;
+    size_t currentRow_;
+    bool metadataLoaded_;
 
-	void loadMetadata();
+    void loadMetadata();
+    size_t resolveColumnIndex(size_t columnIndex) const;
+    size_t currentRowIndex() const;
 
   public:
-	OLEDBResultSet();
-	virtual ~OLEDBResultSet();
+    OLEDBResultSet();
+    OLEDBResultSet(std::vector<std::string> columnNames,
+                   std::vector<std::vector<std::string>> rows,
+                   std::vector<std::vector<bool>> nullFlags);
+    virtual ~OLEDBResultSet();
 
-	// IResultSet interface
-	bool next() override;
-	bool isNull(size_t columnIndex) override;
-	bool isNull(const std::string &columnName) override;
+    // IResultSet interface
+    bool next() override;
+    bool isNull(size_t columnIndex) override;
+    bool isNull(const std::string &columnName) override;
 
-	std::string getString(size_t columnIndex) override;
-	std::string getString(const std::string &columnName) override;
+    std::string getString(size_t columnIndex) override;
+    std::string getString(const std::string &columnName) override;
 
-	int getInt(size_t columnIndex) override;
-	int getInt(const std::string &columnName) override;
+    int getInt(size_t columnIndex) override;
+    int getInt(const std::string &columnName) override;
 
-	long long getLong(size_t columnIndex) override;
-	long long getLong(const std::string &columnName) override;
+    long long getLong(size_t columnIndex) override;
+    long long getLong(const std::string &columnName) override;
 
-	double getDouble(size_t columnIndex) override;
-	double getDouble(const std::string &columnName) override;
+    double getDouble(size_t columnIndex) override;
+    double getDouble(const std::string &columnName) override;
 
-	bool getBool(size_t columnIndex) override;
-	bool getBool(const std::string &columnName) override;
+    bool getBool(size_t columnIndex) override;
+    bool getBool(const std::string &columnName) override;
 
-	size_t getColumnCount() const override;
-	std::string getColumnName(size_t columnIndex) const override;
-	size_t findColumn(const std::string &columnName) const override;
+    size_t getColumnCount() const override;
+    std::string getColumnName(size_t columnIndex) const override;
+    size_t findColumn(const std::string &columnName) const override;
 
-	void close() override;
+    void close() override;
 };
 
 } // namespace DocDBModule

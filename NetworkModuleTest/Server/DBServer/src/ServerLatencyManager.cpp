@@ -262,11 +262,12 @@ namespace Network::DBServer
         // English: Column names match the CREATE TABLE in Initialize()
         // 한글: Initialize()의 CREATE TABLE 컬럼명과 일치
         std::ostringstream query;
+        const std::string safeServerName = EscapeSqlLiteral(serverName);
         query << "INSERT INTO ServerLatencyLog "
               << "(server_id, server_name, rtt_ms, avg_rtt_ms, min_rtt_ms, max_rtt_ms, "
               << "ping_count, measured_time) VALUES ("
               << serverId << ", '"
-              << serverName << "', "
+              << safeServerName << "', "
               << rttMs << ", "
               << std::fixed << std::setprecision(2) << avgRttMs << ", "
               << minRttMs << ", "
@@ -283,11 +284,34 @@ namespace Network::DBServer
         // English: Column names match the CREATE TABLE in Initialize()
         // 한글: Initialize()의 CREATE TABLE 컬럼명과 일치
         std::ostringstream query;
+        const std::string safeServerName = EscapeSqlLiteral(serverName);
         query << "INSERT INTO PingTimeLog (server_id, server_name, ping_time) VALUES ("
               << serverId << ", '"
-              << serverName << "', '"
+              << safeServerName << "', '"
               << FormatTimestamp(timestamp) << "')";
         return query.str();
+    }
+
+    // English: Escapes SQL string literal by doubling single quotes.
+    // 한글: SQL ??? ??? ? ?????? ????? ??.
+    std::string ServerLatencyManager::EscapeSqlLiteral(const std::string& value)
+    {
+        std::string escaped;
+        escaped.reserve(value.size());
+
+        for (char ch : value)
+        {
+            if (ch == '\'')
+            {
+                escaped += "''";
+            }
+            else
+            {
+                escaped.push_back(ch);
+            }
+        }
+
+        return escaped;
     }
 
     std::string ServerLatencyManager::FormatTimestamp(uint64_t timestampMs) const

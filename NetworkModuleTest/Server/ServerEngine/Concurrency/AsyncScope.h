@@ -5,6 +5,7 @@
 
 #include "KeyedDispatcher.h"
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <condition_variable>
 #include <functional>
@@ -44,6 +45,12 @@ class AsyncScope
 	//       SessionPool::ReleaseInternal → Session::Reset() 호출 시 보장됨.
 	void Reset()
 	{
+		// English: Precondition: mInFlight MUST be 0. Call WaitForDrain(-1) before Reset().
+		//          Violating this corrupts the in-flight counter of the reused scope.
+		// 한글: 선행 조건: mInFlight가 반드시 0이어야 함. Reset() 전 WaitForDrain(-1) 필수.
+		//       위반 시 재사용 스코프의 in-flight 카운터 오염.
+		assert(mInFlight.load(std::memory_order_acquire) == 0 &&
+		       "AsyncScope::Reset() called while tasks are in-flight");
 		mCancelled.store(false, std::memory_order_release);
 	}
 

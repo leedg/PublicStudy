@@ -16,6 +16,32 @@ using namespace Network::AsyncIO::Windows;
 
 static int gPassed = 0, gFailed = 0;
 
+class WinsockGuard
+{
+  public:
+    WinsockGuard()
+    {
+        mReady = (WSAStartup(MAKEWORD(2, 2), &mWsaData) == 0);
+    }
+
+    ~WinsockGuard()
+    {
+        if (mReady)
+        {
+            WSACleanup();
+        }
+    }
+
+    bool IsReady() const
+    {
+        return mReady;
+    }
+
+  private:
+    WSADATA mWsaData{};
+    bool mReady = false;
+};
+
 static void Pass(const char *name)
 {
     std::cout << "[PASS] " << name << "\n";
@@ -49,7 +75,7 @@ void TestRIOProviderInit()
 void TestRIOBufferPoolInit()
 {
     const char *name = "RIOBufferPoolInit";
-    ::Core::Memory::RIOBufferPool pool;
+    ::Network::Core::Memory::RIOBufferPool pool;
     // Initialize(poolSize, slotSize) — pool loads RIO fn ptrs itself.
     // Initialize(poolSize, slotSize) — 풀이 직접 RIO 함수 포인터를 로드.
     if (!pool.Initialize(8, 65536))
@@ -68,7 +94,7 @@ void TestRIOBufferPoolInit()
 void TestRIOBufferPoolAcquireRelease()
 {
     const char *name = "RIOBufferPoolAcquireRelease";
-    ::Core::Memory::RIOBufferPool pool;
+    ::Network::Core::Memory::RIOBufferPool pool;
     if (!pool.Initialize(4, 65536))
     {
         std::cout << "[SKIP] " << name << " - RIO not available\n";
@@ -98,7 +124,7 @@ void TestRIOBufferPoolAcquireRelease()
 void TestRIOBufferPoolExhaustion()
 {
     const char *name = "RIOBufferPoolExhaustion";
-    ::Core::Memory::RIOBufferPool pool;
+    ::Network::Core::Memory::RIOBufferPool pool;
     if (!pool.Initialize(2, 4096))
     {
         std::cout << "[SKIP] " << name << " - RIO not available\n";
@@ -121,6 +147,13 @@ void TestRIOBufferPoolExhaustion()
 // -----------------------------------------------------------------------
 int main()
 {
+    WinsockGuard winsock;
+    if (!winsock.IsReady())
+    {
+        std::cout << "[FAIL] WinsockInit - WSAStartup failed\n";
+        return 1;
+    }
+
     std::cout << "=== RIO AsyncIOProvider + BufferPool Tests ===\n\n";
     TestRIOProviderInit();
     TestRIOBufferPoolInit();

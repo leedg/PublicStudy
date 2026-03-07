@@ -7,10 +7,15 @@
 #include <mutex>
 #include <vector>
 
-namespace Core {
-namespace Memory {
+namespace Network
+{
+namespace Core
+{
+namespace Memory
+{
 
-class StandardBufferPool : public IBufferPool {
+class StandardBufferPool : public IBufferPool
+{
 public:
     StandardBufferPool()  = default;
     ~StandardBufferPool() override;
@@ -38,3 +43,4 @@ private:
 
 } // namespace Memory
 } // namespace Core
+} // namespace Network

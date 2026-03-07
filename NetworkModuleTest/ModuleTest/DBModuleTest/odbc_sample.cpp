@@ -1,295 +1,254 @@
-#include "IDatabase.h"
-#include <iomanip>
+#include "DatabaseFactory.h"
+#include <cstdint>
+#include <cmath>
+#include <cstdlib>
 #include <iostream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 using namespace DocDBModule;
 
-void printSeparator(const std::string &title)
+namespace
 {
-	std::cout << "\n" << std::string(60, '=') << std::endl;
-	std::cout << " " << title << std::endl;
-	std::cout << std::string(60, '=') << std::endl;
+void PrintSeparator(const std::string &title)
+{
+    std::cout << "\n" << std::string(72, '=') << "\n";
+    std::cout << title << "\n";
+    std::cout << std::string(72, '=') << "\n";
 }
 
-void printResultSet(IResultSet *resultSet)
+void Expect(bool condition, const std::string &message)
 {
-	if (!resultSet)
-	{
-		std::cout << "No result set returned." << std::endl;
-		return;
-	}
-
-	// Print column headers
-	size_t columnCount = resultSet->getColumnCount();
-	std::vector<size_t> columnWidths(columnCount);
-
-	// Calculate column widths
-	for (size_t i = 0; i < columnCount; ++i)
-	{
-		columnWidths[i] = resultSet->getColumnName(i + 1).length();
-	}
-
-	// Find actual widths from data
-	std::vector<std::vector<std::string>> rows;
-	while (resultSet->next())
-	{
-		std::vector<std::string> row;
-		for (size_t i = 0; i < columnCount; ++i)
-		{
-			std::string value =
-				resultSet->isNull(i + 1) ? "NULL" : resultSet->getString(i + 1);
-			columnWidths[i] = std::max(columnWidths[i], value.length());
-			row.push_back(value);
-		}
-		rows.push_back(row);
-	}
-
-	// Print headers
-	for (size_t i = 0; i < columnCount; ++i)
-	{
-		std::cout << std::left << std::setw(columnWidths[i] + 2)
-				  << resultSet->getColumnName(i + 1);
-	}
-	std::cout << std::endl;
-
-	// Print separator
-	for (size_t i = 0; i < columnCount; ++i)
-	{
-		std::cout << std::string(columnWidths[i] + 2, '-');
-	}
-	std::cout << std::endl;
-
-	// Print data rows
-	for (const auto &row : rows)
-	{
-		for (size_t i = 0; i < columnCount; ++i)
-		{
-			std::cout << std::left << std::setw(columnWidths[i] + 2) << row[i];
-		}
-		std::cout << std::endl;
-	}
-
-	std::cout << "\nTotal rows: " << rows.size() << std::endl;
+    if (!condition)
+    {
+        throw std::runtime_error("[ASSERT] " + message);
+    }
 }
+
+bool NearlyEqual(double lhs, double rhs, double epsilon = 1e-6)
+{
+    return std::fabs(lhs - rhs) <= epsilon;
+}
+
+std::string ToHexLiteral(const std::vector<std::uint8_t> &bytes)
+{
+    static const char kHexDigits[] = "0123456789ABCDEF";
+
+    std::string result = "0x";
+    result.reserve(2 + (bytes.size() * 2));
+
+    for (std::uint8_t value : bytes)
+    {
+        result.push_back(kHexDigits[(value >> 4U) & 0x0FU]);
+        result.push_back(kHexDigits[value & 0x0FU]);
+    }
+
+    return result;
+}
+
+std::string GetEnvOrDefault(const char *name, const std::string &fallback)
+{
+    const char *value = std::getenv(name);
+    if (value != nullptr && value[0] != '\0')
+    {
+        return value;
+    }
+
+    return fallback;
+}
+
+DatabaseConfig BuildOdbcConfig()
+{
+    DatabaseConfig config;
+    config.type = DatabaseType::ODBC;
+
+    config.connectionString = GetEnvOrDefault(
+        "DOCDB_ODBC_CONN",
+        "DRIVER={ODBC Driver 17 for SQL Server};SERVER=localhost;DATABASE=master;Trusted_Connection=Yes");
+
+    config.connectionTimeout = 30;
+    config.commandTimeout = 30;
+    config.autoCommit = true;
+    return config;
+}
+
+void RunTypeRoundTrip(IStatement &statement)
+{
+    statement.setQuery(
+        "SELECT "
+        "? AS v_text, "
+        "? AS v_int, "
+        "? AS v_bigint, "
+        "? AS v_double, "
+        "? AS v_bool, "
+        "? AS v_nullable");
+
+    statement.bindParameter(1, std::string("alpha"));
+    statement.bindParameter(2, 42);
+    statement.bindParameter(3, 9000000000123LL);
+    statement.bindParameter(4, 1234.5);
+    statement.bindParameter(5, true);
+    statement.bindNullParameter(6);
+
+    auto result = statement.executeQuery();
+    Expect(result != nullptr, "ResultSet must not be null");
+    Expect(result->next(), "SELECT should return one row");
+
+    Expect(result->getString("v_text") == "alpha", "v_text mismatch");
+    Expect(result->getInt("v_int") == 42, "v_int mismatch");
+    Expect(result->getLong("v_bigint") == 9000000000123LL, "v_bigint mismatch");
+    Expect(NearlyEqual(result->getDouble("v_double"), 1234.5, 1e-3), "v_double mismatch");
+    Expect(result->getBool("v_bool"), "v_bool mismatch");
+    Expect(result->isNull("v_nullable"), "v_nullable should be NULL");
+
+    Expect(!result->next(), "SELECT should return only one row");
+}
+
+void RunTypeRoundTripFalseBool(IStatement &statement)
+{
+    statement.clearParameters();
+    statement.setQuery(
+        "SELECT "
+        "? AS v_text, "
+        "? AS v_int, "
+        "? AS v_bigint, "
+        "? AS v_double, "
+        "? AS v_bool, "
+        "? AS v_nullable");
+
+    statement.bindParameter(1, std::string("beta"));
+    statement.bindParameter(2, -7);
+    statement.bindParameter(3, -123456789LL);
+    statement.bindParameter(4, -98.765);
+    statement.bindParameter(5, false);
+    statement.bindParameter(6, std::string("not-null"));
+
+    auto result = statement.executeQuery();
+    Expect(result != nullptr, "ResultSet must not be null (2nd run)");
+    Expect(result->next(), "SELECT should return one row (2nd run)");
+
+    Expect(result->getString("v_text") == "beta", "v_text mismatch (2nd run)");
+    Expect(result->getInt("v_int") == -7, "v_int mismatch (2nd run)");
+    Expect(result->getLong("v_bigint") == -123456789LL, "v_bigint mismatch (2nd run)");
+    Expect(NearlyEqual(result->getDouble("v_double"), -98.765, 1e-3), "v_double mismatch (2nd run)");
+    Expect(!result->getBool("v_bool"), "v_bool mismatch (2nd run)");
+    Expect(!result->isNull("v_nullable"), "v_nullable should not be NULL (2nd run)");
+}
+
+void RunExtendedCppTypeRoundTrip(IStatement &statement)
+{
+    const std::int16_t valueInt16 = -32123;
+    const std::uint16_t valueUInt16 = 65000;
+    const std::int32_t valueInt32 = -2000000000;
+    const std::uint32_t valueUInt32 = 4000000000U;
+    const std::int64_t valueInt64 = -8000000000123LL;
+    const std::uint64_t valueUInt64 = 8000000000123ULL;
+    const float valueFloat = 6.25F;
+    const long double valueLongDouble = -0.333333333L;
+    const char valueChar = 'Q';
+    const std::string valueDate = "2026-03-06";
+    const std::string valueTime = "17:30:45.777";
+    const std::vector<std::uint8_t> valueBinary = {0xCAU, 0xFEU, 0xBAU, 0xBEU};
+    const std::string valueBinaryHex = ToHexLiteral(valueBinary);
+
+    statement.clearParameters();
+    statement.setQuery(
+        "SELECT "
+        "? AS v_i16, "
+        "? AS v_u16, "
+        "? AS v_i32, "
+        "? AS v_u32, "
+        "? AS v_i64, "
+        "? AS v_u64, "
+        "? AS v_float, "
+        "? AS v_longdouble, "
+        "? AS v_char, "
+        "? AS v_date, "
+        "? AS v_time, "
+        "? AS v_binary_hex, "
+        "? AS v_nullable");
+
+    statement.bindParameter(1, static_cast<int>(valueInt16));
+    statement.bindParameter(2, static_cast<int>(valueUInt16));
+    statement.bindParameter(3, static_cast<int>(valueInt32));
+    statement.bindParameter(4, static_cast<long long>(valueUInt32));
+    statement.bindParameter(5, static_cast<long long>(valueInt64));
+    statement.bindParameter(6, static_cast<long long>(valueUInt64));
+    statement.bindParameter(7, static_cast<double>(valueFloat));
+    statement.bindParameter(8, static_cast<double>(valueLongDouble));
+    statement.bindParameter(9, std::string(1, valueChar));
+    statement.bindParameter(10, valueDate);
+    statement.bindParameter(11, valueTime);
+    statement.bindParameter(12, valueBinaryHex);
+    statement.bindNullParameter(13);
+
+    auto result = statement.executeQuery();
+    Expect(result != nullptr, "ResultSet must not be null (extended)");
+    Expect(result->next(), "SELECT should return one row (extended)");
+
+    Expect(result->getInt("v_i16") == static_cast<int>(valueInt16), "v_i16 mismatch");
+    Expect(result->getInt("v_u16") == static_cast<int>(valueUInt16), "v_u16 mismatch");
+    Expect(result->getInt("v_i32") == static_cast<int>(valueInt32), "v_i32 mismatch");
+    Expect(result->getLong("v_u32") == static_cast<long long>(valueUInt32), "v_u32 mismatch");
+    Expect(result->getLong("v_i64") == static_cast<long long>(valueInt64), "v_i64 mismatch");
+    Expect(result->getLong("v_u64") == static_cast<long long>(valueUInt64), "v_u64 mismatch");
+    Expect(NearlyEqual(result->getDouble("v_float"), static_cast<double>(valueFloat), 1e-4), "v_float mismatch");
+    Expect(NearlyEqual(result->getDouble("v_longdouble"), static_cast<double>(valueLongDouble), 1e-5), "v_longdouble mismatch");
+    Expect(result->getString("v_char") == std::string(1, valueChar), "v_char mismatch");
+    Expect(result->getString("v_date") == valueDate, "v_date mismatch");
+    Expect(result->getString("v_time") == valueTime, "v_time mismatch");
+    Expect(result->getString("v_binary_hex") == valueBinaryHex, "v_binary_hex mismatch");
+    Expect(result->isNull("v_nullable"), "v_nullable should be NULL (extended)");
+    Expect(!result->next(), "SELECT should return only one row (extended)");
+}
+} // namespace
 
 int main()
 {
-	try
-	{
-		printSeparator("DocDBModule ODBC Sample");
+#if defined(_WIN32)
+    try
+    {
+        PrintSeparator("DocDBModule ODBC Type Round-Trip Sample");
 
-		// Build connection string
-		std::map<std::string, std::string> connParams;
-		connParams["DRIVER"] = "{SQL Server}";
-		connParams["SERVER"] = "localhost";
-		connParams["DATABASE"] = "TestDB";
-		connParams["Trusted_Connection"] = "Yes";
+        DatabaseConfig config = BuildOdbcConfig();
+        std::cout << "Connection String: " << config.connectionString << "\n";
 
-		std::string connectionString =
-			Utils::buildODBCConnectionString(connParams);
-		std::cout << "Connection String: " << connectionString << std::endl;
+        auto database = DatabaseFactory::createODBCDatabase();
+        database->connect(config);
 
-		// Create database instance
-		auto database = DatabaseFactory::createODBCDatabase();
+        Expect(database->isConnected(), "Database should be connected");
 
-		// Configure database
-		DatabaseConfig config;
-		config.connectionString = connectionString;
-		config.type = DatabaseType::ODBC;
-		config.connectionTimeout = 30;
-		config.commandTimeout = 30;
-		config.autoCommit = true;
+        auto statement = database->createStatement();
 
-		std::cout << "\nConnecting to database..." << std::endl;
-		database->connect(config);
-		std::cout << "Connected successfully!" << std::endl;
+        PrintSeparator("Case 1: true + NULL");
+        RunTypeRoundTrip(*statement);
 
-		// Test 1: Simple query
-		printSeparator("Test 1: Simple Query");
-		auto statement = database->createStatement();
-		statement->setQuery("SELECT @@VERSION as version");
-		auto resultSet = statement->executeQuery();
-		printResultSet(resultSet.get());
+        PrintSeparator("Case 2: false + non-NULL");
+        RunTypeRoundTripFalseBool(*statement);
 
-		// Test 2: Parameterized query
-		printSeparator("Test 2: Parameterized Query");
-		statement->setQuery(
-			"SELECT ? as test_number, ? as test_string, ? as test_date");
-		statement->bindParameter(1, 42);
-		statement->bindParameter(2, "Hello, ODBC!");
-		statement->bindParameter(3, "2024-01-01");
-		resultSet = statement->executeQuery();
-		printResultSet(resultSet.get());
+        PrintSeparator("Case 3: extended C++ types");
+        RunExtendedCppTypeRoundTrip(*statement);
 
-		// Test 3: Create table and insert data
-		printSeparator("Test 3: Table Operations");
-		statement = database->createStatement();
+        database->disconnect();
+        Expect(!database->isConnected(), "Database should be disconnected");
 
-		// Drop table if exists
-		try
-		{
-			statement->setQuery("DROP TABLE test_table");
-			statement->executeUpdate();
-			std::cout << "Dropped existing table 'test_table'" << std::endl;
-		}
-		catch (const DatabaseException &e)
-		{
-			std::cout << "Note: " << e.what() << std::endl;
-		}
-
-		// Create table
-		statement->setQuery(R"(
-			CREATE TABLE test_table (
-				id INT IDENTITY(1,1) PRIMARY KEY,
-				name NVARCHAR(100) NOT NULL,
-				age INT,
-				salary DECIMAL(10,2),
-				created_date DATETIME DEFAULT GETDATE()
-			)
-		)");
-		int result = statement->executeUpdate();
-		std::cout << "Created table 'test_table'. Rows affected: " << result
-				  << std::endl;
-
-		// Insert data
-		statement->setQuery(
-			"INSERT INTO test_table (name, age, salary) VALUES (?, ?, ?)");
-
-		std::vector<std::tuple<std::string, int, double>> employees = {
-			{"John Doe", 30, 50000.50},
-			{"Jane Smith", 25, 45000.75},
-			{"Bob Johnson", 35, 60000.00},
-			{"Alice Brown", 28, 52000.25}};
-
-		for (const auto &emp : employees)
-		{
-			statement->bindParameter(1, std::get<0>(emp)); // name
-			statement->bindParameter(2, std::get<1>(emp)); // age
-			statement->bindParameter(3, std::get<2>(emp)); // salary
-			result = statement->executeUpdate();
-			std::cout << "Inserted: " << std::get<0>(emp)
-						  << ". Rows affected: " << result << std::endl;
-		}
-
-		// Query the data
-		printSeparator("Test 4: Query Inserted Data");
-		statement->setQuery("SELECT id, name, age, salary, created_date FROM "
-							"test_table ORDER BY id");
-		resultSet = statement->executeQuery();
-		printResultSet(resultSet.get());
-
-		// Test 5: Update operations
-		printSeparator("Test 5: Update Operations");
-		statement->setQuery(
-			"UPDATE test_table SET salary = salary * 1.1 WHERE age < 30");
-		result = statement->executeUpdate();
-		std::cout << "Updated salaries for employees under 30. Rows affected: "
-				  << result << std::endl;
-
-		// Verify update
-		statement->setQuery("SELECT name, age, salary FROM test_table WHERE "
-							"age < 30 ORDER BY name");
-		resultSet = statement->executeQuery();
-		printResultSet(resultSet.get());
-
-		// Test 6: Transaction test
-		printSeparator("Test 6: Transaction Test");
-		database->beginTransaction();
-
-		try
-		{
-			statement = database->createStatement();
-			statement->setQuery(
-				"INSERT INTO test_table (name, age, salary) VALUES (?, ?, ?)");
-			statement->bindParameter(1, "Transaction User");
-			statement->bindParameter(2, 40);
-			statement->bindParameter(3, 70000.00);
-			result = statement->executeUpdate();
-			std::cout << "Inserted transaction record. Rows affected: "
-						  << result << std::endl;
-
-			database->commitTransaction();
-			std::cout << "Transaction committed successfully!" << std::endl;
-		}
-		catch (const DatabaseException &e)
-		{
-			database->rollbackTransaction();
-			std::cout << "Transaction rolled back due to error: " << e.what()
-						  << std::endl;
-		}
-
-		// Verify transaction
-		statement->setQuery("SELECT COUNT(*) as count FROM test_table WHERE "
-							"name = 'Transaction User'");
-		resultSet = statement->executeQuery();
-		if (resultSet->next())
-		{
-			int count = resultSet->getInt(1);
-			std::cout << "Transaction user record exists: "
-						  << (count > 0 ? "YES" : "NO") << std::endl;
-		}
-
-		// Test 7: Stored procedure (if supported)
-		printSeparator("Test 7: Stored Procedure Example");
-		try
-		{
-			statement->setQuery(R"(
-				CREATE PROCEDURE GetEmployeesByAge @min_age INT, @max_age INT
-				AS
-				BEGIN
-					SELECT id, name, age, salary 
-					FROM test_table 
-					WHERE age BETWEEN @min_age AND @max_age
-					ORDER BY age;
-				END
-			)");
-			statement->executeUpdate();
-			std::cout << "Created stored procedure 'GetEmployeesByAge'"
-						  << std::endl;
-
-			// Execute stored procedure
-			statement->setQuery("{CALL GetEmployeesByAge(?, ?)}");
-			statement->bindParameter(1, 25);
-			statement->bindParameter(2, 35);
-			resultSet = statement->executeQuery();
-			printResultSet(resultSet.get());
-		}
-		catch (const DatabaseException &e)
-		{
-			std::cout << "Stored procedure test failed: " << e.what()
-						  << std::endl;
-		}
-
-		// Cleanup
-		printSeparator("Cleanup");
-		statement = database->createStatement();
-		try
-		{
-			statement->setQuery("DROP TABLE test_table");
-			statement->executeUpdate();
-			std::cout << "Dropped test table" << std::endl;
-		}
-		catch (const DatabaseException &e)
-		{
-			std::cout << "Cleanup failed: " << e.what() << std::endl;
-		}
-
-		database->disconnect();
-		std::cout << "Disconnected from database." << std::endl;
-
-		printSeparator("Sample Completed Successfully");
-	}
-	catch (const DatabaseException &e)
-	{
-		std::cerr << "Database Error: " << e.what()
-				  << " (Code: " << e.getErrorCode() << ")" << std::endl;
-		return 1;
-	}
-	catch (const std::exception &e)
-	{
-		std::cerr << "Error: " << e.what() << std::endl;
-		return 1;
-	}
-
-	return 0;
+        PrintSeparator("ODBC sample completed successfully");
+        return 0;
+    }
+    catch (const DatabaseException &e)
+    {
+        std::cerr << "Database Error: " << e.what() << " (Code: " << e.getErrorCode() << ")\n";
+        std::cerr << "Hint: Set DOCDB_ODBC_CONN if default localhost SQL Server is unavailable.\n";
+        return 1;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Error: " << e.what() << "\n";
+        return 1;
+    }
+#else
+    std::cout << "odbc_sample is Windows-only (_WIN32). Skipping.\n";
+    return 0;
+#endif
 }

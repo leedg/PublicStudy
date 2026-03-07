@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <cerrno>
 
 #ifdef _MSC_VER
 #pragma comment(lib, "Ws2_32.lib")
@@ -165,22 +166,59 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 	char responseBuffer[sizeof(PKT_SessionConnectRes)];
 	int totalReceived = 0;
 	int expectedSize = sizeof(PKT_SessionConnectRes);
+	constexpr uint64_t kHandshakeTimeoutMs = 10000;
+	const uint64_t handshakeStart = Timer::GetCurrentTimestamp();
 
 	while (totalReceived < expectedSize)
 	{
 		int received = recv(mSocket, responseBuffer + totalReceived,
 							expectedSize - totalReceived, 0);
-		if (received <= 0)
+		if (received > 0)
 		{
-			Logger::Error("Failed to receive SessionConnectRes: " +
-						  std::to_string(PlatformGetLastError()));
+			totalReceived += received;
+			continue;
+		}
+
+		if (received == 0)
+		{
+			Logger::Error("Connection closed while waiting for SessionConnectRes");
 			PlatformCloseSocket(mSocket);
 			mSocket = INVALID_SOCKET_HANDLE;
 			mStream.Reset();
 			mState.store(ClientState::Disconnected);
 			return false;
 		}
-		totalReceived += received;
+
+		const int errorCode = PlatformGetLastError();
+#ifndef _WIN32
+		if (errorCode == EINTR)
+		{
+			continue;
+		}
+#endif
+
+		if (IsTimeoutOrWouldBlock(errorCode))
+		{
+			const uint64_t now = Timer::GetCurrentTimestamp();
+			if (now - handshakeStart < kHandshakeTimeoutMs)
+			{
+				continue;
+			}
+			Logger::Error("Handshake timeout waiting for SessionConnectRes (" +
+						  std::to_string(kHandshakeTimeoutMs) +
+						  "ms, last error: " + std::to_string(errorCode) + ")");
+		}
+		else
+		{
+			Logger::Error("Failed to receive SessionConnectRes: " +
+						  std::to_string(errorCode));
+		}
+
+		PlatformCloseSocket(mSocket);
+		mSocket = INVALID_SOCKET_HANDLE;
+		mStream.Reset();
+		mState.store(ClientState::Disconnected);
+		return false;
 	}
 
 	const PKT_SessionConnectRes *response =

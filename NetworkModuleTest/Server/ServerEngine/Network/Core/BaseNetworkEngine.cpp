@@ -300,16 +300,10 @@ void BaseNetworkEngine::FireEvent(NetworkEvent eventType,
 	{
 		std::lock_guard<std::mutex> lock(mCallbackMutex);
 		auto it = mCallbacks.find(eventType);
-		if (it == mCallbacks.end())
+		if (it != mCallbacks.end())
 		{
-			return;
+			callback = it->second;
 		}
-		callback = it->second;
-	}
-
-	if (!callback)
-	{
-		return;
 	}
 
 	// English: Create event data
@@ -329,7 +323,10 @@ void BaseNetworkEngine::FireEvent(NetworkEvent eventType,
 
 	// English: Call callback
 	// 한글: 콜백 호출
-	callback(eventData);
+	if (callback)
+	{
+		callback(eventData);
+	}
 
 	// English: Publish to multi-subscriber event bus (NetworkEventBus).
 	//          NetworkBusEventData is copyable so it can be sent to multiple channels.

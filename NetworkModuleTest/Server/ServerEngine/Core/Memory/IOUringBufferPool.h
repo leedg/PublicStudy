@@ -12,10 +12,15 @@
 #include <vector>
 #include <sys/uio.h>
 
-namespace Core {
-namespace Memory {
+namespace Network
+{
+namespace Core
+{
+namespace Memory
+{
 
-class IOUringBufferPool : public IBufferPool {
+class IOUringBufferPool : public IBufferPool
+{
 public:
     IOUringBufferPool()  = default;
     ~IOUringBufferPool() override;
@@ -57,5 +62,6 @@ private:
 
 } // namespace Memory
 } // namespace Core
+} // namespace Network
 
 #endif // defined(__linux__)

@@ -149,6 +149,7 @@ AsyncIOError IOUringAsyncIOProvider::SendAsync(SocketHandle socket,
 												   RequestContext context,
 												   uint32_t flags)
 {
+	(void)flags;
 	if (!mInitialized)
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)
@@ -199,6 +200,7 @@ AsyncIOError IOUringAsyncIOProvider::RecvAsync(SocketHandle socket,
 												   RequestContext context,
 												   uint32_t flags)
 {
+	(void)flags;
 	if (!mInitialized)
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)

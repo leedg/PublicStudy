@@ -62,7 +62,7 @@ void PrintUsage(const char* programName)
 {
     std::cout << "Usage: " << programName << " [options]" << std::endl;
     std::cout << "Options:" << std::endl;
-    std::cout << "  -p <port>       Server port (default: 8001)" << std::endl;
+    std::cout << "  -p <port>       Server port (default: " << Network::Utils::DEFAULT_TEST_DB_PORT << ")" << std::endl;
     std::cout << "  -l <level>      Log level: DEBUG, INFO, WARN, ERROR (default: INFO)" << std::endl;
     std::cout << "  -h              Show this help" << std::endl;
 }
@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
 
     // English: Default settings
     // Korean: 기본 설정
-    uint16_t port = 8001;
+    uint16_t port = Network::Utils::DEFAULT_TEST_DB_PORT;
     Network::Utils::LogLevel logLevel = Network::Utils::LogLevel::Info;
 
     // English: Parse command line arguments

@@ -9,7 +9,7 @@
 //       빌드 시스템(CMake find_library)이 HAVE_LIBURING을 정의한 경우에만 활성화.
 //       liburing이 없으면 팩토리가 자동으로 epoll로 폴백.
 
-#include "AsyncIOProvider.h"
+#include "Network/Core/AsyncIOProvider.h"
 
 #if defined(__linux__) && (defined(HAVE_IO_URING) || defined(HAVE_LIBURING))
 #include "../../Core/Memory/IOUringBufferPool.h"
@@ -164,8 +164,8 @@ class IOUringAsyncIOProvider : public AsyncIOProvider
 	// 한글: 사전 할당 버퍼 풀.
 	//       mRecvPool: 고정 버퍼 recv (io_uring_register_buffers); 커널 미지원 시 일반 모드 폴백.
 	//       mSendPool: 송신 데이터 스테이징용 표준 정렬 풀.
-	::Core::Memory::IOUringBufferPool  mRecvPool;
-	::Core::Memory::StandardBufferPool mSendPool;
+	::Network::Core::Memory::IOUringBufferPool  mRecvPool;
+	::Network::Core::Memory::StandardBufferPool mSendPool;
 
 	// =====================================================================
 	// English: Helper Methods

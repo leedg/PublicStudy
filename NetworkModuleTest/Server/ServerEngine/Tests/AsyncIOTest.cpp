@@ -1,21 +1,24 @@
 // English: AsyncIO Provider Test Suite - Simple verification (no GTest
-// dependency) 한글: AsyncIO 공급자 테스트 - 간단한 검증 (GTest 의존성 없음)
+// dependency) ???: AsyncIO ??????????- ?????????(GTest ????????)
 
 #include "Network/Core/AsyncIOProvider.h"
+#include <chrono>
+#include <cstring>
 #include <iostream>
 #include <memory>
+#include <thread>
 
 using namespace Network::AsyncIO;
 
 // =============================================================================
 // English: Test Functions
-// 한글: 테스트 함수
+// ???: ????????
 // =============================================================================
 
 void TestPlatformDetection()
 {
 	// English: Test platform detection
-	// 한글: 플랫폼 감지 테스트
+	// ???: ???????? ?????
 	std::cout << "=== Platform Detection Test ===" << std::endl;
 
 	PlatformType platform = GetCurrentPlatform();
@@ -58,11 +61,11 @@ void TestPlatformDetection()
 void TestPlatformSupport()
 {
 	// English: Test IsPlatformSupported and GetSupportedPlatforms
-	// 한글: IsPlatformSupported 및 GetSupportedPlatforms 테스트
+	// ???: IsPlatformSupported ??GetSupportedPlatforms ?????
 	std::cout << "\n=== Platform Support Test ===" << std::endl;
 
 	// English: Get supported platforms list
-	// 한글: 지원 플랫폼 목록 조회
+	// ???: ???????????? ???
 	size_t count = 0;
 	const char **platforms = GetSupportedPlatforms(count);
 
@@ -80,11 +83,11 @@ void TestPlatformSupport()
 void TestAsyncIOProviderCreation()
 {
 	// English: Test automatic provider creation
-	// 한글: 자동 공급자 생성 테스트
+	// ???: ??? ???????? ?????
 	std::cout << "\n=== AsyncIOProvider Creation Test ===" << std::endl;
 
 	// English: Create with automatic platform selection
-	// 한글: 자동 플랫폼 선택으로 생성
+	// ???: ??? ??????????? ???
 	auto provider = CreateAsyncIOProvider();
 
 	if (provider)
@@ -92,43 +95,43 @@ void TestAsyncIOProviderCreation()
 		std::cout << "[PASS] Provider created successfully" << std::endl;
 
 		// English: Initialize with doc-specified interface
-		// 한글: 문서 사양 인터페이스로 초기화
+		// ???: ??? ??? ????????? ?????
 		AsyncIOError err = provider->Initialize(256, 1000);
 		if (err == AsyncIOError::Success)
 		{
 			std::cout << "[PASS] Provider initialized successfully"
-						  << std::endl;
+					  << std::endl;
 
 			// English: Check IsInitialized
-			// 한글: IsInitialized 확인
+			// ???: IsInitialized ???
 			if (provider->IsInitialized())
 			{
 				std::cout << "[PASS] IsInitialized returns true" << std::endl;
 			}
 
 			// English: Check GetInfo
-			// 한글: GetInfo 확인
+			// ???: GetInfo ???
 			const ProviderInfo &info = provider->GetInfo();
 			std::cout << "Backend: " << info.mName << std::endl;
 			std::cout << "Buffer Registration: "
-						  << (info.mSupportsBufferReg ? "yes" : "no") << std::endl;
+					  << (info.mSupportsBufferReg ? "yes" : "no") << std::endl;
 			std::cout << "Batching: " << (info.mSupportsBatching ? "yes" : "no")
-						  << std::endl;
+					  << std::endl;
 
 			// English: Check GetStats
-			// 한글: GetStats 확인
+			// ???: GetStats ???
 			ProviderStats stats = provider->GetStats();
 			std::cout << "Total Requests: " << stats.mTotalRequests
-						  << std::endl;
+					  << std::endl;
 
 			// English: Check GetLastError
-			// 한글: GetLastError 확인
+			// ???: GetLastError ???
 			const char *lastErr = provider->GetLastError();
 			std::cout << "Last Error: \"" << (lastErr ? lastErr : "") << "\""
-						  << std::endl;
+					  << std::endl;
 
 			// English: Test FlushRequests (should be no-op or success)
-			// 한글: FlushRequests 테스트 (no-op 또는 성공이어야 함)
+			// ???: FlushRequests ?????(no-op ??? ??????????
 			AsyncIOError flushErr = provider->FlushRequests();
 			if (flushErr == AsyncIOError::Success)
 			{
@@ -139,7 +142,7 @@ void TestAsyncIOProviderCreation()
 			std::cout << "[PASS] Provider shutdown successfully" << std::endl;
 
 			// English: Verify IsInitialized after shutdown
-			// 한글: 종료 후 IsInitialized 확인
+			// ???: ??? ??IsInitialized ???
 			if (!provider->IsInitialized())
 			{
 				std::cout << "[PASS] IsInitialized returns false after shutdown"
@@ -160,7 +163,7 @@ void TestAsyncIOProviderCreation()
 void TestNamedProviderCreation()
 {
 	// English: Test named provider creation (CreateAsyncIOProvider with
-	// platformHint) 한글: 이름 기반 공급자 생성 테스트
+	// platformHint) ???: ??? ??? ???????? ?????
 	std::cout << "\n=== Named Provider Creation Test ===" << std::endl;
 
 #ifdef _WIN32
@@ -199,7 +202,7 @@ void TestNamedProviderCreation()
 #endif
 
 	// English: Test unsupported platform name
-	// 한글: 지원되지 않는 플랫폼 이름 테스트
+	// ???: ??????? ??? ???????? ?????
 	auto nullProvider = CreateAsyncIOProvider("nonexistent");
 	if (!nullProvider)
 	{
@@ -207,9 +210,180 @@ void TestNamedProviderCreation()
 	}
 }
 
+#ifdef _WIN32
+void TestRIOEndToEnd()
+{
+	std::cout << "\n=== RIO Loopback Test ===" << std::endl;
+
+	auto provider = CreateAsyncIOProvider("RIO");
+	if (!provider)
+	{
+		std::cout << "[FAIL] RIO provider not available" << std::endl;
+		return;
+	}
+
+	if (provider->Initialize(256, 512) != AsyncIOError::Success)
+	{
+		std::cout << "[FAIL] RIO provider init failed: "
+				  << provider->GetLastError() << std::endl;
+		return;
+	}
+
+	SOCKET listenSock =
+		WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0,
+				  WSA_FLAG_REGISTERED_IO | WSA_FLAG_OVERLAPPED);
+	if (listenSock == INVALID_SOCKET)
+	{
+		std::cout << "[FAIL] WSASocket(listen) failed" << std::endl;
+		provider->Shutdown();
+		return;
+	}
+
+	sockaddr_in addr{};
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	addr.sin_port = 0;
+
+	if (bind(listenSock, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) ==
+		SOCKET_ERROR)
+	{
+		std::cout << "[FAIL] bind failed" << std::endl;
+		closesocket(listenSock);
+		provider->Shutdown();
+		return;
+	}
+
+	if (listen(listenSock, 1) == SOCKET_ERROR)
+	{
+		std::cout << "[FAIL] listen failed" << std::endl;
+		closesocket(listenSock);
+		provider->Shutdown();
+		return;
+	}
+
+	int addrLen = sizeof(addr);
+	if (getsockname(listenSock, reinterpret_cast<sockaddr *>(&addr),
+					&addrLen) == SOCKET_ERROR)
+	{
+		std::cout << "[FAIL] getsockname failed" << std::endl;
+		closesocket(listenSock);
+		provider->Shutdown();
+		return;
+	}
+
+	SOCKET clientSock =
+		WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0,
+				  WSA_FLAG_REGISTERED_IO | WSA_FLAG_OVERLAPPED);
+	if (clientSock == INVALID_SOCKET)
+	{
+		std::cout << "[FAIL] WSASocket(client) failed" << std::endl;
+		closesocket(listenSock);
+		provider->Shutdown();
+		return;
+	}
+
+	if (connect(clientSock, reinterpret_cast<sockaddr *>(&addr),
+				sizeof(addr)) == SOCKET_ERROR)
+	{
+		std::cout << "[FAIL] connect failed" << std::endl;
+		closesocket(clientSock);
+		closesocket(listenSock);
+		provider->Shutdown();
+		return;
+	}
+
+	SOCKET serverSock = accept(listenSock, nullptr, nullptr);
+	closesocket(listenSock);
+	if (serverSock == INVALID_SOCKET)
+	{
+		std::cout << "[FAIL] accept failed" << std::endl;
+		closesocket(clientSock);
+		provider->Shutdown();
+		return;
+	}
+
+	const char payload[] = "RIO-PING";
+	char recvBuf[64] = {};
+
+	if (provider->RecvAsync(serverSock, recvBuf, sizeof(payload), 1) !=
+		AsyncIOError::Success)
+	{
+		std::cout << "[FAIL] RIO RecvAsync failed: "
+				  << provider->GetLastError() << std::endl;
+		closesocket(serverSock);
+		closesocket(clientSock);
+		provider->Shutdown();
+		return;
+	}
+
+	if (provider->SendAsync(clientSock, payload, sizeof(payload), 2) !=
+		AsyncIOError::Success)
+	{
+		std::cout << "[FAIL] RIO SendAsync failed: "
+				  << provider->GetLastError() << std::endl;
+		closesocket(serverSock);
+		closesocket(clientSock);
+		provider->Shutdown();
+		return;
+	}
+
+	provider->FlushRequests();
+
+	bool gotRecv = false;
+	bool gotSend = false;
+	CompletionEntry entries[4] = {};
+
+	for (int attempt = 0; attempt < 20 && (!gotRecv || !gotSend); ++attempt)
+	{
+		int count = provider->ProcessCompletions(entries, 4, 100);
+		if (count < 0)
+		{
+			std::cout << "[FAIL] RIO completion error: "
+					  << provider->GetLastError() << std::endl;
+			break;
+		}
+		for (int i = 0; i < count; ++i)
+		{
+			if (entries[i].mType == AsyncIOType::Recv)
+			{
+				gotRecv = (entries[i].mResult > 0);
+			}
+			else if (entries[i].mType == AsyncIOType::Send)
+			{
+				gotSend = (entries[i].mResult > 0);
+			}
+		}
+		if (!gotRecv || !gotSend)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		}
+	}
+
+	if (gotRecv && gotSend)
+	{
+		if (std::memcmp(recvBuf, payload, sizeof(payload)) == 0)
+		{
+			std::cout << "[PASS] RIO send/recv completed" << std::endl;
+		}
+		else
+		{
+			std::cout << "[FAIL] RIO data mismatch" << std::endl;
+		}
+	}
+	else
+	{
+		std::cout << "[FAIL] RIO send/recv did not complete" << std::endl;
+	}
+
+	closesocket(serverSock);
+	closesocket(clientSock);
+	provider->Shutdown();
+}
+#endif
+
 // =============================================================================
 // English: Main Entry Point
-// 한글: 메인 진입점
+// ???: ??? ?????
 // =============================================================================
 
 int main(int argc, char *argv[])
@@ -224,6 +398,9 @@ int main(int argc, char *argv[])
 		TestPlatformSupport();
 		TestAsyncIOProviderCreation();
 		TestNamedProviderCreation();
+#ifdef _WIN32
+		TestRIOEndToEnd();
+#endif
 
 		std::cout << "\n====================================" << std::endl;
 		std::cout << "All tests completed" << std::endl;

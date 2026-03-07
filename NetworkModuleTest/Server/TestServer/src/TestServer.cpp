@@ -81,10 +81,13 @@ namespace Network::TestServer
         }
     }
 
-    bool TestServer::Initialize(uint16_t port, const std::string& dbConnectionString)
+    bool TestServer::Initialize(uint16_t port,
+                                const std::string& dbConnectionString,
+                                const std::string& engineType)
     {
         mPort = port;
         mDbConnectionString = dbConnectionString;
+        mEngineType = engineType.empty() ? "auto" : engineType;
 
         // English: Initialize asynchronous DB task queue FIRST (needed by session factory).
         //          1 worker thread is intentional: guarantees per-session task ordering.
@@ -164,17 +167,19 @@ namespace Network::TestServer
                 });
         }
 
-        // English: Create and initialize client network engine using factory (auto-detect best backend)
-        // Korean: 팩토리를 사용하여 클라이언트 네트워크 엔진 생성 및 초기화 (최적 백엔드 자동 감지)
-        mClientEngine = CreateNetworkEngine("auto");
+        // English: Create and initialize client network engine using selected backend.
+        //          "auto" keeps platform default selection behavior.
+        // Korean: 선택한 백엔드로 클라이언트 네트워크 엔진 생성 및 초기화.
+        //         "auto"는 플랫폼 기본 자동 선택 동작을 유지.
+        mClientEngine = CreateNetworkEngine(mEngineType);
         if (!mClientEngine)
         {
-            Logger::Error("Failed to create network engine");
+            Logger::Error("Failed to create network engine: " + mEngineType);
             return false;
         }
 
-        constexpr size_t MAX_CONNECTIONS = 10000;
-        if (!mClientEngine->Initialize(MAX_CONNECTIONS, port))
+        constexpr size_t kMaxConnections = Utils::MAX_CONNECTIONS;
+        if (!mClientEngine->Initialize(kMaxConnections, port))
         {
             Logger::Error("Failed to initialize client network engine");
             return false;
@@ -191,7 +196,8 @@ namespace Network::TestServer
         mClientEngine->RegisterEventCallback(NetworkEvent::DataReceived,
             [this](const NetworkEventData& e) { OnClientDataReceived(e); });
 
-        Logger::Info("TestServer initialized on port " + std::to_string(port));
+        Logger::Info("TestServer initialized on port " + std::to_string(port) +
+                     " (engine: " + mEngineType + ")");
         return true;
     }
 

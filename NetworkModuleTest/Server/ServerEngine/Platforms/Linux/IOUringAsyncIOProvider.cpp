@@ -6,7 +6,7 @@
 #if defined(__linux__) && (defined(HAVE_IO_URING) || defined(HAVE_LIBURING))
 
 #include "IOUringAsyncIOProvider.h"
-#include "PlatformDetect.h"
+#include "Network/Core/PlatformDetect.h"
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
@@ -210,7 +210,7 @@ AsyncIOError IOUringAsyncIOProvider::SendAsync(SocketHandle socket,
 
 	// English: Acquire send pool slot before taking the main lock.
 	// 한글: 메인 락 취득 전 송신 풀 슬롯 획득.
-	Core::Memory::BufferSlot sendSlot = mSendPool.Acquire();
+	Network::Core::Memory::BufferSlot sendSlot = mSendPool.Acquire();
 	if (!sendSlot.ptr)
 		return AsyncIOError::NoResources;
 
@@ -279,7 +279,7 @@ AsyncIOError IOUringAsyncIOProvider::RecvAsync(SocketHandle socket,
 
 	// English: Acquire recv pool slot before taking the main lock.
 	// 한글: 메인 락 취득 전 수신 풀 슬롯 획득.
-	Core::Memory::BufferSlot recvSlot = mRecvPool.Acquire();
+	Network::Core::Memory::BufferSlot recvSlot = mRecvPool.Acquire();
 	if (!recvSlot.ptr)
 		return AsyncIOError::NoResources;
 
@@ -314,16 +314,7 @@ AsyncIOError IOUringAsyncIOProvider::RecvAsync(SocketHandle socket,
 		return AsyncIOError::NoResources;
 	}
 
-	if (mRecvPool.IsFixedBufferMode())
-	{
-		int bufIdx = mRecvPool.GetFixedBufferIndex(recvSlot.index);
-		io_uring_prep_read_fixed(sqe, socket, recvSlot.ptr,
-								 static_cast<unsigned>(size), 0, bufIdx);
-	}
-	else
-	{
-		io_uring_prep_recv(sqe, socket, recvSlot.ptr, size, 0);
-	}
+	io_uring_prep_recv(sqe, socket, recvSlot.ptr, size, 0);
 	sqe->user_data = opKey;
 
 	mStats.mTotalRequests++;
@@ -365,7 +356,7 @@ int IOUringAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 	if (!entries || maxEntries == 0)
 		return static_cast<int>(AsyncIOError::InvalidParameter);
 
-	std::lock_guard<std::mutex> lock(mMutex);
+	std::unique_lock<std::mutex> lock(mMutex);
 
 	// English: Process available completions
 	// 한글: 사용 가능한 완료 처리
@@ -375,6 +366,8 @@ int IOUringAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 	// 한글: 완료 없고 타임아웃 > 0이면 대기
 	if (count == 0 && timeoutMs != 0)
 	{
+		lock.unlock();
+
 		struct __kernel_timespec ts;
 		ts.tv_sec = (timeoutMs > 0) ? (timeoutMs / 1000) : 0;
 		ts.tv_nsec = (timeoutMs > 0) ? ((timeoutMs % 1000) * 1000000) : 0;
@@ -384,6 +377,7 @@ int IOUringAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 											(timeoutMs > 0) ? &ts : nullptr);
 		if (ret == 0)
 		{
+			lock.lock();
 			count = ProcessCompletionQueue(entries, maxEntries);
 		}
 	}

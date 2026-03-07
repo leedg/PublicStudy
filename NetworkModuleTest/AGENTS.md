@@ -240,15 +240,15 @@ fix/feat/...: <작업 요약>
 .\run_test_auto.ps1 -RunSeconds 5
 
 # 대화형 테스트 (서버 전체 기동)
-.\run_allServer.ps1 -ServerPort 9000 -DbPort 8002
+.\run_allServer.ps1 -ServerPort 19010 -DbPort 18002
 
 # 개별 기동
-.\run_dbServer.ps1 -DbPort 8002
-.\run_server.ps1 -ServerPort 9000 -DbPort 8002
+.\run_dbServer.ps1 -DbPort 18002
+.\run_server.ps1 -ServerPort 19010 -DbPort 18002
 .\run_client.ps1
 ```
 
-**프로세스 기동 순서**: TestDBServer(8002) → TestServer(9000) → TestClient
+**프로세스 기동 순서**: TestDBServer(18002) → TestServer(19010) → TestClient
 
 ---
 
