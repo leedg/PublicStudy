@@ -160,6 +160,14 @@ void macOSNetworkEngine::AcceptLoop()
 				break;
 			}
 
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+			{
+				// English: Non-blocking listen socket — no connection pending; yield briefly.
+				// 한글: 논블로킹 listen 소켓에서 대기 중인 연결 없음 — 오류가 아니므로 로그 없이 짧게 양보.
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				continue;
+			}
+
 			Utils::Logger::Error("Accept failed: " + std::string(strerror(errno)));
 
 			// English: Exponential backoff on error (member var, not static)
