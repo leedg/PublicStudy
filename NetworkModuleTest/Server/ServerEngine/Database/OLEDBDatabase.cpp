@@ -18,10 +18,10 @@ OLEDBDatabase::OLEDBDatabase() : mConnected(false) {}
 
 OLEDBDatabase::~OLEDBDatabase() { Disconnect(); }
 
-void OLEDBDatabase::Connect(const DatabaseConfig &config)
+void OLEDBDatabase::Connect([[maybe_unused]] const DatabaseConfig &config)
 {
-	mConfig = config;
-	mConnected = true;
+	// 한글: OLEDB 백엔드는 미구현 상태. 사용 시 즉시 실패해 조용한 스텁 동작 방지.
+	throw DatabaseException("OLEDBDatabase is not implemented");
 }
 
 void OLEDBDatabase::Disconnect() { mConnected = false; }
@@ -78,14 +78,8 @@ OLEDBConnection::~OLEDBConnection() { Close(); }
 
 void OLEDBConnection::Open([[maybe_unused]] const std::string &connectionString)
 {
-	if (mConnected)
-	{
-		return; // English: Already connected / 한글: 이미 연결됨
-	}
-
-	// English: OLEDB connection implementation
-	// 한글: OLEDB 연결 구현
-	mConnected = true;
+	// 한글: OLEDB 백엔드는 미구현 상태. 사용 시 즉시 실패해 조용한 스텁 동작 방지.
+	throw DatabaseException("OLEDBConnection is not implemented");
 }
 
 void OLEDBConnection::Close() { mConnected = false; }
