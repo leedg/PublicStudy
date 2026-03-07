@@ -6,6 +6,8 @@
 
 #ifdef HAVE_SQLITE3
 
+#include <algorithm>
+#include <cctype>
 #include <sstream>
 
 namespace Network
@@ -176,7 +178,7 @@ void SQLiteConnection::ExecRaw(const char *sql)
 // =============================================================================
 
 SQLiteResultSet::SQLiteResultSet(sqlite3_stmt *stmt)
-	: mStmt(stmt), mDone(false)
+	: mStmt(stmt), mDone(false), mHasData(false)
 {
 	if (mStmt)
 	{
@@ -207,15 +209,19 @@ bool SQLiteResultSet::Next()
 
 	int rc = sqlite3_step(mStmt);
 	if (rc == SQLITE_ROW)
+	{
+		mHasData = true;
 		return true;
+	}
 
-	mDone = true;
+	mHasData = false;
+	mDone    = true;
 	return false;
 }
 
 bool SQLiteResultSet::IsNull(size_t columnIndex)
 {
-	if (!mStmt)
+	if (!mHasData || !mStmt)
 		return true;
 	return sqlite3_column_type(mStmt, static_cast<int>(columnIndex)) == SQLITE_NULL;
 }
@@ -227,7 +233,11 @@ bool SQLiteResultSet::IsNull(const std::string &columnName)
 
 std::string SQLiteResultSet::GetString(size_t columnIndex)
 {
-	if (!mStmt)
+	// English: sqlite3_column_* returns undefined data if called before the first
+	//          Next() (i.e., before sqlite3_step() returns SQLITE_ROW).
+	// 한글: Next() 호출 전(sqlite3_step이 SQLITE_ROW를 반환하기 전)에 호출하면
+	//       sqlite3_column_*은 미정의 데이터를 반환함.
+	if (!mHasData || !mStmt)
 		return {};
 	const unsigned char *text = sqlite3_column_text(mStmt, static_cast<int>(columnIndex));
 	return text ? reinterpret_cast<const char *>(text) : "";
@@ -240,7 +250,7 @@ std::string SQLiteResultSet::GetString(const std::string &columnName)
 
 int SQLiteResultSet::GetInt(size_t columnIndex)
 {
-	if (!mStmt)
+	if (!mHasData || !mStmt)
 		return 0;
 	return sqlite3_column_int(mStmt, static_cast<int>(columnIndex));
 }
@@ -252,7 +262,7 @@ int SQLiteResultSet::GetInt(const std::string &columnName)
 
 long long SQLiteResultSet::GetLong(size_t columnIndex)
 {
-	if (!mStmt)
+	if (!mHasData || !mStmt)
 		return 0;
 	return sqlite3_column_int64(mStmt, static_cast<int>(columnIndex));
 }
@@ -264,7 +274,7 @@ long long SQLiteResultSet::GetLong(const std::string &columnName)
 
 double SQLiteResultSet::GetDouble(size_t columnIndex)
 {
-	if (!mStmt)
+	if (!mHasData || !mStmt)
 		return 0.0;
 	return sqlite3_column_double(mStmt, static_cast<int>(columnIndex));
 }
@@ -312,10 +322,21 @@ void SQLiteResultSet::Close()
 
 int SQLiteResultSet::ResolveColumn(const std::string &columnName) const
 {
+	// English: Case-insensitive comparison — SQLite column names follow the query's
+	//          casing, which may not match caller expectations.
+	// 한글: 대소문자 무시 비교 — SQLite 컬럼명은 쿼리의 대소문자를 따르므로
+	//       호출자의 기대와 다를 수 있음.
+	auto iequal = [](unsigned char a, unsigned char b) {
+		return std::tolower(a) == std::tolower(b);
+	};
 	for (size_t i = 0; i < mColumnNames.size(); ++i)
 	{
-		if (mColumnNames[i] == columnName)
+		const auto &name = mColumnNames[i];
+		if (name.size() == columnName.size() &&
+		    std::equal(name.begin(), name.end(), columnName.begin(), iequal))
+		{
 			return static_cast<int>(i);
+		}
 	}
 	throw DatabaseException("SQLiteResultSet: column not found: " + columnName);
 }

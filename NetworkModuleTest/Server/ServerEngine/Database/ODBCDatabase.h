@@ -173,24 +173,35 @@ class ODBCStatement : public IStatement
 	void BindParameters();
 
   private:
+	// English: Typed parameter value — stores the native C value for each bind type.
+	//          SQLBindParameter receives a pointer into this struct; mParams must not
+	//          be modified between BindParameters() and SQLExecDirectA().
+	// 한글: 타입별 파라미터 값 — 각 바인딩 타입의 네이티브 C 값을 저장.
+	//       SQLBindParameter는 이 구조체 내부 포인터를 받으므로 BindParameters()와
+	//       SQLExecDirectA() 사이에 mParams를 수정해서는 안 됨.
+	struct ParamValue
+	{
+		enum class Type { Text, Int, Int64, Double, Bool, Null } type = Type::Null;
+		std::string text;
+		int         intVal    = 0;
+		long long   int64Val  = 0;
+		double      doubleVal = 0.0;
+		SQLLEN      indicator = SQL_NULL_DATA;
+	};
+
 	// English: Batch entry — snapshot of parameters for one batch item
 	// 한글: 배치 항목 — 배치 아이템 하나의 파라미터 스냅샷
 	struct BatchEntry
 	{
-		std::vector<std::string> parameters;
-		std::vector<SQLLEN> parameterLengths;
+		std::vector<ParamValue> params;
 	};
 
   private:
 	SQLHSTMT mStatement;
 	SQLHDBC mConnection;
 	std::string mQuery;
-	std::vector<std::string> mParameters;
-	std::vector<SQLLEN> mParameterLengths;
+	std::vector<ParamValue> mParams;
 	std::vector<BatchEntry> mBatches;
-	// 한글: SQLBindParameter에 전달하는 포인터의 수명을 SQLExecDirectA 완료까지 보장하는 바인딩 버퍼
-	std::vector<std::string> mBoundParams;
-	std::vector<SQLLEN> mBoundLengths;
 	bool mPrepared;
 	int mTimeout;
 };
@@ -238,9 +249,27 @@ class ODBCResultSet : public IResultSet
 	void Close() override;
 
   private:
+	// English: Per-row column data cache. FetchColumn() populates a slot on first access
+	//          and returns cached data on subsequent calls within the same row.
+	//          This prevents SQLGetData from being called twice on the same column
+	//          (which advances the stream cursor on forward-only result sets).
+	//          The cache is invalidated on each Next() call.
+	// 한글: 행별 컬럼 데이터 캐시. FetchColumn()이 첫 접근 시 슬롯을 채우고
+	//       동일 행 내 이후 호출에는 캐시를 반환.
+	//       SQLGetData를 같은 컬럼에 두 번 호출하는 것을 방지
+	//       (forward-only 커서에서 스트림 커서가 이동함).
+	//       Next() 호출마다 캐시를 무효화.
+	struct ColumnData
+	{
+		bool fetched = false;
+		bool isNull  = false;
+		std::string value;
+	};
+
 	// English: Helper methods
 	// 한글: 헬퍼 메서드
 	void LoadMetadata();
+	const ColumnData &FetchColumn(size_t columnIndex);
 	void CheckSQLReturn(SQLRETURN ret, const std::string &operation);
 	std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
 
@@ -251,6 +280,7 @@ class ODBCResultSet : public IResultSet
 	std::vector<SQLSMALLINT> mColumnTypes;
 	std::vector<SQLULEN> mColumnSizes;
 	bool mMetadataLoaded;
+	std::vector<ColumnData> mRowCache;
 };
 
 } // namespace Database

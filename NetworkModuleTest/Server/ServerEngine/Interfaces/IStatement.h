@@ -35,8 +35,8 @@ class IStatement
 	virtual void SetQuery(const std::string &query) = 0;
 	virtual void SetTimeout(int seconds) = 0;
 
-	// English: Parameter binding
-	// 한글: 파라미터 바인딩
+	// English: Parameter binding — index is 1-based (first parameter = 1).
+	// 한글: 파라미터 바인딩 — 인덱스는 1-based (첫 번째 파라미터 = 1).
 	virtual void BindParameter(size_t index, const std::string &value) = 0;
 	virtual void BindParameter(size_t index, int value) = 0;
 	virtual void BindParameter(size_t index, long long value) = 0;

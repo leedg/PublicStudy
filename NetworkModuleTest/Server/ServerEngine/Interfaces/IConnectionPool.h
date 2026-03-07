@@ -25,8 +25,13 @@ class IConnectionPool
   public:
 	virtual ~IConnectionPool() = default;
 
-	// English: Get a connection from the pool
-	// 한글: 풀에서 연결 가져오기
+	// English: Get a connection from the pool. Blocks up to the configured connection
+	//          timeout. Returns nullptr if the timeout expires before a connection
+	//          becomes available (pool exhausted). Always check the return value before use,
+	//          or wrap in ScopedConnection and call IsValid().
+	// 한글: 풀에서 연결을 가져옴. 설정된 연결 타임아웃까지 블록.
+	//       타임아웃 전에 연결이 확보되지 않으면 nullptr 반환 (풀 소진).
+	//       반환값을 반드시 확인하거나 ScopedConnection으로 감싸 IsValid()로 검증할 것.
 	virtual std::shared_ptr<IConnection> GetConnection() = 0;
 
 	// English: Return a connection to the pool

@@ -2,6 +2,8 @@
 // 한글: ODBCDatabase 구현
 
 #include "ODBCDatabase.h"
+#include <algorithm>
+#include <cctype>
 #include <sstream>
 #include <stdexcept>
 
@@ -77,6 +79,10 @@ void ODBCDatabase::CheckSQLReturn(SQLRETURN ret, const std::string &operation,
 void ODBCDatabase::Connect(const DatabaseConfig &config)
 {
 	mConfig = config;
+	// English: Open a temporary connection to validate the connection string,
+	//          then discard it. Real connections are obtained via CreateConnection().
+	// 한글: 연결 문자열 유효성 검사를 위해 임시 연결을 열고 즉시 폐기.
+	//       실제 연결은 CreateConnection()으로 얻음.
 	auto pConnection = std::make_unique<ODBCConnection>(mEnvironment);
 	pConnection->Open(config.mConnectionString);
 	mConnected = true;
@@ -108,23 +114,24 @@ std::unique_ptr<IStatement> ODBCDatabase::CreateStatement()
 
 void ODBCDatabase::BeginTransaction()
 {
-	auto pConnection = CreateConnection();
-	pConnection->Open(mConfig.mConnectionString);
-	pConnection->BeginTransaction();
+	// English: Transaction state is per-connection. Use IConnection::BeginTransaction()
+	//          on a connection obtained from CreateConnection() or a ConnectionPool.
+	// 한글: 트랜잭션 상태는 연결 단위. CreateConnection() 또는 ConnectionPool로
+	//       얻은 연결에서 IConnection::BeginTransaction()을 사용해야 함.
+	throw DatabaseException(
+		"ODBCDatabase: call IConnection::BeginTransaction() on a connection from CreateConnection()");
 }
 
 void ODBCDatabase::CommitTransaction()
 {
-	auto pConnection = CreateConnection();
-	pConnection->Open(mConfig.mConnectionString);
-	pConnection->CommitTransaction();
+	throw DatabaseException(
+		"ODBCDatabase: call IConnection::CommitTransaction() on a connection from CreateConnection()");
 }
 
 void ODBCDatabase::RollbackTransaction()
 {
-	auto pConnection = CreateConnection();
-	pConnection->Open(mConfig.mConnectionString);
-	pConnection->RollbackTransaction();
+	throw DatabaseException(
+		"ODBCDatabase: call IConnection::RollbackTransaction() on a connection from CreateConnection()");
 }
 
 // =============================================================================
@@ -285,70 +292,119 @@ void ODBCStatement::SetTimeout(int seconds)
 
 void ODBCStatement::BindParameter(size_t index, const std::string &value)
 {
-	size_t newSize = std::max(mParameters.size(), index);
-	mParameters.resize(newSize);
-	mParameters[index - 1] = value;
-	mParameterLengths.resize(newSize);
-	mParameterLengths[index - 1] = SQL_NTS;
+	if (mParams.size() < index) mParams.resize(index);
+	auto &p    = mParams[index - 1];
+	p.type     = ParamValue::Type::Text;
+	p.text     = value;
+	p.indicator = SQL_NTS;
 }
 
 void ODBCStatement::BindParameter(size_t index, int value)
 {
-	size_t newSize = std::max(mParameters.size(), index);
-	mParameters.resize(newSize);
-	mParameters[index - 1] = std::to_string(value);
-	mParameterLengths.resize(newSize);
-	mParameterLengths[index - 1] = 0;
+	if (mParams.size() < index) mParams.resize(index);
+	auto &p    = mParams[index - 1];
+	p.type     = ParamValue::Type::Int;
+	p.intVal   = value;
+	p.indicator = 0;
 }
 
 void ODBCStatement::BindParameter(size_t index, long long value)
 {
-	size_t newSize = std::max(mParameters.size(), index);
-	mParameters.resize(newSize);
-	mParameters[index - 1] = std::to_string(value);
-	mParameterLengths.resize(newSize);
-	mParameterLengths[index - 1] = 0;
+	if (mParams.size() < index) mParams.resize(index);
+	auto &p     = mParams[index - 1];
+	p.type      = ParamValue::Type::Int64;
+	p.int64Val  = value;
+	p.indicator = 0;
 }
 
 void ODBCStatement::BindParameter(size_t index, double value)
 {
-	size_t newSize = std::max(mParameters.size(), index);
-	mParameters.resize(newSize);
-	mParameters[index - 1] = std::to_string(value);
-	mParameterLengths.resize(newSize);
-	mParameterLengths[index - 1] = 0;
+	if (mParams.size() < index) mParams.resize(index);
+	auto &p      = mParams[index - 1];
+	p.type       = ParamValue::Type::Double;
+	p.doubleVal  = value;
+	p.indicator  = 0;
 }
 
 void ODBCStatement::BindParameter(size_t index, bool value)
 {
-	size_t newSize = std::max(mParameters.size(), index);
-	mParameters.resize(newSize);
-	mParameters[index - 1] = value ? "1" : "0";
-	mParameterLengths.resize(newSize);
-	mParameterLengths[index - 1] = 0;
+	if (mParams.size() < index) mParams.resize(index);
+	auto &p    = mParams[index - 1];
+	p.type     = ParamValue::Type::Bool;
+	p.intVal   = value ? 1 : 0;
+	p.indicator = 0;
 }
 
 void ODBCStatement::BindNullParameter(size_t index)
 {
-	size_t newSize = std::max(mParameters.size(), index);
-	mParameters.resize(newSize);
-	mParameters[index - 1] = "";
-	mParameterLengths.resize(newSize);
-	mParameterLengths[index - 1] = SQL_NULL_DATA;
+	if (mParams.size() < index) mParams.resize(index);
+	auto &p    = mParams[index - 1];
+	p.type     = ParamValue::Type::Null;
+	p.indicator = SQL_NULL_DATA;
 }
 
 void ODBCStatement::BindParameters()
 {
-	// 한글: mParameters의 c_str() 포인터를 SQLBindParameter에 직접 전달하면
-	// 함수 반환 후 벡터 재할당 시 댕글링 위험. 멤버 버퍼에 복사해 수명을 보장.
-	mBoundParams = mParameters;
-	mBoundLengths = mParameterLengths;
-	for (size_t i = 0; i < mBoundParams.size(); ++i)
+	// English: Bind each parameter with its native C type so that int/long/double
+	//          are not silently converted through string (which truncates precision).
+	//          mParams must not be modified between this call and SQLExecDirectA().
+	// 한글: 각 파라미터를 네이티브 C 타입으로 바인딩해 int/long/double이
+	//       문자열 경유 변환(정밀도 손실)되지 않도록 함.
+	//       이 함수 호출과 SQLExecDirectA() 사이에 mParams를 수정해서는 안 됨.
+	for (size_t i = 0; i < mParams.size(); ++i)
 	{
-		SQLRETURN ret = SQLBindParameter(
-			mStatement, (SQLUSMALLINT)(i + 1), SQL_PARAM_INPUT, SQL_C_CHAR,
-			SQL_VARCHAR, 0, 0, (SQLPOINTER)mBoundParams[i].c_str(),
-			(SQLLEN)mBoundParams[i].length(), &mBoundLengths[i]);
+		auto &p = mParams[i];
+		const SQLUSMALLINT col = static_cast<SQLUSMALLINT>(i + 1);
+		SQLRETURN ret;
+
+		switch (p.type)
+		{
+		case ParamValue::Type::Text:
+			p.indicator = SQL_NTS;
+			ret = SQLBindParameter(
+				mStatement, col, SQL_PARAM_INPUT,
+				SQL_C_CHAR, SQL_VARCHAR,
+				static_cast<SQLULEN>(p.text.length()), 0,
+				(SQLPOINTER)p.text.c_str(),
+				static_cast<SQLLEN>(p.text.length() + 1),
+				&p.indicator);
+			break;
+
+		case ParamValue::Type::Int:
+		case ParamValue::Type::Bool: // English: bool stored as 0/1 int
+			p.indicator = 0;
+			ret = SQLBindParameter(
+				mStatement, col, SQL_PARAM_INPUT,
+				SQL_C_LONG, SQL_INTEGER,
+				0, 0, &p.intVal, 0, &p.indicator);
+			break;
+
+		case ParamValue::Type::Int64:
+			p.indicator = 0;
+			ret = SQLBindParameter(
+				mStatement, col, SQL_PARAM_INPUT,
+				SQL_C_SBIGINT, SQL_BIGINT,
+				0, 0, &p.int64Val, 0, &p.indicator);
+			break;
+
+		case ParamValue::Type::Double:
+			p.indicator = 0;
+			ret = SQLBindParameter(
+				mStatement, col, SQL_PARAM_INPUT,
+				SQL_C_DOUBLE, SQL_DOUBLE,
+				0, 0, &p.doubleVal, 0, &p.indicator);
+			break;
+
+		case ParamValue::Type::Null:
+		default:
+			p.indicator = SQL_NULL_DATA;
+			ret = SQLBindParameter(
+				mStatement, col, SQL_PARAM_INPUT,
+				SQL_C_CHAR, SQL_VARCHAR,
+				0, 0, nullptr, 0, &p.indicator);
+			break;
+		}
+
 		CheckSQLReturn(ret, "Bind parameter");
 	}
 }
@@ -403,16 +459,14 @@ bool ODBCStatement::Execute()
 
 void ODBCStatement::AddBatch()
 {
-	// English: Snapshot current query+parameters as one batch entry, then reset for next item
-	// 한글: 현재 쿼리+파라미터를 배치 항목으로 저장 후 다음 항목을 위해 초기화
+	// English: Snapshot current parameters as one batch entry, then reset for next item.
+	//          The query string is shared across all batch items.
+	// 한글: 현재 파라미터를 배치 항목으로 저장 후 다음 항목을 위해 초기화.
+	//       쿼리 문자열은 모든 배치 항목이 공유.
 	if (!mQuery.empty())
 	{
-		BatchEntry entry;
-		entry.parameters = mParameters;
-		entry.parameterLengths = mParameterLengths;
-		mBatches.push_back(std::move(entry));
-		mParameters.clear();
-		mParameterLengths.clear();
+		mBatches.push_back(BatchEntry{mParams});
+		mParams.clear();
 		mPrepared = false;
 	}
 }
@@ -426,11 +480,8 @@ std::vector<int> ODBCStatement::ExecuteBatch()
 
 	for (auto &entry : mBatches)
 	{
-		// English: Restore batch parameters to mParameters/mParameterLengths for BindParameters()
-		// 한글: BindParameters() 호출을 위해 배치 파라미터를 mParameters로 복원
-		mParameters = entry.parameters;
-		mParameterLengths = entry.parameterLengths;
-		mPrepared = false;
+		mParams    = entry.params;
+		mPrepared  = false;
 
 		BindParameters();
 		SQLRETURN ret =
@@ -453,16 +504,14 @@ std::vector<int> ODBCStatement::ExecuteBatch()
 	}
 
 	mBatches.clear();
-	mParameters.clear();
-	mParameterLengths.clear();
+	mParams.clear();
 	mPrepared = false;
 	return results;
 }
 
 void ODBCStatement::ClearParameters()
 {
-	mParameters.clear();
-	mParameterLengths.clear();
+	mParams.clear();
 	mPrepared = false;
 }
 
@@ -545,6 +594,7 @@ void ODBCResultSet::LoadMetadata()
 	}
 
 	mMetadataLoaded = true;
+	mRowCache.assign(static_cast<size_t>(columnCount), ColumnData{});
 }
 
 bool ODBCResultSet::Next()
@@ -557,18 +607,63 @@ bool ODBCResultSet::Next()
 	}
 	CheckSQLReturn(ret, "Fetch row");
 	mHasData = true;
+	// English: Invalidate column cache for the new row.
+	// 한글: 새 행에 대한 컬럼 캐시 무효화.
+	std::fill(mRowCache.begin(), mRowCache.end(), ColumnData{});
 	return true;
+}
+
+const ODBCResultSet::ColumnData &ODBCResultSet::FetchColumn(size_t columnIndex)
+{
+	auto &col = mRowCache[columnIndex];
+	if (col.fetched)
+	{
+		return col;
+	}
+
+	col.fetched  = true;
+	SQLLEN indicator = 0;
+	char buffer[4096] = {0};
+
+	// English: Single SQLGetData call per column per row. Caching the result means
+	//          IsNull() and GetString() can both be called without consuming the
+	//          column cursor twice on forward-only result sets.
+	// 한글: 행당 컬럼당 SQLGetData를 1회만 호출. 결과를 캐시하므로 IsNull()과
+	//       GetString()을 각각 호출해도 forward-only 커서를 두 번 소비하지 않음.
+	SQLRETURN ret = SQLGetData(
+		mStatement, static_cast<SQLUSMALLINT>(columnIndex + 1),
+		SQL_C_CHAR, buffer, static_cast<SQLLEN>(sizeof(buffer)), &indicator);
+
+	if (indicator == SQL_NULL_DATA)
+	{
+		col.isNull = true;
+		return col;
+	}
+
+	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO)
+	{
+		throw DatabaseException(
+			"FetchColumn: " + GetSQLErrorMessage(mStatement, SQL_HANDLE_STMT));
+	}
+
+	col.isNull = false;
+	// English: If indicator > buffer capacity the value is truncated to 4095 chars.
+	//          Extend buffer or use streaming SQLGetData loop if longer values are needed.
+	// 한글: indicator > 버퍼 크기이면 4095자로 잘림.
+	//       더 긴 값이 필요하면 버퍼를 늘리거나 SQLGetData 스트리밍 루프를 사용.
+	col.value = (indicator > static_cast<SQLLEN>(sizeof(buffer) - 1))
+	                ? std::string(buffer, sizeof(buffer) - 1)
+	                : std::string(buffer);
+	return col;
 }
 
 bool ODBCResultSet::IsNull(size_t columnIndex)
 {
-	SQLLEN indicator;
-	SQLCHAR buffer[1];
-	SQLRETURN ret =
-		SQLGetData(mStatement, static_cast<SQLUSMALLINT>(columnIndex + 1),
-					   SQL_C_CHAR, buffer, 0, &indicator);
-	CheckSQLReturn(ret, "Get data (null check)");
-	return indicator == SQL_NULL_DATA;
+	if (!mHasData)
+	{
+		throw DatabaseException("No current row");
+	}
+	return FetchColumn(columnIndex).isNull;
 }
 
 bool ODBCResultSet::IsNull(const std::string &columnName)
@@ -583,35 +678,8 @@ std::string ODBCResultSet::GetString(size_t columnIndex)
 	{
 		throw DatabaseException("No current row");
 	}
-
-	std::string value;
-	SQLLEN indicator = 0;
-	char buffer[4096] = {0};
-
-	SQLRETURN ret =
-		SQLGetData(mStatement, static_cast<SQLUSMALLINT>(columnIndex + 1),
-					   SQL_C_CHAR, buffer, sizeof(buffer), &indicator);
-
-	if (indicator == SQL_NULL_DATA)
-	{
-		return "";
-	}
-
-	CheckSQLReturn(ret, "Get data (string)");
-
-	if (ret == SQL_SUCCESS_WITH_INFO &&
-		indicator > static_cast<SQLLEN>(sizeof(buffer) - 1))
-	{
-		// English: Handle long data - simplified for this example
-		// 한글: 긴 데이터 처리 - 예제용 단순화
-		value = std::string(buffer, sizeof(buffer) - 1);
-	}
-	else
-	{
-		value = std::string(buffer);
-	}
-
-	return value;
+	const auto &col = FetchColumn(columnIndex);
+	return col.isNull ? "" : col.value;
 }
 
 std::string ODBCResultSet::GetString(const std::string &columnName)
@@ -702,9 +770,18 @@ std::string ODBCResultSet::GetColumnName(size_t columnIndex) const
 
 size_t ODBCResultSet::FindColumn(const std::string &columnName) const
 {
+	// English: Case-insensitive comparison — ODBC drivers vary (SQL Server uppercases,
+	//          PostgreSQL lowercases). Matching on tolower prevents spurious not-found errors.
+	// 한글: 대소문자 무시 비교 — ODBC 드라이버마다 대소문자가 다름 (SQL Server 대문자,
+	//       PostgreSQL 소문자). tolower로 통일해 not-found 오류를 방지.
+	auto iequal = [](unsigned char a, unsigned char b) {
+		return std::tolower(a) == std::tolower(b);
+	};
 	for (size_t i = 0; i < mColumnNames.size(); ++i)
 	{
-		if (mColumnNames[i] == columnName)
+		const auto &name = mColumnNames[i];
+		if (name.size() == columnName.size() &&
+		    std::equal(name.begin(), name.end(), columnName.begin(), iequal))
 		{
 			return i;
 		}

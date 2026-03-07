@@ -80,6 +80,8 @@ class SQLiteResultSet : public IResultSet
   private:
 	sqlite3_stmt *mStmt;
 	bool mDone;
+	bool mHasData; // English: true only while a SQLITE_ROW has been returned by Next()
+	               // 한글: Next()가 SQLITE_ROW를 반환한 동안만 true
 	std::vector<std::string> mColumnNames;
 };
 

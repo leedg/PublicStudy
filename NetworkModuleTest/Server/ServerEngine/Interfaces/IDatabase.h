@@ -42,8 +42,16 @@ class IDatabase
 	virtual std::unique_ptr<IConnection> CreateConnection() = 0;
 	virtual std::unique_ptr<IStatement> CreateStatement() = 0;
 
-	// English: Transaction management
-	// 한글: 트랜잭션 관리
+	// English: Database-level transaction management.
+	//          NOTE: Transaction state is per-connection in most databases.
+	//          Prefer using IConnection::BeginTransaction() on a connection obtained
+	//          from CreateConnection() or ConnectionPool::GetConnection().
+	//          Implementations may throw DatabaseException for this reason.
+	// 한글: 데이터베이스 레벨 트랜잭션 관리.
+	//       주의: 트랜잭션 상태는 대부분의 DB에서 연결 단위.
+	//       CreateConnection() 또는 ConnectionPool::GetConnection()으로 얻은 연결에서
+	//       IConnection::BeginTransaction()을 사용하는 것을 권장.
+	//       구현체에 따라 DatabaseException이 발생할 수 있음.
 	virtual void BeginTransaction() = 0;
 	virtual void CommitTransaction() = 0;
 	virtual void RollbackTransaction() = 0;
