@@ -339,12 +339,16 @@ void ODBCStatement::BindNullParameter(size_t index)
 
 void ODBCStatement::BindParameters()
 {
-	for (size_t i = 0; i < mParameters.size(); ++i)
+	// 한글: mParameters의 c_str() 포인터를 SQLBindParameter에 직접 전달하면
+	// 함수 반환 후 벡터 재할당 시 댕글링 위험. 멤버 버퍼에 복사해 수명을 보장.
+	mBoundParams = mParameters;
+	mBoundLengths = mParameterLengths;
+	for (size_t i = 0; i < mBoundParams.size(); ++i)
 	{
 		SQLRETURN ret = SQLBindParameter(
 			mStatement, (SQLUSMALLINT)(i + 1), SQL_PARAM_INPUT, SQL_C_CHAR,
-			SQL_VARCHAR, 0, 0, (SQLPOINTER)mParameters[i].c_str(),
-			(SQLLEN)mParameters[i].length(), &mParameterLengths[i]);
+			SQL_VARCHAR, 0, 0, (SQLPOINTER)mBoundParams[i].c_str(),
+			(SQLLEN)mBoundParams[i].length(), &mBoundLengths[i]);
 		CheckSQLReturn(ret, "Bind parameter");
 	}
 }

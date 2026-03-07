@@ -15,6 +15,7 @@
 #endif
 
 #include <algorithm>
+#include <atomic>
 #include <memory>
 // 한글: ODBC 헤더가 필요로 하는 Windows 타입을 먼저 정의한다.
 #include <windows.h>
@@ -78,7 +79,7 @@ class ODBCDatabase : public IDatabase
   private:
 	DatabaseConfig mConfig;
 	SQLHENV mEnvironment;
-	bool mConnected;
+	std::atomic<bool> mConnected;
 };
 
 // =============================================================================
@@ -122,7 +123,7 @@ class ODBCConnection : public IConnection
   private:
 	SQLHDBC mConnection;
 	SQLHENV mEnvironment;
-	bool mConnected;
+	std::atomic<bool> mConnected;
 	std::string mLastError;
 	int mLastErrorCode;
 };
@@ -187,6 +188,9 @@ class ODBCStatement : public IStatement
 	std::vector<std::string> mParameters;
 	std::vector<SQLLEN> mParameterLengths;
 	std::vector<BatchEntry> mBatches;
+	// 한글: SQLBindParameter에 전달하는 포인터의 수명을 SQLExecDirectA 완료까지 보장하는 바인딩 버퍼
+	std::vector<std::string> mBoundParams;
+	std::vector<SQLLEN> mBoundLengths;
 	bool mPrepared;
 	int mTimeout;
 };
