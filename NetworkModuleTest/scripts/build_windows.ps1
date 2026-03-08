@@ -1,6 +1,19 @@
 <#
 한글: NetworkModuleTest (Windows) 빌드 스크립트
-한글: 다른 서버에서도 동일한 절차로 빌드할 수 있도록 구성
+      build_common.ps1의 MSBuild 자동 탐지를 사용합니다.
+      PATH 미등록 환경에서도 vswhere → VS2022 Professional/Community/Enterprise/BuildTools
+      순으로 자동 탐지하므로 별도 설정 없이 동작합니다.
+
+사용법:
+  .\scripts\build_windows.ps1                        # Debug x64
+  .\scripts\build_windows.ps1 -Configuration Release # Release 빌드
+  .\scripts\build_windows.ps1 -Rebuild               # 클린 후 재빌드
+  .\scripts\build_windows.ps1 -Clean                 # 클린만
+
+선결 조건:
+  - Visual Studio 2022 (MSVC v143 이상 + C++ 빌드 도구 + Windows SDK 10.0)
+    또는 Visual Studio 2022 Build Tools
+  - 다운로드: https://visualstudio.microsoft.com/downloads/
 #>
 
 param(
@@ -16,8 +29,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RootDir = Resolve-Path (Join-Path $ScriptDir "..")
+$ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RootDir      = Resolve-Path (Join-Path $ScriptDir "..")
 $SolutionPath = Join-Path $RootDir "NetworkModuleTest.sln"
 
 if (-not (Test-Path $SolutionPath)) {
@@ -25,31 +38,22 @@ if (-not (Test-Path $SolutionPath)) {
     exit 1
 }
 
-if (-not (Get-Command msbuild -ErrorAction SilentlyContinue)) {
-    Write-Error "msbuild를 찾을 수 없습니다."
-    Write-Host "설치 가이드:"
-    Write-Host "  1) Visual Studio Build Tools 또는 Visual Studio 설치"
-    Write-Host "  2) C++ 빌드 도구(MSVC v143 이상)와 Windows SDK 10.0 설치"
-    Write-Host "  3) 'Developer PowerShell for VS'에서 실행 권장"
-    exit 1
-}
+# 한글: build_common.ps1 로드 (MSBuild 자동 탐지 함수 포함)
+. (Join-Path $RootDir "build_common.ps1")
 
 Write-Host "빌드 설정:"
-Write-Host "  RootDir = $RootDir"
+Write-Host "  RootDir       = $RootDir"
 Write-Host "  Configuration = $Configuration"
-Write-Host "  Platform = $Platform"
+Write-Host "  Platform      = $Platform"
 
 if ($Clean) {
     Write-Host "Clean 실행..."
-    msbuild $SolutionPath /t:Clean /p:Configuration=$Configuration /p:Platform=$Platform
+    $exitCode = Invoke-MSBuild -TargetPath $SolutionPath -Configuration $Configuration -Platform $Platform -Target Clean
+    if ($exitCode -ne 0) { exit $exitCode }
 }
 
-if ($Rebuild) {
-    Write-Host "Rebuild 실행..."
-    msbuild $SolutionPath /t:Rebuild /p:Configuration=$Configuration /p:Platform=$Platform
-} else {
-    Write-Host "Build 실행..."
-    msbuild $SolutionPath /t:Build /p:Configuration=$Configuration /p:Platform=$Platform
-}
+$target = if ($Rebuild) { "Rebuild" } else { "Build" }
+$exitCode = Invoke-MSBuild -TargetPath $SolutionPath -Configuration $Configuration -Platform $Platform -Target $target -MultiProc
 
 Write-Host "빌드 완료"
+exit $exitCode

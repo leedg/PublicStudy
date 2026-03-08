@@ -48,6 +48,26 @@ $LogDir      = Join-Path $RepoRoot "Doc\Performance\Logs"
 # 한글: epoll+iouring 결과가 같은 폴더에 들어가도록 공유 세션 타임스탬프 생성.
 $LogSession = (Get-Date -Format "yyyyMMdd_HHmmss") + "_linux"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# English: Pre-flight checks — Docker availability
+# 한글: 사전 확인 — Docker 설치 및 데몬 실행 상태
+# ─────────────────────────────────────────────────────────────────────────────
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+    Write-Host ""
+    Write-Host "[ERROR] Docker가 설치되어 있지 않습니다." -ForegroundColor Red
+    Write-Host "  설치: https://www.docker.com/products/docker-desktop" -ForegroundColor Yellow
+    Write-Host "  Windows: Docker Desktop (WSL2 백엔드 권장)"          -ForegroundColor Yellow
+    exit 1
+}
+
+$dockerInfo = docker info 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "[ERROR] Docker 데몬이 실행 중이지 않습니다." -ForegroundColor Red
+    Write-Host "  Docker Desktop을 시작한 후 다시 실행하세요."          -ForegroundColor Yellow
+    exit 1
+}
+
 Push-Location $RepoRoot
 
 try {

@@ -51,6 +51,8 @@ function Invoke-MSBuild {
         [string]$TargetPath,
         [string]$Configuration = "Release",
         [string]$Platform = "x64",
+        [ValidateSet("Build","Rebuild","Clean")]
+        [string]$Target = "Build",
         [switch]$MultiProc
     )
 
@@ -61,6 +63,7 @@ function Invoke-MSBuild {
     $msbuild = Resolve-MSBuildPath
     $args = @(
         $TargetPath,
+        "/t:$Target",
         "/p:Configuration=$Configuration",
         "/p:Platform=$Platform",
         "/nologo",
