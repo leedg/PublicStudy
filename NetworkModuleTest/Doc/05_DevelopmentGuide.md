@@ -49,3 +49,52 @@
     - `.\Server\Tests\RIOTest\x64\Debug\RIOTest.exe`
   - 성공 기준:
     - `Result: N passed, 0 failed`
+
+## 8. DB 모듈 테스트
+
+### 자동 테스트 (Docker 기반, `scripts/db_tests/`)
+
+각 스크립트가 ODBC 드라이버 설치 → Docker 컨테이너 기동 → 빌드 → 실행 → 정리를 자동으로 수행한다.
+
+```powershell
+.\scripts\db_tests\run_sqlite_test.ps1      # SQLite (드라이버 불필요)
+.\scripts\db_tests\run_mssql_test.ps1       # MSSQL ODBC (Docker SQL Server)
+.\scripts\db_tests\run_postgres_test.ps1    # PostgreSQL ODBC (Docker Postgres)
+.\scripts\db_tests\run_mysql_test.ps1       # MySQL ODBC (Docker MySQL)
+.\scripts\db_tests\run_oledb_test.ps1       # OLE DB (Docker SQL Server 재사용)
+```
+
+테스트 케이스 (`scripts/db_tests/src/db_functional_test.cpp`):
+
+| 테스트 | 내용 | SQLite | ODBC / OLE DB |
+|--------|------|:------:|:-------------:|
+| T01 | 타입 라운드트립 (string/int/long long/double/bool/null) | ✓ | ✓ |
+| T02 | `IsNull()` 후 `GetString()` 동일 컬럼 (컬럼 캐시 검증) | ✓ | ✓ |
+| T03 | `FindColumn` 대소문자 무관 | ✓ | ✓ |
+| T04 | `Get*()` before `Next()` — 안전한 기본값 반환 | ✓ | — |
+| T05 | `IConnection::BeginTransaction` / `Rollback` | ✓ | ✓ |
+| T06 | `IDatabase::BeginTransaction` throws (설계 검증) | — | ✓ |
+
+### 수동 테스트 (DBModuleTest, Docker 불필요)
+
+`ModuleTest/DBModuleTest/` 프로젝트를 이용한 대화형/스크립트 기반 로컬 검증.
+
+```powershell
+cd ModuleTest/DBModuleTest
+
+# SQLite만 즉시 실행 (드라이버 불필요)
+.\scripts\run-db-tests.ps1 -Backend sqlite -Build
+
+# MSSQL ODBC (로컬 SQL Server 필요)
+$env:DB_MSSQL_ODBC = "Driver={ODBC Driver 17 for SQL Server};Server=localhost,1433;Database=db_func_test;UID=sa;PWD=Test1234!;TrustServerCertificate=yes;"
+.\scripts\run-db-tests.ps1 -Backend mssql
+
+# OLE DB (MSOLEDBSQL 또는 SQLOLEDB, 로컬 SQL Server 필요)
+$env:DB_OLEDB = "Provider=MSOLEDBSQL;Server=localhost,1433;Database=db_func_test;UID=sa;PWD=Test1234!;Encrypt=Optional;"
+.\scripts\run-db-tests.ps1 -Backend oledb
+
+# 전체 백엔드 순차 실행
+.\scripts\run-db-tests.ps1 -Backend all -Build
+```
+
+자세한 내용은 `ModuleTest/DBModuleTest/Doc/README.md` 참조.
