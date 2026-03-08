@@ -140,7 +140,13 @@ class ODBCConnection : public IConnection
 class ODBCStatement : public IStatement
 {
   public:
-	explicit ODBCStatement(SQLHDBC conn);
+	// English: conn must remain alive for the lifetime of this statement.
+	//          ownerConn (optional) transfers ownership when a statement is created
+	//          via IDatabase::CreateStatement() — keeps the per-statement connection alive.
+	// 한글: conn은 이 statement의 생존 기간 동안 유효해야 함.
+	//       ownerConn(선택)은 IDatabase::CreateStatement()에서 문장별 연결 소유권 이전용.
+	explicit ODBCStatement(SQLHDBC conn,
+	                       std::unique_ptr<ODBCConnection> ownerConn = nullptr);
 	virtual ~ODBCStatement();
 
 	// English: IStatement interface
@@ -197,6 +203,9 @@ class ODBCStatement : public IStatement
 	};
 
   private:
+	// English: Keeps the per-statement connection alive when created via IDatabase::CreateStatement().
+	// 한글: IDatabase::CreateStatement()에서 생성된 경우 연결 수명 유지용.
+	std::unique_ptr<ODBCConnection> mOwnerConn;
 	SQLHSTMT mStatement;
 	SQLHDBC mConnection;
 	std::string mQuery;

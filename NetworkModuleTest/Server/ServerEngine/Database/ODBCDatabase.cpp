@@ -107,9 +107,15 @@ std::unique_ptr<IStatement> ODBCDatabase::CreateStatement()
 	{
 		throw DatabaseException("Database not connected");
 	}
-	auto pConnection = CreateConnection();
-	pConnection->Open(mConfig.mConnectionString);
-	return pConnection->CreateStatement();
+	// English: Open a dedicated connection for this statement.
+	//          Ownership is transferred to ODBCStatement so the connection
+	//          stays alive for the statement's entire lifetime.
+	// 한글: 이 statement 전용 연결을 열고, 소유권을 ODBCStatement로 이전하여
+	//       statement 생존 기간 동안 연결이 유지되도록 함.
+	auto pConn = std::make_unique<ODBCConnection>(mEnvironment);
+	pConn->Open(mConfig.mConnectionString);
+	SQLHDBC connHandle = pConn->GetHandle();
+	return std::make_unique<ODBCStatement>(connHandle, std::move(pConn));
 }
 
 void ODBCDatabase::BeginTransaction()
@@ -263,9 +269,9 @@ std::string ODBCConnection::GetSQLErrorMessage(SQLHANDLE handle,
 // 한글: ODBCStatement 구현
 // =============================================================================
 
-ODBCStatement::ODBCStatement(SQLHDBC conn)
-	: mStatement(SQL_NULL_HANDLE), mConnection(conn), mPrepared(false),
-		  mTimeout(30)
+ODBCStatement::ODBCStatement(SQLHDBC conn, std::unique_ptr<ODBCConnection> ownerConn)
+	: mOwnerConn(std::move(ownerConn)), mStatement(SQL_NULL_HANDLE),
+	  mConnection(conn), mPrepared(false), mTimeout(30)
 {
 	SQLRETURN ret = SQLAllocHandle(SQL_HANDLE_STMT, mConnection, &mStatement);
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO)
@@ -371,11 +377,23 @@ void ODBCStatement::BindParameters()
 			break;
 
 		case ParamValue::Type::Int:
-		case ParamValue::Type::Bool: // English: bool stored as 0/1 int
 			p.indicator = 0;
 			ret = SQLBindParameter(
 				mStatement, col, SQL_PARAM_INPUT,
 				SQL_C_LONG, SQL_INTEGER,
+				0, 0, &p.intVal, 0, &p.indicator);
+			break;
+
+		case ParamValue::Type::Bool:
+			// English: Use SQL_C_BIT/SQL_BIT so PostgreSQL BOOLEAN and SQL Server BIT
+			//          both accept the value without implicit cast errors.
+			//          intVal holds 0 or 1; on little-endian the first byte is the bit value.
+			// 한글: PostgreSQL BOOLEAN과 SQL Server BIT 모두 허용.
+			//       intVal(0/1)의 첫 번째 바이트를 SQL_C_BIT로 전달.
+			p.indicator = 0;
+			ret = SQLBindParameter(
+				mStatement, col, SQL_PARAM_INPUT,
+				SQL_C_BIT, SQL_BIT,
 				0, 0, &p.intVal, 0, &p.indicator);
 			break;
 
