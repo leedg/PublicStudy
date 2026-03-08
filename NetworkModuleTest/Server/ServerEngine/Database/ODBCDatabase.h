@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <atomic>
 #include <memory>
+#include <type_traits>
 // 한글: ODBC 헤더가 필요로 하는 Windows 타입을 먼저 정의한다.
 #include <windows.h>
 #include <sql.h>
@@ -202,6 +203,20 @@ class ODBCStatement : public IStatement
 		std::vector<ParamValue> params;
 	};
 
+	// English: Resize mParams and assign a fixed-size typed slot (int / long long / double).
+	//          TypeTag is the ParamValue::Type enum; FieldPtr is a member pointer to the value field.
+	// 한글: mParams를 늘리고 고정 크기 타입 슬롯을 채움 (int / long long / double).
+	//       TypeTag는 ParamValue::Type 열거형; FieldPtr은 값 필드의 멤버 포인터.
+	template<ParamValue::Type TypeTag, auto FieldPtr>
+	void SetParam(size_t index, decltype(ParamValue{}.*FieldPtr) value)
+	{
+		if (mParams.size() < index) mParams.resize(index);
+		auto &p     = mParams[index - 1];
+		p.type      = TypeTag;
+		p.*FieldPtr = value;
+		p.indicator = 0;
+	}
+
   private:
 	// English: Keeps the per-statement connection alive when created via IDatabase::CreateStatement().
 	// 한글: IDatabase::CreateStatement()에서 생성된 경우 연결 수명 유지용.
@@ -230,31 +245,18 @@ class ODBCResultSet : public IResultSet
 	explicit ODBCResultSet(SQLHSTMT stmt);
 	virtual ~ODBCResultSet();
 
-	// English: IResultSet interface
-	// 한글: IResultSet 인터페이스
+	// English: IResultSet interface (name overloads inherited from IResultSet default impl)
+	// 한글: IResultSet 인터페이스 (이름 오버로드는 IResultSet 기본 구현 상속)
 	bool Next() override;
 	bool IsNull(size_t columnIndex) override;
-	bool IsNull(const std::string &columnName) override;
-
 	std::string GetString(size_t columnIndex) override;
-	std::string GetString(const std::string &columnName) override;
-
 	int GetInt(size_t columnIndex) override;
-	int GetInt(const std::string &columnName) override;
-
 	long long GetLong(size_t columnIndex) override;
-	long long GetLong(const std::string &columnName) override;
-
 	double GetDouble(size_t columnIndex) override;
-	double GetDouble(const std::string &columnName) override;
-
 	bool GetBool(size_t columnIndex) override;
-	bool GetBool(const std::string &columnName) override;
-
 	size_t GetColumnCount() const override;
 	std::string GetColumnName(size_t columnIndex) const override;
 	size_t FindColumn(const std::string &columnName) const override;
-
 	void Close() override;
 
   private:
@@ -281,6 +283,19 @@ class ODBCResultSet : public IResultSet
 	const ColumnData &FetchColumn(size_t columnIndex);
 	void CheckSQLReturn(SQLRETURN ret, const std::string &operation);
 	std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
+
+	// English: Parse a string column value as a numeric type; returns defaultVal on failure.
+	// 한글: 문자열 컬럼 값을 숫자 타입으로 변환; 실패 시 defaultVal 반환.
+	template<typename T>
+	static T ParseAs(const std::string &s, T defaultVal) noexcept
+	{
+		try {
+			if constexpr (std::is_same_v<T, int>)       return std::stoi(s);
+			if constexpr (std::is_same_v<T, long long>) return std::stoll(s);
+			if constexpr (std::is_same_v<T, double>)    return std::stod(s);
+		} catch (...) {}
+		return defaultVal;
+	}
 
   private:
 	SQLHSTMT mStatement;

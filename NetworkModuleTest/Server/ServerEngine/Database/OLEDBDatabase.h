@@ -11,6 +11,7 @@
 #include "../Interfaces/IStatement.h"
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #ifdef _WIN32
@@ -175,6 +176,21 @@ private:
 
     struct BatchEntry { std::vector<ParamValue> params; };
 
+    // English: Resize mParams and assign a fixed-size typed slot (int / long long / double).
+    //          Guard against index==0 (OLE DB parameters are 1-based; 0 is invalid).
+    //          TypeTag is the ParamValue::Type enum; FieldPtr is a member pointer to the value field.
+    // 한글: mParams를 늘리고 고정 크기 타입 슬롯을 채움 (int / long long / double).
+    //       index==0 가드 포함 (OLE DB 파라미터는 1-기반; 0은 무효).
+    template<ParamValue::Type TypeTag, auto FieldPtr>
+    void SetParam(size_t index, decltype(ParamValue{}.*FieldPtr) value)
+    {
+        if (index == 0) return;
+        if (mParams.size() < index) mParams.resize(index);
+        auto &p     = mParams[index - 1];
+        p.type      = TypeTag;
+        p.*FieldPtr = value;
+    }
+
     // English: Buffer layout per slot:
     //   [DBSTATUS(4)] [pad(4)] [DBLENGTH(8)] [value(variable)]
     //   DBLENGTH is ULONGLONG (8 bytes) and must be 8-byte aligned.
@@ -213,26 +229,18 @@ public:
     explicit OLEDBResultSet(IRowset *rowset);
     virtual ~OLEDBResultSet();
 
+    // English: IResultSet interface (name overloads inherited from IResultSet default impl)
+    // 한글: IResultSet 인터페이스 (이름 오버로드는 IResultSet 기본 구현 상속)
     bool Next() override;
     bool IsNull(size_t columnIndex) override;
-    bool IsNull(const std::string &columnName) override;
-
     std::string GetString(size_t columnIndex) override;
-    std::string GetString(const std::string &columnName) override;
-
     int       GetInt(size_t columnIndex) override;
-    int       GetInt(const std::string &columnName) override;
     long long GetLong(size_t columnIndex) override;
-    long long GetLong(const std::string &columnName) override;
     double    GetDouble(size_t columnIndex) override;
-    double    GetDouble(const std::string &columnName) override;
     bool      GetBool(size_t columnIndex) override;
-    bool      GetBool(const std::string &columnName) override;
-
     size_t      GetColumnCount() const override;
     std::string GetColumnName(size_t columnIndex) const override;
     size_t      FindColumn(const std::string &columnName) const override;
-
     void Close() override;
 
 private:
@@ -248,6 +256,19 @@ private:
     void LoadMetadata();
     const ColumnData &FetchColumn(size_t colIdx);
     void ReleaseCurrentRow();
+
+    // English: Parse a string column value as a numeric type; returns defaultVal on failure.
+    // 한글: 문자열 컬럼 값을 숫자 타입으로 변환; 실패 시 defaultVal 반환.
+    template<typename T>
+    static T ParseAs(const std::string &s, T defaultVal) noexcept
+    {
+        try {
+            if constexpr (std::is_same_v<T, int>)       return std::stoi(s);
+            if constexpr (std::is_same_v<T, long long>) return std::stoll(s);
+            if constexpr (std::is_same_v<T, double>)    return std::stod(s);
+        } catch (...) {}
+        return defaultVal;
+    }
 
     // English: Buffer layout per column:
     //   [DBSTATUS(4)] [pad(4)] [DBLENGTH(8)] [wchar value(kTextBufW)]

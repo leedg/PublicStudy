@@ -31,7 +31,7 @@ class IResultSet
 	// English: Null checking
 	// 한글: Null 체크
 	virtual bool IsNull(size_t columnIndex) = 0;
-	virtual bool IsNull(const std::string &columnName) = 0;
+	virtual bool IsNull(const std::string &columnName) { return IsNull(FindColumn(columnName)); }
 
 	// English: Data retrieval methods - by index
 	// 한글: 데이터 조회 메서드 - 인덱스로
@@ -41,13 +41,13 @@ class IResultSet
 	virtual double GetDouble(size_t columnIndex) = 0;
 	virtual bool GetBool(size_t columnIndex) = 0;
 
-	// English: Data retrieval methods - by name
-	// 한글: 데이터 조회 메서드 - 이름으로
-	virtual std::string GetString(const std::string &columnName) = 0;
-	virtual int GetInt(const std::string &columnName) = 0;
-	virtual long long GetLong(const std::string &columnName) = 0;
-	virtual double GetDouble(const std::string &columnName) = 0;
-	virtual bool GetBool(const std::string &columnName) = 0;
+	// English: Data retrieval methods - by name (default: delegates to FindColumn + index variant)
+	// 한글: 데이터 조회 메서드 - 이름으로 (기본: FindColumn + 인덱스 오버로드에 위임)
+	virtual std::string GetString(const std::string &columnName) { return GetString(FindColumn(columnName)); }
+	virtual int GetInt(const std::string &columnName)            { return GetInt(FindColumn(columnName)); }
+	virtual long long GetLong(const std::string &columnName)     { return GetLong(FindColumn(columnName)); }
+	virtual double GetDouble(const std::string &columnName)      { return GetDouble(FindColumn(columnName)); }
+	virtual bool GetBool(const std::string &columnName)          { return GetBool(FindColumn(columnName)); }
 
 	// English: Metadata
 	// 한글: 메타데이터

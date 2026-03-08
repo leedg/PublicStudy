@@ -307,29 +307,17 @@ void ODBCStatement::BindParameter(size_t index, const std::string &value)
 
 void ODBCStatement::BindParameter(size_t index, int value)
 {
-	if (mParams.size() < index) mParams.resize(index);
-	auto &p    = mParams[index - 1];
-	p.type     = ParamValue::Type::Int;
-	p.intVal   = value;
-	p.indicator = 0;
+	SetParam<ParamValue::Type::Int, &ParamValue::intVal>(index, value);
 }
 
 void ODBCStatement::BindParameter(size_t index, long long value)
 {
-	if (mParams.size() < index) mParams.resize(index);
-	auto &p     = mParams[index - 1];
-	p.type      = ParamValue::Type::Int64;
-	p.int64Val  = value;
-	p.indicator = 0;
+	SetParam<ParamValue::Type::Int64, &ParamValue::int64Val>(index, value);
 }
 
 void ODBCStatement::BindParameter(size_t index, double value)
 {
-	if (mParams.size() < index) mParams.resize(index);
-	auto &p      = mParams[index - 1];
-	p.type       = ParamValue::Type::Double;
-	p.doubleVal  = value;
-	p.indicator  = 0;
+	SetParam<ParamValue::Type::Double, &ParamValue::doubleVal>(index, value);
 }
 
 void ODBCStatement::BindParameter(size_t index, bool value)
@@ -684,12 +672,6 @@ bool ODBCResultSet::IsNull(size_t columnIndex)
 	return FetchColumn(columnIndex).isNull;
 }
 
-bool ODBCResultSet::IsNull(const std::string &columnName)
-{
-	size_t index = FindColumn(columnName);
-	return IsNull(index);
-}
-
 std::string ODBCResultSet::GetString(size_t columnIndex)
 {
 	if (!mHasData)
@@ -700,79 +682,24 @@ std::string ODBCResultSet::GetString(size_t columnIndex)
 	return col.isNull ? "" : col.value;
 }
 
-std::string ODBCResultSet::GetString(const std::string &columnName)
-{
-	size_t index = FindColumn(columnName);
-	return GetString(index);
-}
-
 int ODBCResultSet::GetInt(size_t columnIndex)
 {
-	std::string value = GetString(columnIndex);
-	try
-	{
-		return std::stoi(value);
-	}
-	catch (const std::exception &)
-	{
-		return 0;
-	}
-}
-
-int ODBCResultSet::GetInt(const std::string &columnName)
-{
-	size_t index = FindColumn(columnName);
-	return GetInt(index);
+	return ParseAs<int>(GetString(columnIndex), 0);
 }
 
 long long ODBCResultSet::GetLong(size_t columnIndex)
 {
-	std::string value = GetString(columnIndex);
-	try
-	{
-		return std::stoll(value);
-	}
-	catch (const std::exception &)
-	{
-		return 0;
-	}
-}
-
-long long ODBCResultSet::GetLong(const std::string &columnName)
-{
-	size_t index = FindColumn(columnName);
-	return GetLong(index);
+	return ParseAs<long long>(GetString(columnIndex), 0LL);
 }
 
 double ODBCResultSet::GetDouble(size_t columnIndex)
 {
-	std::string value = GetString(columnIndex);
-	try
-	{
-		return std::stod(value);
-	}
-	catch (const std::exception &)
-	{
-		return 0.0;
-	}
-}
-
-double ODBCResultSet::GetDouble(const std::string &columnName)
-{
-	size_t index = FindColumn(columnName);
-	return GetDouble(index);
+	return ParseAs<double>(GetString(columnIndex), 0.0);
 }
 
 bool ODBCResultSet::GetBool(size_t columnIndex)
 {
-	int value = GetInt(columnIndex);
-	return value != 0;
-}
-
-bool ODBCResultSet::GetBool(const std::string &columnName)
-{
-	size_t index = FindColumn(columnName);
-	return GetBool(index);
+	return GetInt(columnIndex) != 0;
 }
 
 size_t ODBCResultSet::GetColumnCount() const { return mColumnNames.size(); }

@@ -226,11 +226,6 @@ bool SQLiteResultSet::IsNull(size_t columnIndex)
 	return sqlite3_column_type(mStmt, static_cast<int>(columnIndex)) == SQLITE_NULL;
 }
 
-bool SQLiteResultSet::IsNull(const std::string &columnName)
-{
-	return IsNull(static_cast<size_t>(ResolveColumn(columnName)));
-}
-
 std::string SQLiteResultSet::GetString(size_t columnIndex)
 {
 	// English: sqlite3_column_* returns undefined data if called before the first
@@ -243,21 +238,11 @@ std::string SQLiteResultSet::GetString(size_t columnIndex)
 	return text ? reinterpret_cast<const char *>(text) : "";
 }
 
-std::string SQLiteResultSet::GetString(const std::string &columnName)
-{
-	return GetString(static_cast<size_t>(ResolveColumn(columnName)));
-}
-
 int SQLiteResultSet::GetInt(size_t columnIndex)
 {
 	if (!mHasData || !mStmt)
 		return 0;
 	return sqlite3_column_int(mStmt, static_cast<int>(columnIndex));
-}
-
-int SQLiteResultSet::GetInt(const std::string &columnName)
-{
-	return GetInt(static_cast<size_t>(ResolveColumn(columnName)));
 }
 
 long long SQLiteResultSet::GetLong(size_t columnIndex)
@@ -267,11 +252,6 @@ long long SQLiteResultSet::GetLong(size_t columnIndex)
 	return sqlite3_column_int64(mStmt, static_cast<int>(columnIndex));
 }
 
-long long SQLiteResultSet::GetLong(const std::string &columnName)
-{
-	return GetLong(static_cast<size_t>(ResolveColumn(columnName)));
-}
-
 double SQLiteResultSet::GetDouble(size_t columnIndex)
 {
 	if (!mHasData || !mStmt)
@@ -279,19 +259,9 @@ double SQLiteResultSet::GetDouble(size_t columnIndex)
 	return sqlite3_column_double(mStmt, static_cast<int>(columnIndex));
 }
 
-double SQLiteResultSet::GetDouble(const std::string &columnName)
-{
-	return GetDouble(static_cast<size_t>(ResolveColumn(columnName)));
-}
-
 bool SQLiteResultSet::GetBool(size_t columnIndex)
 {
 	return GetInt(columnIndex) != 0;
-}
-
-bool SQLiteResultSet::GetBool(const std::string &columnName)
-{
-	return GetBool(static_cast<size_t>(ResolveColumn(columnName)));
 }
 
 size_t SQLiteResultSet::GetColumnCount() const
@@ -375,32 +345,17 @@ void SQLiteStatement::BindParameter(size_t index, const std::string &value)
 
 void SQLiteStatement::BindParameter(size_t index, int value)
 {
-	if (mCurrentParams.size() < index)
-		mCurrentParams.resize(index);
-	Param p;
-	p.type = ParamType::Int;
-	p.int64Val = value;
-	mCurrentParams[index - 1] = p;
+	SetNumParam<ParamType::Int>(index, value);
 }
 
 void SQLiteStatement::BindParameter(size_t index, long long value)
 {
-	if (mCurrentParams.size() < index)
-		mCurrentParams.resize(index);
-	Param p;
-	p.type = ParamType::Int64;
-	p.int64Val = value;
-	mCurrentParams[index - 1] = p;
+	SetNumParam<ParamType::Int64>(index, value);
 }
 
 void SQLiteStatement::BindParameter(size_t index, double value)
 {
-	if (mCurrentParams.size() < index)
-		mCurrentParams.resize(index);
-	Param p;
-	p.type = ParamType::Real;
-	p.realVal = value;
-	mCurrentParams[index - 1] = p;
+	SetNumParam<ParamType::Real>(index, value);
 }
 
 void SQLiteStatement::BindParameter(size_t index, bool value)

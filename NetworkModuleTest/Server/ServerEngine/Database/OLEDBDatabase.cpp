@@ -330,29 +330,17 @@ void OLEDBStatement::BindParameter(size_t index, const std::string &value)
 
 void OLEDBStatement::BindParameter(size_t index, int value)
 {
-    if (index == 0) return;
-    if (mParams.size() < index) mParams.resize(index);
-    auto &p  = mParams[index - 1];
-    p.type   = ParamValue::Type::Int;
-    p.i32    = value;
+    SetParam<ParamValue::Type::Int, &ParamValue::i32>(index, value);
 }
 
 void OLEDBStatement::BindParameter(size_t index, long long value)
 {
-    if (index == 0) return;
-    if (mParams.size() < index) mParams.resize(index);
-    auto &p  = mParams[index - 1];
-    p.type   = ParamValue::Type::Int64;
-    p.i64    = value;
+    SetParam<ParamValue::Type::Int64, &ParamValue::i64>(index, value);
 }
 
 void OLEDBStatement::BindParameter(size_t index, double value)
 {
-    if (index == 0) return;
-    if (mParams.size() < index) mParams.resize(index);
-    auto &p  = mParams[index - 1];
-    p.type   = ParamValue::Type::Double;
-    p.dbl    = value;
+    SetParam<ParamValue::Type::Double, &ParamValue::dbl>(index, value);
 }
 
 void OLEDBStatement::BindParameter(size_t index, bool value)
@@ -805,52 +793,29 @@ bool OLEDBResultSet::IsNull(size_t columnIndex)
 {
     return FetchColumn(columnIndex).isNull;
 }
-bool OLEDBResultSet::IsNull(const std::string &columnName)
-{
-    return IsNull(FindColumn(columnName));
-}
 
 std::string OLEDBResultSet::GetString(size_t columnIndex)
 {
     const auto &c = FetchColumn(columnIndex);
     return c.isNull ? std::string{} : c.value;
 }
-std::string OLEDBResultSet::GetString(const std::string &columnName)
-{
-    return GetString(FindColumn(columnName));
-}
 
 int OLEDBResultSet::GetInt(size_t columnIndex)
 {
     const auto &c = FetchColumn(columnIndex);
-    if (c.isNull) return 0;
-    try { return std::stoi(c.value); } catch (...) { return 0; }
-}
-int OLEDBResultSet::GetInt(const std::string &columnName)
-{
-    return GetInt(FindColumn(columnName));
+    return c.isNull ? 0 : ParseAs<int>(c.value, 0);
 }
 
 long long OLEDBResultSet::GetLong(size_t columnIndex)
 {
     const auto &c = FetchColumn(columnIndex);
-    if (c.isNull) return 0LL;
-    try { return std::stoll(c.value); } catch (...) { return 0LL; }
-}
-long long OLEDBResultSet::GetLong(const std::string &columnName)
-{
-    return GetLong(FindColumn(columnName));
+    return c.isNull ? 0LL : ParseAs<long long>(c.value, 0LL);
 }
 
 double OLEDBResultSet::GetDouble(size_t columnIndex)
 {
     const auto &c = FetchColumn(columnIndex);
-    if (c.isNull) return 0.0;
-    try { return std::stod(c.value); } catch (...) { return 0.0; }
-}
-double OLEDBResultSet::GetDouble(const std::string &columnName)
-{
-    return GetDouble(FindColumn(columnName));
+    return c.isNull ? 0.0 : ParseAs<double>(c.value, 0.0);
 }
 
 bool OLEDBResultSet::GetBool(size_t columnIndex)
@@ -865,11 +830,7 @@ bool OLEDBResultSet::GetBool(size_t columnIndex)
     std::transform(lower.begin(), lower.end(), lower.begin(),
                    [](unsigned char ch){ return static_cast<char>(::tolower(ch)); });
     if (lower == "true" || lower == "yes") return true;
-    try { return std::stod(c.value) != 0.0; } catch (...) { return false; }
-}
-bool OLEDBResultSet::GetBool(const std::string &columnName)
-{
-    return GetBool(FindColumn(columnName));
+    return ParseAs<double>(c.value, 0.0) != 0.0;
 }
 
 size_t OLEDBResultSet::GetColumnCount() const

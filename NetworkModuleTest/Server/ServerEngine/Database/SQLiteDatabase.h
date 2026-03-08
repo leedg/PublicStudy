@@ -16,6 +16,7 @@
 #include "../Interfaces/IStatement.h"
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #ifdef HAVE_SQLITE3
@@ -48,29 +49,18 @@ class SQLiteResultSet : public IResultSet
 	explicit SQLiteResultSet(sqlite3_stmt *stmt);
 	virtual ~SQLiteResultSet();
 
+	// English: IResultSet interface (name overloads inherited from IResultSet default impl)
+	// 한글: IResultSet 인터페이스 (이름 오버로드는 IResultSet 기본 구현 상속)
 	bool Next() override;
 	bool IsNull(size_t columnIndex) override;
-	bool IsNull(const std::string &columnName) override;
-
 	std::string GetString(size_t columnIndex) override;
-	std::string GetString(const std::string &columnName) override;
-
 	int GetInt(size_t columnIndex) override;
-	int GetInt(const std::string &columnName) override;
-
 	long long GetLong(size_t columnIndex) override;
-	long long GetLong(const std::string &columnName) override;
-
 	double GetDouble(size_t columnIndex) override;
-	double GetDouble(const std::string &columnName) override;
-
 	bool GetBool(size_t columnIndex) override;
-	bool GetBool(const std::string &columnName) override;
-
 	size_t GetColumnCount() const override;
 	std::string GetColumnName(size_t columnIndex) const override;
 	size_t FindColumn(const std::string &columnName) const override;
-
 	void Close() override;
 
   private:
@@ -141,6 +131,19 @@ class SQLiteStatement : public IStatement
 	sqlite3_stmt *PrepareStmt();
 	void BindAll(sqlite3_stmt *stmt, const std::vector<Param> &params);
 	void CheckRC(int rc, const char *op) const;
+
+	// English: Build and store a numeric Param slot. Floating-point types go to realVal;
+	//          integer types (int, long long) go to int64Val via implicit promotion.
+	// 한글: 숫자 Param 슬롯 생성/저장. 부동소수점은 realVal, 정수형은 int64Val에 저장.
+	template<ParamType TypeTag, typename T>
+	void SetNumParam(size_t index, T value)
+	{
+		if (mCurrentParams.size() < index) mCurrentParams.resize(index);
+		auto &p  = mCurrentParams[index - 1];
+		p.type   = TypeTag;
+		if constexpr (std::is_floating_point_v<T>) p.realVal  = static_cast<double>(value);
+		else                                        p.int64Val = static_cast<long long>(value);
+	}
 
   private:
 	sqlite3 *mDb;
