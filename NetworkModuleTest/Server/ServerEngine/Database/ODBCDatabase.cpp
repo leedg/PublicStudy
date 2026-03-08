@@ -61,10 +61,10 @@ void ODBCDatabase::CheckSQLReturn(SQLRETURN ret, const std::string &operation,
 {
 	if (ret != SQL_SUCCESS && ret != SQL_SUCCESS_WITH_INFO)
 	{
-		SQLCHAR sqlState[6];
-		SQLCHAR message[SQL_MAX_MESSAGE_LENGTH];
-		SQLINTEGER nativeError;
-		SQLSMALLINT messageLength;
+		SQLCHAR sqlState[6]       = {};
+		SQLCHAR message[SQL_MAX_MESSAGE_LENGTH] = {};
+		SQLINTEGER  nativeError   = 0;
+		SQLSMALLINT messageLength = 0;
 
 		SQLGetDiagRecA(handleType, handle, 1, sqlState, &nativeError, message,
 						   SQL_MAX_MESSAGE_LENGTH, &messageLength);
@@ -252,8 +252,8 @@ void ODBCConnection::CheckSQLReturn(SQLRETURN ret, const std::string &operation)
 std::string ODBCConnection::GetSQLErrorMessage(SQLHANDLE handle,
 												   SQLSMALLINT handleType)
 {
-	SQLCHAR sqlState[6];
-	SQLCHAR message[SQL_MAX_MESSAGE_LENGTH];
+	SQLCHAR sqlState[6]      = {};
+	SQLCHAR message[SQL_MAX_MESSAGE_LENGTH] = {};
 	SQLINTEGER nativeError;
 	SQLSMALLINT messageLength;
 
@@ -554,8 +554,8 @@ void ODBCStatement::CheckSQLReturn(SQLRETURN ret, const std::string &operation)
 std::string ODBCStatement::GetSQLErrorMessage(SQLHANDLE handle,
 												  SQLSMALLINT handleType)
 {
-	SQLCHAR sqlState[6];
-	SQLCHAR message[SQL_MAX_MESSAGE_LENGTH];
+	SQLCHAR sqlState[6]      = {};
+	SQLCHAR message[SQL_MAX_MESSAGE_LENGTH] = {};
 	SQLINTEGER nativeError;
 	SQLSMALLINT messageLength;
 
@@ -825,8 +825,8 @@ void ODBCResultSet::CheckSQLReturn(SQLRETURN ret, const std::string &operation)
 std::string ODBCResultSet::GetSQLErrorMessage(SQLHANDLE handle,
 												  SQLSMALLINT handleType)
 {
-	SQLCHAR sqlState[6];
-	SQLCHAR message[SQL_MAX_MESSAGE_LENGTH];
+	SQLCHAR sqlState[6]      = {};
+	SQLCHAR message[SQL_MAX_MESSAGE_LENGTH] = {};
 	SQLINTEGER nativeError;
 	SQLSMALLINT messageLength;
 

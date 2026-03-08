@@ -11,6 +11,8 @@
 //   -DUSE_SQLITE  : SQLite in-memory backend (also add -DHAVE_SQLITE3, sqlite3.c)
 //   -DUSE_MSSQL   : ODBC SQL Server backend
 //   -DUSE_PGSQL   : ODBC PostgreSQL backend
+//   -DUSE_MYSQL   : ODBC MySQL backend
+//   -DUSE_OLEDB   : OLE DB SQL Server backend (Windows only)
 
 #include <cmath>
 #include <cstdlib>
@@ -26,8 +28,11 @@ using DbImpl = Network::Database::SQLiteDatabase;
 #elif defined(USE_MSSQL) || defined(USE_PGSQL) || defined(USE_MYSQL)
 #  include "Database/ODBCDatabase.h"
 using DbImpl = Network::Database::ODBCDatabase;
+#elif defined(USE_OLEDB)
+#  include "Database/OLEDBDatabase.h"
+using DbImpl = Network::Database::OLEDBDatabase;
 #else
-#  error "Define USE_SQLITE, USE_MSSQL, USE_PGSQL, or USE_MYSQL"
+#  error "Define USE_SQLITE, USE_MSSQL, USE_PGSQL, USE_MYSQL, or USE_OLEDB"
 #endif
 
 #include "Interfaces/DatabaseConfig.h"
@@ -101,6 +106,18 @@ static const char *kSQL_CREATE =
     "CREATE TABLE db_func_test ("
     "  c_text TEXT, c_int INT, c_long BIGINT,"
     "  c_real DOUBLE, c_bool TINYINT(1), c_null TEXT)";
+static const char *kSQL_INSERT = "INSERT INTO db_func_test VALUES (?, ?, ?, ?, ?, ?)";
+static const char *kSQL_SELECT = "SELECT * FROM db_func_test";
+static const char *kSQL_COUNT  = "SELECT COUNT(*) FROM db_func_test";
+
+#elif defined(USE_OLEDB)
+// English: OLE DB uses SQLOLEDB provider against SQL Server — same DDL as MSSQL
+// 한글: OLE DB는 SQLOLEDB 공급자로 SQL Server에 접속 — MSSQL과 동일한 DDL
+static const char *kSQL_DROP   = "IF OBJECT_ID('dbo.db_func_test','U') IS NOT NULL DROP TABLE db_func_test";
+static const char *kSQL_CREATE =
+    "CREATE TABLE db_func_test ("
+    "  c_text NVARCHAR(200), c_int INT, c_long BIGINT,"
+    "  c_real FLOAT, c_bool BIT, c_null NVARCHAR(200))";
 static const char *kSQL_INSERT = "INSERT INTO db_func_test VALUES (?, ?, ?, ?, ?, ?)";
 static const char *kSQL_SELECT = "SELECT * FROM db_func_test";
 static const char *kSQL_COUNT  = "SELECT COUNT(*) FROM db_func_test";
@@ -281,7 +298,7 @@ static void T05_ConnectionTransaction(IDatabase &db, const char *connStr)
     Check(CountRowsConn(*conn) == baseBefore,     "T05-2: row absent after rollback");
 }
 
-#if defined(USE_MSSQL) || defined(USE_PGSQL) || defined(USE_MYSQL)
+#if defined(USE_MSSQL) || defined(USE_PGSQL) || defined(USE_MYSQL) || defined(USE_OLEDB)
 static void T06_DatabaseTransactionThrows(IDatabase &db)
 {
     std::cout << "\n[T06] IDatabase::BeginTransaction throws (per design)\n";
@@ -318,6 +335,8 @@ int main(int argc, char *argv[])
     std::cout << "ODBC / PostgreSQL";
 #elif defined(USE_MYSQL)
     std::cout << "ODBC / MySQL";
+#elif defined(USE_OLEDB)
+    std::cout << "OLE DB / SQL Server";
 #endif
     std::cout << "] ===\n";
 
@@ -351,7 +370,7 @@ int main(int argc, char *argv[])
     RunTest("T04", [&]() { T04_GetBeforeNext(db); });
 #endif
     RunTest("T05", [&]() { T05_ConnectionTransaction(db, connStr); });
-#if defined(USE_MSSQL) || defined(USE_PGSQL) || defined(USE_MYSQL)
+#if defined(USE_MSSQL) || defined(USE_PGSQL) || defined(USE_MYSQL) || defined(USE_OLEDB)
     RunTest("T06", [&]() { T06_DatabaseTransactionThrows(db); });
 #endif
 
