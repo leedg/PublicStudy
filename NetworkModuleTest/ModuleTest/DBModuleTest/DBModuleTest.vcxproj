@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
@@ -18,6 +10,7 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -25,140 +18,169 @@
     <RootNamespace>DBModuleTest</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
+
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
+
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
+            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
+            Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
+            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
+            Label="LocalAppDataPlatform" />
   </ImportGroup>
+
   <PropertyGroup Label="UserMacros" />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-    </Link>
-  </ItemDefinitionGroup>
+
+  <!-- ── 공통 include 경로 ─────────────────────────────────────────── -->
+  <PropertyGroup>
+    <ServerEngineDir>$(ProjectDir)..\..\Server\ServerEngine\</ServerEngineDir>
+    <SqliteDir>$(ProjectDir)sqlite\</SqliteDir>
+  </PropertyGroup>
+
+  <!-- ── Debug x64 ─────────────────────────────────────────────────── -->
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
+      <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_LIB;SQL_WCHART_CONVERT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>
+        _DEBUG;_CONSOLE;NOMINMAX;_CRT_SECURE_NO_WARNINGS;
+        HAVE_SQLITE3;SQL_WCHART_CONVERT;
+        %(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>
+        $(ServerEngineDir);
+        $(ServerEngineDir)Interfaces\;
+        $(ServerEngineDir)Database\;
+        $(SqliteDir);
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>
+        odbc32.lib;odbccp32.lib;
+        ole32.lib;oleaut32.lib;msdasc.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+
+  <!-- ── Release x64 ───────────────────────────────────────────────── -->
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
+      <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_LIB;SQL_WCHART_CONVERT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>
+        NDEBUG;_CONSOLE;NOMINMAX;_CRT_SECURE_NO_WARNINGS;
+        HAVE_SQLITE3;SQL_WCHART_CONVERT;
+        %(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>
+        $(ServerEngineDir);
+        $(ServerEngineDir)Interfaces\;
+        $(ServerEngineDir)Database\;
+        $(SqliteDir);
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>
+        odbc32.lib;odbccp32.lib;
+        ole32.lib;oleaut32.lib;msdasc.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+
+  <!-- ── 소스 파일 ─────────────────────────────────────────────────── -->
   <ItemGroup>
-    <ClInclude Include="IDatabase.h" />
-    <ClInclude Include="DatabaseFactory.h" />
-    <ClInclude Include="ODBCDatabase.h" />
-    <ClInclude Include="OLEDBDatabase.h" />
-    <ClInclude Include="ConnectionPool.h" />
+    <!-- 메인 테스트 진입점 -->
+    <ClCompile Include="test_database.cpp" />
+
+    <!-- Network::Database 구현 (ServerEngine에서 직접 참조) -->
+    <ClCompile Include="$(ServerEngineDir)Database\DatabaseFactory.cpp" />
+    <ClCompile Include="$(ServerEngineDir)Database\ODBCDatabase.cpp" />
+    <ClCompile Include="$(ServerEngineDir)Database\OLEDBDatabase.cpp" />
+    <ClCompile Include="$(ServerEngineDir)Database\SQLiteDatabase.cpp" />
+    <ClCompile Include="$(ServerEngineDir)Database\MockDatabase.cpp" />
+    <ClCompile Include="$(ServerEngineDir)Database\ConnectionPool.cpp" />
+
+    <!-- SQLite 아말감 (경고 억제, 최적화 제외) -->
+    <ClCompile Include="sqlite\sqlite3.c">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+    </ClCompile>
   </ItemGroup>
+
+  <!-- ── 헤더 파일 (탐색기 표시용) ──────────────────────────────────── -->
   <ItemGroup>
-    <ClCompile Include="DatabaseFactory.cpp" />
-    <ClCompile Include="ODBCDatabase.cpp" />
-    <ClCompile Include="OLEDBDatabase.cpp" />
-    <ClCompile Include="ConnectionPool.cpp" />
+    <ClInclude Include="$(ServerEngineDir)Interfaces\DatabaseConfig.h" />
+    <ClInclude Include="$(ServerEngineDir)Interfaces\DatabaseException.h" />
+    <ClInclude Include="$(ServerEngineDir)Interfaces\DatabaseType_enum.h" />
+    <ClInclude Include="$(ServerEngineDir)Interfaces\IDatabase.h" />
+    <ClInclude Include="$(ServerEngineDir)Interfaces\IConnection.h" />
+    <ClInclude Include="$(ServerEngineDir)Interfaces\IStatement.h" />
+    <ClInclude Include="$(ServerEngineDir)Interfaces\IResultSet.h" />
+    <ClInclude Include="$(ServerEngineDir)Database\DatabaseFactory.h" />
+    <ClInclude Include="$(ServerEngineDir)Database\ODBCDatabase.h" />
+    <ClInclude Include="$(ServerEngineDir)Database\OLEDBDatabase.h" />
+    <ClInclude Include="$(ServerEngineDir)Database\SQLiteDatabase.h" />
+    <ClInclude Include="$(ServerEngineDir)Database\MockDatabase.h" />
+    <ClInclude Include="sqlite\sqlite3.h" />
   </ItemGroup>
+
+  <!-- ── 기존 레거시 파일 (참고용 — 빌드에 포함하지 않음) ──────────── -->
   <ItemGroup>
+    <None Include="IDatabase.h" />
+    <None Include="DatabaseFactory.h" />
+    <None Include="DatabaseFactory.cpp" />
+    <None Include="ODBCDatabase.h" />
+    <None Include="ODBCDatabase.cpp" />
+    <None Include="OLEDBDatabase.h" />
+    <None Include="OLEDBDatabase.cpp" />
+    <None Include="ConnectionPool.h" />
+    <None Include="ConnectionPool.cpp" />
     <None Include="odbc_sample.cpp" />
     <None Include="oledb_sample.cpp" />
-    <None Include="test_database.cpp" />
-  </ItemGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
-  <ItemGroup>
     <None Include="Doc\README.md" />
-    <None Include="Doc\README_SHORT.md" />
-    <None Include="Doc\VERSION_SELECTOR.md" />
     <None Include="README.md" />
   </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
 </Project>

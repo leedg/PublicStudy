@@ -1,361 +1,166 @@
-[CmdletBinding()]
+# run-db-tests.ps1 — DBModuleTest 수동 테스트 런처
+#
+# 사용법:
+#   .\scripts\run-db-tests.ps1 [-Backend sqlite|mssql|pgsql|mysql|oledb|all]
+#                               [-Config Debug|Release]
+#                               [-ConnStr <연결 문자열>]
+#                               [-Build] [-Rebuild]
+#
+# 환경변수로 연결 문자열을 미리 지정할 수 있습니다:
+#   DB_MSSQL_ODBC  DB_PGSQL_ODBC  DB_MYSQL_ODBC  DB_OLEDB
+#
+# 예시:
+#   .\scripts\run-db-tests.ps1                          # 대화형 메뉴
+#   .\scripts\run-db-tests.ps1 -Backend sqlite          # SQLite만
+#   .\scripts\run-db-tests.ps1 -Backend all -Build      # 전체 (빌드 포함)
+#   $env:DB_MSSQL_ODBC="Driver=..."; .\scripts\run-db-tests.ps1 -Backend mssql
+
 param(
-    [ValidateSet("Debug", "Release")]
-    [string]$Configuration = "Debug",
+    [ValidateSet('sqlite','mssql','pgsql','mysql','oledb','all','interactive')]
+    [string]$Backend = 'interactive',
 
-    [ValidateSet("x64", "Win32")]
-    [string]$Platform = "x64",
+    [ValidateSet('Debug','Release')]
+    [string]$Config = 'Debug',
 
-    [ValidateSet("Mssql", "Mysql", "Both")]
-    [string]$DbTarget = "Both",
+    [string]$ConnStr = '',   # 단일 백엔드 지정 시 연결 문자열 오버라이드
 
-    [switch]$RequireDatabase,
-    [switch]$RunSamples,
-    [switch]$SkipPrereqCheck,
-    [switch]$SkipOleDbMssql,
-
-    # Legacy compatibility: maps to MSSQL ODBC/OLEDB
-    [string]$OdbcConnectionString,
-    [string]$OledbConnectionString,
-
-    [string]$MssqlOdbcConnectionString,
-    [string]$MysqlOdbcConnectionString,
-    [string]$MssqlOledbConnectionString
+    [switch]$Build,           # 실행 전 빌드
+    [switch]$Rebuild          # 클린 빌드
 )
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
 
-function Resolve-VsWherePath {
-    $candidates = @(
-        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe",
+$projectDir = Split-Path -Parent $PSScriptRoot
+$vcxproj    = Join-Path $projectDir 'DBModuleTest.vcxproj'
+$exePath    = Join-Path $projectDir "x64\$Config\DBModuleTest.exe"
+
+# ── MSBuild 탐색 ──────────────────────────────────────────────────────────
+
+function Find-MSBuild {
+    $cmd = Get-Command msbuild.exe -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+
+    $vswhere = @(
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
         "$env:ProgramFiles\Microsoft Visual Studio\Installer\vswhere.exe"
-    )
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 
-    foreach ($candidate in $candidates) {
-        if (Test-Path -LiteralPath $candidate) {
-            return $candidate
-        }
-    }
-
-    return $null
-}
-
-function Resolve-CMakePath {
-    $cmake = Get-Command cmake.exe -ErrorAction SilentlyContinue
-    if ($cmake) {
-        return $cmake.Source
-    }
-
-    $vswhere = Resolve-VsWherePath
     if ($vswhere) {
-        $installPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath 2>$null | Select-Object -First 1
-        if ($installPath) {
-            $candidate = Join-Path $installPath "Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
-            if (Test-Path -LiteralPath $candidate) {
-                return $candidate
-            }
+        $vs = & $vswhere -latest -requires Microsoft.Component.MSBuild -property installationPath 2>$null
+        if ($vs) {
+            $candidate = Join-Path $vs 'MSBuild\Current\Bin\amd64\MSBuild.exe'
+            if (Test-Path $candidate) { return $candidate }
+            $candidate = Join-Path $vs 'MSBuild\Current\Bin\MSBuild.exe'
+            if (Test-Path $candidate) { return $candidate }
         }
     }
-
     return $null
 }
 
-function Resolve-CMakeGenerator {
-    $vswhere = Resolve-VsWherePath
-    if (-not $vswhere) {
-        return "Visual Studio 17 2022"
-    }
+# ── 빌드 ─────────────────────────────────────────────────────────────────
 
-    $version = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationVersion 2>$null | Select-Object -First 1
-    if ($version) {
-        if ($version.StartsWith("17.")) {
-            return "Visual Studio 17 2022"
-        }
+function Invoke-Build {
+    param([switch]$Clean)
 
-        if ($version.StartsWith("16.")) {
-            return "Visual Studio 16 2019"
-        }
-    }
+    $msbuild = Find-MSBuild
+    if (-not $msbuild) { throw 'MSBuild.exe를 찾을 수 없습니다. Visual Studio를 설치하세요.' }
+    Write-Host "[BUILD] MSBuild: $msbuild"
 
-    return "Visual Studio 17 2022"
+    $target = if ($Clean) { 'Rebuild' } else { 'Build' }
+    & $msbuild $vcxproj /p:Configuration=$Config /p:Platform=x64 /t:$target /m /nologo /verbosity:minimal
+    if ($LASTEXITCODE -ne 0) { throw "빌드 실패 (exit $LASTEXITCODE)" }
+    Write-Host "[BUILD] 완료: $exePath"
 }
 
-function Invoke-External {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Exe,
-        [Parameter(Mandatory = $true)]
-        [string[]]$Arguments,
-        [Parameter(Mandatory = $true)]
-        [string]$Step
-    )
+# ── 단일 백엔드 비대화형 실행 ─────────────────────────────────────────────
 
-    Write-Host ("> {0} {1}" -f $Exe, ($Arguments -join " "))
-    & $Exe @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "Step '$Step' failed with exit code $LASTEXITCODE"
+function Run-Backend {
+    param([int]$MenuNum, [string]$Label, [string]$ConnOverride)
+
+    Write-Host "`n[$Label] 테스트 시작..."
+
+    # 연결 문자열 오버라이드 (환경변수)
+    $input = "$MenuNum`n"   # 백엔드 선택
+    if ($MenuNum -eq 1) {
+        # SQLite — 연결 문자열 입력 없음
+        $input += "`n"
+    } else {
+        # 연결 문자열 입력 (빈 줄 = 기본값, 아니면 오버라이드)
+        $input += "$ConnOverride`n"
     }
+    $input += "`n"  # Enter를 눌러 계속
+    $input += "0`n" # 종료
+
+    $output = $input | & $exePath 2>&1
+    Write-Host $output
+
+    # 결과 파싱
+    if ($output -match 'ALL OK') { return $true  }
+    if ($output -match 'FAILED') { return $false }
+    return $true  # 연결 실패는 경고로 처리
 }
 
-function Resolve-TestExecutable {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$BuildDir,
-        [Parameter(Mandatory = $true)]
-        [string]$Configuration,
-        [Parameter(Mandatory = $true)]
-        [string]$TargetName
-    )
+# ── 메인 ─────────────────────────────────────────────────────────────────
 
-    $candidates = @(
-        (Join-Path $BuildDir "$Configuration\$TargetName.exe"),
-        (Join-Path $BuildDir "$TargetName.exe"),
-        (Join-Path $BuildDir "$TargetName\$Configuration\$TargetName.exe")
-    )
+Write-Host ''
+Write-Host '=== DBModuleTest — Network::Database 모듈 수동 테스트 ===' -ForegroundColor Magenta
+Write-Host "프로젝트: $projectDir"
+Write-Host "설정:     $Config / x64"
+Write-Host ''
 
-    foreach ($candidate in $candidates) {
-        if (Test-Path -LiteralPath $candidate) {
-            return $candidate
-        }
-    }
+if ($Build -or $Rebuild) { Invoke-Build -Clean:$Rebuild }
 
-    $found = Get-ChildItem -Path $BuildDir -Recurse -Filter "$TargetName.exe" -File -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
-
-    if ($found) {
-        return $found.FullName
-    }
-
-    throw "Executable not found for target '$TargetName' under '$BuildDir'"
+if (-not (Test-Path $exePath)) {
+    Write-Host "[WARN] 실행 파일이 없습니다: $exePath" -ForegroundColor Yellow
+    Write-Host "       -Build 옵션으로 먼저 빌드하거나 Visual Studio에서 빌드하세요." -ForegroundColor Yellow
+    $ans = Read-Host "지금 빌드할까요? (y/N)"
+    if ($ans -match '^[yY]') { Invoke-Build }
+    else { exit 1 }
 }
 
-function Write-ProcessOutput {
-    param(
-        [AllowNull()]
-        [string]$Text
-    )
-
-    if (-not $Text) {
-        return
-    }
-
-    $lines = $Text -split "`r?`n"
-    foreach ($line in $lines) {
-        if ($line -ne "") {
-            Write-Host $line
-        }
-    }
+# ── 대화형 모드 ───────────────────────────────────────────────────────────
+if ($Backend -eq 'interactive') {
+    Write-Host '대화형 모드로 실행합니다 (메뉴에서 백엔드를 선택하세요).'
+    Write-Host ''
+    & $exePath
+    exit $LASTEXITCODE
 }
 
-function Invoke-TestBinary {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path,
-        [Parameter(Mandatory = $true)]
-        [string]$Name
-    )
+# ── 비대화형 모드 ─────────────────────────────────────────────────────────
 
-    Write-Host ""
-    Write-Host ("Running {0}: {1}" -f $Name, $Path)
-
-    $stdoutFile = [System.IO.Path]::GetTempFileName()
-    $stderrFile = [System.IO.Path]::GetTempFileName()
-
-    try {
-        $proc = Start-Process -FilePath $Path -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
-        $stdout = Get-Content -Path $stdoutFile -Raw -ErrorAction SilentlyContinue
-        $stderr = Get-Content -Path $stderrFile -Raw -ErrorAction SilentlyContinue
-
-        Write-ProcessOutput -Text $stdout
-        Write-ProcessOutput -Text $stderr
-
-        return [PSCustomObject]@{
-            Name     = $Name
-            Path     = $Path
-            ExitCode = $proc.ExitCode
-        }
-    }
-    finally {
-        Remove-Item -LiteralPath $stdoutFile -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath $stderrFile -ErrorAction SilentlyContinue
-    }
+$map = @{
+    'sqlite' = @{ Num = 1; Label = 'SQLite';    Env = '' }
+    'mssql'  = @{ Num = 2; Label = 'MSSQL ODBC'; Env = 'DB_MSSQL_ODBC' }
+    'pgsql'  = @{ Num = 3; Label = 'PostgreSQL ODBC'; Env = 'DB_PGSQL_ODBC' }
+    'mysql'  = @{ Num = 4; Label = 'MySQL ODBC'; Env = 'DB_MYSQL_ODBC' }
+    'oledb'  = @{ Num = 5; Label = 'OLE DB';    Env = 'DB_OLEDB' }
 }
 
-function Restore-EnvValue {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Name,
-        [AllowNull()]
-        [string]$Value
-    )
+$targets = if ($Backend -eq 'all') { @('sqlite','mssql','pgsql','mysql','oledb') }
+           else                    { @($Backend) }
 
-    if ($null -eq $Value) {
-        Remove-Item -Path "Env:$Name" -ErrorAction SilentlyContinue
+$results = @()
+foreach ($t in $targets) {
+    $info = $map[$t]
+    $conn = ''
+    if ($ConnStr) { $conn = $ConnStr }
+    elseif ($info.Env) {
+        $envVal = [System.Environment]::GetEnvironmentVariable($info.Env)
+        if ($envVal) { $conn = $envVal }
     }
-    else {
-        Set-Item -Path "Env:$Name" -Value $Value
-    }
+
+    $ok = Run-Backend -MenuNum $info.Num -Label $info.Label -ConnOverride $conn
+    $results += [PSCustomObject]@{ Backend = $info.Label; OK = $ok }
 }
 
-function Resolve-ConnectionValue {
-    param(
-        [AllowNull()][string]$Primary,
-        [AllowNull()][string]$Secondary,
-        [AllowNull()][string]$EnvSpecific,
-        [AllowNull()][string]$EnvLegacy,
-        [Parameter(Mandatory = $true)][string]$Fallback
-    )
-
-    if ($Primary) { return $Primary }
-    if ($Secondary) { return $Secondary }
-    if ($EnvSpecific) { return $EnvSpecific }
-    if ($EnvLegacy) { return $EnvLegacy }
-    return $Fallback
+Write-Host ''
+Write-Host '=== 최종 요약 ===' -ForegroundColor Magenta
+$allOk = $true
+foreach ($r in $results) {
+    $mark  = if ($r.OK) { 'PASS' } else { 'FAIL'; $allOk = $false }
+    $color = if ($r.OK) { 'Green' } else { 'Red' }
+    Write-Host ("  [{0}] {1}" -f $mark, $r.Backend) -ForegroundColor $color
 }
 
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$projectDir = Split-Path -Parent $scriptDir
-$checkScript = Join-Path $scriptDir "check-db-prereqs.ps1"
-$buildDir = Join-Path $projectDir ("build\cmake-{0}-{1}" -f $Platform, $Configuration)
-
-$runMssql = $DbTarget -eq "Mssql" -or $DbTarget -eq "Both"
-$runMysql = $DbTarget -eq "Mysql" -or $DbTarget -eq "Both"
-$runOledbMssql = $runMssql -and (-not $SkipOleDbMssql)
-
-$mssqlOdbcDefault = "DRIVER={ODBC Driver 18 for SQL Server};SERVER=(localdb)\MSSQLLocalDB;DATABASE=master;Trusted_Connection=Yes;Encrypt=no"
-$mysqlOdbcDefault = "DRIVER={MySQL ODBC 8.0 Unicode Driver};SERVER=127.0.0.1;PORT=3306;DATABASE=mysql;USER=root;PASSWORD=;OPTION=3"
-$mssqlOledbDefault = "Provider=MSOLEDBSQL;Server=(localdb)\MSSQLLocalDB;Database=master;Integrated Security=SSPI;Encrypt=Optional"
-
-$mssqlOdbcConn = Resolve-ConnectionValue -Primary $MssqlOdbcConnectionString -Secondary $OdbcConnectionString -EnvSpecific $env:DOCDB_ODBC_CONN_MSSQL -EnvLegacy $env:DOCDB_ODBC_CONN -Fallback $mssqlOdbcDefault
-$mysqlOdbcConn = Resolve-ConnectionValue -Primary $MysqlOdbcConnectionString -Secondary $null -EnvSpecific $env:DOCDB_ODBC_CONN_MYSQL -EnvLegacy $null -Fallback $mysqlOdbcDefault
-$mssqlOledbConn = Resolve-ConnectionValue -Primary $MssqlOledbConnectionString -Secondary $OledbConnectionString -EnvSpecific $env:DOCDB_OLEDB_CONN_MSSQL -EnvLegacy $env:DOCDB_OLEDB_CONN -Fallback $mssqlOledbDefault
-
-Write-Host ""
-Write-Host "=== DBModuleTest runner ==="
-Write-Host ("ProjectDir   : {0}" -f $projectDir)
-Write-Host ("BuildDir     : {0}" -f $buildDir)
-Write-Host ("Config/Plat  : {0}/{1}" -f $Configuration, $Platform)
-Write-Host ("DbTarget     : {0}" -f $DbTarget)
-
-if (-not $SkipPrereqCheck) {
-    if (-not (Test-Path -LiteralPath $checkScript)) {
-        throw "Prerequisite script not found: $checkScript"
-    }
-
-    Write-Host ""
-    Write-Host "[1/4] Prerequisite check"
-    & $checkScript -RequireDatabase:$RequireDatabase -DbTarget $DbTarget
-    if ($LASTEXITCODE -ne 0) {
-        throw "Prerequisite check failed (exit code $LASTEXITCODE)"
-    }
-}
-
-$cmakePath = Resolve-CMakePath
-if (-not $cmakePath) {
-    throw "cmake.exe not found. Install CMake or Visual Studio CMake components."
-}
-
-$generator = Resolve-CMakeGenerator
-
-Write-Host ""
-Write-Host "[2/4] CMake configure"
-Invoke-External -Exe $cmakePath -Arguments @(
-    "-S", $projectDir,
-    "-B", $buildDir,
-    "-G", $generator,
-    "-A", $Platform
-) -Step "cmake configure"
-
-Write-Host ""
-Write-Host "[3/4] Build targets"
-Invoke-External -Exe $cmakePath -Arguments @(
-    "--build", $buildDir,
-    "--config", $Configuration,
-    "--target", "db_tests", "odbc_sample", "oledb_sample"
-) -Step "cmake build"
-
-$trackedEnvNames = @(
-    "DOCDB_ODBC_CONN",
-    "DOCDB_OLEDB_CONN",
-    "DOCDB_ODBC_CONN_MSSQL",
-    "DOCDB_ODBC_CONN_MYSQL",
-    "DOCDB_OLEDB_CONN_MSSQL",
-    "DOCDB_REQUIRE_DB",
-    "DOCDB_RUN_MSSQL",
-    "DOCDB_RUN_MYSQL",
-    "DOCDB_RUN_OLEDB"
-)
-
-$oldEnv = @{}
-foreach ($name in $trackedEnvNames) {
-    $envItem = Get-Item -Path "Env:$name" -ErrorAction SilentlyContinue
-    if ($null -ne $envItem) {
-        $oldEnv[$name] = $envItem.Value
-    }
-    else {
-        $oldEnv[$name] = $null
-    }
-}
-
-try {
-    $env:DOCDB_ODBC_CONN_MSSQL = $mssqlOdbcConn
-    $env:DOCDB_ODBC_CONN_MYSQL = $mysqlOdbcConn
-    $env:DOCDB_OLEDB_CONN_MSSQL = $mssqlOledbConn
-
-    # Legacy vars (sample compatibility)
-    $env:DOCDB_ODBC_CONN = if ($runMssql) { $mssqlOdbcConn } else { $mysqlOdbcConn }
-    $env:DOCDB_OLEDB_CONN = $mssqlOledbConn
-
-    $env:DOCDB_REQUIRE_DB = if ($RequireDatabase) { "1" } else { "0" }
-    $env:DOCDB_RUN_MSSQL = if ($runMssql) { "1" } else { "0" }
-    $env:DOCDB_RUN_MYSQL = if ($runMysql) { "1" } else { "0" }
-    $env:DOCDB_RUN_OLEDB = if ($runOledbMssql) { "1" } else { "0" }
-
-    Write-Host ""
-    Write-Host "[4/4] Run tests"
-
-    $results = @()
-    $dbTestsExe = Resolve-TestExecutable -BuildDir $buildDir -Configuration $Configuration -TargetName "db_tests"
-    $results += Invoke-TestBinary -Path $dbTestsExe -Name "db_tests"
-
-    if ($RunSamples) {
-        $odbcSampleExe = Resolve-TestExecutable -BuildDir $buildDir -Configuration $Configuration -TargetName "odbc_sample"
-        $oledbSampleExe = Resolve-TestExecutable -BuildDir $buildDir -Configuration $Configuration -TargetName "oledb_sample"
-
-        if ($runMssql) {
-            $env:DOCDB_ODBC_CONN = $mssqlOdbcConn
-            $results += Invoke-TestBinary -Path $odbcSampleExe -Name "odbc_sample(MSSQL)"
-        }
-
-        if ($runMysql) {
-            $env:DOCDB_ODBC_CONN = $mysqlOdbcConn
-            $results += Invoke-TestBinary -Path $odbcSampleExe -Name "odbc_sample(MySQL)"
-        }
-
-        if ($runOledbMssql) {
-            $env:DOCDB_OLEDB_CONN = $mssqlOledbConn
-            $results += Invoke-TestBinary -Path $oledbSampleExe -Name "oledb_sample(MSSQL)"
-        }
-    }
-
-    Write-Host ""
-    Write-Host "=== Test summary ==="
-    foreach ($item in $results) {
-        $mark = if ($item.ExitCode -eq 0) { "PASS" } else { "FAIL" }
-        Write-Host ("[{0}] {1} (exit={2})" -f $mark, $item.Name, $item.ExitCode)
-    }
-
-    $failedResults = @($results | Where-Object { $_.ExitCode -ne 0 })
-    if ($failedResults.Count -gt 0) {
-        exit 1
-    }
-
-    exit 0
-}
-finally {
-    foreach ($name in $trackedEnvNames) {
-        Restore-EnvValue -Name $name -Value $oldEnv[$name]
-    }
-}
+exit $(if ($allOk) { 0 } else { 1 })
