@@ -192,6 +192,17 @@ void LinuxNetworkEngine::AcceptLoop()
 				continue;
 			}
 
+			if (errno == EMFILE || errno == ENFILE || errno == ENOMEM)
+			{
+				// English: System resource exhaustion — back off longer before retrying.
+				// 한글: 시스템 리소스 고갈 시 더 길게 대기 후 재시도한다.
+				Utils::Logger::Error("Accept resource exhaustion (" +
+									 std::string(strerror(errno)) +
+									 ") - sleeping 5 s");
+				std::this_thread::sleep_for(std::chrono::seconds(5));
+				continue;
+			}
+
 			Utils::Logger::Error("Accept failed: " + std::string(strerror(errno)));
 
 			// English: Exponential backoff on error (member var, not static)

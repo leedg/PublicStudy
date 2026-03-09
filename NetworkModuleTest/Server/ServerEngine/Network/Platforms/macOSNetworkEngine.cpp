@@ -168,6 +168,17 @@ void macOSNetworkEngine::AcceptLoop()
 				continue;
 			}
 
+			if (errno == EMFILE || errno == ENFILE || errno == ENOMEM)
+			{
+				// English: System resource exhaustion — back off longer before retrying.
+				// 한글: 시스템 리소스 고갈 시 더 길게 대기 후 재시도한다.
+				Utils::Logger::Error("Accept resource exhaustion (" +
+									 std::string(strerror(errno)) +
+									 ") - sleeping 5 s");
+				std::this_thread::sleep_for(std::chrono::seconds(5));
+				continue;
+			}
+
 			Utils::Logger::Error("Accept failed: " + std::string(strerror(errno)));
 
 			// English: Exponential backoff on error (member var, not static)
@@ -184,7 +195,10 @@ void macOSNetworkEngine::AcceptLoop()
 		// English: Set socket to non-blocking mode
 		// 한글: 소켓을 논블로킹 모드로 설정
 		int flags = fcntl(clientSocket, F_GETFL, 0);
-		fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK);
+		if (flags != -1)
+		{
+			fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK);
+		}
 
 		// English: Create session
 		// 한글: 세션 생성
@@ -397,7 +411,10 @@ bool macOSNetworkEngine::CreateListenSocket()
 	// English: Set socket to non-blocking mode
 	// 한글: 소켓을 논블로킹 모드로 설정
 	int flags = fcntl(mListenSocket, F_GETFL, 0);
-	fcntl(mListenSocket, F_SETFL, flags | O_NONBLOCK);
+	if (flags != -1)
+	{
+		fcntl(mListenSocket, F_SETFL, flags | O_NONBLOCK);
+	}
 
 	// English: Set socket options
 	// 한글: 소켓 옵션 설정
