@@ -181,11 +181,13 @@ class KeyedDispatcher
 
 	size_t GetWorkerCount() const
 	{
+		std::shared_lock<std::shared_mutex> sharedLock(mWorkersMutex);
 		return mWorkers.size();
 	}
 
 	size_t GetWorkerQueueSize(size_t workerIndex) const
 	{
+		std::shared_lock<std::shared_mutex> sharedLock(mWorkersMutex);
 		if (workerIndex >= mWorkers.size())
 		{
 			return 0;
