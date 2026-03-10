@@ -219,7 +219,10 @@ void LinuxNetworkEngine::AcceptLoop()
 		// English: Set socket to non-blocking mode
 		// 한글: 소켓을 논블로킹 모드로 설정
 		int flags = fcntl(clientSocket, F_GETFL, 0);
-		fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK);
+		if (flags != -1)
+		{
+			fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK);
+		}
 
 		// English: Create session
 		// 한글: 세션 생성
