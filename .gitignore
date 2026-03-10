@@ -1,2 +1,6 @@
 ﻿.vs/
 
+# Runtime DB artifacts
+NetworkModuleTest/*.wal
+NetworkModuleTest/*.txt
+
