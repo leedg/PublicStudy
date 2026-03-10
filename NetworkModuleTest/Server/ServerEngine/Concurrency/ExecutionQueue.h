@@ -275,7 +275,9 @@ class ExecutionQueue
 
 		}
 
-		mNotEmptyCV.notify_all();
+		mNotEmptyMutexCV.notify_all();
+
+		mNotEmptyLFCV_pop.notify_all();
 
 		mNotFullMutexCV.notify_all();
 
@@ -355,7 +357,7 @@ class ExecutionQueue
 
 		}
 
-		mNotEmptyCV.notify_one();
+		mNotEmptyMutexCV.notify_one();
 
 		return true;
 
@@ -391,7 +393,7 @@ class ExecutionQueue
 
 			std::lock_guard<std::mutex> wl(mWaitMutex);
 
-			mNotEmptyCV.notify_one();
+			mNotEmptyLFCV_pop.notify_one();
 
 		}
 
@@ -461,7 +463,7 @@ class ExecutionQueue
 
 		lock.unlock();
 
-		mNotEmptyCV.notify_one();
+		mNotEmptyMutexCV.notify_one();
 
 		return true;
 
@@ -644,12 +646,12 @@ class ExecutionQueue
 	}
 
 	// English: Mutex-backend blocking wait for Pop().
-	//          Waits mNotEmptyCV under mMutexQueueMutex — the same mutex held by the
+	//          Waits mNotEmptyMutexCV under mMutexQueueMutex — the same mutex held by the
 	//          producer during push, eliminating the missed-notification race that occurs
 	//          when producer and consumer use different mutexes.
 	// 한글: Mutex 백엔드용 블로킹 Pop() 대기.
 	//       생산자가 push 시 보유하는 것과 동일한 뮤텍스(mMutexQueueMutex) 하에서
-	//       mNotEmptyCV를 대기하여, 서로 다른 뮤텍스 사용 시 발생하는
+	//       mNotEmptyMutexCV를 대기하여, 서로 다른 뮤텍스 사용 시 발생하는
 	//       missed-notification 경쟁을 제거함.
 	bool PopMutexWait(T &out, int timeoutMs)
 
@@ -675,7 +677,7 @@ class ExecutionQueue
 
 			{
 
-				mNotEmptyCV.wait(lock, [this] {
+				mNotEmptyMutexCV.wait(lock, [this] {
 
 					return mShutdown.load(std::memory_order_acquire) ||
 
@@ -689,7 +691,7 @@ class ExecutionQueue
 
 			{
 
-				if (!mNotEmptyCV.wait_until(lock, deadline, [this] {
+				if (!mNotEmptyMutexCV.wait_until(lock, deadline, [this] {
 
 						return mShutdown.load(std::memory_order_acquire) ||
 
@@ -756,10 +758,10 @@ class ExecutionQueue
 	}
 
 	// English: Lock-free-backend blocking wait for Pop().
-	//          Waits mNotEmptyCV under mWaitMutex; producer must notify under the same
+	//          Waits mNotEmptyLFCV_pop under mWaitMutex; producer must notify under the same
 	//          mutex (see TryPushLockFree) to prevent missed-notification race.
 	// 한글: Lock-free 백엔드용 블로킹 Pop() 대기.
-	//       mWaitMutex 하에서 mNotEmptyCV를 대기; 생산자는 동일 뮤텍스 보유 중에
+	//       mWaitMutex 하에서 mNotEmptyLFCV_pop을 대기; 생산자는 동일 뮤텍스 보유 중에
 	//       notify 해야 함 (TryPushLockFree 참조).
 	bool PopLockFreeWait(T &out, int timeoutMs)
 
@@ -785,7 +787,7 @@ class ExecutionQueue
 
 			{
 
-				mNotEmptyCV.wait(lock, [this] {
+				mNotEmptyLFCV_pop.wait(lock, [this] {
 
 					return mShutdown.load(std::memory_order_acquire) ||
 
@@ -799,7 +801,7 @@ class ExecutionQueue
 
 			{
 
-				if (!mNotEmptyCV.wait_until(lock, deadline, [this] {
+				if (!mNotEmptyLFCV_pop.wait_until(lock, deadline, [this] {
 
 						return mShutdown.load(std::memory_order_acquire) ||
 
@@ -881,7 +883,8 @@ class ExecutionQueue
 
 	mutable std::mutex mWaitMutex;
 
-	std::condition_variable mNotEmptyCV;
+	std::condition_variable mNotEmptyMutexCV;  // Mutex backend only (with mMutexQueueMutex)
+	std::condition_variable mNotEmptyLFCV_pop; // LockFree backend Pop (with mWaitMutex)
 
 	std::condition_variable mNotFullMutexCV;  // English: Used with mMutexQueueMutex (mutex backend)
                                               // 한글: 뮤텍스 백엔드용 — mMutexQueueMutex와 함께 사용
