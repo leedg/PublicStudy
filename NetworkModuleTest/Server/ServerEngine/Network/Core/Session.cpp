@@ -453,7 +453,8 @@ bool Session::PostSend()
 		return false;
 	}
 
-	// mIsSending stays true until send completion fires ProcessSendCompletion
+	// English: mIsSending stays true until send completion fires ProcessSendCompletion.
+	// 한글: 송신 완료 콜백(ProcessSendCompletion) 호출 전까지 mIsSending 유지.
 	return true;
 #endif
 }

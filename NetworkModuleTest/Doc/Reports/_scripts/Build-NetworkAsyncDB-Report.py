@@ -1,0 +1,819 @@
+#!/usr/bin/env python3
+"""
+Build-NetworkAsyncDB-Report.py
+네트워크 / 비동기 처리 / DB 처리 구조 분석 보고서 생성
+
+사용법:
+    python Build-NetworkAsyncDB-Report.py [출력경로.docx]
+
+사전 요구사항:
+    pip install python-docx
+"""
+
+from pathlib import Path
+import sys
+
+from docx import Document
+from docx.shared import Inches, Pt, RGBColor, Cm
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT
+
+# ── 색상 팔레트 ───────────────────────────────────────────────────────────────
+C_TITLE_BG    = RGBColor(0x0D, 0x47, 0xA1)   # 진한 파랑 (타이틀 배경)
+C_BLUE_DARK   = RGBColor(0x15, 0x65, 0xC0)   # 섹션 헤더
+C_BLUE_LIGHT  = RGBColor(0xE3, 0xF2, 0xFD)   # note 박스 배경
+C_TEAL_DARK   = RGBColor(0x00, 0x69, 0x5C)   # h1 네트워크 섹션 강조
+C_INDIGO_DARK = RGBColor(0x1A, 0x23, 0x7E)   # 테이블 헤더 배경
+C_PURPLE      = RGBColor(0x51, 0x2D, 0xA8)   # h3 색
+C_ORANGE      = RGBColor(0xBF, 0x36, 0x0C)   # warning
+C_YELLOW_BG   = RGBColor(0xFF, 0xF8, 0xE1)   # warning 배경
+C_GREEN_DARK  = RGBColor(0x1B, 0x5E, 0x20)   # tip
+C_GREEN_BG    = RGBColor(0xE8, 0xF5, 0xE9)   # tip 배경
+C_WHITE       = RGBColor(0xFF, 0xFF, 0xFF)
+C_BLACK       = RGBColor(0x21, 0x21, 0x21)
+C_GRAY        = RGBColor(0x75, 0x75, 0x75)
+C_ROW_ALT     = RGBColor(0xF5, 0xF5, 0xF5)
+C_CODE_BG     = RGBColor(0xF5, 0xF5, 0xF5)
+C_CODE_FG     = RGBColor(0x37, 0x47, 0x4F)
+C_CAPTION     = RGBColor(0x61, 0x61, 0x61)
+C_TITLE_STRIP = RGBColor(0x1E, 0x88, 0xE5)   # 타이틀 악센트 선
+
+FONT      = "맑은 고딕"
+FONT_CODE = "Consolas"
+# 기존 다이어그램 (ExecutiveSummary/assets/)
+ASSETS_EXEC = Path(__file__).parent.parent / "ExecutiveSummary" / "assets"
+# 새 다이어그램 (assets/)
+ASSETS_NEW  = Path(__file__).parent.parent / "assets"
+
+
+# ── XML 유틸리티 ──────────────────────────────────────────────────────────────
+def _rgb_hex(c: RGBColor) -> str:
+    # RGBColor is a subclass of tuple: (r, g, b)
+    return f"{c[0]:02X}{c[1]:02X}{c[2]:02X}"
+
+
+def shade_cell(cell, color: RGBColor):
+    tcPr = cell._tc.get_or_add_tcPr()
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), _rgb_hex(color))
+    tcPr.append(shd)
+
+
+def shade_para(para, color: RGBColor):
+    pPr = para._p.get_or_add_pPr()
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), _rgb_hex(color))
+    pPr.append(shd)
+
+
+def add_left_border(para, color_hex: str = "1565C0", sz: int = 12):
+    pPr = para._p.get_or_add_pPr()
+    pBdr = OxmlElement("w:pBdr")
+    left = OxmlElement("w:left")
+    left.set(qn("w:val"), "single")
+    left.set(qn("w:sz"), str(sz))
+    left.set(qn("w:space"), "4")
+    left.set(qn("w:color"), color_hex)
+    pBdr.append(left)
+    pPr.append(pBdr)
+
+
+def add_bottom_border(para, color_hex: str = "CCCCCC", sz: int = 4):
+    pPr = para._p.get_or_add_pPr()
+    pBdr = OxmlElement("w:pBdr")
+    bot = OxmlElement("w:bottom")
+    bot.set(qn("w:val"), "single")
+    bot.set(qn("w:sz"), str(sz))
+    bot.set(qn("w:space"), "1")
+    bot.set(qn("w:color"), color_hex)
+    pBdr.append(bot)
+    pPr.append(pBdr)
+
+
+def set_cell_valign_center(cell):
+    tcPr = cell._tc.get_or_add_tcPr()
+    vAlign = OxmlElement("w:vAlign")
+    vAlign.set(qn("w:val"), "center")
+    tcPr.append(vAlign)
+
+
+# ── Run/폰트 헬퍼 ──────────────────────────────────────────────────────────────
+def _apply_font(run, name=FONT, size=None, bold=False, italic=False, color=None):
+    run.font.name = name
+    run.font.bold = bold
+    run.font.italic = italic
+    if size:
+        run.font.size = Pt(size)
+    if color:
+        run.font.color.rgb = color
+    try:
+        run._element.rPr.rFonts.set(qn("w:eastAsia"), name)
+    except Exception:
+        pass
+    return run
+
+
+def add_run(para, text, name=FONT, size=None, bold=False, italic=False, color=None):
+    return _apply_font(para.add_run(text), name, size, bold, italic, color)
+
+
+# ── 문서 셋업 ─────────────────────────────────────────────────────────────────
+def setup_document() -> Document:
+    doc = Document()
+    sec = doc.sections[0]
+    sec.page_width    = Cm(21)
+    sec.page_height   = Cm(29.7)
+    sec.left_margin   = Cm(2.5)
+    sec.right_margin  = Cm(2.5)
+    sec.top_margin    = Cm(2.5)
+    sec.bottom_margin = Cm(2.0)
+
+    style_cfg = [
+        ("Normal",      10.5),
+        ("Heading 1",   15),
+        ("Heading 2",   13),
+        ("Heading 3",   11.5),
+        ("List Bullet", 10.5),
+        ("List Number", 10.5),
+    ]
+    for name, sz in style_cfg:
+        s = doc.styles[name]
+        s.font.name = FONT
+        s.font.size = Pt(sz)
+        try:
+            s._element.rPr.rFonts.set(qn("w:eastAsia"), FONT)
+        except Exception:
+            pass
+    return doc
+
+
+# ── 타이틀 페이지 ─────────────────────────────────────────────────────────────
+def build_title_page(doc: Document):
+    def _shade(text="", align=WD_ALIGN_PARAGRAPH.LEFT,
+               before=0, after=0, indent=0,
+               bold=False, italic=False, fsize=None, fcolor=None, bg=C_TITLE_BG):
+        p = doc.add_paragraph(style="Normal")
+        shade_para(p, bg)
+        p.alignment = align
+        p.paragraph_format.space_before = Pt(before)
+        p.paragraph_format.space_after  = Pt(after)
+        if indent:
+            p.paragraph_format.left_indent = Cm(indent)
+        if text:
+            add_run(p, text, bold=bold, italic=italic, size=fsize, color=fcolor)
+        return p
+
+    # 상단 여백
+    for _ in range(3):
+        _shade()
+
+    # 악센트 가로선
+    accent = _shade(before=2, after=2, bg=C_TITLE_STRIP)
+    p_bdr = accent._p.get_or_add_pPr()
+    shd_b = OxmlElement("w:shd")
+    shd_b.set(qn("w:val"), "clear"); shd_b.set(qn("w:color"), "auto")
+    shd_b.set(qn("w:fill"), _rgb_hex(C_TITLE_STRIP))
+    p_bdr.append(shd_b)
+
+    # 메인 타이틀
+    _shade("네트워크 · 비동기 처리 · DB 처리",
+           align=WD_ALIGN_PARAGRAPH.CENTER, before=30, after=4,
+           bold=True, fsize=26, fcolor=C_WHITE)
+    _shade("구조 분석 보고서",
+           align=WD_ALIGN_PARAGRAPH.CENTER, before=0, after=20,
+           bold=True, fsize=26, fcolor=C_WHITE)
+
+    # 부제
+    _shade("NetworkModuleTest — ServerEngine · TestServer · DBServer 구현 기반",
+           align=WD_ALIGN_PARAGRAPH.CENTER, before=0, after=30,
+           italic=True, fsize=13,
+           fcolor=RGBColor(0xBB, 0xDE, 0xFB))
+
+    # 구분선
+    _shade(before=0, after=16, bg=RGBColor(0x42, 0x86, 0xC5))
+
+    # 메타 정보
+    meta = [
+        ("기준 리포지토리", "NetworkModuleTest"),
+        ("분석 대상",      "ServerEngine / TestServer / DBServer"),
+        ("작성일",         "2026-03-10"),
+        ("버전",           "1.0"),
+    ]
+    for label, value in meta:
+        p = _shade(before=0, after=4, indent=4)
+        add_run(p, f"{label}:  ", bold=True, size=11,
+                color=RGBColor(0x90, 0xCA, 0xF9))
+        add_run(p, value, size=11, color=C_WHITE)
+
+    # 하단 여백
+    for _ in range(5):
+        _shade()
+
+    doc.add_page_break()
+
+
+# ── 본문 빌딩 블록 ────────────────────────────────────────────────────────────
+def h1(doc: Document, text: str):
+    p = doc.add_paragraph(style="Normal")
+    shade_para(p, RGBColor(0xE8, 0xEA, 0xF6))
+    add_left_border(p, color_hex="0D47A1", sz=20)
+    p.paragraph_format.left_indent  = Cm(0.4)
+    p.paragraph_format.space_before = Pt(18)
+    p.paragraph_format.space_after  = Pt(6)
+    add_run(p, text, bold=True, size=15, color=C_TITLE_BG)
+
+
+def h2(doc: Document, text: str):
+    p = doc.add_paragraph(style="Normal")
+    add_left_border(p, color_hex="1565C0", sz=12)
+    p.paragraph_format.left_indent  = Cm(0.3)
+    p.paragraph_format.space_before = Pt(12)
+    p.paragraph_format.space_after  = Pt(4)
+    add_run(p, text, bold=True, size=13, color=C_BLUE_DARK)
+
+
+def h3(doc: Document, text: str):
+    p = doc.add_paragraph(style="Normal")
+    p.paragraph_format.space_before = Pt(8)
+    p.paragraph_format.space_after  = Pt(3)
+    add_run(p, text, bold=True, size=11.5, color=C_PURPLE)
+
+
+def body(doc: Document, text: str, size: float = 10.5,
+         color: RGBColor = C_BLACK, indent_cm: float = 0) -> object:
+    p = doc.add_paragraph(style="Normal")
+    p.paragraph_format.space_after = Pt(4)
+    if indent_cm:
+        p.paragraph_format.left_indent = Cm(indent_cm)
+    add_run(p, text, size=size, color=color)
+    return p
+
+
+def bullet(doc: Document, text: str, size: float = 10.5, indent_cm: float = 0.5):
+    p = doc.add_paragraph(style="List Bullet")
+    p.paragraph_format.space_after = Pt(2)
+    if indent_cm:
+        p.paragraph_format.left_indent = Cm(indent_cm)
+    add_run(p, text, size=size)
+    return p
+
+
+def numbered(doc: Document, text: str, size: float = 10.5, indent_cm: float = 0.5):
+    p = doc.add_paragraph(style="List Number")
+    p.paragraph_format.space_after = Pt(2)
+    if indent_cm:
+        p.paragraph_format.left_indent = Cm(indent_cm)
+    add_run(p, text, size=size)
+    return p
+
+
+def code_ref(doc: Document, text: str, note: str = ""):
+    p = doc.add_paragraph(style="Normal")
+    shade_para(p, C_CODE_BG)
+    add_left_border(p, color_hex="90A4AE", sz=6)
+    p.paragraph_format.left_indent  = Cm(0.6)
+    p.paragraph_format.space_before = Pt(2)
+    p.paragraph_format.space_after  = Pt(2)
+    add_run(p, text, name=FONT_CODE, size=9.5, bold=True, color=C_CODE_FG)
+    if note:
+        add_run(p, f"  — {note}", size=9, color=C_GRAY)
+    return p
+
+
+def callout(doc: Document, text: str, style: str = "note"):
+    cfg = {
+        "note":    (C_BLUE_LIGHT, C_BLUE_DARK,  "ℹ  참고"),
+        "warning": (C_YELLOW_BG,  C_ORANGE,     "⚠  주의"),
+        "tip":     (C_GREEN_BG,   C_GREEN_DARK, "✔  핵심"),
+    }
+    bg, fg, label = cfg.get(style, cfg["note"])
+    p = doc.add_paragraph(style="Normal")
+    shade_para(p, bg)
+    add_left_border(p, color_hex=_rgb_hex(fg), sz=8)
+    p.paragraph_format.left_indent  = Cm(0.4)
+    p.paragraph_format.right_indent = Cm(0.4)
+    p.paragraph_format.space_before = Pt(5)
+    p.paragraph_format.space_after  = Pt(5)
+    add_run(p, f"{label}:  ", bold=True, size=10, color=fg)
+    add_run(p, text, size=10, color=C_BLACK)
+    return p
+
+
+def image(doc: Document, filename: str, caption: str = None,
+          width: float = 5.8, assets_dir: Path = None):
+    if assets_dir is None:
+        assets_dir = ASSETS_EXEC
+    path = assets_dir / filename
+    if not path.exists():
+        body(doc, f"[이미지 없음: {filename}]", color=RGBColor(0xC6, 0x28, 0x28))
+        return
+    doc.add_picture(str(path), width=Inches(width))
+    pic_p = doc.paragraphs[-1]
+    pic_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if caption:
+        cap_p = doc.add_paragraph(style="Normal")
+        cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        cap_p.paragraph_format.space_before = Pt(2)
+        cap_p.paragraph_format.space_after  = Pt(10)
+        add_run(cap_p, f"▲  {caption}", italic=True, size=9, color=C_CAPTION)
+
+
+def make_table(doc: Document, headers: list, rows: list,
+               col_widths_cm: list = None):
+    t = doc.add_table(rows=1 + len(rows), cols=len(headers))
+    t.style = "Table Grid"
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+    # 헤더 행
+    for i, h in enumerate(headers):
+        cell = t.rows[0].cells[i]
+        cell.text = ""
+        shade_cell(cell, C_INDIGO_DARK)
+        set_cell_valign_center(cell)
+        p = cell.paragraphs[0]
+        add_run(p, h, bold=True, color=C_WHITE, size=9.5)
+
+    # 데이터 행
+    for ri, row_data in enumerate(rows, 1):
+        bg = C_ROW_ALT if ri % 2 == 0 else None
+        for ci, val in enumerate(row_data):
+            cell = t.rows[ri].cells[ci]
+            cell.text = ""
+            if bg:
+                shade_cell(cell, bg)
+            set_cell_valign_center(cell)
+            p = cell.paragraphs[0]
+            add_run(p, str(val), size=9.5)
+
+    # 열 너비
+    if col_widths_cm:
+        for row in t.rows:
+            for i, w in enumerate(col_widths_cm):
+                if i < len(row.cells):
+                    row.cells[i].width = Cm(w)
+
+    doc.add_paragraph()
+    return t
+
+
+def divider(doc: Document):
+    p = doc.add_paragraph(style="Normal")
+    p.paragraph_format.space_before = Pt(6)
+    p.paragraph_format.space_after  = Pt(6)
+    add_bottom_border(p, color_hex="CCCCCC", sz=4)
+
+
+# ── 섹션 1: 개요 ──────────────────────────────────────────────────────────────
+def section_overview(doc: Document):
+    h1(doc, "1. 개요")
+    body(doc, (
+        "이 보고서는 NetworkModuleTest 프로젝트의 ServerEngine, TestServer, DBServer 구현을 기반으로 "
+        "네트워크 처리 구조, 비동기 처리 구조, DB 처리 구조를 코드 수준에서 정리한다. "
+        "아키텍처의 각 계층이 어떻게 협력하고, 데이터가 어떤 경로로 흐르며, "
+        "비동기·논블로킹 설계가 어떻게 적용되어 있는지를 중심으로 기술한다."
+    ))
+
+    image(doc, "01-architecture-overview.png",
+          caption="전체 아키텍처 개요 — INetworkEngine · AsyncIOProvider · 스레드 역할 분리")
+
+    h2(doc, "1.1 3계층 설계 요약")
+    make_table(doc,
+        ["계층", "핵심 컴포넌트", "역할 요약"],
+        [
+            ["네트워크",    "INetworkEngine\nBaseNetworkEngine\nAsyncIOProvider",
+             "플랫폼별 I/O 완료 처리\n세션 생성·관리\n송수신 비동기 제공"],
+            ["비동기 처리", "ThreadPool\nKeyedDispatcher\nDBTaskQueue\nOrderedTaskQueue",
+             "로직 워커 스레드 풀\n세션 키 친화도 라우팅\n논블로킹 DB 오프로딩"],
+            ["DB 처리",    "IDatabase\nSQLiteDatabase / MockDatabase\nServerLatencyManager",
+             "교체 가능한 DB 추상화\n로컬 SQLite / 테스트 Mock\nDBServer 지연 시간 기록"],
+        ],
+        col_widths_cm=[3.0, 5.0, 9.0]
+    )
+
+    h2(doc, "1.2 플랫폼별 I/O 백엔드")
+    make_table(doc,
+        ["플랫폼", "1순위 백엔드", "폴백 백엔드", "비고"],
+        [
+            ["Windows", "RIO (Registered I/O)", "IOCP", "WSA 10055 방지를 위한 Slab 풀"],
+            ["Linux",   "io_uring",              "epoll", "kernel 5.1+ 필요"],
+            ["macOS",   "kqueue",                "—",    "단일 백엔드"],
+        ],
+        col_widths_cm=[2.5, 4.5, 3.5, 7.5]
+    )
+    divider(doc)
+
+
+# ── 섹션 2: 네트워크 처리 ────────────────────────────────────────────────────
+def section_network(doc: Document):
+    h1(doc, "2. 네트워크 처리 구조")
+    body(doc, (
+        "네트워크 계층은 INetworkEngine 인터페이스와 AsyncIOProvider 플랫폼 추상화의 2계층으로 분리된다. "
+        "공통 동작(세션 관리, 이벤트 콜백, 통계)은 BaseNetworkEngine이 담당하고, "
+        "플랫폼 특화 동작(소켓 accept, completion 처리)은 각 플랫폼 구현체가 담당한다."
+    ))
+
+    h2(doc, "2.1 계층 구조")
+    make_table(doc,
+        ["컴포넌트", "역할", "주요 코드 포인트"],
+        [
+            ["INetworkEngine",     "외부 API 인터페이스\nInitialize / Start / Stop\nSendData / CloseConnection",
+             "Network/Core/NetworkEngine.h:72"],
+            ["BaseNetworkEngine",  "공통 구현\n세션 조회·제거\n이벤트 콜백 등록\n통계 집계",
+             "Network/Core/BaseNetworkEngine.cpp:28"],
+            ["AsyncIOProvider",    "플랫폼 I/O 추상화\nRecvAsync / SendAsync\nAssociateSocket",
+             "Network/Core/AsyncIOProvider.cpp:74"],
+            ["Platform Engine",   "소켓 accept 루프\nCompletion 처리\n(Windows / Linux / macOS)",
+             "Network/Platforms/WindowsNetworkEngine.cpp:128"],
+        ],
+        col_widths_cm=[4.0, 6.0, 8.0]
+    )
+
+    h2(doc, "2.2 연결 수립 → 세션 생성 흐름")
+    body(doc, "플랫폼 AcceptLoop()에서 새 연결을 처리하는 공통 흐름은 아래와 같다.")
+    numbered(doc, "accept()로 소켓 수락")
+    numbered(doc, "SessionManager::CreateSession()으로 세션 객체 생성")
+    numbered(doc, "AsyncIOProvider::AssociateSocket()으로 I/O 백엔드 연동")
+    numbered(doc, "로직 스레드풀에서 OnConnected + Connected 이벤트 비동기 실행")
+    numbered(doc, "첫 번째 Recv 등록 (수신 루프 시작)")
+
+    image(doc, "03-client-lifecycle-sequence.png",
+          caption="클라이언트 생명주기 시퀀스 — 접속 수락 → 핸드셰이크 → ping/pong → 종료")
+
+    h2(doc, "2.3 Session 구조")
+    body(doc, (
+        "Session은 네트워크 계층의 핵심 단위다. 연결 상태, 송수신 큐, AsyncScope를 "
+        "하나의 객체로 관리하며, 동기화는 역할별로 분리된 프리미티브가 담당한다."
+    ))
+    image(doc, "02-session-uml.png",
+          caption="Session UML — 주요 멤버 변수 및 동기화 프리미티브 구조")
+
+    make_table(doc,
+        ["동기화 프리미티브", "보호 대상", "설계 포인트"],
+        [
+            ["mSendMutex (mutex)",        "mSendQueue · mAsyncProvider",
+             "락 내 shared_ptr 스냅샷만 복사 후 즉시 해제\n실제 I/O 호출은 락 외부에서 수행"],
+            ["mState (atomic, acq_rel)",  "연결 상태 enum",
+             "exchange로 Close() TOCTOU 이중 닫기 방지"],
+            ["mSocket (atomic, acq_rel)", "소켓 핸들",
+             "Close/Send 간 race 방지"],
+            ["mIsSending (atomic CAS)",   "이중 전송 방지",
+             "compare_exchange_strong(false→true)\n한 스레드만 PostSend() 진입 보장"],
+            ["mSendQueueSize (atomic)",   "큐 크기 fast-path 조회",
+             "relaxed read (부정확해도 됨)\nrelease store"],
+        ],
+        col_widths_cm=[4.5, 4.5, 9.0]
+    )
+
+    h2(doc, "2.4 수신 처리와 패킷 재조립")
+    body(doc, (
+        "수신 완료 이벤트는 ProcessCompletions()에서 감지되어 "
+        "BaseNetworkEngine::ProcessRecvCompletion()으로 전달된다. "
+        "이후 로직 스레드풀로 넘겨진 Session::ProcessRawRecv()에서 TCP 스트림을 재조립한다."
+    ))
+    bullet(doc, "PacketHeader(size, id) 기준으로 완전한 패킷이 조립될 때까지 버퍼 누적")
+    bullet(doc, "유효하지 않은 크기 또는 오버플로우 탐지 시 세션 즉시 종료")
+    bullet(doc, "POSIX 경로: RecvAsync()를 직접 구동 (PostRecv() 미사용)")
+    code_ref(doc, "Session.cpp:445", "TCP 스트림 재조립 진입점")
+    code_ref(doc, "BaseNetworkEngine.cpp:255", "수신 완료 공통 처리")
+
+    h2(doc, "2.5 송신 처리")
+    body(doc, (
+        "송신 경로는 플랫폼에 따라 분기된다. "
+        "mIsSending CAS와 mSendQueueSize atomic으로 불필요한 락 경쟁과 이중 전송을 방지한다."
+    ))
+    make_table(doc,
+        ["경로", "처리 방식", "코드 포인트"],
+        [
+            ["Windows + RIO",     "Send() → provider SendAsync() 직행\n(큐 경유 없음)",
+             "Session.cpp:155"],
+            ["IOCP / epoll / kqueue", "mSendQueue enqueue\n→ FlushSendQueue()\n→ PostSend()",
+             "Session.cpp:248, 261"],
+        ],
+        col_widths_cm=[4.0, 7.0, 7.0]
+    )
+    callout(doc, (
+        "이벤트 스레드 일관성: OnDisconnected는 CloseConnection() 경로와 recv 오류 경로 모두 "
+        "로직 스레드풀로 전달되어 실행된다. 콜백 호출 스레드가 일관하게 유지된다."
+    ), style="note")
+    divider(doc)
+
+
+# ── 섹션 3: 비동기 처리 ──────────────────────────────────────────────────────
+def section_async(doc: Document):
+    h1(doc, "3. 비동기 처리 구조")
+    body(doc, (
+        "비동기 처리는 I/O 완료 스레드(플랫폼 엔진)와 로직 스레드풀(KeyedDispatcher)의 "
+        "역할 분리를 기반으로 한다. DB 작업은 별도의 논블로킹 큐(DBTaskQueue, OrderedTaskQueue)로 "
+        "오프로딩하여 로직 스레드 지연을 최소화한다."
+    ))
+
+    image(doc, "04-async-db-flow-sequence.png",
+          caption="비동기 DB 처리 흐름 시퀀스 — 로직 스레드 → DBTaskQueue → DB 기록")
+
+    h2(doc, "3.1 스레드 역할 분리")
+    make_table(doc,
+        ["스레드 종류", "주체", "역할"],
+        [
+            ["I/O 완료 스레드",  "플랫폼 엔진\n(Windows/Linux/macOS)",
+             "accept / recv / send 완료 감지\n로직 스레드풀로 패킷 전달"],
+            ["로직 워커 스레드", "KeyedDispatcher",
+             "패킷 처리 · OnConnected · OnDisconnected\n세션 키 친화도 라우팅 (FIFO 순서 보장)"],
+            ["DB 워커 스레드",   "DBTaskQueue (워커 1개)\nOrderedTaskQueue",
+             "논블로킹 DB I/O 실행\nWAL 영속성 보장"],
+            ["재연결 스레드",    "TestServer DBReconnectLoop",
+             "DB 서버 끊김 시 지수 백오프 재시도\nStop() 신호 시 즉시 종료"],
+        ],
+        col_widths_cm=[4.0, 4.5, 9.5]
+    )
+
+    callout(doc, (
+        "KeyedDispatcher는 sessionId % workerCount로 항상 같은 워커에 작업을 배분한다. "
+        "워커 큐 FIFO와 결합해 세션별 패킷 처리 순서를 보장하며, "
+        "Session::mRecvMutex가 불필요해진다."
+    ), style="tip")
+
+    h2(doc, "3.2 DBTaskQueue — 논블로킹 DB 오프로딩 (TestServer)")
+    body(doc, (
+        "ClientSession은 접속/해제 시점을 직접 DB에 기록하지 않고 DBTaskQueue에 enqueue한다. "
+        "DB I/O 지연이 로직 워커를 블로킹하지 않으며, 워커 1개로 같은 sessionId 작업의 순서를 보장한다."
+    ))
+    bullet(doc, "OnConnected → AsyncRecordConnectTime → RecordConnectTime")
+    bullet(doc, "OnDisconnected → AsyncRecordDisconnectTime → RecordDisconnectTime")
+    bullet(doc, "멀티워커 필요 시 OrderedTaskQueue로 전환 (코드 주석에 가이드 있음)")
+    code_ref(doc, "ClientSession.cpp:32, 76, 114", "비동기 기록 진입점")
+    code_ref(doc, "DBTaskQueue.cpp:206", "작업 enqueue")
+    code_ref(doc, "DBTaskQueue.cpp:321", "워커 실행 루프")
+
+    h2(doc, "3.3 WAL 기반 크래시 복구")
+    body(doc, (
+        "DBTaskQueue는 WAL(db_tasks.wal)을 사용해 프로세스 크래시 후에도 미완료 작업을 복구한다."
+    ))
+    make_table(doc,
+        ["단계", "WAL 기록", "코드 포인트"],
+        [
+            ["작업 enqueue",   "'P|...' (pending) 기록",  "DBTaskQueue.cpp:538"],
+            ["작업 완료",      "'D|seq' (done) 기록",     "DBTaskQueue.cpp:574"],
+            ["프로세스 재시작", "WAL + .bak 병합 파싱\n미완료(P에서 D 없음) 작업만 재큐잉",
+             "DBTaskQueue.cpp:597"],
+        ],
+        col_widths_cm=[3.0, 7.0, 8.0]
+    )
+
+    h2(doc, "3.4 OrderedTaskQueue — DBServer 키 순서 보장")
+    body(doc, (
+        "TestDBServer는 serverId 단위 작업 순서 보장을 위해 OrderedTaskQueue를 사용한다. "
+        "내부적으로 KeyedDispatcher를 래핑하여 같은 key(serverId)를 항상 같은 워커로 라우팅한다."
+    ))
+    bullet(doc, "facade: OrderedTaskQueue.cpp:29")
+    bullet(doc, "keyed dispatch: OrderedTaskQueue.cpp:109")
+    bullet(doc, "dispatcher 구현: Concurrency/KeyedDispatcher.h:30")
+
+    h2(doc, "3.5 DB 서버 재연결 루프 (TestServer, Windows 전용)")
+    body(doc, "DB 서버 연결이 끊기면 재연결 스레드가 지수 백오프로 재시도한다.")
+    make_table(doc,
+        ["케이스", "재시도 간격", "비고"],
+        [
+            ["일반 연결 오류",            "1s → 2s → 4s → ... (최대 30s)", "지수 백오프"],
+            ["WSAECONNREFUSED (10061)", "1초 고정",                        "서버 미시작 시 빠른 재시도"],
+            ["Stop() 신호",              "즉시 종료",                       "condition_variable로 깨움"],
+        ],
+        col_widths_cm=[5.0, 5.5, 7.5]
+    )
+    code_ref(doc, "TestServer.cpp:583", "재연결 루프 진입점")
+    code_ref(doc, "TestServer.cpp:629", "오류 종류별 분기")
+
+    image(doc, "06-db-reconnect-sequence.png",
+          caption="DB 서버 재연결 시퀀스 — 끊김 감지 → 백오프 재시도 → 재연결 성공")
+    divider(doc)
+
+
+# ── 섹션 4: DB 처리 ──────────────────────────────────────────────────────────
+def section_db(doc: Document):
+    h1(doc, "4. DB 처리 구조")
+    body(doc, (
+        "DB 레이어는 IDatabase / IStatement 인터페이스 기반으로 구현체를 교체 가능하게 설계되어 있다. "
+        "TestServer는 로컬 SQLite/Mock DB를 DBTaskQueue로 비동기 접근하고, "
+        "TestDBServer는 네트워크로 수신한 요청을 OrderedTaskQueue를 통해 처리한다."
+    ))
+
+    h2(doc, "4.1 IDatabase 추상화 계층")
+    make_table(doc,
+        ["구현체", "용도", "코드 포인트"],
+        [
+            ["MockDatabase",    "단위 테스트 / DB 없는 환경",  "ServerEngine/Database/"],
+            ["SQLiteDatabase",  "로컬 파일 DB (TestServer)", "ServerEngine/Database/"],
+            ["ODBCDatabase",    "ODBC 지원 DB",              "ServerEngine/Database/"],
+            ["OLEDBDatabase",   "Windows OLE DB",            "ServerEngine/Database/"],
+        ],
+        col_widths_cm=[4.0, 6.0, 8.0]
+    )
+    code_ref(doc, "IDatabase.h:29", "인터페이스 정의")
+    code_ref(doc, "DatabaseFactory.cpp:19", "팩토리 생성 진입점")
+
+    h2(doc, "4.2 TestServer 로컬 DB 경로")
+    body(doc, "TestServer::Initialize()에서 설정 값에 따라 DB 구현체를 선택한다.")
+    make_table(doc,
+        ["설정", "선택된 DB", "비고"],
+        [
+            ["dbConnectionString 비어 있음", "MockDatabase",  "DB 없이 메모리 로그만"],
+            ["dbConnectionString 값 있음",  "SQLiteDatabase", "해당 파일 경로 사용"],
+        ],
+        col_widths_cm=[5.5, 4.0, 8.5]
+    )
+    body(doc, "선택된 DB 인스턴스를 DBTaskQueue에 주입하고, 큐에서 아래 테이블 존재를 보장한다.")
+    bullet(doc, "SessionConnectLog — 접속 시각 기록")
+    bullet(doc, "SessionDisconnectLog — 해제 시각 기록")
+    bullet(doc, "PlayerData — 플레이어 정보")
+    code_ref(doc, "TestServer.cpp:81", "DB 선택 및 주입")
+    code_ref(doc, "DBTaskQueue.cpp:73", "테이블 보장 (CREATE TABLE IF NOT EXISTS)")
+
+    h2(doc, "4.3 TestDBServer DB 처리")
+    body(doc, (
+        "TestDBServer는 ServerPacketHandler + ServerLatencyManager + OrderedTaskQueue 조합으로 동작한다."
+    ))
+    make_table(doc,
+        ["패킷", "처리 흐름", "코드 포인트"],
+        [
+            ["ServerPingReq",      "RTT 계산 → RecordLatency (메모리)",
+             "ServerPacketHandler.cpp:116"],
+            ["DBSavePingTimeReq",  "SavePingTime 실행 → 응답 패킷 전송",
+             "ServerPacketHandler.cpp:196"],
+        ],
+        col_widths_cm=[4.5, 7.5, 6.0]
+    )
+    callout(doc, (
+        "현재 TestDBServer 기본 경로에는 ServerLatencyManager::SetDatabase() 주입 코드가 없다. "
+        "ExecuteQuery()는 DB 미주입 시 true를 반환하며 로그만 기록한다. "
+        "영구 저장은 DBServer.cpp(실험 경로) 또는 주입 코드 추가로 활성화된다."
+    ), style="warning")
+
+    h2(doc, "4.4 운영 경로 vs 실험 경로")
+    make_table(doc,
+        ["경로", "진입점", "DB 주입 여부", "비고"],
+        [
+            ["TestDBServer (운영)", "DBServer/main.cpp → TestDBServer",
+             "미주입 (log-only)", "현재 기본 실행 경로"],
+            ["DBServer.cpp (실험)", "DBServer/src/DBServer.cpp:246",
+             "ConnectToDatabase()에서 주입",
+             "별도 AsyncIO/Protocol 처리 경로"],
+        ],
+        col_widths_cm=[4.0, 5.5, 4.0, 4.5]
+    )
+    code_ref(doc, "TestDBServer.cpp:68", "TestDBServer 초기화")
+    code_ref(doc, "ServerLatencyManager.cpp:331", "DB 미주입 시 log-only 분기")
+    code_ref(doc, "DBServer.cpp:246, 281", "실험 경로 DB 연결 및 주입")
+    divider(doc)
+
+
+# ── 섹션 5: 엔드투엔드 흐름 & Graceful Shutdown ───────────────────────────────
+def section_e2e(doc: Document):
+    h1(doc, "5. 엔드투엔드 흐름 & Graceful Shutdown")
+
+    h2(doc, "5.1 Client → TestServer 흐름")
+    numbered(doc, "클라이언트 TCP 접속")
+    numbered(doc, "플랫폼 엔진 accept → Session 생성 → AsyncIOProvider::AssociateSocket()")
+    numbered(doc, "로직 스레드: ClientSession::OnConnected() → DBTaskQueue에 접속 시각 enqueue")
+    numbered(doc, "클라이언트 SessionConnectReq 처리 → SessionConnectRes 반환")
+    numbered(doc, "주기적 PingReq / PongRes 교환")
+    numbered(doc, "클라이언트 종료 → OnDisconnected → DBTaskQueue에 해제 시각 enqueue")
+
+    h2(doc, "5.2 TestServer ↔ TestDBServer 흐름")
+    numbered(doc, "TestServer: ConnectToDBServer()로 별도 소켓 연결 (Windows 전용)")
+    numbered(doc, "DBPingLoop에서 PKT_ServerPingReq 주기 전송")
+    numbered(doc, "TestDBServer: ServerPongRes 응답")
+    numbered(doc, "주기적으로 PKT_DBSavePingTimeReq 전송 → TestDBServer 응답")
+    numbered(doc, "연결 끊김 감지 → DBReconnectLoop 지수 백오프 재시도")
+
+    h2(doc, "5.3 Graceful Shutdown 순서")
+    body(doc, "종료 순서는 DB 안전성을 보장하기 위해 명시적으로 정의되어 있다.")
+
+    h3(doc, "TestServer 종료 순서")
+    image(doc, "05-graceful-shutdown-sequence.png",
+          caption="Graceful Shutdown 시퀀스 — TestServer 종료 순서 및 DBTaskQueue 드레인")
+
+    make_table(doc,
+        ["순서", "동작", "코드 포인트"],
+        [
+            ["1", "DB 재연결 루프 깨움 및 join",             "TestServer.cpp:165"],
+            ["2", "연결 중 세션 disconnect 기록 enqueue",    "TestServer.cpp:165"],
+            ["3", "DBTaskQueue::Shutdown() — 큐 완전 드레인", "TestServer.cpp:165"],
+            ["4", "로컬 DB disconnect",                      "TestServer.cpp:165"],
+            ["5", "DB 서버 소켓 disconnect",                 "TestServer.cpp:165"],
+            ["6", "클라이언트 엔진 Stop()",                  "TestServer.cpp:165"],
+        ],
+        col_widths_cm=[1.5, 9.0, 7.5]
+    )
+
+    h3(doc, "TestDBServer 종료 순서")
+    make_table(doc,
+        ["순서", "동작", "코드 포인트"],
+        [
+            ["1", "네트워크 엔진 Stop()",                 "TestDBServer.cpp:160"],
+            ["2", "OrderedTaskQueue Shutdown(남은 작업 처리)", "TestDBServer.cpp:160"],
+            ["3", "ServerLatencyManager Shutdown()",      "TestDBServer.cpp:160"],
+        ],
+        col_widths_cm=[1.5, 9.0, 7.5]
+    )
+
+    callout(doc, (
+        "DBTaskQueue Shutdown()은 남은 모든 작업이 완료될 때까지 블로킹한다. "
+        "WAL의 Pending 항목이 모두 Done으로 처리된 후 종료되므로, "
+        "정상 종료 시 WAL 재생(crach recovery)이 발생하지 않는다."
+    ), style="tip")
+    divider(doc)
+
+
+# ── 섹션 6: 현재 상태 진단 & 개선 제안 ─────────────────────────────────────
+def section_assessment(doc: Document):
+    h1(doc, "6. 현재 상태 진단 & 개선 제안")
+
+    h2(doc, "6.1 강점")
+    bullet(doc, "네트워크 / 로직 / DB 비동기 경로 분리가 명확하며 역할 간 경계가 코드 레벨에서 강제됨")
+    bullet(doc, "플랫폼 폴백 체인(RIO→IOCP, io_uring→epoll)으로 최적 백엔드 자동 선택")
+    bullet(doc, "DBTaskQueue WAL 복구로 크래시 후 데이터 손실 방지")
+    bullet(doc, "재연결 정책(ECONNREFUSED 분리, 지수 백오프)으로 운영 복원력 확보")
+    bullet(doc, "KeyedDispatcher 도입으로 mRecvMutex 제거 — 세션 단위 순서 보장과 경쟁 감소 동시 달성")
+
+    h2(doc, "6.2 유의점")
+    bullet(doc, "TestServer의 DB 서버 소켓 경로는 Windows 전용 (#ifdef _WIN32)")
+    bullet(doc, "TestDBServer 기본 경로에 DB 주입 없음 — 영구 저장은 현재 비활성 (log-only)")
+    bullet(doc, "TestDBServer 기본 포트(코드 기본 8001)와 스크립트 포트(8002) 혼동 위험")
+
+    h2(doc, "6.3 개선 제안")
+    make_table(doc,
+        ["우선순위", "개선 항목", "효과"],
+        [
+            ["High",   "TestDBServer에 설정 기반 DB 주입 경로 추가\n(main 옵션으로 연결)",
+             "영구 DB 저장 활성화\n운영/실험 경로 통합"],
+            ["High",   "포트 기본값(8001/8002) 정책 단일화\n(코드·스크립트·문서 일관)",
+             "배포 혼동 방지"],
+            ["Medium", "TestServer DB 서버 연결 경로를\n플랫폼 공통 AsyncIO로 통합",
+             "Linux/macOS 지원 확대"],
+            ["Low",    "운영 문서에\nTestDBServer vs DBServer.cpp 경로 명시",
+             "신규 팀원 혼동 방지"],
+        ],
+        col_widths_cm=[2.5, 8.0, 7.5]
+    )
+    divider(doc)
+
+
+# ── 섹션 7: 주요 참조 파일 ────────────────────────────────────────────────────
+def section_references(doc: Document):
+    h1(doc, "7. 주요 참조 파일")
+
+    h2(doc, "네트워크 계층")
+    code_ref(doc, "Server/ServerEngine/Network/Core/NetworkEngine.h")
+    code_ref(doc, "Server/ServerEngine/Network/Core/BaseNetworkEngine.cpp")
+    code_ref(doc, "Server/ServerEngine/Network/Core/AsyncIOProvider.cpp")
+    code_ref(doc, "Server/ServerEngine/Network/Core/Session.h")
+    code_ref(doc, "Server/ServerEngine/Network/Core/Session.cpp")
+    code_ref(doc, "Server/ServerEngine/Network/Platforms/WindowsNetworkEngine.cpp")
+    code_ref(doc, "Server/ServerEngine/Network/Platforms/LinuxNetworkEngine.cpp")
+
+    h2(doc, "비동기 / 동시성 계층")
+    code_ref(doc, "Server/ServerEngine/Utils/ThreadPool.h")
+    code_ref(doc, "Server/ServerEngine/Concurrency/KeyedDispatcher.h")
+    code_ref(doc, "Server/ServerEngine/Concurrency/AsyncScope.h")
+    code_ref(doc, "Server/TestServer/src/DBTaskQueue.cpp")
+    code_ref(doc, "Server/DBServer/src/OrderedTaskQueue.cpp")
+
+    h2(doc, "DB 계층")
+    code_ref(doc, "Server/ServerEngine/Interfaces/IDatabase.h")
+    code_ref(doc, "Server/ServerEngine/Database/DatabaseFactory.cpp")
+    code_ref(doc, "Server/DBServer/src/TestDBServer.cpp")
+    code_ref(doc, "Server/DBServer/src/ServerPacketHandler.cpp")
+    code_ref(doc, "Server/DBServer/src/ServerLatencyManager.cpp")
+    code_ref(doc, "Server/DBServer/src/DBServer.cpp", "실험 경로")
+    code_ref(doc, "Server/TestServer/src/TestServer.cpp")
+    code_ref(doc, "Server/TestServer/src/ClientSession.cpp")
+
+
+# ── 메인 ─────────────────────────────────────────────────────────────────────
+def main():
+    out_path = Path(sys.argv[1]) if len(sys.argv) > 1 else \
+               Path(__file__).parent.parent / "Network_Async_DB_Report.docx"
+
+    print(f"[Build] 보고서 생성 중: {out_path}")
+    doc = setup_document()
+    build_title_page(doc)
+    section_overview(doc)
+    section_network(doc)
+    section_async(doc)
+    section_db(doc)
+    section_e2e(doc)
+    section_assessment(doc)
+    section_references(doc)
+
+    doc.save(str(out_path))
+    size_kb = out_path.stat().st_size // 1024
+    print(f"[Done]  {out_path.name}  ({size_kb} KB)")
+
+
+if __name__ == "__main__":
+    main()

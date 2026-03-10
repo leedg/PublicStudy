@@ -286,10 +286,16 @@ class ExecutionQueue
 				   std::chrono::milliseconds(timeoutMs));
 		// English: Retain value until enqueue succeeds; do not move before confirmed success.
 		// 한글: enqueue 성공 전까지 value를 보유. move는 성공 직전 한 번만 수행.
-		// [Fix A-1] 루프마다 value의 복사본을 TryPushLockFree에 넘긴다.
-		// 원본 value는 루프 전체 기간 동안 온전히 유지되어야 한다.
-		// std::move(value)를 루프 안에서 직접 쓰면 첫 번째 시도 실패 후
-		// value가 moved-from 상태가 되어 두 번째 반복에서 use-after-move가 발생한다.
+
+		// English: [Fix A-1] Pass a copy of value to TryPushLockFree each iteration.
+		//          The original value must remain intact for the full duration of the loop.
+		//          Using std::move(value) inside the loop causes use-after-move on the second
+		//          iteration if the first attempt fails (value is left in a moved-from state).
+		// 한글: [Fix A-1] 루프마다 value의 복사본을 TryPushLockFree에 넘긴다.
+		//       원본 value는 루프 전체 기간 동안 온전히 유지되어야 한다.
+		//       std::move(value)를 루프 안에서 직접 쓰면 첫 번째 시도 실패 후
+		//       value가 moved-from 상태가 되어 두 번째 반복에서 use-after-move가 발생한다.
+
 		while (!mShutdown.load(std::memory_order_acquire))
 		{
 			T copy = value;
