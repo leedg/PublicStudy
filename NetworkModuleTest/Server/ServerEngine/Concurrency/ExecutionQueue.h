@@ -362,7 +362,20 @@ class ExecutionQueue
 			return false;
 		}
 		mSize.fetch_sub(1, std::memory_order_release);
-		mNotFullLFCV.notify_one();
+		// English: Notify under mWaitMutex to prevent missed-notification race with
+		//          PushLockFreeBlocking's predicate check + wait (both under mWaitMutex).
+		//          Without this guard, notify can fire between PushLockFreeBlocking's
+		//          predicate-false observation and its wait() entry, causing the producer
+		//          to block indefinitely (especially with timeoutMs < 0).
+		// 한글: PushLockFreeBlocking의 predicate 확인+wait(둘 다 mWaitMutex 하에서)와의
+		//       missed-notification 경쟁 방지를 위해 mWaitMutex 보유 중 notify.
+		//       이 가드 없이는 notify가 PushLockFreeBlocking의 predicate-false 확인과
+		//       wait() 진입 사이에 발생하여 생산자가 영구 블로킹될 수 있음
+		//       (특히 timeoutMs < 0 케이스).
+		{
+			std::lock_guard<std::mutex> wl(mWaitMutex);
+			mNotFullLFCV.notify_one();
+		}
 		return true;
 	}
 
