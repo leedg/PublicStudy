@@ -10,15 +10,31 @@
     <Filter Include="Test">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Documentation">
+      <UniqueIdentifier>{EBC8A248-A58E-4A48-9716-E8A8EE599181}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
+
   <ItemGroup>
+    <!-- Core -->
     <ClInclude Include="AsyncIOProvider.h">
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="PlatformDetect.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClCompile Include="AsyncIOProvider.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="PlatformDetect.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+
+    <!-- Platform -->
     <ClInclude Include="IocpAsyncIOProvider.h">
+      <Filter>Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="RIOAsyncIOProvider.h">
       <Filter>Platform</Filter>
     </ClInclude>
     <ClInclude Include="EpollAsyncIOProvider.h">
@@ -30,16 +46,11 @@
     <ClInclude Include="KqueueAsyncIOProvider.h">
       <Filter>Platform</Filter>
     </ClInclude>
-    <ClInclude Include="RIOAsyncIOProvider.h">
+    <ClCompile Include="IocpAsyncIOProvider.cpp">
       <Filter>Platform</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="AsyncIOProvider.cpp">
-      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="PlatformDetect.cpp">
-      <Filter>Core</Filter>
+    <ClCompile Include="RIOAsyncIOProvider.cpp">
+      <Filter>Platform</Filter>
     </ClCompile>
     <ClCompile Include="EpollAsyncIOProvider.cpp">
       <Filter>Platform</Filter>
@@ -50,26 +61,79 @@
     <ClCompile Include="KqueueAsyncIOProvider.cpp">
       <Filter>Platform</Filter>
     </ClCompile>
-    <ClCompile Include="AsyncIOTest.cpp">
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Test (열람 전용 — 빌드 미포함) -->
+    <None Include="AsyncIOTest.cpp">
       <Filter>Test</Filter>
-    </ClCompile>
-    <ClCompile Include="IocpAsyncIOProvider.cpp" />
-    <ClCompile Include="RIOAsyncIOProvider.cpp" />
+    </None>
   </ItemGroup>
+
   <ItemGroup>
-    <Filter Include="Documentation">
-      <UniqueIdentifier>{EBC8A248-A58E-4A48-9716-E8A8EE599181}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Documentation\Doc">
-      <UniqueIdentifier>{8EAF8D0B-EC86-4850-8182-D0ACEE95365E}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
+    <!-- Documentation -->
     <None Include="Doc\ANALYSIS_SUMMARY.txt">
-      <Filter>Documentation\Doc</Filter>
+      <Filter>Documentation</Filter>
     </None>
     <None Include="Doc\README.md">
-      <Filter>Documentation\Doc</Filter>
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\01_IOCP_Architecture_Analysis.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\02_Coding_Conventions_Guide.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\03_Implementation_Roadmap.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\04_Reference_Files_Guide.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\05_RIO_IO_URING_Migration_Plan.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\06_Cross_Platform_Architecture.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\07_API_Design_Document.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\08_Performance_Benchmarking_Guide.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\09_PHASE3_COMPLETION_SUMMARY.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\10_Document_Integrity_Review.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\11_Architecture_Decision_Session_Naming.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\12_Document_Enhancement_Execution_Plan.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\13_Unit_Testing_Strategy.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\14_CMake_Build_Configuration.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\15_Memory_Leak_Prevention.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\16_Fallback_Mechanisms.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\17_Platform_Selection_Logic_Fix.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\COMPREHENSIVE_REVIEW_2026-01-27.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\PHASE2_COMPLETION_SUMMARY.md">
+      <Filter>Documentation</Filter>
     </None>
   </ItemGroup>
 </Project>

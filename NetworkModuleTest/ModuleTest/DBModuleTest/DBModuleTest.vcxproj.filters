@@ -1,92 +1,146 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
+    <Filter Include="Database">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Header Files">
+    <Filter Include="Database\Interfaces">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
+    <Filter Include="ThirdParty">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="ODBC">
+    <Filter Include="Test">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Reference">
       <UniqueIdentifier>{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC943}</UniqueIdentifier>
     </Filter>
-    <Filter Include="OLEDB">
-      <UniqueIdentifier>{9BC9CEB8-8B4A-11D0-8D11-00A0C91BC944}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Samples">
-      <UniqueIdentifier>{ABC9CEB8-8B4A-11D0-8D11-00A0C91BC945}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Tests">
-      <UniqueIdentifier>{DEF9CEB8-8B4A-11D0-8D11-00A0C91BC946}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="IDatabase.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ODBCDatabase.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="OLEDBDatabase.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ConnectionPool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DatabaseFactory.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="DatabaseFactory.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ODBCDatabase.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="OLEDBDatabase.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ConnectionPool.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="odbc_sample.cpp">
-      <Filter>Source Files</Filter>
-    </None>
-    <None Include="oledb_sample.cpp">
-      <Filter>Source Files</Filter>
-    </None>
-    <None Include="test_database.cpp">
-      <Filter>Source Files</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <Filter Include="Documentation">
       <UniqueIdentifier>{042EF0E6-187B-4837-B2BF-BF32F49984A5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Documentation\Doc">
-      <UniqueIdentifier>{0C71A0E0-5015-40E2-9A41-5A83094ACFA9}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
+
   <ItemGroup>
-    <None Include="Doc\README.md">
-      <Filter>Documentation\Doc</Filter>
+    <!-- Database (ServerEngine 직접 참조 구현체) -->
+    <ClCompile Include="$(ServerEngineDir)Database\DatabaseFactory.cpp">
+      <Filter>Database</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ServerEngineDir)Database\ConnectionPool.cpp">
+      <Filter>Database</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ServerEngineDir)Database\MockDatabase.cpp">
+      <Filter>Database</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ServerEngineDir)Database\ODBCDatabase.cpp">
+      <Filter>Database</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ServerEngineDir)Database\OLEDBDatabase.cpp">
+      <Filter>Database</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ServerEngineDir)Database\SQLiteDatabase.cpp">
+      <Filter>Database</Filter>
+    </ClCompile>
+    <ClInclude Include="$(ServerEngineDir)Database\DatabaseFactory.h">
+      <Filter>Database</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ServerEngineDir)Database\MockDatabase.h">
+      <Filter>Database</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ServerEngineDir)Database\ODBCDatabase.h">
+      <Filter>Database</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ServerEngineDir)Database\OLEDBDatabase.h">
+      <Filter>Database</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ServerEngineDir)Database\SQLiteDatabase.h">
+      <Filter>Database</Filter>
+    </ClInclude>
+
+    <!-- Database\Interfaces -->
+    <ClInclude Include="$(ServerEngineDir)Interfaces\IDatabase.h">
+      <Filter>Database\Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ServerEngineDir)Interfaces\IConnection.h">
+      <Filter>Database\Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ServerEngineDir)Interfaces\IStatement.h">
+      <Filter>Database\Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ServerEngineDir)Interfaces\IResultSet.h">
+      <Filter>Database\Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ServerEngineDir)Interfaces\DatabaseConfig.h">
+      <Filter>Database\Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ServerEngineDir)Interfaces\DatabaseException.h">
+      <Filter>Database\Interfaces</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ServerEngineDir)Interfaces\DatabaseType_enum.h">
+      <Filter>Database\Interfaces</Filter>
+    </ClInclude>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ThirdParty -->
+    <ClCompile Include="sqlite\sqlite3.c">
+      <Filter>ThirdParty</Filter>
+    </ClCompile>
+    <ClInclude Include="sqlite\sqlite3.h">
+      <Filter>ThirdParty</Filter>
+    </ClInclude>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Test -->
+    <ClCompile Include="test_database.cpp">
+      <Filter>Test</Filter>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference (로컬 레거시 파일 — 빌드 미포함, 열람용) -->
+    <None Include="IDatabase.h">
+      <Filter>Reference</Filter>
     </None>
-    <None Include="Doc\README_SHORT.md">
-      <Filter>Documentation\Doc</Filter>
+    <None Include="DatabaseFactory.h">
+      <Filter>Reference</Filter>
     </None>
-    <None Include="Doc\VERSION_SELECTOR.md">
-      <Filter>Documentation\Doc</Filter>
+    <None Include="DatabaseFactory.cpp">
+      <Filter>Reference</Filter>
     </None>
+    <None Include="ConnectionPool.h">
+      <Filter>Reference</Filter>
+    </None>
+    <None Include="ConnectionPool.cpp">
+      <Filter>Reference</Filter>
+    </None>
+    <None Include="ODBCDatabase.h">
+      <Filter>Reference</Filter>
+    </None>
+    <None Include="ODBCDatabase.cpp">
+      <Filter>Reference</Filter>
+    </None>
+    <None Include="OLEDBDatabase.h">
+      <Filter>Reference</Filter>
+    </None>
+    <None Include="OLEDBDatabase.cpp">
+      <Filter>Reference</Filter>
+    </None>
+    <None Include="odbc_sample.cpp">
+      <Filter>Reference</Filter>
+    </None>
+    <None Include="oledb_sample.cpp">
+      <Filter>Reference</Filter>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Documentation -->
     <None Include="README.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="Doc\README.md">
       <Filter>Documentation</Filter>
     </None>
   </ItemGroup>
