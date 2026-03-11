@@ -42,10 +42,16 @@ C_TITLE_STRIP = RGBColor(0x1E, 0x88, 0xE5)   # 타이틀 악센트 선
 
 FONT      = "맑은 고딕"
 FONT_CODE = "Consolas"
+# draw.io 다이어그램 스타일 — "orig" | "B" | "C"
+# main()에서 CLI 인수로 오버라이드 가능: python Build-NetworkAsyncDB-Report.py [출력.docx] [orig|B|C]
+DRAWIO_STYLE = "orig"
 # 기존 다이어그램 (ExecutiveSummary/assets/)
 ASSETS_EXEC = Path(__file__).parent.parent / "ExecutiveSummary" / "assets"
-# 새 다이어그램 (assets/)
+# draw.io 내보낸 다이어그램 원본 (assets/)
 ASSETS_NEW  = Path(__file__).parent.parent / "assets"
+# B/C 스타일 draw.io PNG (draw.io 앱에서 내보낸 후 사용)
+ASSETS_B    = Path(__file__).parent.parent / "assets_B"
+ASSETS_C    = Path(__file__).parent.parent / "assets_C"
 
 
 # ── XML 유틸리티 ──────────────────────────────────────────────────────────────
@@ -324,6 +330,27 @@ def image(doc: Document, filename: str, caption: str = None,
         add_run(cap_p, f"▲  {caption}", italic=True, size=9, color=C_CAPTION)
 
 
+def image_drawio(doc: Document, filename: str, caption: str = None,
+                 width: float = 6.2, style: str = "orig"):
+    """draw.io PNG 삽입 — style: 'orig'(assets/), 'B'(assets_B/), 'C'(assets_C/)"""
+    dir_map = {"orig": ASSETS_NEW, "B": ASSETS_B, "C": ASSETS_C}
+    assets_dir = dir_map.get(style, ASSETS_NEW)
+    path = assets_dir / filename
+    if not path.exists():
+        body(doc, f"[draw.io 이미지 없음: {filename} (style={style})]",
+             color=RGBColor(0xC6, 0x28, 0x28))
+        return
+    doc.add_picture(str(path), width=Inches(width))
+    pic_p = doc.paragraphs[-1]
+    pic_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if caption:
+        cap_p = doc.add_paragraph(style="Normal")
+        cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        cap_p.paragraph_format.space_before = Pt(2)
+        cap_p.paragraph_format.space_after  = Pt(10)
+        add_run(cap_p, f"▲  {caption}", italic=True, size=9, color=C_CAPTION)
+
+
 def make_table(doc: Document, headers: list, rows: list,
                col_widths_cm: list = None):
     t = doc.add_table(rows=1 + len(rows), cols=len(headers))
@@ -381,6 +408,8 @@ def section_overview(doc: Document):
 
     image(doc, "01-architecture-overview.png",
           caption="전체 아키텍처 개요 — INetworkEngine · AsyncIOProvider · 스레드 역할 분리")
+    image_drawio(doc, "diag_arch.png",
+                 caption="아키텍처 계층 구조 (draw.io)", style=DRAWIO_STYLE)
 
     h2(doc, "1.1 3계층 설계 요약")
     make_table(doc,
@@ -444,6 +473,8 @@ def section_network(doc: Document):
 
     image(doc, "03-client-lifecycle-sequence.png",
           caption="클라이언트 생명주기 시퀀스 — 접속 수락 → 핸드셰이크 → ping/pong → 종료")
+    image_drawio(doc, "diag_seq.png",
+                 caption="연결 수립 시퀀스 (draw.io)", style=DRAWIO_STYLE)
 
     h2(doc, "2.3 Session 구조")
     body(doc, (
@@ -515,6 +546,8 @@ def section_async(doc: Document):
 
     image(doc, "04-async-db-flow-sequence.png",
           caption="비동기 DB 처리 흐름 시퀀스 — 로직 스레드 → DBTaskQueue → DB 기록")
+    image_drawio(doc, "diag_async_1_dispatch.png",
+                 caption="I/O 완료 → 워커 배정 흐름 (draw.io)", style=DRAWIO_STYLE)
 
     h2(doc, "3.1 스레드 역할 분리")
     make_table(doc,
@@ -565,6 +598,11 @@ def section_async(doc: Document):
         col_widths_cm=[3.0, 7.0, 8.0]
     )
 
+    image_drawio(doc, "diag_async_2_keyed.png",
+                 caption="KeyedDispatcher 세션 라우팅 (draw.io)", style=DRAWIO_STYLE)
+    image_drawio(doc, "diag_async_3_execqueue.png",
+                 caption="ExecutionQueue 이중 백엔드 — Mutex / Lock-Free (draw.io)", style=DRAWIO_STYLE)
+
     h2(doc, "3.4 OrderedTaskQueue — DBServer 키 순서 보장")
     body(doc, (
         "TestDBServer는 serverId 단위 작업 순서 보장을 위해 OrderedTaskQueue를 사용한다. "
@@ -601,6 +639,9 @@ def section_db(doc: Document):
         "TestServer는 로컬 SQLite/Mock DB를 DBTaskQueue로 비동기 접근하고, "
         "TestDBServer는 네트워크로 수신한 요청을 OrderedTaskQueue를 통해 처리한다."
     ))
+
+    image_drawio(doc, "diag_db.png",
+                 caption="DB 처리 계층 — WAL · Factory · 비동기 큐 (draw.io)", style=DRAWIO_STYLE)
 
     h2(doc, "4.1 IDatabase 추상화 계층")
     make_table(doc,
@@ -796,10 +837,13 @@ def section_references(doc: Document):
 
 # ── 메인 ─────────────────────────────────────────────────────────────────────
 def main():
+    global DRAWIO_STYLE
     out_path = Path(sys.argv[1]) if len(sys.argv) > 1 else \
                Path(__file__).parent.parent / "Network_Async_DB_Report.docx"
+    if len(sys.argv) > 2 and sys.argv[2] in ("orig", "B", "C"):
+        DRAWIO_STYLE = sys.argv[2]
 
-    print(f"[Build] 보고서 생성 중: {out_path}")
+    print(f"[Build] 보고서 생성 중: {out_path}  (draw.io style={DRAWIO_STYLE})")
     doc = setup_document()
     build_title_page(doc)
     section_overview(doc)
