@@ -55,6 +55,7 @@ else()
 endif()
 
 set(SERVER_ENGINE_PRIVATE_DEFS)
+set(SERVER_ENGINE_PUBLIC_DEFS)
 set(SERVER_ENGINE_PRIVATE_LIBS)
 
 if (UNIX AND NOT APPLE)
@@ -70,6 +71,12 @@ if (UNIX AND NOT APPLE)
                 "${CMAKE_CURRENT_SOURCE_DIR}/Core/Memory/IOUringBufferPool.cpp"
             )
             list(APPEND SERVER_ENGINE_PRIVATE_DEFS NETWORK_ENABLE_IO_URING=1)
+            # English: Expose HAVE_LIBURING / HAVE_IO_URING as PUBLIC so test
+            #          executables (IOUringTest, EpollTest) that link ServerEngine
+            #          can enable their Linux + liburing code paths.
+            # 한글: ServerEngine에 링크하는 테스트 실행 파일(IOUringTest 등)이
+            #       Linux + liburing 코드 경로를 활성화할 수 있도록 PUBLIC으로 노출.
+            list(APPEND SERVER_ENGINE_PUBLIC_DEFS HAVE_LIBURING HAVE_IO_URING)
             list(APPEND SERVER_ENGINE_PRIVATE_LIBS ${LIBURING_LIBRARIES})
         else()
             message(WARNING "liburing not found; building epoll-only ServerEngine")
@@ -98,6 +105,10 @@ target_include_directories(ServerEngine
 
 if (SERVER_ENGINE_PRIVATE_DEFS)
     target_compile_definitions(ServerEngine PRIVATE ${SERVER_ENGINE_PRIVATE_DEFS})
+endif()
+
+if (SERVER_ENGINE_PUBLIC_DEFS)
+    target_compile_definitions(ServerEngine PUBLIC ${SERVER_ENGINE_PUBLIC_DEFS})
 endif()
 
 find_package(Threads REQUIRED)

@@ -236,6 +236,33 @@ add_subdirectory(
 )
 
 # =============================================================================
+# AsyncIO Unit Test Executables
+# =============================================================================
+
+set(TESTS_INCLUDE
+    ${ENGINE_ROOT}
+    ${ENGINE_ROOT}/Network/Core
+)
+
+# EpollTest — always built on Linux (epoll is standard, no extra library)
+add_executable(EpollTest
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server/Tests/EpollTest/EpollTest.cpp
+)
+target_include_directories(EpollTest PRIVATE ${TESTS_INCLUDE})
+target_link_libraries(EpollTest PRIVATE ServerEngine)
+target_compile_options(EpollTest PRIVATE -Wall -Wextra -Wno-unused-parameter)
+
+# IOUringTest — enabled only when liburing was found
+# English: HAVE_LIBURING is exported PUBLIC by ServerEngine when HAVE_IO_URING is set.
+# 한글: HAVE_LIBURING은 HAVE_IO_URING 설정 시 ServerEngine PUBLIC으로 전파됨.
+add_executable(IOUringTest
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server/Tests/IOUringTest/IOUringTest.cpp
+)
+target_include_directories(IOUringTest PRIVATE ${TESTS_INCLUDE})
+target_link_libraries(IOUringTest PRIVATE ServerEngine)
+target_compile_options(IOUringTest PRIVATE -Wall -Wextra -Wno-unused-parameter)
+
+# =============================================================================
 # Summary
 # =============================================================================
 
@@ -247,5 +274,7 @@ message(STATUS "C++ Standard    : ${CMAKE_CXX_STANDARD}")
 message(STATUS "Build Type      : ${CMAKE_BUILD_TYPE}")
 message(STATUS "io_uring        : ${HAVE_IO_URING}")
 message(STATUS "SQLite3         : ${HAVE_SQLITE3}")
+message(STATUS "EpollTest       : ON")
+message(STATUS "IOUringTest     : ${HAVE_IO_URING}")
 message(STATUS "============================================")
 message(STATUS "")
