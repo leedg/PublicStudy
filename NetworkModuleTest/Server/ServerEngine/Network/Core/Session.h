@@ -281,12 +281,14 @@ class Session : public std::enable_shared_from_this<Session>
 
 	// English: Reusable batch buffer for ProcessRawRecv general path.
 	//          Reserved in Initialize() to amortise allocations across calls.
-	//          Protected by mRecvMutex. Swapped with a local variable before
-	//          dispatching so OnRecv is called without holding mRecvMutex.
+	//          No mutex needed — KeyedDispatcher affinity serialises all
+	//          ProcessRawRecv calls for the same session on the same worker.
+	//          Swapped with a local variable before dispatching OnRecv.
 	// 한글: ProcessRawRecv 일반 경로용 재사용 배치 버퍼.
 	//       Initialize()에서 예약하여 호출 간 할당 비용을 상각.
-	//       mRecvMutex 보호. 디스패치 전 지역 변수와 swap하여
-	//       OnRecv 호출 시 mRecvMutex를 보유하지 않도록 한다.
+	//       mutex 불필요 — KeyedDispatcher 친화도가 동일 세션의
+	//       ProcessRawRecv 호출을 같은 워커에서 직렬화.
+	//       OnRecv 디스패치 전 지역 변수와 swap.
 	std::vector<char> mRecvBatchBuf;
 
 	// English: Application-level recv callback. Set once before PostRecv() in

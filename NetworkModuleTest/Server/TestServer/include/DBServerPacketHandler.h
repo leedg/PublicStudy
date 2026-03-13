@@ -6,6 +6,7 @@
 #include "Network/Core/Session.h"
 #include "Network/Core/ServerPacketDefine.h"
 #include "Utils/NetworkUtils.h"
+#include <atomic>
 #include <functional>
 #include <unordered_map>
 #include <memory>
@@ -56,7 +57,10 @@ namespace Network::TestServer
         void HandleDBSavePingTimeResponse(Core::Session* session, const Core::PKT_DBSavePingTimeRes* packet);
 
     private:
-        uint32_t mPingSequence;  // Ping sequence counter
+        // English: Ping sequence counter. Atomic because SendPingToDBServer() may be
+        //          called from a timer thread while I/O callbacks run on worker threads.
+        // 한글: 핑 시퀀스 카운터. 타이머 스레드와 I/O 워커 스레드가 동시에 접근할 수 있으므로 atomic 사용.
+        std::atomic<uint32_t> mPingSequence;
     };
 
 } // namespace Network::TestServer

@@ -108,7 +108,7 @@ namespace Network::TestServer
         }
 
         PKT_ServerPingReq packet;
-        packet.sequence = ++mPingSequence;
+        packet.sequence = mPingSequence.fetch_add(1, std::memory_order_relaxed) + 1;
         packet.timestamp = Timer::GetCurrentTimestamp();
 
         session->Send(packet);

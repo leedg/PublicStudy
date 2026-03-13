@@ -87,11 +87,17 @@ void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 
 void Session::Reset()
 {
-	// English: Lightweight state reset for pool reuse. Call after Close().
-	//          mAsyncProvider and buffers are already cleaned by Close().
-	// 한글: 풀 재사용을 위한 경량 상태 초기화. Close() 이후에 호출.
-	//       mAsyncProvider·버퍼는 Close()에서 이미 정리됨.
+	// English: Lightweight state reset for pool reuse. Call after Close() + WaitForDrain().
+	//          mAsyncProvider is cleaned in Close(). mRecvAccumBuffer is cleared here
+	//          (not in Close()) to avoid racing with ProcessRawRecv on a logic worker
+	//          thread — see Close() comment for full rationale.
+	// 한글: 풀 재사용을 위한 경량 상태 초기화. Close() + WaitForDrain() 이후에 호출.
+	//       mAsyncProvider는 Close()에서 정리. mRecvAccumBuffer는 여기서 초기화
+	//       (Close()에서 하지 않음) — 로직 워커 스레드의 ProcessRawRecv와의 race 방지.
+	//       전체 이유는 Close() 주석 참고.
 	mId = 0;
+	mRecvAccumBuffer.clear();
+	mRecvAccumOffset = 0;
 	mState.store(SessionState::None, std::memory_order_relaxed);
 	mPingSequence.store(0, std::memory_order_relaxed);
 	mIsSending.store(false, std::memory_order_relaxed);
@@ -177,13 +183,19 @@ void Session::Close()
 #endif
 		mSendQueueSize.store(0, std::memory_order_relaxed);
 	}
-	// English: Clear recv accumulation state. mRecvMutex removed — KeyedDispatcher affinity
-	//          ensures ProcessRawRecv and Close() for the same session are serialized
-	//          on the same worker thread.
-	// 한글: recv 누적 상태 초기화. mRecvMutex 제거 — KeyedDispatcher 친화도로
-	//       동일 세션의 ProcessRawRecv와 Close()가 같은 워커 스레드에서 직렬화됨.
-	mRecvAccumBuffer.clear();
-	mRecvAccumOffset = 0;
+	// English: mRecvAccumBuffer is NOT cleared here.
+	//          Rationale: PostSend() failure on an IOCP worker thread calls Close()
+	//          directly (not routed through KeyedDispatcher), so clearing the buffer
+	//          here could race with ProcessRawRecv running concurrently on a logic
+	//          worker thread. The buffer is cleared in Reset(), which is called only
+	//          after AsyncScope::WaitForDrain() ensures all in-flight ProcessRawRecv
+	//          lambdas have completed.
+	// 한글: mRecvAccumBuffer는 여기서 초기화하지 않음.
+	//       이유: PostSend() 실패 시 IOCP 워커 스레드가 Close()를 직접 호출
+	//       (KeyedDispatcher를 거치지 않음). 여기서 버퍼를 초기화하면
+	//       로직 워커 스레드에서 동시에 실행 중인 ProcessRawRecv와 race 발생 가능.
+	//       버퍼 초기화는 Reset()에서 수행하며, Reset()은 AsyncScope::WaitForDrain()으로
+	//       모든 ProcessRawRecv 람다 완료가 보장된 이후에만 호출됨.
 
 	// English: Cancel queued logic tasks. Tasks already running will finish normally;
 	//          tasks still in the dispatcher queue will be silently skipped.
@@ -535,6 +547,17 @@ size_t Session::GetRecvBufferSize() const
 
 void Session::ProcessRawRecv(const char *data, uint32_t size)
 {
+	// English: Guard against in-flight recv tasks that were queued before Close() fired
+	//          from the IOCP send-failure path. mRecvAccumBuffer must not be accessed
+	//          after Close() — it is cleared only in Reset() (post-WaitForDrain).
+	// 한글: Close()가 IOCP 송신 실패 경로에서 호출되기 이전에 큐잉된
+	//       in-flight recv 태스크 방어. mRecvAccumBuffer는 Close() 이후 접근 금지.
+	//       초기화는 Reset()(WaitForDrain 이후)에서만 수행됨.
+	if (!IsConnected())
+	{
+		return;
+	}
+
 	// English: PacketSpan records offset+size within the flat batch buffer (no per-packet alloc).
 	// 한글: PacketSpan은 평탄 배치 버퍼 내 offset+size만 기록 (패킷별 alloc 없음).
 	struct PacketSpan { uint32_t offset; uint32_t size; };

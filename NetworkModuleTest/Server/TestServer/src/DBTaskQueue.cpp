@@ -706,6 +706,11 @@ bool DBTaskQueue::HandleRecordConnectTime(const DBTask &task,
 
 {
 
+    // English: null means DB was never configured — hard error (not log-only mode).
+    //          IsConnected() == false means configured but temporarily offline — acceptable,
+    //          falls through to log-only path below.
+    // 한글: null이면 DB 자체가 설정되지 않은 하드 오류 (로그 모드 아님).
+    //       IsConnected() == false는 설정됐지만 일시적으로 오프라인 — 허용, 아래 로그 경로로 진행.
     if (mDatabase == nullptr)
     {
         Logger::Warn("HandleRecordConnectTime: mDatabase is null");
@@ -713,8 +718,7 @@ bool DBTaskQueue::HandleRecordConnectTime(const DBTask &task,
         return false;
     }
 
-    if (mDatabase != nullptr && mDatabase->IsConnected())
-
+    if (mDatabase->IsConnected())
     {
 
         try
@@ -779,8 +783,7 @@ bool DBTaskQueue::HandleRecordDisconnectTime(const DBTask &task,
         return false;
     }
 
-    if (mDatabase != nullptr && mDatabase->IsConnected())
-
+    if (mDatabase->IsConnected())
     {
 
         try
@@ -841,8 +844,7 @@ bool DBTaskQueue::HandleUpdatePlayerData(const DBTask &task,
         return false;
     }
 
-    if (mDatabase != nullptr && mDatabase->IsConnected())
-
+    if (mDatabase->IsConnected())
     {
 
         try
@@ -1030,6 +1032,12 @@ void DBTaskQueue::WalRecover()
         return;
     }
 
+    // English: Backup file suffix — defined once here, used in both the read
+    //          phase (parseWalFile) and the write phase (rename + recovery).
+    // 한글: 백업 파일 접미사 — 여기서 한 번 정의하고 읽기 단계(parseWalFile)와
+    //       쓰기 단계(rename + 복구) 모두에서 사용.
+    const std::string kWalBackupSuffix = ".bak";
+
     // English: WAL entry struct (used for both primary and backup file
     // parsing).
 
@@ -1204,11 +1212,9 @@ void DBTaskQueue::WalRecover()
     // 한글: 어떤 크래시 시나리오에서도 태스크 손실이 없도록 기본 WAL과 백업
     // 모두 읽기.
 
-    const std::string kBackupSuffixEarly = ".bak";
-
     parseWalFile(mWalPath);
 
-    parseWalFile(mWalPath + kBackupSuffixEarly);
+    parseWalFile(mWalPath + kWalBackupSuffix);
 
     if (pendingMap.empty() && maxSeenSeq == 0)
 
@@ -1238,7 +1244,7 @@ void DBTaskQueue::WalRecover()
 
         std::remove(mWalPath.c_str());
 
-        std::remove((mWalPath + kBackupSuffixEarly).c_str());
+        std::remove((mWalPath + kWalBackupSuffix).c_str());
 
         Logger::Info("WAL: Clean startup (no pending tasks to recover)");
 
@@ -1289,9 +1295,7 @@ void DBTaskQueue::WalRecover()
     //   2 도중 크래시 후 재시작: mWalPath에 부분 새 항목 + 백업 파일 병합으로
     //   손실 없음.
 
-    const std::string kBackupSuffix = ".bak";
-
-    const std::string backupPath = mWalPath + kBackupSuffix;
+    const std::string backupPath = mWalPath + kWalBackupSuffix;
 
     // English: Remove stale backup from a previous interrupted recovery, if
     // any.
