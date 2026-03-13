@@ -10,7 +10,8 @@
 // 한글: 필요한 경우 개별 헤더를 따로 포함할 수 있습니다:
 //   - NetworkTypes.h    : Type definitions and constants
 //   - Timer.h           : Time measurement utility
-//   - StringUtils.h     : String manipulation utilities
+//   - StringUtils.h     : std::string manipulation utilities
+//   - CStringUtils.h    : Safe char[] buffer operations (copy/format/append)
 //   - SafeQueue.h       : Thread-safe queue
 //   - ThreadPool.h      : Thread pool for async tasks
 //   - Logger.h          : Logging utility
@@ -18,6 +19,7 @@
 #include "NetworkTypes.h"
 #include "Timer.h"
 #include "StringUtils.h"
+#include "CStringUtils.h"
 #include "SafeQueue.h"
 #include "ThreadPool.h"
 #include "Logger.h"

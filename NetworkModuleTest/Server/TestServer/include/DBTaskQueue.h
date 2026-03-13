@@ -67,20 +67,25 @@ namespace Network::TestServer
     };
 
     // =============================================================================
-    // English: Asynchronous DB task queue
-    // 한글: 비동기 DB 작업 큐
+    // English: Asynchronous DB task queue with key-affinity routing.
+    // 한글: 키 친화도 라우팅이 적용된 비동기 DB 작업 큐.
     //
-    // English: WARNING - Multi-worker ordering caveat:
-    //   When workerThreadCount > 1, tasks for the same sessionId may execute
-    //   out of order because multiple workers dequeue from a single shared queue.
-    //   If per-session ordering is required, use workerThreadCount = 1, or
-    //   migrate to OrderedTaskQueue (hash-based thread affinity) pattern.
+    // English: Per-session ordering guarantee:
+    //   Each task is routed to worker[sessionId % workerCount].
+    //   The same session always maps to the same worker.
+    //   Each worker is a single thread processing tasks FIFO, so:
+    //     (1) Tasks for the same session always execute on the same worker.
+    //     (2) Task B is never sent to DB until task A (queued before B for
+    //         the same session) has fully completed — the worker pops and
+    //         processes one task at a time.
     //
-    // 한글: 경고 - 멀티워커 순서 주의:
-    //   workerThreadCount > 1인 경우, 같은 sessionId의 작업이 순서가 보장되지 않을 수 있음.
-    //   여러 워커가 하나의 공유 큐에서 가져가므로 동일 세션의 작업이 서로 다른 워커에서
-    //   동시에 실행될 수 있음. 세션별 순서가 필요하면 workerThreadCount = 1을 사용하거나,
-    //   OrderedTaskQueue (해시 기반 스레드 친화도) 패턴으로 전환 필요.
+    // 한글: 세션별 순서 보장:
+    //   각 작업은 worker[sessionId % workerCount]로 라우팅됩니다.
+    //   동일 세션은 항상 같은 워커에 배정됩니다.
+    //   각 워커는 단일 스레드로 FIFO 처리하므로:
+    //     (1) 동일 세션의 작업은 항상 같은 DB Worker에서 실행됩니다.
+    //     (2) 같은 세션의 B 작업은 A 작업이 DB에서 완전히 완료된 후에만
+    //         처리됩니다 — 워커는 한 번에 하나씩 pop하여 처리합니다.
     // =============================================================================
 
     class DBTaskQueue
@@ -117,7 +122,7 @@ namespace Network::TestServer
     private:
         // English: Worker thread function
         // 한글: 워커 스레드 함수
-        void WorkerThreadFunc();
+        void WorkerThreadFunc(size_t workerIndex);
 
         // English: Process individual task
         // 한글: 개별 작업 처리
@@ -146,19 +151,26 @@ namespace Network::TestServer
         uint64_t WalNextSeq();
 
     private:
-        // English: Task queue with lock contention optimization
-        // 한글: Lock 경합 최적화가 적용된 작업 큐
-        std::queue<DBTask>              mTaskQueue;
-        mutable std::mutex              mQueueMutex;
-        std::condition_variable         mQueueCV;
+        // English: Per-worker data — each worker owns its queue, mutex, cv, and thread.
+        //   Routing: sessionId % workerCount → same session always → same worker.
+        //   Within a worker: single thread + FIFO → task B is never dequeued until task A completes.
+        // 한글: 워커별 데이터 — 각 워커는 자체 큐, mutex, cv, 스레드를 소유합니다.
+        //   라우팅: sessionId % workerCount → 동일 세션은 항상 동일 워커.
+        //   워커 내부: 단일 스레드 + FIFO → A가 완료되기 전까지 B는 절대 꺼내지지 않음.
+        struct WorkerData
+        {
+            std::queue<DBTask>      taskQueue;
+            mutable std::mutex      mutex;
+            std::condition_variable cv;
+            std::thread             thread;
+        };
 
-        // English: Lock-free queue size counter (optimization for GetQueueSize)
-        // 한글: Lock-free 큐 크기 카운터 (GetQueueSize 최적화)
+        std::vector<std::unique_ptr<WorkerData>> mWorkers;
+
+        // English: Global queue size counter across all workers (lock-free GetQueueSize)
+        // 한글: 전체 워커에 걸친 글로벌 큐 크기 카운터 (lock-free GetQueueSize)
         std::atomic<size_t>             mQueueSize;
 
-        // English: Worker threads
-        // 한글: 워커 스레드
-        std::vector<std::thread>        mWorkerThreads;
         std::atomic<bool>               mIsRunning;
 
         // English: Statistics

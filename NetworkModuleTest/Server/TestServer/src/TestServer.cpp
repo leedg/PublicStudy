@@ -11,7 +11,7 @@
 #include <mutex>
 #include <thread>
 #include <chrono>
-#include <cstring>
+#include "Utils/CStringUtils.h"
 #include <ctime>
 
 #ifdef _WIN32
@@ -66,8 +66,7 @@ namespace Network::TestServer
             Core::PKT_DBSavePingTimeReq savePacket;
             savePacket.serverId  = 1;
             savePacket.timestamp = Timer::GetCurrentTimestamp();
-            strncpy_s(savePacket.serverName, sizeof(savePacket.serverName),
-                      "TestServer", _TRUNCATE);
+            Network::Utils::CStringUtils::Copy(savePacket.serverName, "TestServer");
             SendDBPacket(&savePacket, sizeof(savePacket));
         }
 #endif
