@@ -3,7 +3,7 @@
 
 #include "../include/DBServerPacketHandler.h"
 #include "Utils/PingPongConfig.h"
-#include "Utils/CStringUtils.h"
+#include "Utils/StringUtil.h"
 #include <chrono>
 
 namespace Network::TestServer
@@ -138,7 +138,7 @@ namespace Network::TestServer
 
         if (serverName)
         {
-            CStringUtils::Copy(packet.serverName, serverName);
+            StringUtil::Copy(packet.serverName, serverName);
         }
 
         session->Send(packet);

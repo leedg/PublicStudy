@@ -14,8 +14,8 @@
 //
 // Template overloads / 템플릿 오버로드:
 //   char[] 배열을 직접 전달하면 크기가 자동으로 추론됩니다.
-//   CStringUtils::Copy(packet.name, src);              // sizeof 불필요
-//   CStringUtils::Format(packet.name, "%d", id);       // sizeof 불필요
+//   StringUtil::Copy(packet.name, src);              // sizeof 불필요
+//   StringUtil::Format(packet.name, "%d", id);       // sizeof 불필요
 
 #include <cstdarg>
 #include <cstddef>
@@ -25,10 +25,10 @@
 namespace Network::Utils
 {
 // =============================================================================
-// English: CStringUtils - safe operations on fixed-size char[] buffers.
+// English: StringUtil - safe operations on fixed-size char[] buffers.
 //          Always null-terminates. Never overflows. Cross-platform.
 //
-// 한글: CStringUtils - 고정 크기 char[] 버퍼의 안전한 연산.
+// 한글: StringUtil - 고정 크기 char[] 버퍼의 안전한 연산.
 //       항상 null 종료 보장. 오버플로우 없음. 크로스플랫폼.
 //
 // Two calling styles / 두 가지 호출 방식:
@@ -36,7 +36,7 @@ namespace Network::Utils
 //   (B) char[] reference         — size auto-deduced, cannot be used on pointers
 // =============================================================================
 
-class CStringUtils
+class StringUtil
 {
 public:
 	// =========================================================================
@@ -97,7 +97,7 @@ public:
 
 	// English: Same as Copy(char*, size_t, const char*) but size is deduced from
 	//          the char[] array type. Cannot be called with a pointer.
-	//   CStringUtils::Copy(packet.name, src);   // sizeof(packet.name) implicit
+	//   StringUtil::Copy(packet.name, src);   // sizeof(packet.name) implicit
 	// 한글: Copy(char*, size_t, const char*)와 동일하지만 char[] 배열 크기를 자동 추론.
 	//       포인터에는 사용할 수 없음.
 	template<size_t N>
@@ -147,7 +147,7 @@ public:
 
 	// English: Same as Format(char*, size_t, const char*, Args...) but size is
 	//          deduced from the char[] array type.
-	//   CStringUtils::Format(packet.name, "%s_%d", serverName, id);
+	//   StringUtil::Format(packet.name, "%s_%d", serverName, id);
 	// 한글: Format(char*, size_t, ...)와 동일하지만 배열 크기를 자동 추론.
 	template<size_t N, typename... Args>
 	static bool Format(char (&dest)[N], const char* fmt, Args... args)
