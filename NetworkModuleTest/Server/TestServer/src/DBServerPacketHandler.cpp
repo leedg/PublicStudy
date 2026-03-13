@@ -3,7 +3,7 @@
 
 #include "../include/DBServerPacketHandler.h"
 #include "Utils/PingPongConfig.h"
-#include <cstring>
+#include "Utils/CStringUtils.h"
 #include <chrono>
 
 namespace Network::TestServer
@@ -138,12 +138,7 @@ namespace Network::TestServer
 
         if (serverName)
         {
-#ifdef _WIN32
-            strncpy_s(packet.serverName, sizeof(packet.serverName), serverName, _TRUNCATE);
-#else
-            strncpy(packet.serverName, serverName, sizeof(packet.serverName) - 1);
-            packet.serverName[sizeof(packet.serverName) - 1] = '\0';
-#endif
+            CStringUtils::Copy(packet.serverName, serverName);
         }
 
         session->Send(packet);

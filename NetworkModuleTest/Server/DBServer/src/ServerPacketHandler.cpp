@@ -247,28 +247,16 @@ namespace Network::DBServer
                         if (ok)
                         {
                             asyncResponse.result = 0;
-#ifdef _WIN32
-                            strncpy_s(asyncResponse.message, sizeof(asyncResponse.message),
-                                      "Ping time saved successfully", _TRUNCATE);
-#else
-                            strncpy(asyncResponse.message, "Ping time saved successfully",
-                                    sizeof(asyncResponse.message) - 1);
-                            asyncResponse.message[sizeof(asyncResponse.message) - 1] = '\0';
-#endif
+                            std::snprintf(asyncResponse.message, sizeof(asyncResponse.message),
+                                          "Ping time saved successfully");
                             Logger::Info("Ping time saved for ServerId: " +
                                          std::to_string(capturedServerId));
                         }
                         else
                         {
                             asyncResponse.result = 1;
-#ifdef _WIN32
-                            strncpy_s(asyncResponse.message, sizeof(asyncResponse.message),
-                                      "Failed to save ping time", _TRUNCATE);
-#else
-                            strncpy(asyncResponse.message, "Failed to save ping time",
-                                    sizeof(asyncResponse.message) - 1);
-                            asyncResponse.message[sizeof(asyncResponse.message) - 1] = '\0';
-#endif
+                            std::snprintf(asyncResponse.message, sizeof(asyncResponse.message),
+                                          "Failed to save ping time");
                             Logger::Error("Failed to save ping time for ServerId: " +
                                           std::to_string(capturedServerId));
                         }
@@ -276,14 +264,8 @@ namespace Network::DBServer
                     else
                     {
                         asyncResponse.result = 2;
-#ifdef _WIN32
-                        strncpy_s(asyncResponse.message, sizeof(asyncResponse.message),
-                                  "Latency manager not initialized", _TRUNCATE);
-#else
-                        strncpy(asyncResponse.message, "Latency manager not initialized",
-                                sizeof(asyncResponse.message) - 1);
-                        asyncResponse.message[sizeof(asyncResponse.message) - 1] = '\0';
-#endif
+                        std::snprintf(asyncResponse.message, sizeof(asyncResponse.message),
+                                      "Latency manager not initialized");
                         Logger::Error("Latency manager not initialized");
                     }
 
@@ -305,39 +287,21 @@ namespace Network::DBServer
                 if (ok)
                 {
                     response.result = 0;
-#ifdef _WIN32
-                    strncpy_s(response.message, sizeof(response.message),
-                              "Ping time saved successfully", _TRUNCATE);
-#else
-                    strncpy(response.message, "Ping time saved successfully",
-                            sizeof(response.message) - 1);
-                    response.message[sizeof(response.message) - 1] = '\0';
-#endif
+                    std::snprintf(response.message, sizeof(response.message),
+                                  "Ping time saved successfully");
                 }
                 else
                 {
                     response.result = 1;
-#ifdef _WIN32
-                    strncpy_s(response.message, sizeof(response.message),
-                              "Failed to save ping time", _TRUNCATE);
-#else
-                    strncpy(response.message, "Failed to save ping time",
-                            sizeof(response.message) - 1);
-                    response.message[sizeof(response.message) - 1] = '\0';
-#endif
+                    std::snprintf(response.message, sizeof(response.message),
+                                  "Failed to save ping time");
                 }
             }
             else
             {
                 response.result = 2;
-#ifdef _WIN32
-                strncpy_s(response.message, sizeof(response.message),
-                          "Latency manager not initialized", _TRUNCATE);
-#else
-                strncpy(response.message, "Latency manager not initialized",
-                        sizeof(response.message) - 1);
-                response.message[sizeof(response.message) - 1] = '\0';
-#endif
+                std::snprintf(response.message, sizeof(response.message),
+                              "Latency manager not initialized");
             }
 
             session->Send(response);
