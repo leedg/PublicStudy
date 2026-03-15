@@ -164,19 +164,16 @@ void DBTaskQueue::Shutdown()
     }
 
     // English: Drain remaining tasks from all per-worker queues.
-    //          Threads are already joined so no lock contention, but we lock for consistency.
+    //          All workers joined; drain without lock.
     // 한글: 모든 워커별 큐에 남은 작업을 처리합니다.
-    //       스레드는 이미 join됐으므로 경합 없음. 일관성을 위해 lock 사용.
+    //       모든 워커 join 완료 — 락 없이 drain.
     for (auto& worker : mWorkers)
     {
         std::vector<DBTask> drainTasks;
+        while (!worker->taskQueue.empty())
         {
-            std::lock_guard<std::mutex> lock(worker->mutex);
-            while (!worker->taskQueue.empty())
-            {
-                drainTasks.push_back(std::move(worker->taskQueue.front()));
-                worker->taskQueue.pop();
-            }
+            drainTasks.push_back(std::move(worker->taskQueue.front()));
+            worker->taskQueue.pop();
         }
 
         if (!drainTasks.empty())
