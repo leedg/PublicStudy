@@ -1,6 +1,7 @@
 #pragma once
 
-// Bounded lock-free MPMC queue (ring buffer).
+// English: Bounded lock-free MPMC queue (ring buffer).
+// 한글: 고정 크기 lock-free MPMC 큐(링 버퍼).
 
 #include <atomic>
 #include <cstddef>
@@ -13,11 +14,15 @@
 namespace Network::Concurrency
 {
 // =============================================================================
-// BoundedLockFreeQueue
+// English: BoundedLockFreeQueue
 // - Multi-producer / multi-consumer queue.
 // - Capacity is rounded up to power-of-two for index masking.
 // - Non-blocking API only: TryEnqueue / TryDequeue.
 //
+// 한글: BoundedLockFreeQueue
+// - 다중 생산자 / 다중 소비자 큐.
+// - capacity는 마스킹 연산을 위해 2의 거듭제곱으로 보정.
+// - 논블로킹 API만 제공: TryEnqueue / TryDequeue.
 // =============================================================================
 
 template <typename T>
@@ -74,7 +79,8 @@ class BoundedLockFreeQueue
 			}
 			else if (diff < 0)
 			{
-				// Queue full.
+				// English: Queue full.
+				// 한글: 큐가 가득 참.
 				return false;
 			}
 			else
@@ -110,7 +116,8 @@ class BoundedLockFreeQueue
 			}
 			else if (diff < 0)
 			{
-				// Queue empty.
+				// English: Queue empty.
+				// 한글: 큐가 비어 있음.
 				return false;
 			}
 			else
@@ -131,7 +138,8 @@ class BoundedLockFreeQueue
 	}
 
   private:
-	// Each cell is cache-line aligned to prevent false sharing between adjacent slots.
+	// English: Each cell is cache-line aligned to prevent false sharing between adjacent slots.
+	// 한글: 인접 슬롯 간 false sharing 방지를 위해 셀마다 캐시라인 정렬.
 	struct alignas(64) Cell
 	{
 		std::atomic<size_t> mSequence;
@@ -140,12 +148,16 @@ class BoundedLockFreeQueue
 
 	static size_t NormalizeCapacity(size_t requested)
 	{
-		// Keep minimum 2 to satisfy ring progression.
+		// English: Keep minimum 2 to satisfy ring progression.
 		// In a ring buffer implementation using enqueue/dequeue position counters
 		// with modulo masking, we need at least 2 cells to distinguish between
 		// "empty queue" and "full queue" states using the sequence number.
 		// With capacity 1, the sequence wraps immediately and we cannot differentiate
 		// these states correctly.
+		// 한글: 링 진행 보장을 위해 최소 2로 보정.
+		// 시퀀스 번호를 사용하여 enqueue/dequeue 포인터를 구분하는 링 버퍼에서는
+		// "비어있음"과 "가득참" 상태를 올바르게 구분하기 위해 최소 2개 셀이 필요합니다.
+		// 용량이 1이면 시퀀스가 즉시 래핑되어 상태를 올바르게 구분할 수 없습니다.
 		size_t value = (requested < 2) ? 2 : requested;
 		size_t powerOfTwo = 1;
 		while (powerOfTwo < value)

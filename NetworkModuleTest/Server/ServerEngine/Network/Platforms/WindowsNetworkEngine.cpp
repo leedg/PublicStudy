@@ -1,4 +1,4 @@
-// Windows NetworkEngine implementation
+// English: Windows NetworkEngine implementation
 
 #ifdef _WIN32
 
@@ -57,8 +57,10 @@ bool WindowsNetworkEngine::InitializePlatform()
 		return false;
 	}
 
-	// Initialize IOCP send buffer pool (4 concurrent sends per connection).
+	// English: Initialize IOCP send buffer pool (4 concurrent sends per connection).
 	//          RIO path uses its own slab pool; only initialize for IOCP mode.
+	// 한글: IOCP 전송 버퍼 풀 초기화 (연결당 동시 전송 4개 기준).
+	//       RIO 경로는 자체 slab 풀 사용; IOCP 모드에서만 초기화.
 	if (mMode == Mode::IOCP)
 	{
 		Core::SendBufferPool::Instance().Initialize(
@@ -165,7 +167,8 @@ void WindowsNetworkEngine::AcceptLoop()
 			continue;
 		}
 
-		// Reset backoff on success
+		// English: Reset backoff on success
+		// 한글: 성공 시 백오프 리셋
 		mAcceptBackoffMs = 10;
 
 		Core::SessionRef session =
@@ -271,10 +274,13 @@ void WindowsNetworkEngine::ProcessCompletions()
 
 		if (entry.mOsError != 0 || entry.mResult <= 0)
 		{
-			// Dispatch through ProcessErrorCompletion — increments the correct
+			// English: Dispatch through ProcessErrorCompletion — increments the correct
 			//          per-direction error counter (Send vs Recv) and routes disconnect
 			//          via session->mAsyncScope, preventing double-event if Close() was
 			//          already called from a concurrent path.
+			// 한글: ProcessErrorCompletion을 통해 처리 — 올바른 방향별 에러 카운터
+			//       (Send vs Recv)를 증가시키고, session->mAsyncScope 경유로 disconnect를
+			//       라우팅하여 다른 경로에서 Close()가 이미 호출된 경우 이중 이벤트 방지.
 			ProcessErrorCompletion(session, entry.mType, entry.mOsError);
 			continue;
 		}
@@ -313,9 +319,12 @@ void WindowsNetworkEngine::ProcessCompletions()
 					std::to_string(session->GetId()) + ": " +
 					std::string(mProvider->GetLastError()));
 
-				// Failure to queue the next recv is a recv-path error.
+				// English: Failure to queue the next recv is a recv-path error.
 				//          Route through ProcessErrorCompletion(Recv) for consistent
 				//          stats tracking and AsyncScope-guarded disconnect.
+				// 한글: 다음 recv 큐 등록 실패는 recv 경로 에러.
+				//       일관된 통계 집계 및 AsyncScope 보호 disconnect를 위해
+				//       ProcessErrorCompletion(Recv)으로 라우팅.
 				ProcessErrorCompletion(session, AsyncIO::AsyncIOType::Recv, 0);
 			}
 			break;

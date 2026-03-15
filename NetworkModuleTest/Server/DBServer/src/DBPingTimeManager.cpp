@@ -1,4 +1,5 @@
-// DB Ping Time Manager implementation
+// English: DB Ping Time Manager implementation
+// 한글: DB Ping 시간 관리자 구현
 
 #include "../include/DBPingTimeManager.h"
 #include <iostream>
@@ -32,10 +33,12 @@ namespace Network::DBServer
 
         std::cout << "Initializing DBPingTimeManager..." << std::endl;
 
-        // TODO - Initialize actual database connection here
+        // English: TODO - Initialize actual database connection here
+        // 한글: TODO - 여기에 실제 데이터베이스 연결 초기화
         // For now, just simulate initialization
 
-        // Create table if not exists (placeholder)
+        // English: Create table if not exists (placeholder)
+        // 한글: 테이블이 없으면 생성 (공백)
         std::string createTableQuery = R"(
             CREATE TABLE IF NOT EXISTS PingTimeLog (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,7 +64,8 @@ namespace Network::DBServer
 
         std::cout << "Shutting down DBPingTimeManager..." << std::endl;
 
-        // TODO - Close database connection here
+        // English: TODO - Close database connection here
+        // 한글: TODO - 여기에 데이터베이스 연결 종료
 
         mInitialized.store(false, std::memory_order_release);
         std::cout << "DBPingTimeManager shut down" << std::endl;
@@ -77,10 +81,12 @@ namespace Network::DBServer
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // Format timestamp as GMT string
+        // English: Format timestamp as GMT string
+        // 한글: 타임스탬프를 GMT 문자열로 포맷
         std::string gmtTimeStr = FormatTimestamp(timestamp);
 
-        // Build INSERT query
+        // English: Build INSERT query
+        // 한글: INSERT 쿼리 작성
         std::ostringstream query;
         query << "INSERT INTO PingTimeLog (ServerId, ServerName, PingTimestamp, PingTimeGMT) VALUES ("
               << serverId << ", '"
@@ -93,7 +99,8 @@ namespace Network::DBServer
                   << ", Timestamp: " << timestamp
                   << ", GMT: " << gmtTimeStr << std::endl;
 
-        // Execute query (placeholder - actual DB call would go here)
+        // English: Execute query (placeholder - actual DB call would go here)
+        // 한글: 쿼리 실행 (공백 - 실제 DB 호출은 여기에)
         bool result = ExecuteQuery(query.str());
 
         if (result)
@@ -118,7 +125,8 @@ namespace Network::DBServer
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // Build SELECT query
+        // English: Build SELECT query
+        // 한글: SELECT 쿼리 작성
         std::ostringstream query;
         query << "SELECT PingTimestamp FROM PingTimeLog WHERE ServerId = "
               << serverId
@@ -126,7 +134,8 @@ namespace Network::DBServer
 
         std::cout << "Querying last ping time for ServerId: " << serverId << std::endl;
 
-        // Execute query and retrieve result (placeholder)
+        // English: Execute query and retrieve result (placeholder)
+        // 한글: 쿼리 실행 및 결과 조회 (공백)
         // In real implementation, execute query and parse result
         // For now, return 0 as placeholder
 
@@ -135,10 +144,12 @@ namespace Network::DBServer
 
     std::string DBPingTimeManager::FormatTimestamp(uint64_t timestamp)
     {
-        // Convert milliseconds to seconds for time_t
+        // English: Convert milliseconds to seconds for time_t
+        // 한글: 밀리초를 time_t용 초로 변환
         time_t seconds = static_cast<time_t>(timestamp / 1000);
 
-        // Convert to GMT tm structure
+        // English: Convert to GMT tm structure
+        // 한글: GMT tm 구조체로 변환
         std::tm gmtTime;
 #ifdef _WIN32
         gmtime_s(&gmtTime, &seconds);
@@ -146,7 +157,8 @@ namespace Network::DBServer
         gmtime_r(&seconds, &gmtTime);
 #endif
 
-        // Format as ISO 8601 GMT string
+        // English: Format as ISO 8601 GMT string
+        // 한글: ISO 8601 GMT 문자열로 포맷
         std::ostringstream oss;
         oss << std::put_time(&gmtTime, "%Y-%m-%d %H:%M:%S");
         oss << " GMT";
@@ -156,7 +168,8 @@ namespace Network::DBServer
 
     bool DBPingTimeManager::ExecuteQuery(const std::string& query)
     {
-        // Placeholder for actual database query execution
+        // English: Placeholder for actual database query execution
+        // 한글: 실제 데이터베이스 쿼리 실행을 위한 공백
 
         std::cout << "[DB Query Placeholder] " << query << std::endl;
 

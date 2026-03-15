@@ -1,4 +1,4 @@
-// AsyncIO Provider Test Suite - Simple verification (no GTest
+// English: AsyncIO Provider Test Suite - Simple verification (no GTest
 // dependency) ???: AsyncIO ??????????- ?????????(GTest ????????)
 
 #include "Network/Core/AsyncIOProvider.h"
@@ -11,13 +11,13 @@
 using namespace Network::AsyncIO;
 
 // =============================================================================
-// Test Functions
+// English: Test Functions
 // ???: ????????
 // =============================================================================
 
 void TestPlatformDetection()
 {
-	// Test platform detection
+	// English: Test platform detection
 	// ???: ???????? ?????
 	std::cout << "=== Platform Detection Test ===" << std::endl;
 
@@ -60,11 +60,11 @@ void TestPlatformDetection()
 
 void TestPlatformSupport()
 {
-	// Test IsPlatformSupported and GetSupportedPlatforms
+	// English: Test IsPlatformSupported and GetSupportedPlatforms
 	// ???: IsPlatformSupported ??GetSupportedPlatforms ?????
 	std::cout << "\n=== Platform Support Test ===" << std::endl;
 
-	// Get supported platforms list
+	// English: Get supported platforms list
 	// ???: ???????????? ???
 	size_t count = 0;
 	const char **platforms = GetSupportedPlatforms(count);
@@ -82,11 +82,11 @@ void TestPlatformSupport()
 
 void TestAsyncIOProviderCreation()
 {
-	// Test automatic provider creation
+	// English: Test automatic provider creation
 	// ???: ??? ???????? ?????
 	std::cout << "\n=== AsyncIOProvider Creation Test ===" << std::endl;
 
-	// Create with automatic platform selection
+	// English: Create with automatic platform selection
 	// ???: ??? ??????????? ???
 	auto provider = CreateAsyncIOProvider();
 
@@ -94,7 +94,7 @@ void TestAsyncIOProviderCreation()
 	{
 		std::cout << "[PASS] Provider created successfully" << std::endl;
 
-		// Initialize with doc-specified interface
+		// English: Initialize with doc-specified interface
 		// ???: ??? ??? ????????? ?????
 		AsyncIOError err = provider->Initialize(256, 1000);
 		if (err == AsyncIOError::Success)
@@ -102,14 +102,14 @@ void TestAsyncIOProviderCreation()
 			std::cout << "[PASS] Provider initialized successfully"
 					  << std::endl;
 
-			// Check IsInitialized
+			// English: Check IsInitialized
 			// ???: IsInitialized ???
 			if (provider->IsInitialized())
 			{
 				std::cout << "[PASS] IsInitialized returns true" << std::endl;
 			}
 
-			// Check GetInfo
+			// English: Check GetInfo
 			// ???: GetInfo ???
 			const ProviderInfo &info = provider->GetInfo();
 			std::cout << "Backend: " << info.mName << std::endl;
@@ -118,19 +118,19 @@ void TestAsyncIOProviderCreation()
 			std::cout << "Batching: " << (info.mSupportsBatching ? "yes" : "no")
 					  << std::endl;
 
-			// Check GetStats
+			// English: Check GetStats
 			// ???: GetStats ???
 			ProviderStats stats = provider->GetStats();
 			std::cout << "Total Requests: " << stats.mTotalRequests
 					  << std::endl;
 
-			// Check GetLastError
+			// English: Check GetLastError
 			// ???: GetLastError ???
 			const char *lastErr = provider->GetLastError();
 			std::cout << "Last Error: \"" << (lastErr ? lastErr : "") << "\""
 					  << std::endl;
 
-			// Test FlushRequests (should be no-op or success)
+			// English: Test FlushRequests (should be no-op or success)
 			// ???: FlushRequests ?????(no-op ??? ??????????
 			AsyncIOError flushErr = provider->FlushRequests();
 			if (flushErr == AsyncIOError::Success)
@@ -141,7 +141,7 @@ void TestAsyncIOProviderCreation()
 			provider->Shutdown();
 			std::cout << "[PASS] Provider shutdown successfully" << std::endl;
 
-			// Verify IsInitialized after shutdown
+			// English: Verify IsInitialized after shutdown
 			// ???: ??? ??IsInitialized ???
 			if (!provider->IsInitialized())
 			{
@@ -162,7 +162,7 @@ void TestAsyncIOProviderCreation()
 
 void TestNamedProviderCreation()
 {
-	// Test named provider creation (CreateAsyncIOProvider with
+	// English: Test named provider creation (CreateAsyncIOProvider with
 	// platformHint) ???: ??? ??? ???????? ?????
 	std::cout << "\n=== Named Provider Creation Test ===" << std::endl;
 
@@ -201,7 +201,7 @@ void TestNamedProviderCreation()
 	}
 #endif
 
-	// Test unsupported platform name
+	// English: Test unsupported platform name
 	// ???: ??????? ??? ???????? ?????
 	auto nullProvider = CreateAsyncIOProvider("nonexistent");
 	if (!nullProvider)
@@ -382,7 +382,7 @@ void TestRIOEndToEnd()
 #endif
 
 // =============================================================================
-// Main Entry Point
+// English: Main Entry Point
 // ???: ??? ?????
 // =============================================================================
 

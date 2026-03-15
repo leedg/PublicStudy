@@ -1,6 +1,7 @@
 #pragma once
 
-// kqueue-based AsyncIOProvider implementation for macOS/BSD
+// English: kqueue-based AsyncIOProvider implementation for macOS/BSD
+// 한글: macOS/BSD용 kqueue 기반 AsyncIOProvider 구현
 
 #include "AsyncIOProvider.h"
 
@@ -18,24 +19,29 @@ namespace AsyncIO
 namespace BSD
 {
 // =============================================================================
-// kqueue-based AsyncIOProvider Implementation (macOS/BSD)
+// English: kqueue-based AsyncIOProvider Implementation (macOS/BSD)
+// 한글: kqueue 기반 AsyncIOProvider 구현 (macOS/BSD)
 // =============================================================================
 
 class KqueueAsyncIOProvider : public AsyncIOProvider
 {
   public:
-	// Constructor
+	// English: Constructor
+	// 한글: 생성자
 	KqueueAsyncIOProvider();
 
-	// Destructor - releases kqueue resources
+	// English: Destructor - releases kqueue resources
+	// 한글: 소멸자 - kqueue 리소스 해제
 	virtual ~KqueueAsyncIOProvider();
 
-	// Prevent copy (move-only semantics)
+	// English: Prevent copy (move-only semantics)
+	// 한글: 복사 방지 (move-only 의미론)
 	KqueueAsyncIOProvider(const KqueueAsyncIOProvider &) = delete;
 	KqueueAsyncIOProvider &operator=(const KqueueAsyncIOProvider &) = delete;
 
 	// =====================================================================
-	// Lifecycle Management
+	// English: Lifecycle Management
+	// 한글: 생명주기 관리
 	// =====================================================================
 
 	AsyncIOError Initialize(size_t queueDepth, size_t maxConcurrent) override;
@@ -43,21 +49,24 @@ class KqueueAsyncIOProvider : public AsyncIOProvider
 	bool IsInitialized() const override;
 
 	// =====================================================================
-	// Socket Association
+	// English: Socket Association
+	// 한글: 소켓 연결
 	// =====================================================================
 
 	AsyncIOError AssociateSocket(SocketHandle socket,
 								RequestContext context) override;
 
 	// =====================================================================
-	// Buffer Management
+	// English: Buffer Management
+	// 한글: 버퍼 관리
 	// =====================================================================
 
 	int64_t RegisterBuffer(const void *ptr, size_t size) override;
 	AsyncIOError UnregisterBuffer(int64_t bufferId) override;
 
 	// =====================================================================
-	// Async I/O Requests
+	// English: Async I/O Requests
+	// 한글: 비동기 I/O 요청
 	// =====================================================================
 
 	AsyncIOError SendAsync(SocketHandle socket, const void *buffer, size_t size,
@@ -69,14 +78,16 @@ class KqueueAsyncIOProvider : public AsyncIOProvider
 	AsyncIOError FlushRequests() override;
 
 	// =====================================================================
-	// Completion Processing
+	// English: Completion Processing
+	// 한글: 완료 처리
 	// =====================================================================
 
 	int ProcessCompletions(CompletionEntry *entries, size_t maxEntries,
 							   int timeoutMs = 0) override;
 
 	// =====================================================================
-	// Information & Statistics
+	// English: Information & Statistics
+	// 한글: 정보 및 통계
 	// =====================================================================
 
 	const ProviderInfo &GetInfo() const override;
@@ -85,49 +96,59 @@ class KqueueAsyncIOProvider : public AsyncIOProvider
 
   private:
 	// =====================================================================
-	// Internal Data Structures
+	// English: Internal Data Structures
+	// 한글: 내부 데이터 구조
 	// =====================================================================
 
-	// Pending operation tracking
+	// English: Pending operation tracking
+	// 한글: 대기 작업 추적
 	struct PendingOperation
 	{
-		RequestContext mContext; // User request context
-		AsyncIOType mType;    // Operation type
-		SocketHandle mSocket; // Socket handle
-		uint8_t *mBuffer; // Buffer pointer (recv or owned send buffer)
-		std::unique_ptr<uint8_t[]> mOwnedBuffer; // Owned buffer for send
-		uint32_t mBufferSize; // Buffer size
+		RequestContext mContext; // English: User request context / 한글: 사용자
+								 // 요청 컨텍스트
+		AsyncIOType mType;    // English: Operation type / 한글: 작업 타입
+		SocketHandle mSocket; // English: Socket handle / 한글: 소켓 핸들
+		uint8_t *mBuffer; // English: Buffer pointer (recv or owned send buffer)
+						  // 한글: 버퍼 포인터 (수신 또는 송신 소유 버퍼)
+		std::unique_ptr<uint8_t[]> mOwnedBuffer; // English: Owned buffer for send
+												 // 한글: 송신용 소유 버퍼
+		uint32_t mBufferSize; // English: Buffer size / 한글: 버퍼 크기
 	};
 
 	// =====================================================================
-	// Member Variables
+	// English: Member Variables
+	// 한글: 멤버 변수
 	// =====================================================================
 
-	int mKqueueFd; // kqueue file descriptor
+	int mKqueueFd; // English: kqueue file descriptor / 한글: kqueue 파일
+					   // 디스크립터
 	std::map<SocketHandle, PendingOperation>
-		mPendingRecvOps; // Pending recv ops
+		mPendingRecvOps; // English: Pending recv ops / 한글: 대기 수신 작업
 	std::map<SocketHandle, PendingOperation>
-		mPendingSendOps; // Pending send ops
+		mPendingSendOps; // English: Pending send ops / 한글: 대기 송신 작업
 	std::map<SocketHandle, bool>
-		mRegisteredSockets; // Registered sockets
+		mRegisteredSockets; // English: Registered sockets / 한글: 등록된 소켓
 	mutable std::mutex
-		mMutex; // Thread safety mutex
-	ProviderInfo mInfo;   // Provider info
-	ProviderStats mStats; // Statistics
+		mMutex; // English: Thread safety mutex / 한글: 스레드 안전성 뮤텍스
+	ProviderInfo mInfo;   // English: Provider info / 한글: 공급자 정보
+	ProviderStats mStats; // English: Statistics / 한글: 통계
 	std::string
-		mLastError; // Last error message
+		mLastError; // English: Last error message / 한글: 마지막 에러 메시지
 	size_t
-		mMaxConcurrentOps; // Max concurrent ops
-	bool mInitialized;     // Initialization flag
+		mMaxConcurrentOps; // English: Max concurrent ops / 한글: 최대 동시 작업
+	bool mInitialized;     // English: Initialization flag / 한글: 초기화 플래그
 
 	// =====================================================================
-	// Helper Methods
+	// English: Helper Methods
+	// 한글: 헬퍼 메서드
 	// =====================================================================
 
-	// Register socket with kqueue for read and write events
+	// English: Register socket with kqueue for read and write events
+	// 한글: kqueue에 소켓을 읽기/쓰기 이벤트로 등록
 	bool RegisterSocketEvents(SocketHandle socket);
 
-	// Unregister socket events from kqueue
+	// English: Unregister socket events from kqueue
+	// 한글: kqueue에서 소켓 이벤트 등록 해제
 	bool UnregisterSocketEvents(SocketHandle socket);
 };
 

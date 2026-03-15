@@ -1,4 +1,5 @@
-// epoll-based AsyncIOProvider implementation
+// English: epoll-based AsyncIOProvider implementation
+// 한글: epoll 기반 AsyncIOProvider 구현
 
 #ifdef __linux__
 
@@ -18,7 +19,8 @@ namespace AsyncIO
 namespace Linux
 {
 // =============================================================================
-// Constructor & Destructor
+// English: Constructor & Destructor
+// 한글: 생성자 및 소멸자
 // =============================================================================
 
 EpollAsyncIOProvider::EpollAsyncIOProvider()
@@ -28,12 +30,14 @@ EpollAsyncIOProvider::EpollAsyncIOProvider()
 
 EpollAsyncIOProvider::~EpollAsyncIOProvider()
 {
-	// Ensure resources are released
+	// English: Ensure resources are released
+	// 한글: 리소스 해제 보장
 	Shutdown();
 }
 
 // =============================================================================
-// Lifecycle Management
+// English: Lifecycle Management
+// 한글: 생명주기 관리
 // =============================================================================
 
 AsyncIOError EpollAsyncIOProvider::Initialize(size_t queueDepth,
@@ -42,7 +46,8 @@ AsyncIOError EpollAsyncIOProvider::Initialize(size_t queueDepth,
 	if (mInitialized)
 		return AsyncIOError::AlreadyInitialized;
 
-	// Create epoll file descriptor with close-on-exec
+	// English: Create epoll file descriptor with close-on-exec
+	// 한글: close-on-exec로 epoll 파일 디스크립터 생성
 	mEpollFd = epoll_create1(EPOLL_CLOEXEC);
 	if (mEpollFd < 0)
 	{
@@ -52,7 +57,8 @@ AsyncIOError EpollAsyncIOProvider::Initialize(size_t queueDepth,
 
 	mMaxConcurrentOps = maxConcurrent;
 
-	// Initialize provider info
+	// English: Initialize provider info
+	// 한글: 공급자 정보 초기화
 	mInfo.mPlatformType = PlatformType::Epoll;
 	mInfo.mName = "epoll";
 	mInfo.mMaxQueueDepth = queueDepth;
@@ -72,7 +78,8 @@ void EpollAsyncIOProvider::Shutdown()
 
 	std::lock_guard<std::mutex> lock(mMutex);
 
-	// Close epoll file descriptor
+	// English: Close epoll file descriptor
+	// 한글: epoll 파일 디스크립터 닫기
 	if (mEpollFd >= 0)
 	{
 		close(mEpollFd);
@@ -87,7 +94,8 @@ void EpollAsyncIOProvider::Shutdown()
 bool EpollAsyncIOProvider::IsInitialized() const { return mInitialized; }
 
 // =============================================================================
-// Socket Association
+// English: Socket Association
+// 한글: 소켓 연결
 // =============================================================================
 
 AsyncIOError EpollAsyncIOProvider::AssociateSocket(SocketHandle socket,
@@ -96,7 +104,8 @@ AsyncIOError EpollAsyncIOProvider::AssociateSocket(SocketHandle socket,
 	if (!mInitialized)
 		return AsyncIOError::NotInitialized;
 
-	// Register socket with epoll for read + error events
+	// English: Register socket with epoll for read + error events
+	// 한글: 소켓을 epoll에 읽기 + 에러 이벤트로 등록
 	struct epoll_event ev;
 	ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
 	ev.data.fd = socket;
@@ -112,23 +121,27 @@ AsyncIOError EpollAsyncIOProvider::AssociateSocket(SocketHandle socket,
 }
 
 // =============================================================================
-// Buffer Management
+// English: Buffer Management
+// 한글: 버퍼 관리
 // =============================================================================
 
 int64_t EpollAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 {
-	// epoll doesn't support pre-registered buffers (no-op)
+	// English: epoll doesn't support pre-registered buffers (no-op)
+	// 한글: epoll은 사전 등록 버퍼를 지원하지 않음 (no-op)
 	return -1;
 }
 
 AsyncIOError EpollAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
 {
-	// Not supported on epoll
+	// English: Not supported on epoll
+	// 한글: epoll에서 지원하지 않음
 	return AsyncIOError::PlatformNotSupported;
 }
 
 // =============================================================================
-// Async I/O Operations
+// English: Async I/O Operations
+// 한글: 비동기 I/O 작업
 // =============================================================================
 
 AsyncIOError EpollAsyncIOProvider::SendAsync(SocketHandle socket,
@@ -143,7 +156,8 @@ AsyncIOError EpollAsyncIOProvider::SendAsync(SocketHandle socket,
 
 	std::lock_guard<std::mutex> lock(mMutex);
 
-	// Store pending operation with buffer copy
+	// English: Store pending operation with buffer copy
+	// 한글: 버퍼 복사와 함께 대기 작업 저장
 	PendingOperation pending;
 	pending.mContext = context;
 	pending.mType = AsyncIOType::Send;
@@ -157,7 +171,8 @@ AsyncIOError EpollAsyncIOProvider::SendAsync(SocketHandle socket,
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
 
-	// Dynamically add EPOLLOUT so we get notified when socket is writable
+	// English: Dynamically add EPOLLOUT so we get notified when socket is writable
+	// 한글: 소켓이 쓰기 가능할 때 알림을 받기 위해 EPOLLOUT 동적 추가
 	struct epoll_event ev;
 	ev.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
 	ev.data.fd = socket;
@@ -184,7 +199,8 @@ AsyncIOError EpollAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 	std::lock_guard<std::mutex> lock(mMutex);
 
-	// Store pending operation (caller manages buffer)
+	// English: Store pending operation (caller manages buffer)
+	// 한글: 대기 작업 저장 (호출자가 버퍼 관리)
 	PendingOperation pending;
 	pending.mContext = context;
 	pending.mType = AsyncIOType::Recv;
@@ -202,7 +218,8 @@ AsyncIOError EpollAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 AsyncIOError EpollAsyncIOProvider::FlushRequests()
 {
-	// epoll doesn't support batch processing (no-op)
+	// English: epoll doesn't support batch processing (no-op)
+	// 한글: epoll은 배치 처리를 지원하지 않음 (no-op)
 	if (!mInitialized)
 		return AsyncIOError::NotInitialized;
 
@@ -210,7 +227,8 @@ AsyncIOError EpollAsyncIOProvider::FlushRequests()
 }
 
 // =============================================================================
-// Completion Processing
+// English: Completion Processing
+// 한글: 완료 처리
 // =============================================================================
 
 int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
@@ -221,7 +239,8 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 	if (!entries || maxEntries == 0 || mEpollFd < 0)
 		return static_cast<int>(AsyncIOError::InvalidParameter);
 
-	// Poll for events
+	// English: Poll for events
+	// 한글: 이벤트 폴링
 	std::unique_ptr<struct epoll_event[]> events(
 		new struct epoll_event[maxEntries]);
 	int numEvents = epoll_wait(mEpollFd, events.get(),
@@ -244,10 +263,12 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		SocketHandle socket = events[i].data.fd;
 		uint32_t evFlags = events[i].events;
 
-		// Handle error / hangup events
+		// English: Handle error / hangup events
+		// 한글: 에러 / 연결 끊김 이벤트 처리
 		if (evFlags & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
 		{
-			// Find any pending op context for this socket for disconnect reporting
+			// English: Find any pending op context for this socket for disconnect reporting
+			// 한글: 연결 해제 보고용 소켓의 대기 중인 작업 컨텍스트 검색
 			std::lock_guard<std::mutex> lock(mMutex);
 			RequestContext ctx = 0;
 			auto rit = mPendingRecvOps.find(socket);
@@ -278,7 +299,8 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			continue;
 		}
 
-		// Handle EPOLLIN (readable)
+		// English: Handle EPOLLIN (readable)
+		// 한글: EPOLLIN (읽기 가능) 처리
 		if (evFlags & EPOLLIN)
 		{
 			PendingOperation pending;
@@ -339,7 +361,8 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			}
 		}
 
-		// Handle EPOLLOUT (writable) - execute send then remove EPOLLOUT
+		// English: Handle EPOLLOUT (writable) - execute send then remove EPOLLOUT
+		// 한글: EPOLLOUT (쓰기 가능) 처리 - 송신 실행 후 EPOLLOUT 제거
 		if ((evFlags & EPOLLOUT) && processedCount < static_cast<int>(maxEntries))
 		{
 			PendingOperation pending;
@@ -358,7 +381,8 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 
 			if (found)
 			{
-				// Remove EPOLLOUT after consuming send op
+				// English: Remove EPOLLOUT after consuming send op
+				// 한글: 송신 작업 소비 후 EPOLLOUT 제거
 				struct epoll_event ev;
 				ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
 				ev.data.fd = socket;
@@ -391,7 +415,8 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			}
 			else
 			{
-				// No pending send op - remove EPOLLOUT to avoid busy loop
+				// English: No pending send op - remove EPOLLOUT to avoid busy loop
+				// 한글: 대기 중인 송신 작업 없음 - busy loop 방지를 위해 EPOLLOUT 제거
 				struct epoll_event ev;
 				ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
 				ev.data.fd = socket;
@@ -404,7 +429,8 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 }
 
 // =============================================================================
-// Information & Statistics
+// English: Information & Statistics
+// 한글: 정보 및 통계
 // =============================================================================
 
 const ProviderInfo &EpollAsyncIOProvider::GetInfo() const { return mInfo; }
@@ -417,7 +443,8 @@ const char *EpollAsyncIOProvider::GetLastError() const
 }
 
 // =============================================================================
-// Factory Function
+// English: Factory Function
+// 한글: 팩토리 함수
 // =============================================================================
 
 std::unique_ptr<AsyncIOProvider> CreateEpollProvider()

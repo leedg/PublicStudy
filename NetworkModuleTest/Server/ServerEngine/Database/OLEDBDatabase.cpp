@@ -1,4 +1,5 @@
-// OLE DB implementation of database interfaces (Windows only)
+// English: OLE DB implementation of database interfaces (Windows only)
+// 한글: 데이터베이스 인터페이스의 OLE DB 구현 (Windows 전용)
 
 #ifdef _WIN32
 
@@ -8,7 +9,8 @@
 #include <sstream>
 #include <stdexcept>
 
-// Wide-string helpers
+// English: Wide-string helpers
+// 한글: 와이드 문자열 헬퍼
 static std::wstring ToWide(const std::string &s)
 {
     if (s.empty()) return {};
@@ -29,7 +31,8 @@ static std::string ToUTF8(const wchar_t *w, int wlen = -1)
     return s;
 }
 
-// Extract OLE DB error description via IErrorInfo
+// English: Extract OLE DB error description via IErrorInfo
+// 한글: IErrorInfo를 통해 OLE DB 오류 설명 추출
 static std::string GetOLEDBError(HRESULT hr)
 {
     IErrorInfo *pErr = nullptr;
@@ -81,23 +84,27 @@ void OLEDBDatabase::Connect(const DatabaseConfig &config)
 {
     if (mConnected) return;
 
-    // Initialize COM (MULTITHREADED — safe in IOCP environment)
+    // English: Initialize COM (MULTITHREADED — safe in IOCP environment)
+    // 한글: COM 초기화 (MULTITHREADED — IOCP 환경에서 안전)
     HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     if (FAILED(hr) && hr != RPC_E_CHANGED_MODE)
         ThrowOLEDB("CoInitializeEx", hr);
     mCOMInitialized = (hr == S_OK); // S_FALSE means already initialized on this thread
 
-    // Use IDataInitialize to parse the connection string
+    // English: Use IDataInitialize to parse the connection string
+    // 한글: IDataInitialize로 연결 문자열을 파싱하여 데이터 소스 생성
     IDataInitialize *pDataInit = nullptr;
     hr = CoCreateInstance(CLSID_MSDAINITIALIZE, nullptr, CLSCTX_INPROC_SERVER,
                           IID_IDataInitialize, reinterpret_cast<void **>(&pDataInit));
     if (FAILED(hr)) ThrowOLEDB("CoCreateInstance(MSDAINITIALIZE)", hr);
 
-    // Determine which connection string to use
+    // English: Determine which connection string to use
+    // 한글: 사용할 연결 문자열 결정
     std::string connStr = config.mConnectionString;
     if (connStr.empty())
     {
-        // Build from structured config fields
+        // English: Build from structured config fields
+        // 한글: 구조체 필드에서 연결 문자열 빌드
         connStr = "Provider=SQLOLEDB;"
                   "Data Source=" + config.mHost + "," + std::to_string(config.mPort) + ";"
                   "Initial Catalog=" + config.mDatabase + ";"
@@ -159,15 +166,18 @@ std::unique_ptr<IStatement> OLEDBDatabase::CreateStatement()
     if (!mConnected)
         throw DatabaseException("OLEDBDatabase not connected");
 
-    // Create a dedicated connection for this statement (mOwnerConn pattern)
+    // English: Create a dedicated connection for this statement (mOwnerConn pattern)
+    // 한글: 이 statement 전용 연결 생성 (mOwnerConn 패턴)
     auto conn = std::make_unique<OLEDBConnection>(mDataSource, mConfig.mConnectionString);
     conn->Open(mConfig.mConnectionString);
     IDBCreateCommand *session = conn->GetSession();
     return std::make_unique<OLEDBStatement>(session, std::move(conn));
 }
 
-// IDatabase-level transactions are not supported for OLE DB —
+// English: IDatabase-level transactions are not supported for OLE DB —
 //          use IConnection (CreateConnection()) for transaction control.
+// 한글: OLE DB에서 IDatabase 수준 트랜잭션은 지원하지 않음 —
+//       트랜잭션은 CreateConnection()으로 얻은 IConnection 사용.
 void OLEDBDatabase::BeginTransaction()
 {
     throw DatabaseException(
@@ -206,24 +216,28 @@ void OLEDBConnection::Open(const std::string & /*connectionString*/)
 {
     if (mConnected) return;
 
-    // QI IDBCreateSession from the already-initialized data source
+    // English: QI IDBCreateSession from the already-initialized data source
+    // 한글: 초기화된 데이터 소스에서 IDBCreateSession QI
     IDBCreateSession *pCreateSession = nullptr;
     HRESULT hr = mDataSource->QueryInterface(IID_IDBCreateSession,
                                              reinterpret_cast<void **>(&pCreateSession));
     if (FAILED(hr)) ThrowOLEDB("QI IDBCreateSession", hr);
 
-    // Create a session that also exposes IDBCreateCommand
+    // English: Create a session that also exposes IDBCreateCommand
+    // 한글: IDBCreateCommand도 노출하는 세션 생성
     hr = pCreateSession->CreateSession(nullptr, IID_IDBCreateCommand,
                                        reinterpret_cast<IUnknown **>(&mSession));
     pCreateSession->Release();
     if (FAILED(hr)) ThrowOLEDB("IDBCreateSession::CreateSession", hr);
 
-    // QI ITransactionLocal for explicit transaction control
+    // English: QI ITransactionLocal for explicit transaction control
+    // 한글: 명시적 트랜잭션 제어를 위해 ITransactionLocal QI
     hr = mSession->QueryInterface(IID_ITransactionLocal,
                                   reinterpret_cast<void **>(&mTransaction));
     if (FAILED(hr))
     {
-        // Not all providers support ITransactionLocal — proceed without it
+        // English: Not all providers support ITransactionLocal — proceed without it
+        // 한글: 모든 공급자가 ITransactionLocal을 지원하지는 않음 — 없이 진행
         mTransaction = nullptr;
     }
 
@@ -352,11 +366,14 @@ void OLEDBStatement::ClearParameters()
 
 void OLEDBStatement::Close()
 {
-    // Nothing to release here — command objects are local to Execute*
+    // English: Nothing to release here — command objects are local to Execute*
+    // 한글: 여기서 해제할 것 없음 — command 객체는 Execute* 내부에 로컬
 }
 
-// Build a flat parameter buffer and create an accessor on the command.
+// English: Build a flat parameter buffer and create an accessor on the command.
 //          Buffer layout per slot: DBSTATUS(4) | DBLENGTH(4) | value(variable)
+// 한글: 파라미터 버퍼 및 accessor 생성.
+//       슬롯당 레이아웃: DBSTATUS(4) | DBLENGTH(4) | 값(가변)
 void OLEDBStatement::BuildParamAccessor(ICommandText *cmd, HACCESSOR &hAcc,
                                         std::vector<BYTE> &buf)
 {
@@ -410,7 +427,8 @@ void OLEDBStatement::BuildParamAccessor(ICommandText *cmd, HACCESSOR &hAcc,
 
     buf.assign(offset, 0);
 
-    // Populate each slot in the buffer
+    // English: Populate each slot in the buffer
+    // 한글: 버퍼의 각 슬롯 채우기
     DBLENGTH slotOffset = 0;
     for (size_t i = 0; i < n; ++i)
     {
@@ -453,7 +471,8 @@ void OLEDBStatement::BuildParamAccessor(ICommandText *cmd, HACCESSOR &hAcc,
             break;
         case ParamValue::Type::Text:
         {
-            // Copy wide string, max kTextBufW bytes (no NUL counted in DBLENGTH)
+            // English: Copy wide string, max kTextBufW bytes (no NUL counted in DBLENGTH)
+            // 한글: 와이드 문자열 복사; DBLENGTH는 NUL 제외 바이트 수
             size_t bytes = p.text.size() * sizeof(wchar_t);
             if (bytes > kTextBufW) bytes = kTextBufW;
             memcpy(pValue, p.text.c_str(), bytes);
@@ -467,7 +486,8 @@ void OLEDBStatement::BuildParamAccessor(ICommandText *cmd, HACCESSOR &hAcc,
         }
     }
 
-    // Create parameter accessor
+    // English: Create parameter accessor
+    // 한글: 파라미터 accessor 생성
     IAccessor *pAccessor = nullptr;
     HRESULT hr = cmd->QueryInterface(IID_IAccessor, reinterpret_cast<void **>(&pAccessor));
     if (FAILED(hr)) ThrowOLEDB("QI IAccessor (param)", hr);
@@ -488,18 +508,21 @@ IRowset *OLEDBStatement::ExecuteInternal(DBROWCOUNT *pRowsAffected)
     if (mQuery.empty())
         throw DatabaseException("OLEDBStatement: query not set");
 
-    // Create command object
+    // English: Create command object
+    // 한글: 커맨드 객체 생성
     ICommandText *pCmd = nullptr;
     HRESULT hr = mCommandFactory->CreateCommand(nullptr, IID_ICommandText,
                                                 reinterpret_cast<IUnknown **>(&pCmd));
     if (FAILED(hr)) ThrowOLEDB("IDBCreateCommand::CreateCommand", hr);
 
-    // Set the query text (DBGUID_DEFAULT lets the provider parse the dialect)
+    // English: Set the query text (DBGUID_DEFAULT lets the provider parse the dialect)
+    // 한글: 쿼리 텍스트 설정 (DBGUID_DEFAULT로 공급자가 방언 파싱)
     std::wstring wQuery = ToWide(mQuery);
     hr = pCmd->SetCommandText(DBGUID_DEFAULT, wQuery.c_str());
     if (FAILED(hr)) { pCmd->Release(); ThrowOLEDB("ICommandText::SetCommandText", hr); }
 
-    // Build parameter accessor (if parameters are bound)
+    // English: Build parameter accessor (if parameters are bound)
+    // 한글: 파라미터 accessor 빌드 (파라미터가 있을 때)
     HACCESSOR hParamAcc = DB_NULL_HACCESSOR;
     std::vector<BYTE> paramBuf;
     if (!mParams.empty())
@@ -508,7 +531,8 @@ IRowset *OLEDBStatement::ExecuteInternal(DBROWCOUNT *pRowsAffected)
         catch (...) { pCmd->Release(); throw; }
     }
 
-    // Build DBPARAMS (pass nullptr if no parameters)
+    // English: Build DBPARAMS (pass nullptr if no parameters)
+    // 한글: DBPARAMS 빌드 (파라미터 없으면 nullptr)
     DBPARAMS dbParams{};
     DBPARAMS *pDbParams = nullptr;
     if (hParamAcc != DB_NULL_HACCESSOR)
@@ -519,14 +543,16 @@ IRowset *OLEDBStatement::ExecuteInternal(DBROWCOUNT *pRowsAffected)
         pDbParams           = &dbParams;
     }
 
-    // Execute the command
+    // English: Execute the command
+    // 한글: 커맨드 실행
     DBROWCOUNT rowsAffected = 0;
     IRowset *pRowset        = nullptr;
     hr = pCmd->Execute(nullptr, IID_IRowset,
                        pDbParams, &rowsAffected,
                        reinterpret_cast<IUnknown **>(&pRowset));
 
-    // Release parameter accessor before checking result
+    // English: Release parameter accessor before checking result
+    // 한글: 결과 확인 전 파라미터 accessor 해제
     if (hParamAcc != DB_NULL_HACCESSOR)
     {
         IAccessor *pAcc = nullptr;
@@ -639,7 +665,8 @@ void OLEDBResultSet::LoadMetadata()
     if (mMetadataLoaded) return;
     mMetadataLoaded = true;
 
-    // QI IColumnsInfo to get column metadata
+    // English: QI IColumnsInfo to get column metadata
+    // 한글: IColumnsInfo QI로 컬럼 메타데이터 획득
     IColumnsInfo *pColInfo = nullptr;
     HRESULT hr = mRowset->QueryInterface(IID_IColumnsInfo,
                                          reinterpret_cast<void **>(&pColInfo));
@@ -652,13 +679,15 @@ void OLEDBResultSet::LoadMetadata()
     pColInfo->Release();
     if (FAILED(hr)) ThrowOLEDB("IColumnsInfo::GetColumnInfo", hr);
 
-    // Skip bookmark column (iOrdinal == 0) — bind all data columns as WSTR
+    // English: Skip bookmark column (iOrdinal == 0) — bind all data columns as WSTR
+    // 한글: 북마크 컬럼(iOrdinal==0) 스킵 — 모든 데이터 컬럼을 WSTR로 바인딩
     DBLENGTH rowBufOffset = 0;
     for (DBORDINAL i = 0; i < nCols; ++i)
     {
         if (pCI[i].iOrdinal == 0) continue; // skip bookmark
 
-        // Column name — lower-case for case-insensitive lookup
+        // English: Column name — lower-case for case-insensitive lookup
+        // 한글: 컬럼명 — 대소문자 무관 조회를 위해 소문자 변환
         std::string name;
         if (pCI[i].pwszName)
             name = ToUTF8(pCI[i].pwszName, -1);
@@ -684,7 +713,8 @@ void OLEDBResultSet::LoadMetadata()
     mRowBuffer.assign(rowBufOffset, 0);
     mRowCache.assign(mColumnNames.size(), ColumnData{});
 
-    // Create row accessor
+    // English: Create row accessor
+    // 한글: 행 accessor 생성
     hr = mRowset->QueryInterface(IID_IAccessor,
                                  reinterpret_cast<void **>(&mRowAccessor));
     if (FAILED(hr)) ThrowOLEDB("QI IAccessor (row)", hr);
@@ -704,7 +734,8 @@ bool OLEDBResultSet::Next()
     LoadMetadata();
     ReleaseCurrentRow();
 
-    // Invalidate row cache
+    // English: Invalidate row cache
+    // 한글: 행 캐시 무효화
     for (auto &c : mRowCache) c = ColumnData{};
 
     DBCOUNTITEM nFetched = 0;
@@ -721,7 +752,8 @@ bool OLEDBResultSet::Next()
 
     mCurrentRow = hRow;
 
-    // Fetch row data into buffer
+    // English: Fetch row data into buffer
+    // 한글: 행 데이터를 버퍼로 가져오기
     hr = mRowset->GetData(mCurrentRow, mHRowAccessor, mRowBuffer.data());
     if (FAILED(hr)) ThrowOLEDB("IRowset::GetData", hr);
 
@@ -750,7 +782,8 @@ const OLEDBResultSet::ColumnData &OLEDBResultSet::FetchColumn(size_t colIdx)
     }
 
     DBLENGTH byteLen = *reinterpret_cast<const DBLENGTH *>(pLength);
-    // byteLen is byte count of wide chars; convert to wchar count
+    // English: byteLen is byte count of wide chars; convert to wchar count
+    // 한글: byteLen은 와이드 문자의 바이트 수; wchar 개수로 변환
     int wcharCount = static_cast<int>(byteLen / sizeof(wchar_t));
     slot.value = ToUTF8(reinterpret_cast<const wchar_t *>(pValue), wcharCount);
     return slot;
@@ -789,7 +822,8 @@ bool OLEDBResultSet::GetBool(size_t columnIndex)
 {
     const auto &c = FetchColumn(columnIndex);
     if (c.isNull) return false;
-    // Accept "1", "-1" (VARIANT_TRUE), "true", "TRUE", non-zero strings
+    // English: Accept "1", "-1" (VARIANT_TRUE), "true", "TRUE", non-zero strings
+    // 한글: "1", "-1"(VARIANT_TRUE), "true", "TRUE", 0이 아닌 숫자 문자열 허용
     if (c.value == "1" || c.value == "-1") return true;
     if (c.value == "0") return false;
     std::string lower = c.value;
@@ -813,7 +847,8 @@ std::string OLEDBResultSet::GetColumnName(size_t columnIndex) const
 
 size_t OLEDBResultSet::FindColumn(const std::string &columnName) const
 {
-    // Case-insensitive search (both stored and query name lower-cased)
+    // English: Case-insensitive search (both stored and query name lower-cased)
+    // 한글: 대소문자 무관 검색 (저장된 이름과 조회 이름 모두 소문자)
     std::string lower = columnName;
     std::transform(lower.begin(), lower.end(), lower.begin(),
                    [](unsigned char c){ return static_cast<char>(::tolower(c)); });

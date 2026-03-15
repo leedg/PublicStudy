@@ -1,9 +1,13 @@
 #pragma once
 
-// io_uring-based AsyncIOProvider implementation for Linux kernel 5.1+
+// English: io_uring-based AsyncIOProvider implementation for Linux kernel 5.1+
 //          Requires liburing-dev (apt install liburing-dev / dnf install liburing-devel).
 //          Enabled only when HAVE_LIBURING is defined by the build system (CMake find_library check).
 //          If liburing is unavailable the factory falls back to epoll automatically.
+// 한글: Linux 커널 5.1+ 용 io_uring 기반 AsyncIOProvider 구현
+//       liburing-dev 패키지 필요 (apt install liburing-dev / dnf install liburing-devel).
+//       빌드 시스템(CMake find_library)이 HAVE_LIBURING을 정의한 경우에만 활성화.
+//       liburing이 없으면 팩토리가 자동으로 epoll로 폴백.
 
 #include "Network/Core/AsyncIOProvider.h"
 
@@ -23,24 +27,29 @@ namespace AsyncIO
 namespace Linux
 {
 // =============================================================================
-// io_uring-based AsyncIOProvider Implementation (Linux kernel 5.1+)
+// English: io_uring-based AsyncIOProvider Implementation (Linux kernel 5.1+)
+// 한글: io_uring 기반 AsyncIOProvider 구현 (Linux 커널 5.1+)
 // =============================================================================
 
 class IOUringAsyncIOProvider : public AsyncIOProvider
 {
   public:
-	// Constructor
+	// English: Constructor
+	// 한글: 생성자
 	IOUringAsyncIOProvider();
 
-	// Destructor - releases io_uring resources
+	// English: Destructor - releases io_uring resources
+	// 한글: 소멸자 - io_uring 리소스 해제
 	virtual ~IOUringAsyncIOProvider();
 
-	// Prevent copy (move-only semantics)
+	// English: Prevent copy (move-only semantics)
+	// 한글: 복사 방지 (move-only 의미론)
 	IOUringAsyncIOProvider(const IOUringAsyncIOProvider &) = delete;
 	IOUringAsyncIOProvider &operator=(const IOUringAsyncIOProvider &) = delete;
 
 	// =====================================================================
-	// Lifecycle Management
+	// English: Lifecycle Management
+	// 한글: 생명주기 관리
 	// =====================================================================
 
 	AsyncIOError Initialize(size_t queueDepth, size_t maxConcurrent) override;
@@ -48,21 +57,24 @@ class IOUringAsyncIOProvider : public AsyncIOProvider
 	bool IsInitialized() const override;
 
 	// =====================================================================
-	// Socket Association
+	// English: Socket Association
+	// 한글: 소켓 연결
 	// =====================================================================
 
 	AsyncIOError AssociateSocket(SocketHandle socket,
 								RequestContext context) override;
 
 	// =====================================================================
-	// Buffer Management
+	// English: Buffer Management
+	// 한글: 버퍼 관리
 	// =====================================================================
 
 	int64_t RegisterBuffer(const void *ptr, size_t size) override;
 	AsyncIOError UnregisterBuffer(int64_t bufferId) override;
 
 	// =====================================================================
-	// Async I/O Requests
+	// English: Async I/O Requests
+	// 한글: 비동기 I/O 요청
 	// =====================================================================
 
 	AsyncIOError SendAsync(SocketHandle socket, const void *buffer, size_t size,
@@ -74,14 +86,16 @@ class IOUringAsyncIOProvider : public AsyncIOProvider
 	AsyncIOError FlushRequests() override;
 
 	// =====================================================================
-	// Completion Processing
+	// English: Completion Processing
+	// 한글: 완료 처리
 	// =====================================================================
 
 	int ProcessCompletions(CompletionEntry *entries, size_t maxEntries,
 							   int timeoutMs = 0) override;
 
 	// =====================================================================
-	// Information & Statistics
+	// English: Information & Statistics
+	// 한글: 정보 및 통계
 	// =====================================================================
 
 	const ProviderInfo &GetInfo() const override;
@@ -90,67 +104,80 @@ class IOUringAsyncIOProvider : public AsyncIOProvider
 
   private:
 	// =====================================================================
-	// Internal Data Structures
+	// English: Internal Data Structures
+	// 한글: 내부 데이터 구조
 	// =====================================================================
 
-	// Pending operation tracking
+	// English: Pending operation tracking
+	// 한글: 대기 작업 추적
 	struct PendingOperation
 	{
-		RequestContext mContext;      // User request context
-		AsyncIOType    mType;         // Operation type
-		SocketHandle   mSocket;       // Socket handle
-		void*          mCallerBuffer; // Recv destination (nullptr for send)
-		void*          mPoolSlotPtr;  // Pool slot pointer (recv fixed buf or send buf)
-		uint32_t       mBufferSize;   // Buffer size
-		size_t         mPoolSlotIndex;// Pool slot index for Release()
+		RequestContext mContext;      // English: User request context / 한글: 사용자 요청 컨텍스트
+		AsyncIOType    mType;         // English: Operation type / 한글: 작업 타입
+		SocketHandle   mSocket;       // English: Socket handle / 한글: 소켓 핸들
+		void*          mCallerBuffer; // English: Recv destination (nullptr for send) / 한글: 수신 목적지 버퍼
+		void*          mPoolSlotPtr;  // English: Pool slot pointer (recv fixed buf or send buf) / 한글: 풀 슬롯 포인터
+		uint32_t       mBufferSize;   // English: Buffer size / 한글: 버퍼 크기
+		size_t         mPoolSlotIndex;// English: Pool slot index for Release() / 한글: Release() 용 슬롯 인덱스
 	};
 
-	// Registered buffer info
+	// English: Registered buffer info
+	// 한글: 등록된 버퍼 정보
 	struct RegisteredBufferEntry
 	{
-		void *mAddress;         // Buffer address
-		uint32_t mSize;         // Buffer size
-		int32_t mBufferGroupId; // Buffer group ID
+		void *mAddress;         // English: Buffer address / 한글: 버퍼 주소
+		uint32_t mSize;         // English: Buffer size / 한글: 버퍼 크기
+		int32_t mBufferGroupId; // English: Buffer group ID / 한글: 버퍼 그룹 ID
 	};
 
 	// =====================================================================
-	// Member Variables
+	// English: Member Variables
+	// 한글: 멤버 변수
 	// =====================================================================
 
-	io_uring mRing; // io_uring ring
+	io_uring mRing; // English: io_uring ring / 한글: io_uring 링
 	std::map<uint64_t, PendingOperation>
-		mPendingOps; // Pending ops by user_data
+		mPendingOps; // English: Pending ops by user_data / 한글: user_data별
+					 // 대기 작업
 	std::map<int64_t, RegisteredBufferEntry>
-		mRegisteredBuffers; // Registered buffers
+		mRegisteredBuffers; // English: Registered buffers / 한글: 등록된 버퍼
 	mutable std::mutex
-		mMutex; // Thread safety mutex
-	ProviderInfo mInfo;   // Provider info
-	ProviderStats mStats; // Statistics
+		mMutex; // English: Thread safety mutex / 한글: 스레드 안전성 뮤텍스
+	ProviderInfo mInfo;   // English: Provider info / 한글: 공급자 정보
+	ProviderStats mStats; // English: Statistics / 한글: 통계
 	std::string
-		mLastError; // Last error message
+		mLastError; // English: Last error message / 한글: 마지막 에러 메시지
 	size_t
-		mMaxConcurrentOps; // Max concurrent ops
-	int64_t mNextBufferId; // Next buffer ID
-	uint64_t mNextOpKey;   // Next operation key
-	bool mInitialized;     // Initialization flag
-	bool mSupportsFixedBuffers; // Fixed buffer support
-	bool mSupportsDirectDescriptors; // Direct descriptor support /
+		mMaxConcurrentOps; // English: Max concurrent ops / 한글: 최대 동시 작업
+	int64_t mNextBufferId; // English: Next buffer ID / 한글: 다음 버퍼 ID
+	uint64_t mNextOpKey;   // English: Next operation key / 한글: 다음 작업 키
+	bool mInitialized;     // English: Initialization flag / 한글: 초기화 플래그
+	bool mSupportsFixedBuffers; // English: Fixed buffer support / 한글: 고정
+								// 버퍼 지원
+	bool mSupportsDirectDescriptors; // English: Direct descriptor support /
+									 // 한글: 직접 디스크립터 지원
 
-	// Pre-allocated buffer pools.
+	// English: Pre-allocated buffer pools.
 	//          mRecvPool: fixed-buffer recv (io_uring_register_buffers); falls
 	//          back to non-fixed if kernel doesn't support registration.
 	//          mSendPool: standard aligned pool for staging send data.
+	// 한글: 사전 할당 버퍼 풀.
+	//       mRecvPool: 고정 버퍼 recv (io_uring_register_buffers); 커널 미지원 시 일반 모드 폴백.
+	//       mSendPool: 송신 데이터 스테이징용 표준 정렬 풀.
 	::Network::Core::Memory::IOUringBufferPool  mRecvPool;
 	::Network::Core::Memory::StandardBufferPool mSendPool;
 
 	// =====================================================================
-	// Helper Methods
+	// English: Helper Methods
+	// 한글: 헬퍼 메서드
 	// =====================================================================
 
-	// Submit pending operations to the ring
+	// English: Submit pending operations to the ring
+	// 한글: 대기 작업을 링에 제출
 	bool SubmitRing();
 
-	// Process completion queue entries
+	// English: Process completion queue entries
+	// 한글: 완료 큐 항목 처리
 	int ProcessCompletionQueue(CompletionEntry *entries, size_t maxEntries);
 };
 

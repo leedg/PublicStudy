@@ -1,4 +1,5 @@
-// NetworkEventBus implementation
+// English: NetworkEventBus implementation
+// 한글: NetworkEventBus 구현
 
 #include "NetworkEventBus.h"
 #include <algorithm>
@@ -16,9 +17,12 @@ void NetworkEventBus::Publish(NetworkEvent type, const NetworkBusEventData &data
 {
 	const auto key = static_cast<uint8_t>(type);
 
-	// Collect live channels under shared lock (snapshot), then send outside lock.
+	// English: Collect live channels under shared lock (snapshot), then send outside lock.
 	//          Avoids holding the lock during TrySend (which acquires channel-internal locks
 	//          and may copy large payloads), preventing starvation of Subscribe/Unsubscribe.
+	// 한글: shared 락 내에서 살아있는 채널만 스냅샷 수집 후, 락 해제 뒤 TrySend.
+	//       TrySend(채널 내부 락 획득 + 대용량 페이로드 복사) 중 락 보유를 피해
+	//       Subscribe/Unsubscribe 스타베이션 방지.
 	std::vector<std::shared_ptr<EventChannel>> liveChannels;
 	bool needsPrune = false;
 
@@ -45,7 +49,8 @@ void NetworkEventBus::Publish(NetworkEvent type, const NetworkBusEventData &data
 		}
 	}
 
-	// Send outside the lock — channel-internal locking and data copy happen here.
+	// English: Send outside the lock — channel-internal locking and data copy happen here.
+	// 한글: 락 해제 후 전송 — 채널 내부 락 획득 및 data 복사가 여기서 발생.
 	for (auto &channel : liveChannels)
 	{
 		if (!channel->IsShutdown())

@@ -1,4 +1,5 @@
-// Windows IOCP AsyncIOProvider implementation
+// English: Windows IOCP AsyncIOProvider implementation
+// 한글: Windows IOCP AsyncIOProvider 구현
 
 #ifdef _WIN32
 
@@ -14,7 +15,8 @@ namespace Windows
 {
 
 // =============================================================================
-// Constructor & Destructor
+// English: Constructor & Destructor
+// 한글: 생성자 및 소멸자
 // =============================================================================
 
 IocpAsyncIOProvider::IocpAsyncIOProvider()
@@ -38,7 +40,8 @@ IocpAsyncIOProvider::~IocpAsyncIOProvider()
 }
 
 // =============================================================================
-// Lifecycle Management
+// English: Lifecycle Management
+// 한글: 생명주기 관리
 // =============================================================================
 
 AsyncIOError IocpAsyncIOProvider::Initialize(size_t queueDepth,
@@ -52,7 +55,8 @@ AsyncIOError IocpAsyncIOProvider::Initialize(size_t queueDepth,
 
 	mShuttingDown.store(false, std::memory_order_release);
 
-	// Create IOCP
+	// English: Create IOCP
+	// 한글: IOCP 생성
 	DWORD concurrentThreads = maxConcurrent > 0 ? static_cast<DWORD>(maxConcurrent) : 0;
 	mCompletionPort = CreateIoCompletionPort(
 		INVALID_HANDLE_VALUE, nullptr, 0, concurrentThreads);
@@ -100,7 +104,8 @@ bool IocpAsyncIOProvider::IsInitialized() const
 }
 
 // =============================================================================
-// Socket Association
+// English: Socket Association
+// 한글: 소켓 연결
 // =============================================================================
 
 AsyncIOError IocpAsyncIOProvider::AssociateSocket(SocketHandle socket,
@@ -113,9 +118,12 @@ AsyncIOError IocpAsyncIOProvider::AssociateSocket(SocketHandle socket,
 		return AsyncIOError::NotInitialized;
 	}
 
-	// Associate the socket with the IOCP completion port
+	// English: Associate the socket with the IOCP completion port
+	// 한글: 소켓을 IOCP 완료 포트에 연결
 	// The completionKey (context) is typically the ConnectionId,
 	// which will be returned in GetQueuedCompletionStatus completionKey parameter.
+	// 완료 키(context)는 일반적으로 ConnectionId이며,
+	// GetQueuedCompletionStatus의 completionKey 매개변수로 반환됩니다.
 	HANDLE result = CreateIoCompletionPort(
 		reinterpret_cast<HANDLE>(socket),
 		mCompletionPort,
@@ -134,23 +142,27 @@ AsyncIOError IocpAsyncIOProvider::AssociateSocket(SocketHandle socket,
 }
 
 // =============================================================================
-// Buffer Management
+// English: Buffer Management
+// 한글: 버퍼 관리
 // =============================================================================
 
 int64_t IocpAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 {
-	// IOCP doesn't need buffer registration
+	// English: IOCP doesn't need buffer registration
+	// 한글: IOCP는 버퍼 등록 불필요
 	return 0;
 }
 
 AsyncIOError IocpAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
 {
-	// IOCP doesn't support buffer registration
+	// English: IOCP doesn't support buffer registration
+	// 한글: IOCP는 버퍼 등록 미지원
 	return AsyncIOError::Success;
 }
 
 // =============================================================================
-// Async I/O Requests
+// English: Async I/O Requests
+// 한글: 비동기 I/O 요청
 // =============================================================================
 
 AsyncIOError IocpAsyncIOProvider::SendAsync(SocketHandle socket,
@@ -296,12 +308,14 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 AsyncIOError IocpAsyncIOProvider::FlushRequests()
 {
-	// IOCP executes immediately, no batching
+	// English: IOCP executes immediately, no batching
+	// 한글: IOCP는 즉시 실행, 배치 없음
 	return AsyncIOError::Success;
 }
 
 // =============================================================================
-// Completion Processing
+// English: Completion Processing
+// 한글: 완료 처리
 // =============================================================================
 
 int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
@@ -413,7 +427,8 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 }
 
 // =============================================================================
-// Information & Statistics
+// English: Information & Statistics
+// 한글: 정보 및 통계
 // =============================================================================
 
 const ProviderInfo &IocpAsyncIOProvider::GetInfo() const
@@ -433,7 +448,8 @@ const char *IocpAsyncIOProvider::GetLastError() const
 }
 
 // =============================================================================
-// Factory function
+// English: Factory function
+// 한글: 팩토리 함수
 // =============================================================================
 
 std::unique_ptr<AsyncIOProvider> CreateIocpProvider()

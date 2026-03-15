@@ -1,4 +1,5 @@
-// SendBufferPool implementation
+// English: SendBufferPool implementation
+// 한글: SendBufferPool 구현
 
 #ifdef _WIN32
 
@@ -25,13 +26,15 @@ bool SendBufferPool::Initialize(size_t poolSize, size_t slotSize)
     mSlotSize = slotSize;
     mPoolSize = poolSize;
 
-    // Single aligned contiguous allocation for all slots.
+    // English: Single aligned contiguous allocation for all slots.
+    // 한글: 모든 슬롯을 위한 단일 정렬 연속 할당.
     mStorage = _aligned_malloc(poolSize * slotSize, 64);
     if (!mStorage)
         return false;
     memset(mStorage, 0, poolSize * slotSize);
 
-    // Initialize free-list stack with all indices (0 .. poolSize-1).
+    // English: Initialize free-list stack with all indices (0 .. poolSize-1).
+    // 한글: 프리리스트 스택을 모든 인덱스(0 .. poolSize-1)로 초기화.
     mFreeSlots.resize(poolSize);
     std::iota(mFreeSlots.begin(), mFreeSlots.end(), size_t(0));
 
@@ -86,7 +89,8 @@ size_t SendBufferPool::FreeCount() const
 
 char *SendBufferPool::SlotPtr(size_t idx) const
 {
-    // Stable after Initialize() — no lock needed.
+    // English: Stable after Initialize() — no lock needed.
+    // 한글: Initialize() 이후 불변 — 락 불필요.
     return static_cast<char *>(mStorage) + idx * mSlotSize;
 }
 

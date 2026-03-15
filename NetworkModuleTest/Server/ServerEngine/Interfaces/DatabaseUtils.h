@@ -1,6 +1,7 @@
 #pragma once
 
-// Database utility functions
+// English: Database utility functions
+// 한글: 데이터베이스 유틸리티 함수
 
 #include "IStatement.h"
 #include <map>
@@ -12,25 +13,30 @@ namespace Database
 {
 
 // =============================================================================
-// Database utility functions
+// English: Database utility functions
+// 한글: 데이터베이스 유틸리티 함수
 // =============================================================================
 
 /**
- * Utility functions
+ * English: Utility functions
+ * 한글: 유틸리티 함수
  */
 namespace Utils
 {
-// Build connection strings
+// English: Build connection strings
+// 한글: 연결 문자열 빌드
 std::string
 BuildODBCConnectionString(const std::map<std::string, std::string> &params);
 std::string
 BuildOLEDBConnectionString(const std::map<std::string, std::string> &params);
 
-// Type-safe parameter binding helpers
+// English: Type-safe parameter binding helpers
+// 한글: 타입 안전 파라미터 바인딩 헬퍼
 template <typename T>
 void BindParameterSafe(IStatement *pStmt, size_t index, const T &value);
 
-// Specializations
+// English: Specializations
+// 한글: 특수화
 template <>
 void BindParameterSafe<std::string>(IStatement *pStmt, size_t index,
 									const std::string &value);

@@ -1,6 +1,7 @@
 #pragma once
 
-// Typed async channel with pluggable queue backend.
+// English: Typed async channel with pluggable queue backend.
+// 한글: 백엔드 교체가 가능한 타입 기반 비동기 채널.
 
 #include "ExecutionQueue.h"
 #include <utility>
@@ -8,9 +9,11 @@
 namespace Network::Concurrency
 {
 // =============================================================================
-// Channel<T>
+// English: Channel<T>
 // - Producer/consumer utility that wraps ExecutionQueue<T>.
 //
+// 한글: Channel<T>
+// - ExecutionQueue<T>를 감싼 생산자/소비자 유틸리티.
 // =============================================================================
 
 template <typename T>

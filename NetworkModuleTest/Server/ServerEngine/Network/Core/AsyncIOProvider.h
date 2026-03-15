@@ -1,11 +1,14 @@
 #pragma once
 // encoding: UTF-8
 
-// Unified async I/O provider interface for all platforms
+// English: Unified async I/O provider interface for all platforms
+// 한글: 모든 플랫폼의 비동기 I/O를 통일하는 인터페이스
 //
 // =============================================================================
+// Design Philosophy / 설계 철학
 // =============================================================================
 //
+// English:
 // This is a LOW-LEVEL abstraction for cross-platform async I/O.
 // Use this when:
 //   - Building multi-platform network libraries
@@ -16,7 +19,16 @@
 //   - Building Windows-only servers (use IOCPNetworkEngine directly)
 //   - Need Session lifecycle management (use IOCPNetworkEngine + Session)
 //
+// 한글:
+// 크로스 플랫폼 비동기 I/O를 위한 저수준 추상화입니다.
+// 다음 경우에 사용:
+//   - 멀티플랫폼 네트워크 라이브러리 구축
+//   - Session과 독립적인 I/O 작업 필요
+//   - IOCP/RIO/epoll/io_uring 간 동적 전환 필요
 //
+// 다음 경우에는 사용하지 마세요:
+//   - Windows 전용 서버 구축 (IOCPNetworkEngine 직접 사용)
+//   - Session 생명주기 관리 필요 (IOCPNetworkEngine + Session 사용)
 // =============================================================================
 
 #include <cstdint>
@@ -26,18 +38,23 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
+// 한글: winsock2는 windows.h보다 먼저 포함해야 한다.
 #include <winsock2.h>
 #include <windows.h>
 #include <mswsock.h>
-// Windows socket handle type
+// English: Windows socket handle type
+// 한글: Windows 소켓 핸들 타입
 using SocketHandle = SOCKET;
-// Windows OS error type
+// English: Windows OS error type
+// 한글: Windows OS 에러 타입
 using OSError = DWORD;
 #else
 #include <sys/socket.h>
-// POSIX socket handle type (file descriptor)
+// English: POSIX socket handle type (file descriptor)
+// 한글: POSIX 소켓 핸들 타입 (파일 디스크립터)
 using SocketHandle = int;
-// POSIX OS error type
+// English: POSIX OS error type
+// 한글: POSIX OS 에러 타입
 using OSError = int;
 #endif
 
@@ -46,261 +63,340 @@ namespace Network
 namespace AsyncIO
 {
 // =============================================================================
-// Type Definitions
+// English: Type Definitions
+// 한글: 타입 정의
 // =============================================================================
 
-// User-defined context for async operations
+// English: User-defined context for async operations
+// 한글: 비동기 작업용 사용자 정의 컨텍스트
 using RequestContext = uint64_t;
 
-// Completion callback function type
+// English: Completion callback function type
+// 한글: 완료 콜백 함수 타입
 using CompletionCallback =
 	std::function<void(const struct CompletionEntry &, void *userData)>;
 
 // =============================================================================
-// Enumerations
+// English: Enumerations
+// 한글: 열거형
 // =============================================================================
 
-// Async I/O operation types
+// English: Async I/O operation types
+// 한글: 비동기 I/O 작업 타입
 enum class AsyncIOType : uint8_t
 {
-	// Send operation
+	// English: Send operation
+	// 한글: 송신 작업
 	Send,
 
-	// Receive operation
+	// English: Receive operation
+	// 한글: 수신 작업
 	Recv,
 
-	// Accept connection (listener)
+	// English: Accept connection (listener)
+	// 한글: 연결 수락 (리스너)
 	Accept,
 
-	// Connect request (client)
+	// English: Connect request (client)
+	// 한글: 연결 요청 (클라이언트)
 	Connect,
 
-	// Timeout (internal use)
+	// English: Timeout (internal use)
+	// 한글: 타임아웃 (내부 사용)
 	Timeout,
 
-	// Error (internal use)
+	// English: Error (internal use)
+	// 한글: 에러 (내부 사용)
 	Error,
 };
 
-// Platform types (backend implementations)
+// English: Platform types (backend implementations)
+// 한글: 플랫폼 타입 (백엔드 구현)
 // Note: These represent AsyncIO BACKEND implementations, NOT OS platforms
+// 참고: OS 플랫폼이 아니라 AsyncIO 백엔드 구현을 나타냅니다
 // - Windows: Default = IOCP, High-Performance = RIO
 // - Linux: Default = epoll, High-Performance = IOUring
 // - macOS: Always = Kqueue
 enum class PlatformType : uint8_t
 {
-	// Windows IOCP (stable, all Windows versions)
+	// English: Windows IOCP (stable, all Windows versions)
+	// 한글: Windows IOCP (안정성, 모든 Windows 버전)
 	IOCP,
 
-	// Windows Registered I/O (high-performance, Windows 8+)
+	// English: Windows Registered I/O (high-performance, Windows 8+)
+	// 한글: Windows 등록 I/O (고성능, Windows 8+)
 	RIO,
 
-	// Linux epoll (stable, all Linux)
+	// English: Linux epoll (stable, all Linux)
+	// 한글: Linux epoll (안정성, 모든 Linux)
 	Epoll,
 
-	// Linux io_uring (high-performance, kernel 5.1+)
+	// English: Linux io_uring (high-performance, kernel 5.1+)
+	// 한글: Linux io_uring (고성능, 커널 5.1+)
 	IOUring,
 
-	// macOS kqueue (standard)
+	// English: macOS kqueue (standard)
+	// 한글: macOS kqueue (표준)
 	Kqueue,
 };
 
-// Error codes for async I/O operations
+// English: Error codes for async I/O operations
+// 한글: 비동기 I/O 작업의 에러 코드
 enum class AsyncIOError : int32_t
 {
-	// Operation completed successfully
+	// English: Operation completed successfully
+	// 한글: 작업이 성공적으로 완료됨
 	Success = 0,
 
-	// Provider not initialized
+	// English: Provider not initialized
+	// 한글: 공급자가 초기화되지 않음
 	NotInitialized = -1,
 
-	// Invalid socket handle
+	// English: Invalid socket handle
+	// 한글: 잘못된 소켓 핸들
 	InvalidSocket = -2,
 
-	// Operation is pending
+	// English: Operation is pending
+	// 한글: 작업이 대기 중
 	OperationPending = -3,
 
-	// Operation failed
+	// English: Operation failed
+	// 한글: 작업이 실패함
 	OperationFailed = -4,
 
-	// Invalid buffer
+	// English: Invalid buffer
+	// 한글: 잘못된 버퍼
 	InvalidBuffer = -5,
 
-	// No resources available
+	// English: No resources available
+	// 한글: 사용 가능한 리소스 없음
 	NoResources = -6,
 
-	// Operation timed out
+	// English: Operation timed out
+	// 한글: 작업이 타임아웃됨
 	Timeout = -7,
 
-	// Platform not supported
+	// English: Platform not supported
+	// 한글: 플랫폼이 지원되지 않음
 	PlatformNotSupported = -8,
 
-	// Already initialized
+	// English: Already initialized
+	// 한글: 이미 초기화됨
 	AlreadyInitialized = -9,
 
-	// Invalid parameter
+	// English: Invalid parameter
+	// 한글: 잘못된 매개변수
 	InvalidParameter = -10,
 
-	// Memory allocation failed
+	// English: Memory allocation failed
+	// 한글: 메모리 할당 실패
 	AllocationFailed = -11,
 
-	// Resource exhausted
+	// English: Resource exhausted
+	// 한글: 리소스 고갈
 	ResourceExhausted = -12,
 };
 
-// Buffer registration policy
+// English: Buffer registration policy
+// 한글: 버퍼 등록 정책
 enum class BufferPolicy : uint8_t
 {
-	// Buffer can be reused for multiple operations
+	// English: Buffer can be reused for multiple operations
+	// 한글: 버퍼를 여러 작업에 재사용 가능
 	Reuse,
 
-	// Buffer is used once then freed
+	// English: Buffer is used once then freed
+	// 한글: 버퍼를 한 번 사용 후 해제
 	SingleUse,
 
-	// Buffer is from a pool
+	// English: Buffer is from a pool
+	// 한글: 버퍼가 풀에서 제공됨
 	Pooled,
 };
 
 // =============================================================================
-// Structures
+// English: Structures
+// 한글: 구조체
 // =============================================================================
 
-// Completion entry from I/O completion
+// English: Completion entry from I/O completion
+// 한글: I/O 완료 항목
 struct CompletionEntry
 {
-	// Request context (user-defined ID)
+	// English: Request context (user-defined ID)
+	// 한글: 요청 컨텍스트 (사용자 정의 ID)
 	RequestContext mContext;
 
-	// Type of operation (Send/Recv/etc)
+	// English: Type of operation (Send/Recv/etc)
+	// 한글: 작업 타입 (Send/Recv 등)
 	AsyncIOType mType;
 
-	// Bytes transferred or error code
+	// English: Bytes transferred or error code
+	// 한글: 전송된 바이트 수 또는 에러 코드
 	int32_t mResult;
 
-	// System error code (0 = success)
+	// English: System error code (0 = success)
+	// 한글: 시스템 에러 코드 (0 = 성공)
 	OSError mOsError;
 
-	// Completion time in nanoseconds (optional)
+	// English: Completion time in nanoseconds (optional)
+	// 한글: 완료 시간 (나노초, 선택사항)
 	uint64_t mCompletionTime;
 };
 
-// Send/Receive buffer structure
+// English: Send/Receive buffer structure
+// 한글: 송수신 버퍼 구조체
 struct IOBuffer
 {
-	// Buffer pointer
+	// English: Buffer pointer
+	// 한글: 버퍼 포인터
 	void *mData;
 
-	// Buffer size
+	// English: Buffer size
+	// 한글: 버퍼 크기
 	size_t mSize;
 
-	// Offset (can be used instead of RIO BufferId)
+	// English: Offset (can be used instead of RIO BufferId)
+	// 한글: 오프셋 (RIO BufferId 대신 사용 가능)
 	size_t mOffset;
 };
 
-// Provider information structure
+// English: Provider information structure
+// 한글: 공급자 정보 구조체
 struct ProviderInfo
 {
-	// Platform type (backend implementation)
+	// English: Platform type (backend implementation)
+	// 한글: 플랫폼 타입 (백엔드 구현)
 	PlatformType mPlatformType;
 
-	// Human-readable name ("IOCP", "RIO", "io_uring", etc)
+	// English: Human-readable name ("IOCP", "RIO", "io_uring", etc)
+	// 한글: 사람이 읽을 수 있는 이름 ("IOCP", "RIO", "io_uring" 등)
 	const char *mName;
 
-	// Capabilities flags (supported features)
+	// English: Capabilities flags (supported features)
+	// 한글: 기능 플래그 (지원 기능)
 	uint32_t mCapabilities;
 
-	// Maximum queue depth
+	// English: Maximum queue depth
+	// 한글: 최대 큐 깊이
 	size_t mMaxQueueDepth;
 
-	// Maximum concurrent requests
+	// English: Maximum concurrent requests
+	// 한글: 최대 동시 요청
 	size_t mMaxConcurrentReq;
 
-	// Buffer pre-registration support
+	// English: Buffer pre-registration support
+	// 한글: 버퍼 사전 등록 지원
 	bool mSupportsBufferReg;
 
-	// Batch processing support
+	// English: Batch processing support
+	// 한글: 배치 처리 지원
 	bool mSupportsBatching;
 
-	// Zero-copy support
+	// English: Zero-copy support
+	// 한글: Zero-copy 지원
 	bool mSupportsZeroCopy;
 };
 
-// Provider statistics structure
+// English: Provider statistics structure
+// 한글: 공급자 통계 구조체
 struct ProviderStats
 {
-	// Total number of requests
+	// English: Total number of requests
+	// 한글: 전체 요청 수
 	uint64_t mTotalRequests;
 
-	// Total number of completions
+	// English: Total number of completions
+	// 한글: 전체 완료 수
 	uint64_t mTotalCompletions;
 
-	// Number of pending requests
+	// English: Number of pending requests
+	// 한글: 대기 중인 요청 수
 	uint64_t mPendingRequests;
 
-	// Average latency in nanoseconds
+	// English: Average latency in nanoseconds
+	// 한글: 평균 레이턴시 (나노초)
 	uint64_t mAvgLatency;
 
-	// P99 latency
+	// English: P99 latency
+	// 한글: P99 레이턴시
 	double mP99Latency;
 
-	// Error count
+	// English: Error count
+	// 한글: 에러 수
 	uint64_t mErrorCount;
 };
 
-// Platform information (for detection)
+// English: Platform information (for detection)
+// 한글: 플랫폼 정보 (감지용)
 struct PlatformInfo
 {
-	// Detected platform type
+	// English: Detected platform type
+	// 한글: 감지된 플랫폼 타입
 	PlatformType mPlatformType;
 
-	// OS major version
+	// English: OS major version
+	// 한글: OS 주 버전
 	uint32_t mMajorVersion;
 
-	// OS minor version
+	// English: OS minor version
+	// 한글: OS 부 버전
 	uint32_t mMinorVersion;
 
-	// Human-readable platform name
+	// English: Human-readable platform name
+	// 한글: 사람이 읽을 수 있는 플랫폼 이름
 	const char *mPlatformName;
 
-	// Windows RIO support
+	// English: Windows RIO support
+	// 한글: Windows RIO 지원
 	bool mSupportRIO;
 
-	// Linux io_uring support
+	// English: Linux io_uring support
+	// 한글: Linux io_uring 지원
 	bool mSupportIOUring;
 
-	// macOS kqueue support
+	// English: macOS kqueue support
+	// 한글: macOS kqueue 지원
 	bool mSupportKqueue;
 };
 
-// Buffer registration result
+// English: Buffer registration result
+// 한글: 버퍼 등록 결과
 struct BufferRegistration
 {
-	// Buffer ID (for future reference)
+	// English: Buffer ID (for future reference)
+	// 한글: 버퍼 ID (향후 참조용)
 	int64_t mBufferId;
 
-	// Registration successful?
+	// English: Registration successful?
+	// 한글: 등록 성공 여부
 	bool mSuccess;
 
-	// Error code if failed
+	// English: Error code if failed
+	// 한글: 실패 시 에러 코드
 	int32_t mErrorCode;
 };
 
 // =============================================================================
-// Abstract Interface: AsyncIOProvider
+// English: Abstract Interface: AsyncIOProvider
+// 한글: 추상 인터페이스: AsyncIOProvider
 // =============================================================================
 
 class AsyncIOProvider
 {
   public:
-	// Virtual destructor
+	// English: Virtual destructor
+	// 한글: 가상 소멸자
 	virtual ~AsyncIOProvider() = default;
 
 	// =====================================================================
-	// Lifecycle Management
+	// English: Lifecycle Management
+	// 한글: 생명주기 관리
 	// =====================================================================
 
 	/**
-	 * Initialize async I/O provider
+	 * English: Initialize async I/O provider
+	 * 한글: 비동기 I/O 공급자 초기화
 	 * @param queueDepth Queue depth for requests/completions (32-4096)
 	 * @param maxConcurrent Maximum concurrent requests
 	 * @return Error code (Success if initialization succeeded)
@@ -309,47 +405,57 @@ class AsyncIOProvider
 									size_t maxConcurrent) = 0;
 
 	/**
-	 * Shutdown async I/O provider
+	 * English: Shutdown async I/O provider
+	 * 한글: 비동기 I/O 공급자 종료
 	 */
 	virtual void Shutdown() = 0;
 
 	/**
-	 * Check if provider is initialized
+	 * English: Check if provider is initialized
+	 * 한글: 공급자 초기화 여부 확인
 	 * @return true if initialized
 	 */
 	virtual bool IsInitialized() const = 0;
 
 	// =====================================================================
-	// Buffer Management
+	// English: Buffer Management
+	// 한글: 버퍼 관리
 	// =====================================================================
 
 	/**
-	 * Register a buffer for optimized I/O (RIO/io_uring specific)
+	 * English: Register a buffer for optimized I/O (RIO/io_uring specific)
+	 * 한글: 최적화된 I/O용 버퍼 사전 등록 (RIO/io_uring 전용)
 	 * @param ptr Buffer pointer
 	 * @param size Buffer size
 	 * @return Buffer ID (>= 0 success, < 0 error)
 	 *
 	 * Note: Only meaningful for RIO/io_uring (IOCP returns no-op)
+	 * 참고: RIO/io_uring에서만 의미 있음 (IOCP는 no-op)
 	 */
 	virtual int64_t RegisterBuffer(const void *ptr, size_t size) = 0;
 
 	/**
-	 * Unregister a previously registered buffer
+	 * English: Unregister a previously registered buffer
+	 * 한글: 이전에 등록된 버퍼 등록 해제
 	 * @param bufferId Buffer ID from RegisterBuffer
 	 * @return Error code
 	 */
 	virtual AsyncIOError UnregisterBuffer(int64_t bufferId) = 0;
 
 	// =====================================================================
-	// Socket Association
+	// English: Socket Association
+	// 한글: 소켓 연결
 	// =====================================================================
 
 	/**
-	 * Associate a socket with the I/O provider for async operations
+	 * English: Associate a socket with the I/O provider for async operations
+	 * 한글: 비동기 작업을 위해 소켓을 I/O 공급자에 연결
 	 *
 	 * This MUST be called after accept() and before any async I/O
 	 * (SendAsync/RecvAsync/PostRecv) on the socket.
 	 *
+	 * accept() 후, 소켓에 대한 비동기 I/O (SendAsync/RecvAsync/PostRecv)
+	 * 호출 전에 반드시 호출해야 합니다.
 	 *
 	 * Platform behavior:
 	 * - IOCP: CreateIoCompletionPort(socket, completionPort, context, 0)
@@ -365,11 +471,13 @@ class AsyncIOProvider
 										 RequestContext context) = 0;
 
 	// =====================================================================
-	// Async I/O Requests
+	// English: Async I/O Requests
+	// 한글: 비동기 I/O 요청
 	// =====================================================================
 
 	/**
-	 * Asynchronous send operation
+	 * English: Asynchronous send operation
+	 * 한글: 비동기 송신 작업
 	 * @param socket Socket handle
 	 * @param buffer Send buffer
 	 * @param size Send size
@@ -378,6 +486,7 @@ class AsyncIOProvider
 	 * @return Error code
 	 *
 	 * Note: Behavior varies by platform
+	 * 참고: 플랫폼마다 동작이 다름
 	 * - IOCP: Immediate execution (flags ignored)
 	 * - RIO: With RIO_MSG_DEFER, waits for batch processing
 	 * - io_uring: Automatic batch processing
@@ -387,7 +496,8 @@ class AsyncIOProvider
 									   uint32_t flags = 0) = 0;
 
 	/**
-	 * Asynchronous receive operation
+	 * English: Asynchronous receive operation
+	 * 한글: 비동기 수신 작업
 	 * @param socket Socket handle
 	 * @param buffer Receive buffer
 	 * @param size Buffer size
@@ -400,7 +510,8 @@ class AsyncIOProvider
 									   uint32_t flags = 0) = 0;
 
 	/**
-	 * Flush pending requests (batch execution)
+	 * English: Flush pending requests (batch execution)
+	 * 한글: 대기 중인 요청 일괄 실행 (배치 처리)
 	 *
 	 * - IOCP: no-op (SendAsync executes immediately)
 	 * - RIO: Commits deferred sends/recvs to kernel
@@ -411,11 +522,13 @@ class AsyncIOProvider
 	virtual AsyncIOError FlushRequests() = 0;
 
 	// =====================================================================
-	// Completion Processing
+	// English: Completion Processing
+	// 한글: 완료 처리
 	// =====================================================================
 
 	/**
-	 * Process completed operations (non-blocking or with timeout)
+	 * English: Process completed operations (non-blocking or with timeout)
+	 * 한글: 완료된 작업 처리 (논블로킹 또는 타임아웃)
 	 * @param entries Output array of completion entries
 	 * @param maxEntries Array size
 	 * @param timeoutMs Timeout:
@@ -428,31 +541,37 @@ class AsyncIOProvider
 									   int timeoutMs = 0) = 0;
 
 	// =====================================================================
-	// Information & Statistics
+	// English: Information & Statistics
+	// 한글: 정보 및 통계
 	// =====================================================================
 
 	/**
-	 * Get provider information
+	 * English: Get provider information
+	 * 한글: 공급자 정보 조회
 	 */
 	virtual const ProviderInfo &GetInfo() const = 0;
 
 	/**
-	 * Get provider statistics
+	 * English: Get provider statistics
+	 * 한글: 공급자 통계 조회
 	 */
 	virtual ProviderStats GetStats() const = 0;
 
 	/**
-	 * Get last error message
+	 * English: Get last error message
+	 * 한글: 마지막 에러 메시지 조회
 	 */
 	virtual const char *GetLastError() const = 0;
 };
 
 // =============================================================================
-// Factory Functions
+// English: Factory Functions
+// 한글: 팩토리 함수
 // =============================================================================
 
 /**
- * Create AsyncIOProvider with automatic platform selection
+ * English: Create AsyncIOProvider with automatic platform selection
+ * 한글: 플랫폼 자동 선택으로 AsyncIOProvider 생성
  *
  * Fallback chains:
  * - Windows 8+: RIO -> IOCP -> nullptr
@@ -466,7 +585,8 @@ class AsyncIOProvider
 std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider();
 
 /**
- * Create AsyncIOProvider with explicit platform hint
+ * English: Create AsyncIOProvider with explicit platform hint
+ * 한글: 명시적 플랫폼 힌트로 AsyncIOProvider 생성
  * @param platformHint Platform name ("IOCP", "RIO", "io_uring", "epoll", etc)
  * @return Specified provider or nullptr (not supported)
  */
@@ -474,27 +594,31 @@ std::unique_ptr<AsyncIOProvider>
 CreateAsyncIOProvider(const char *platformHint);
 
 /**
- * Check if a platform is supported
+ * English: Check if a platform is supported
+ * 한글: 플랫폼 지원 여부 확인
  * @param platformHint Platform name
  * @return true if supported
  */
 bool IsPlatformSupported(const char *platformHint);
 
 /**
- * Get list of all supported platforms
+ * English: Get list of all supported platforms
+ * 한글: 지원하는 모든 플랫폼 목록 조회
  * @param outCount Output: number of supported platforms
  * @return Array of platform name strings
  */
 const char **GetSupportedPlatforms(size_t &outCount);
 
 /**
- * Get current platform type at runtime
+ * English: Get current platform type at runtime
+ * 한글: 런타임에 현재 플랫폼 타입 조회
  * @return Detected platform type
  */
 PlatformType GetCurrentPlatform();
 
 /**
- * Get detailed platform information
+ * English: Get detailed platform information
+ * 한글: 상세 플랫폼 정보 조회
  * @return Platform information structure
  */
 PlatformInfo GetPlatformInfo();

@@ -1,4 +1,5 @@
-// SQLiteDatabase implementation (compiled only when HAVE_SQLITE3 is defined)
+// English: SQLiteDatabase implementation (compiled only when HAVE_SQLITE3 is defined)
+// 한글: SQLiteDatabase 구현 (HAVE_SQLITE3 정의 시에만 컴파일)
 
 #include "SQLiteDatabase.h"
 #include "Utils/Logger.h"
@@ -15,7 +16,8 @@ namespace Database
 {
 
 // =============================================================================
-// SQLiteDatabase Implementation
+// English: SQLiteDatabase Implementation
+// 한글: SQLiteDatabase 구현
 // =============================================================================
 
 SQLiteDatabase::SQLiteDatabase() : mDb(nullptr), mConnected(false) {}
@@ -29,7 +31,8 @@ void SQLiteDatabase::Connect(const DatabaseConfig &config)
 {
 	mConfig = config;
 
-	// mConnectionString is the SQLite file path (use ":memory:" for in-memory)
+	// English: mConnectionString is the SQLite file path (use ":memory:" for in-memory)
+	// 한글: mConnectionString을 SQLite 파일 경로로 사용 (":memory:"는 인메모리)
 	int rc = sqlite3_open(config.mConnectionString.c_str(), &mDb);
 	if (rc != SQLITE_OK)
 	{
@@ -39,7 +42,8 @@ void SQLiteDatabase::Connect(const DatabaseConfig &config)
 		throw DatabaseException("SQLite open failed: " + err, rc);
 	}
 
-	// Enable WAL mode for better concurrent access
+	// English: Enable WAL mode for better concurrent access
+	// 한글: 동시 접근 향상을 위한 WAL 모드 활성화
 	char *walErrMsg = nullptr;
 	int walRc = sqlite3_exec(mDb, "PRAGMA journal_mode=WAL;", nullptr, nullptr, &walErrMsg);
 	if (walRc != SQLITE_OK)
@@ -117,7 +121,8 @@ void SQLiteDatabase::ExecRaw(const char *sql)
 }
 
 // =============================================================================
-// SQLiteConnection Implementation
+// English: SQLiteConnection Implementation
+// 한글: SQLiteConnection 구현
 // =============================================================================
 
 SQLiteConnection::SQLiteConnection(sqlite3 *db)
@@ -168,7 +173,8 @@ void SQLiteConnection::ExecRaw(const char *sql)
 }
 
 // =============================================================================
-// SQLiteResultSet Implementation
+// English: SQLiteResultSet Implementation
+// 한글: SQLiteResultSet 구현
 // =============================================================================
 
 SQLiteResultSet::SQLiteResultSet(sqlite3_stmt *stmt)
@@ -222,8 +228,10 @@ bool SQLiteResultSet::IsNull(size_t columnIndex)
 
 std::string SQLiteResultSet::GetString(size_t columnIndex)
 {
-	// sqlite3_column_* returns undefined data if called before the first
+	// English: sqlite3_column_* returns undefined data if called before the first
 	//          Next() (i.e., before sqlite3_step() returns SQLITE_ROW).
+	// 한글: Next() 호출 전(sqlite3_step이 SQLITE_ROW를 반환하기 전)에 호출하면
+	//       sqlite3_column_*은 미정의 데이터를 반환함.
 	if (!mHasData || !mStmt)
 		return {};
 	const unsigned char *text = sqlite3_column_text(mStmt, static_cast<int>(columnIndex));
@@ -284,8 +292,10 @@ void SQLiteResultSet::Close()
 
 int SQLiteResultSet::ResolveColumn(const std::string &columnName) const
 {
-	// Case-insensitive comparison — SQLite column names follow the query's
+	// English: Case-insensitive comparison — SQLite column names follow the query's
 	//          casing, which may not match caller expectations.
+	// 한글: 대소문자 무시 비교 — SQLite 컬럼명은 쿼리의 대소문자를 따르므로
+	//       호출자의 기대와 다를 수 있음.
 	auto iequal = [](unsigned char a, unsigned char b) {
 		return std::tolower(a) == std::tolower(b);
 	};
@@ -302,7 +312,8 @@ int SQLiteResultSet::ResolveColumn(const std::string &columnName) const
 }
 
 // =============================================================================
-// SQLiteStatement Implementation
+// English: SQLiteStatement Implementation
+// 한글: SQLiteStatement 구현
 // =============================================================================
 
 SQLiteStatement::SQLiteStatement(sqlite3 *db) : mDb(db), mStmt(nullptr) {}
@@ -418,7 +429,8 @@ std::unique_ptr<IResultSet> SQLiteStatement::ExecuteQuery()
 {
 	sqlite3_stmt *stmt = PrepareStmt();
 	BindAll(stmt, mCurrentParams);
-	// Ownership of stmt is transferred to SQLiteResultSet
+	// English: Ownership of stmt is transferred to SQLiteResultSet
+	// 한글: stmt 소유권을 SQLiteResultSet으로 이전
 	return std::make_unique<SQLiteResultSet>(stmt);
 }
 

@@ -1,5 +1,7 @@
-// IOCP AsyncIOProvider test suite.
+// English: IOCP AsyncIOProvider test suite.
 //          No GTest dependency - uses std::cout (same pattern as RIOTest.cpp).
+// 한글: IOCP AsyncIOProvider 테스트.
+//       GTest 미사용, std::cout 기반 (RIOTest.cpp와 동일 패턴).
 
 #ifdef _WIN32
 #include "Network/Core/AsyncIOProvider.h"

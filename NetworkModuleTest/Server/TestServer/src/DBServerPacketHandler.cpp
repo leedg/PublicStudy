@@ -1,4 +1,5 @@
-// DB Server packet handler implementation
+// English: DB Server packet handler implementation
+// 한글: DB 서버 패킷 핸들러 구현
 
 #include "../include/DBServerPacketHandler.h"
 #include "Utils/PingPongConfig.h"
@@ -13,7 +14,8 @@ namespace Network::TestServer
     DBServerPacketHandler::DBServerPacketHandler()
         : mPingSequence(0)
     {
-        // Register all packet handlers
+        // English: Register all packet handlers
+        // 한글: 모든 패킷 핸들러 등록
         RegisterHandlers();
     }
 
@@ -23,7 +25,8 @@ namespace Network::TestServer
 
     void DBServerPacketHandler::RegisterHandlers()
     {
-        // Register handler functors for each packet type
+        // English: Register handler functors for each packet type
+        // 한글: 각 패킷 타입에 대한 핸들러 펑터 등록
         mHandlers[static_cast<uint16_t>(ServerPacketType::ServerPongRes)] =
             [this](Core::Session* session, const char* data, uint32_t size)
             {
@@ -60,7 +63,8 @@ namespace Network::TestServer
             return;
         }
 
-        // Validate minimal packet size per server packet id.
+        // English: Validate minimal packet size per server packet id.
+        // 한글: 서버 패킷 ID별 최소 길이 검증.
         uint32_t requiredSize = sizeof(ServerPacketHeader);
         switch (static_cast<ServerPacketType>(header->id))
         {
@@ -82,7 +86,8 @@ namespace Network::TestServer
             return;
         }
 
-        // Use functor map to dispatch packet handler
+        // English: Use functor map to dispatch packet handler
+        // 한글: 펑터 맵을 사용하여 패킷 핸들러 디스패치
         auto it = mHandlers.find(header->id);
         if (it != mHandlers.end())
         {
@@ -143,7 +148,8 @@ namespace Network::TestServer
 
     void DBServerPacketHandler::HandleServerPongResponse(Core::Session* session, const PKT_ServerPongRes* packet)
     {
-        // Validate pointers
+        // English: Validate pointers
+        // 한글: 포인터 유효성 검사
         if (!session || !packet)
         {
             Logger::Error("HandleServerPongResponse: null pointer");
@@ -165,7 +171,8 @@ namespace Network::TestServer
         }
 #endif
 
-        // Update session's last ping time
+        // English: Update session's last ping time
+        // 한글: 세션의 마지막 Ping 시간 갱신
         if (session->IsConnected())
         {
             session->SetLastPingTime(packet->responseTimestamp);
@@ -174,7 +181,8 @@ namespace Network::TestServer
 
     void DBServerPacketHandler::HandleDBSavePingTimeResponse(Core::Session* session, const PKT_DBSavePingTimeRes* packet)
     {
-        // Validate pointers
+        // English: Validate pointers
+        // 한글: 포인터 유효성 검사
         if (!session || !packet)
         {
             Logger::Error("HandleDBSavePingTimeResponse: null pointer");

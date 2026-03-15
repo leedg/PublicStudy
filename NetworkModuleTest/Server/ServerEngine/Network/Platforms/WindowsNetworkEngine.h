@@ -1,11 +1,15 @@
 #pragma once
 
-// Windows-specific NetworkEngine implementation
+// English: Windows-specific NetworkEngine implementation
+// 한글: Windows 전용 NetworkEngine 구현
 //
 // Supports two modes:
 // - IOCP: Standard I/O Completion Port (all Windows versions)
 // - RIO: Registered I/O (Windows 8+, high performance)
 //
+// 두 가지 모드 지원:
+// - IOCP: 표준 I/O 완료 포트 (모든 Windows 버전)
+// - RIO: 등록 I/O (Windows 8+, 고성능)
 
 #ifdef _WIN32
 
@@ -17,21 +21,24 @@ namespace Network::Platforms
 {
 
 // =============================================================================
-// Windows NetworkEngine
+// English: Windows NetworkEngine
+// 한글: Windows NetworkEngine
 // =============================================================================
 
 class WindowsNetworkEngine : public Core::BaseNetworkEngine
 {
   public:
-	// I/O backend mode
+	// English: I/O backend mode
+	// 한글: I/O 백엔드 모드
 	enum class Mode
 	{
-		IOCP, // Standard IOCP
-		RIO   // Registered I/O
+		IOCP, // English: Standard IOCP / 한글: 표준 IOCP
+		RIO   // English: Registered I/O / 한글: 등록 I/O
 	};
 
 	/**
-	 * Constructor
+	 * English: Constructor
+	 * 한글: 생성자
 	 * @param mode I/O backend mode (IOCP or RIO)
 	 */
 	explicit WindowsNetworkEngine(Mode mode = Mode::IOCP);
@@ -39,7 +46,8 @@ class WindowsNetworkEngine : public Core::BaseNetworkEngine
 
   protected:
 	// =====================================================================
-	// Platform-specific implementation
+	// English: Platform-specific implementation
+	// 한글: 플랫폼별 구현
 	// =====================================================================
 
 	bool InitializePlatform() override;
@@ -50,29 +58,37 @@ class WindowsNetworkEngine : public Core::BaseNetworkEngine
 	void ProcessCompletions() override;
 
   private:
-	// Initialize Winsock
+	// English: Initialize Winsock
+	// 한글: Winsock 초기화
 	bool InitializeWinsock();
 
-	// Create listen socket
+	// English: Create listen socket
+	// 한글: Listen 소켓 생성
 	bool CreateListenSocket();
 
-	// Worker thread function
+	// English: Worker thread function
+	// 한글: 워커 스레드 함수
 	void WorkerThread();
 
   private:
-	// I/O mode
+	// English: I/O mode
+	// 한글: I/O 모드
 	Mode mMode;
 
-	// Listen socket
+	// English: Listen socket
+	// 한글: Listen 소켓
 	SOCKET mListenSocket;
 
-	// Accept loop backoff (ms) - member to avoid static variable bug
+	// English: Accept loop backoff (ms) - member to avoid static variable bug
+	// 한글: Accept 루프 백오프 (ms) - static 변수 버그 방지를 위한 멤버 변수
 	int mAcceptBackoffMs;
 
-	// Accept thread
+	// English: Accept thread
+	// 한글: Accept 스레드
 	std::thread mAcceptThread;
 
-	// Worker threads (for completion processing)
+	// English: Worker threads (for completion processing)
+	// 한글: 워커 스레드 (완료 처리용)
 	std::vector<std::thread> mWorkerThreads;
 };
 

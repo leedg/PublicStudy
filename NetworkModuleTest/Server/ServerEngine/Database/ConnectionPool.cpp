@@ -1,4 +1,5 @@
-// ConnectionPool implementation
+// English: ConnectionPool implementation
+// 한글: ConnectionPool 구현
 
 #include "ConnectionPool.h"
 #include "DatabaseFactory.h"
@@ -32,7 +33,8 @@ bool ConnectionPool::Initialize(const DatabaseConfig &config)
 	mMaxPoolSize = config.mMaxPoolSize;
 	mMinPoolSize = config.mMinPoolSize;
 
-	// Create database instance
+	// English: Create database instance
+	// 한글: 데이터베이스 인스턴스 생성
 	mDatabase = DatabaseFactory::CreateDatabase(config.mType);
 	if (!mDatabase)
 	{
@@ -43,7 +45,8 @@ bool ConnectionPool::Initialize(const DatabaseConfig &config)
 	{
 		mDatabase->Connect(config);
 
-		// Pre-create minimum connections
+		// English: Pre-create minimum connections
+		// 한글: 최소 연결 미리 생성
 		for (size_t i = 0; i < mMinPoolSize; ++i)
 		{
 			auto pConn = CreateNewConnection();
@@ -70,16 +73,20 @@ void ConnectionPool::Shutdown()
 		return;
 	}
 
-	// Wait for all connections to be returned
+	// English: Wait for all connections to be returned
+	// 한글: 모든 연결이 반환될 때까지 대기
 	{
 		std::unique_lock<std::mutex> lock(mMutex);
 		mCondition.wait_for(lock, std::chrono::seconds(5),
 							[this] { return mActiveConnections.load() == 0; });
 	}
 
-	// Close all connections and disconnect database under a single lock.
+	// English: Close all connections and disconnect database under a single lock.
 	//          Call ClearLocked() (not Clear()) to avoid re-locking the non-recursive
 	//          mutex — re-locking std::mutex is undefined behaviour (typically deadlocks).
+	// 한글: 단일 락 아래 모든 연결 닫기 및 데이터베이스 연결 해제.
+	//       비재귀 mutex 재락킹(UB, 통상 데드락)을 피하기 위해
+	//       Clear() 대신 ClearLocked() 호출.
 	{
 		std::lock_guard<std::mutex> lock(mMutex);
 		ClearLocked();
@@ -120,12 +127,14 @@ std::shared_ptr<IConnection> ConnectionPool::GetConnection()
 
 	std::unique_lock<std::mutex> lock(mMutex);
 
-	// Wait for available connection or timeout
+	// English: Wait for available connection or timeout
+	// 한글: 사용 가능한 연결 대기 또는 타임아웃
 	bool acquired = mCondition.wait_for(
 		lock, mConnectionTimeout,
 		[this]
 		{
-			// Check if any connection is available
+			// English: Check if any connection is available
+			// 한글: 사용 가능한 연결이 있는지 확인
 			for (auto &pooled : mConnections)
 			{
 				if (!pooled.mInUse && pooled.mConnection->IsOpen())
@@ -134,7 +143,8 @@ std::shared_ptr<IConnection> ConnectionPool::GetConnection()
 				}
 			}
 
-			// Can we create a new connection?
+			// English: Can we create a new connection?
+			// 한글: 새 연결을 생성할 수 있는가?
 			return mConnections.size() < mMaxPoolSize;
 		});
 
@@ -144,7 +154,8 @@ std::shared_ptr<IConnection> ConnectionPool::GetConnection()
 			"Connection pool timeout - no connections available");
 	}
 
-	// Try to find an existing free connection
+	// English: Try to find an existing free connection
+	// 한글: 기존 무료 연결 찾기 시도
 	for (auto &pooled : mConnections)
 	{
 		if (!pooled.mInUse && pooled.mConnection->IsOpen())
@@ -156,7 +167,8 @@ std::shared_ptr<IConnection> ConnectionPool::GetConnection()
 		}
 	}
 
-	// Create a new connection if under limit
+	// English: Create a new connection if under limit
+	// 한글: 제한 미만이면 새 연결 생성
 	if (mConnections.size() < mMaxPoolSize)
 	{
 		auto pConn = CreateNewConnection();
@@ -193,7 +205,8 @@ void ConnectionPool::ReturnConnection(std::shared_ptr<IConnection> pConnection)
 
 void ConnectionPool::ClearLocked()
 {
-	// Caller must already hold mMutex — no lock acquired here.
+	// English: Caller must already hold mMutex — no lock acquired here.
+	// 한글: 호출자가 이미 mMutex를 보유해야 함 — 여기서 락 획득 안 함.
 	for (auto it = mConnections.begin(); it != mConnections.end();)
 	{
 		if (!it->mInUse)

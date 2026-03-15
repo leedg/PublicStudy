@@ -1,4 +1,5 @@
-// ServerSession implementation
+// English: ServerSession implementation
+// 한글: ServerSession 구현
 
 #include "../include/ServerSession.h"
 #include "Utils/NetworkUtils.h"

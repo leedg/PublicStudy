@@ -1,4 +1,5 @@
-// TestDatabaseManager implementation
+// English: TestDatabaseManager implementation
+// 한글: TestDatabaseManager 구현
 
 #include "../include/TestDatabaseManager.h"
 #include "../../ServerEngine/Database/DatabaseFactory.h"
@@ -26,7 +27,8 @@ bool TestServerDatabaseManager::InitializeConnectionPool(
 
 	try
 	{
-		// Configure database
+		// English: Configure database
+		// 한글: 데이터베이스 설정
 		Network::Database::DatabaseConfig config;
 		config.mType = Network::Database::DatabaseType::ODBC;
 		config.mConnectionString = connectionString;
@@ -34,7 +36,8 @@ bool TestServerDatabaseManager::InitializeConnectionPool(
 		config.mMinPoolSize = 2;
 		config.mConnectionTimeout = 30;
 
-		// Create connection pool
+		// English: Create connection pool
+		// 한글: 연결 풀 생성
 		mDatabaseConnectionPool =
 			std::make_unique<Network::Database::ConnectionPool>();
 

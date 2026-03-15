@@ -1,4 +1,5 @@
-// CrashDump implementation
+// English: CrashDump implementation
+// 한글: CrashDump 구현
 //
 // Ported from RAON ServerEngine/Exception with RAON-specific dependencies removed:
 //   - NaverWorks messaging            → removed
@@ -42,10 +43,12 @@ namespace Network::Utils
 namespace
 {
 
-// Raise a structured exception so the SEH filter fires from a signal handler
+// English: Raise a structured exception so the SEH filter fires from a signal handler
+// 한글: 시그널 핸들러에서 SEH 필터가 발동하도록 구조적 예외 발생
 [[noreturn]] void TriggerCrash()
 {
-	// Dereference null — causes ACCESS_VIOLATION which goes through SEH
+	// English: Dereference null — causes ACCESS_VIOLATION which goes through SEH
+	// 한글: 널 역참조 → ACCESS_VIOLATION으로 SEH 필터 경유
 	volatile int* null = nullptr;
 	*null              = 0;
 	__assume(false);
@@ -72,12 +75,14 @@ struct ExceptionData
 
 void CrashDump::Initialize(const char* dumpDir)
 {
-	// Store dump directory
+	// English: Store dump directory
+	// 한글: 덤프 디렉토리 저장
 	if (dumpDir && dumpDir[0] != '\0')
 	{
 		strncpy_s(sDumpDir, dumpDir, _TRUNCATE);
 
-		// Ensure trailing slash
+		// English: Ensure trailing slash
+		// 한글: 경로 끝에 슬래시 확보
 		size_t len = strnlen_s(sDumpDir, MAX_PATH);
 		if (len > 0 && sDumpDir[len - 1] != '\\' && sDumpDir[len - 1] != '/')
 		{
@@ -88,7 +93,8 @@ void CrashDump::Initialize(const char* dumpDir)
 			}
 		}
 
-		// Create directory if it does not exist
+		// English: Create directory if it does not exist
+		// 한글: 디렉토리가 없으면 생성
 		CreateDirectoryA(sDumpDir, nullptr);
 	}
 	else
@@ -96,7 +102,8 @@ void CrashDump::Initialize(const char* dumpDir)
 		sDumpDir[0] = '\0';
 	}
 
-	// Load debug symbols from the executable's directory
+	// English: Load debug symbols from the executable's directory
+	// 한글: 실행 파일 디렉토리에서 디버그 심볼 로드
 	{
 		HANDLE hProcess = GetCurrentProcess();
 		DWORD  symOpts  = SymGetOptions();
@@ -117,17 +124,20 @@ void CrashDump::Initialize(const char* dumpDir)
 		}
 	}
 
-	// Install SEH unhandled exception filter
+	// English: Install SEH unhandled exception filter
+	// 한글: SEH 미처리 예외 필터 설치
 	SetUnhandledExceptionFilter(ExceptionFilter);
 
-	// Install signal handlers (SIGABRT, SIGFPE, SIGILL, SIGSEGV, SIGTERM)
+	// English: Install signal handlers (SIGABRT, SIGFPE, SIGILL, SIGSEGV, SIGTERM)
 	//          so C runtime aborts also go through our crash handler
+	// 한글: 시그널 핸들러 등록 (C 런타임 abort도 크래시 핸들러 경유)
 	signal(SIGABRT, SignalHandler);
 	signal(SIGFPE,  SignalHandler);
 	signal(SIGILL,  SignalHandler);
 	signal(SIGSEGV, SignalHandler);
 
-	// Handle pure virtual call and invalid parameter — both trigger crash
+	// English: Handle pure virtual call and invalid parameter — both trigger crash
+	// 한글: 순수 가상 호출 및 잘못된 매개변수 처리 — 모두 크래시 유발
 	_set_purecall_handler([]() { TriggerCrash(); });
 	_set_invalid_parameter_handler(
 	    [](const wchar_t*, const wchar_t*, const wchar_t*, unsigned int, uintptr_t)
@@ -140,21 +150,25 @@ void CrashDump::Initialize(const char* dumpDir)
 
 LONG WINAPI CrashDump::ExceptionFilter(EXCEPTION_POINTERS* exceptionInfo)
 {
-	// Replace filter with noop immediately to prevent re-entry from
+	// English: Replace filter with noop immediately to prevent re-entry from
 	//          other threads that crash while we are writing the dump
+	// 한글: 덤프 작성 중 다른 스레드 충돌로 인한 재진입 방지를 위해 즉시 noop 교체
 	SetUnhandledExceptionFilter(ExceptionFilterNoop);
 
 	static std::atomic<int> sCount{0};
 	if (++sCount != 1)
 	{
-		// Another thread crashed concurrently — suspend and wait
+		// English: Another thread crashed concurrently — suspend and wait
+		// 한글: 다른 스레드가 동시에 충돌 — 일시 중단하고 대기
 		SuspendThread(GetCurrentThread());
 		Sleep(INFINITE);
 		return EXCEPTION_EXECUTE_HANDLER;
 	}
 
-	// Run the actual dump work in a fresh thread so we have a clean stack
+	// English: Run the actual dump work in a fresh thread so we have a clean stack
 	//          (necessary for EXCEPTION_STACK_OVERFLOW on the crashed thread)
+	// 한글: 깨끗한 스택을 위해 새 스레드에서 덤프 작업 실행
+	//       (충돌 스레드의 EXCEPTION_STACK_OVERFLOW 처리에 필수)
 	ExceptionData data;
 	data.mExceptionInfo = exceptionInfo;
 
@@ -181,10 +195,12 @@ DWORD WINAPI CrashDump::ExceptionProc(void* arg)
 	ExceptionData*      data          = static_cast<ExceptionData*>(arg);
 	EXCEPTION_POINTERS* exceptionInfo = data->mExceptionInfo;
 
-	// Suspend all other threads to get consistent callstacks
+	// English: Suspend all other threads to get consistent callstacks
+	// 한글: 일관된 콜스택 수집을 위해 다른 모든 스레드 일시 중단
 	SuspendOtherThreads();
 
-	// Build timestamped base file name
+	// English: Build timestamped base file name
+	// 한글: 타임스탬프가 포함된 기본 파일명 생성
 	SYSTEMTIME st;
 	GetLocalTime(&st);
 
@@ -205,7 +221,8 @@ DWORD WINAPI CrashDump::ExceptionProc(void* arg)
 	    st.wYear, st.wMonth, st.wDay,
 	    st.wHour, st.wMinute, st.wSecond);
 
-	// Write mini and full .dmp files
+	// English: Write mini and full .dmp files
+	// 한글: mini 및 full .dmp 파일 작성
 	char miniDumpName[kMaxOut];
 	char fullDumpName[kMaxOut];
 	sprintf_s(miniDumpName, "%s_mini.dmp", outBase);
@@ -218,7 +235,8 @@ DWORD WINAPI CrashDump::ExceptionProc(void* arg)
 	bool fullOk = (WriteMiniDump(exceptionInfo, fullDumpName,
 	                              MiniDumpWithFullMemory) == ERROR_SUCCESS);
 
-	// Write human-readable .crash file (registers + callstack)
+	// English: Write human-readable .crash file (registers + callstack)
+	// 한글: 읽기 쉬운 .crash 파일 작성 (레지스터 + 콜스택)
 	char crashName[kMaxOut];
 	sprintf_s(crashName, "%s.crash", outBase);
 
@@ -267,7 +285,8 @@ DWORD WINAPI CrashDump::ExceptionProc(void* arg)
 	outFile << L"\n";
 	outFile.flush();
 
-	// Dump the crashed thread's callstack
+	// English: Dump the crashed thread's callstack
+	// 한글: 충돌 스레드 콜스택 덤프
 	if (exceptionInfo && exceptionInfo->ContextRecord)
 	{
 		WriteCallStack(outFile, GetCurrentThread(),
@@ -339,7 +358,8 @@ void CrashDump::WriteCallStack(std::wofstream& outFile,
 	          GetThreadId(threadHandle), isCrashed ? "[CRASHED]" : "");
 	outFile << buf << L"\n\n";
 
-	// Registers
+	// English: Registers
+	// 한글: 레지스터
 	outFile << L"*-- Registers --*\n";
 	sprintf_s(buf,
 	          "RAX=%016I64x  RBX=%016I64x  RCX=%016I64x  RDX=%016I64x  RSI=%016I64x",
@@ -359,7 +379,8 @@ void CrashDump::WriteCallStack(std::wofstream& outFile,
 	outFile << buf << L"\n\n";
 	outFile.flush();
 
-	// Stack walk
+	// English: Stack walk
+	// 한글: 스택 워크
 	outFile << L"*-- Stack Back Trace --*\n";
 	outFile << L"Program Counter  Stack Pointer    Return Address   "
 	           L"Param0           Param1           Param2           Param3           "
@@ -373,7 +394,8 @@ void CrashDump::WriteCallStack(std::wofstream& outFile,
 	sf.AddrFrame.Offset = context->Rbp;
 	sf.AddrFrame.Mode   = AddrModeFlat;
 
-	// Make a copy of context because StackWalk64 modifies it
+	// English: Make a copy of context because StackWalk64 modifies it
+	// 한글: StackWalk64가 context를 수정하므로 복사본 사용
 	CONTEXT ctxCopy = *context;
 
 	constexpr int kMaxDepth = 100;

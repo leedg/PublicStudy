@@ -1,6 +1,7 @@
 #pragma once
 
-// Exception class for database operations
+// English: Exception class for database operations
+// 한글: 데이터베이스 작업용 예외 클래스
 
 #include <exception>
 #include <string>
@@ -11,25 +12,30 @@ namespace Database
 {
 
 // ==========================================================================
-// DatabaseException class
+// English: DatabaseException class
+// 한글: DatabaseException 클래스
 // ==========================================================================
 
 /**
- * Exception class for database operations
+ * English: Exception class for database operations
+ * 한글: 데이터베이스 작업용 예외 클래스
  */
 class DatabaseException : public std::exception
 {
   public:
-	// Constructor
+	// English: Constructor
+	// 한글: 생성자
 	DatabaseException(const std::string &message, int errorCode = 0)
 		: mMessage(message), mErrorCode(errorCode)
 	{
 	}
 
-	// Get error message
+	// English: Get error message
+	// 한글: 에러 메시지 조회
 	const char *what() const noexcept override { return mMessage.c_str(); }
 
-	// Get error code
+	// English: Get error code
+	// 한글: 에러 코드 조회
 	int GetErrorCode() const { return mErrorCode; }
 
   private:

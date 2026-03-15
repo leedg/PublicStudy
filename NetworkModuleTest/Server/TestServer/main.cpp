@@ -1,4 +1,5 @@
-// TestServer entry point - initializes and runs the game server
+// English: TestServer entry point - initializes and runs the game server
+// 한글: TestServer 진입점 - 게임 서버 초기화 및 실행
 
 #include "Utils/NetworkUtils.h"
 #include "Utils/CrashDump.h"
@@ -17,12 +18,14 @@
 #include <windows.h>
 #endif
 
-// Global server instance for signal handling
+// English: Global server instance for signal handling
+// 한글: 시그널 처리용 전역 서버 인스턴스
 static Network::TestServer::TestServer *g_pServer = nullptr;
 static std::atomic<bool> g_Running{true};
 static std::atomic<bool> g_ShutdownComplete{false};
 
-// Signal handler for graceful shutdown (SIGINT/SIGTERM)
+// English: Signal handler for graceful shutdown (SIGINT/SIGTERM)
+// 한글: 정상 종료를 위한 시그널 핸들러 (SIGINT/SIGTERM)
 void SignalHandler(int signum)
 {
 	Network::Utils::Logger::Info("Signal received: " + std::to_string(signum));
@@ -30,9 +33,12 @@ void SignalHandler(int signum)
 }
 
 #ifdef _WIN32
-// Console ctrl handler - catches CTRL_CLOSE_EVENT from taskkill/window close
+// English: Console ctrl handler - catches CTRL_CLOSE_EVENT from taskkill/window close
 //          so that server.Stop() (DisconnectFromDBServer) runs before process exits,
 //          preventing WSAECONNRESET(10054) on the DB socket.
+// 한글: 콘솔 컨트롤 핸들러 - taskkill/창 닫기의 CTRL_CLOSE_EVENT 처리
+//       프로세스 종료 전에 server.Stop()이 호출되도록 보장하여
+//       DB 소켓의 WSAECONNRESET(10054) 방지
 static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
 {
 	switch (ctrlType)
@@ -43,7 +49,8 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
 		Network::Utils::Logger::Info("Console shutdown event received (" +
 		                             std::to_string(ctrlType) + "), stopping server...");
 		g_Running = false;
-		// Wait up to 8s for main thread to finish server.Stop()
+		// English: Wait up to 8s for main thread to finish server.Stop()
+		// 한글: 메인 스레드가 server.Stop()을 완료할 때까지 최대 8초 대기
 		for (int i = 0; i < 80 && !g_ShutdownComplete.load(); ++i)
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		return TRUE;
@@ -53,7 +60,8 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
 }
 #endif
 
-// Print usage information
+// English: Print usage information
+// 한글: 사용법 출력
 void PrintUsage(const char *programName)
 {
 	std::cout << "Usage: " << programName << " [options]" << std::endl;
@@ -70,7 +78,8 @@ void PrintUsage(const char *programName)
 	std::cout << "  -h              Show this help" << std::endl;
 }
 
-// Parse log level string
+// English: Parse log level string
+// 한글: 로그 레벨 문자열 파싱
 Network::Utils::LogLevel ParseLogLevel(const std::string &level)
 {
 	std::string upper = Network::Utils::StringUtils::ToUpper(level);
@@ -86,11 +95,13 @@ Network::Utils::LogLevel ParseLogLevel(const std::string &level)
 int main(int argc, char *argv[])
 {
 #ifdef _WIN32
-	// Set console code page to UTF-8 for Korean output
+	// English: Set console code page to UTF-8 for Korean output
+	// 한글: 한글 출력을 위해 콘솔 코드 페이지를 UTF-8로 설정
 	SetConsoleCP(65001);
 	SetConsoleOutputCP(65001);
 
-	// Install crash dump handler — writes .dmp + .crash on unhandled exception
+	// English: Install crash dump handler — writes .dmp + .crash on unhandled exception
+	// 한글: 크래시 덤프 핸들러 설치 — 미처리 예외 발생 시 .dmp + .crash 파일 기록
 	Network::Utils::CrashDump::Initialize("./dumps/");
 #endif
 
@@ -98,7 +109,8 @@ int main(int argc, char *argv[])
 	std::cout << "  TestServer - IOCP Game Server" << std::endl;
 	std::cout << "====================================" << std::endl;
 
-	// Default settings
+	// English: Default settings
+	// 한글: 기본 설정
 	uint16_t    port          = Network::Utils::DEFAULT_TEST_SERVER_PORT;
 	size_t      dbWorkerCount = Network::Utils::DEFAULT_TASK_QUEUE_WORKER_COUNT;
 	std::string dbConnectionString;
@@ -108,7 +120,8 @@ int main(int argc, char *argv[])
 	uint16_t    dbPort             = Network::Utils::DEFAULT_TEST_DB_PORT;
 	std::string engineType         = "auto";
 
-	// Parse command line arguments
+	// English: Parse command line arguments
+	// 한글: 커맨드라인 인자 파싱
 	for (int i = 1; i < argc; ++i)
 	{
 		std::string arg = argv[i];
@@ -160,22 +173,27 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	// Setup logging
+	// English: Setup logging
+	// 한글: 로깅 설정
 	Network::Utils::Logger::SetLevel(logLevel);
 
-	// Register signal handlers
+	// English: Register signal handlers
+	// 한글: 시그널 핸들러 등록
 	std::signal(SIGINT, SignalHandler);
 	std::signal(SIGTERM, SignalHandler);
 #ifdef _WIN32
-// SIGBREAK is Windows-specific, defined in <signal.h>
+// English: SIGBREAK is Windows-specific, defined in <signal.h>
+// 한글: SIGBREAK는 Windows 전용, <signal.h>에 정의
 #ifdef SIGBREAK
 	std::signal(SIGBREAK, SignalHandler);
 #endif
-	// Catch CTRL_CLOSE_EVENT (taskkill /T, window close) for graceful shutdown
+	// English: Catch CTRL_CLOSE_EVENT (taskkill /T, window close) for graceful shutdown
+	// 한글: CTRL_CLOSE_EVENT (taskkill /T, 창 닫기) 처리하여 정상 종료
 	SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
 #endif
 
-	// Create and initialize server
+	// English: Create and initialize server
+	// 한글: 서버 생성 및 초기화
 	Network::TestServer::TestServer server;
 	g_pServer = &server;
 
@@ -188,7 +206,8 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	// Start server
+	// English: Start server
+	// 한글: 서버 시작
 	if (!server.Start())
 	{
 		Network::Utils::Logger::Error("Failed to start server");
@@ -205,10 +224,12 @@ int main(int argc, char *argv[])
 
 	Network::Utils::Logger::Info("Server is running. Press Ctrl+C to stop.");
 
-	// Main loop - wait for shutdown signal (signal or named event)
+	// English: Main loop - wait for shutdown signal (signal or named event)
+	// 한글: 메인 루프 - 종료 시그널 또는 Named Event 대기
 #ifdef _WIN32
-	// Named event allows external tools (e.g. test scripts) to trigger
+	// English: Named event allows external tools (e.g. test scripts) to trigger
 	//          graceful shutdown without console manipulation
+	// 한글: Named Event로 테스트 스크립트 등 외부 도구가 콘솔 없이도 정상 종료 가능
 	HANDLE hShutdownEvent = CreateEventA(nullptr, FALSE, FALSE, "TestServer_GracefulShutdown");
 	while (g_Running && server.IsRunning())
 	{
@@ -226,12 +247,14 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	// Graceful shutdown
+	// English: Graceful shutdown
+	// 한글: 정상 종료
 	Network::Utils::Logger::Info("Shutting down server...");
 	server.Stop();
 	g_pServer = nullptr;
 
-	// Signal ConsoleCtrlHandler (if waiting) that cleanup is done
+	// English: Signal ConsoleCtrlHandler (if waiting) that cleanup is done
+	// 한글: 정리 완료를 ConsoleCtrlHandler에 알림 (대기 중인 경우)
 	g_ShutdownComplete.store(true);
 
 	Network::Utils::Logger::Info("Server stopped.");

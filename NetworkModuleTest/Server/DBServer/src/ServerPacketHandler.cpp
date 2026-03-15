@@ -1,9 +1,11 @@
-// Server packet handler implementation
+// English: Server packet handler implementation
+// 한글: 서버 패킷 핸들러 구현
 
 #include "../include/ServerPacketHandler.h"
 #include "../include/OrderedTaskQueue.h"
 #include "Utils/PingPongConfig.h"
-// DBPingTimeManager include removed — functionality merged into ServerLatencyManager
+// English: DBPingTimeManager include removed — functionality merged into ServerLatencyManager
+// 한글: DBPingTimeManager include 제거 — 기능이 ServerLatencyManager에 통합됨
 #include <cstring>
 
 namespace Network::DBServer
@@ -15,7 +17,8 @@ namespace Network::DBServer
         : mLatencyManager(nullptr)
         , mOrderedTaskQueue(nullptr)
     {
-        // Register all packet handlers at construction time
+        // English: Register all packet handlers at construction time
+        // 한글: 생성 시 모든 패킷 핸들러 등록
         RegisterHandlers();
     }
 
@@ -26,15 +29,18 @@ namespace Network::DBServer
     void ServerPacketHandler::Initialize(ServerLatencyManager* latencyManager,
                                           OrderedTaskQueue* orderedTaskQueue)
     {
-        // DBPingTimeManager is no longer a separate dependency —
+        // English: DBPingTimeManager is no longer a separate dependency —
         //          its functionality is now in ServerLatencyManager.
+        // 한글: DBPingTimeManager는 더 이상 별도 의존성이 아님 —
+        //       기능이 ServerLatencyManager에 통합됨.
         mLatencyManager = latencyManager;
         mOrderedTaskQueue = orderedTaskQueue;
     }
 
     void ServerPacketHandler::RegisterHandlers()
     {
-        // Register handler functors for each packet type
+        // English: Register handler functors for each packet type
+        // 한글: 각 패킷 타입에 대한 핸들러 펑터 등록
         mHandlers[static_cast<uint16_t>(ServerPacketType::ServerPingReq)] =
             [this](Core::Session* session, const char* data, uint32_t size)
             {
@@ -56,7 +62,8 @@ namespace Network::DBServer
             return;
         }
 
-        // Ensure that mOrderedTaskQueue and mLatencyManager are initialized
+        // English: Ensure that mOrderedTaskQueue and mLatencyManager are initialized
+        // 한글: mOrderedTaskQueue와 mLatencyManager가 초기화되었는지 확인
         if (!mOrderedTaskQueue || !mLatencyManager)
         {
             Logger::Error("ServerPacketHandler not properly initialized - missing OrderedTaskQueue or LatencyManager");
@@ -78,7 +85,8 @@ namespace Network::DBServer
             return;
         }
 
-        // Validate minimal packet size per server packet id.
+        // English: Validate minimal packet size per server packet id.
+        // 한글: 서버 패킷 ID별 최소 길이 검증.
         uint32_t requiredSize = sizeof(ServerPacketHeader);
         switch (static_cast<ServerPacketType>(header->id))
         {
@@ -100,7 +108,8 @@ namespace Network::DBServer
             return;
         }
 
-        // Use functor map to dispatch packet handler
+        // English: Use functor map to dispatch packet handler
+        // 한글: 펑터 맵을 사용하여 패킷 핸들러 디스패치
         auto it = mHandlers.find(header->id);
         if (it != mHandlers.end())
         {
@@ -114,14 +123,16 @@ namespace Network::DBServer
 
     void ServerPacketHandler::HandleServerPingRequest(Core::Session* session, const PKT_ServerPingReq* packet)
     {
-        // Validate pointers
+        // English: Validate pointers
+        // 한글: 포인터 유효성 검사
         if (!session || !packet)
         {
             Logger::Error("HandleServerPingRequest: null pointer");
             return;
         }
 
-        // Calculate RTT - use request timestamp vs current time for latency
+        // English: Calculate RTT - use request timestamp vs current time for latency
+        // 한글: RTT 계산 - 요청 타임스탬프와 현재 시간으로 레이턴시 측정
         uint64_t receiveTime = Timer::GetCurrentTimestamp();
         uint64_t rttMs = receiveTime - packet->timestamp;
 
@@ -137,7 +148,8 @@ namespace Network::DBServer
         }
 #endif
 
-        // Send pong response immediately (low latency path)
+        // English: Send pong response immediately (low latency path)
+        // 한글: 퐁 응답 즉시 전송 (저지연 경로)
         PKT_ServerPongRes response;
         response.sequence = packet->sequence;
         response.requestTimestamp = packet->timestamp;
@@ -149,13 +161,18 @@ namespace Network::DBServer
         Logger::Debug("Server pong sent - Seq: " + std::to_string(packet->sequence));
 #endif
 
-        // Derive serverId from session's connection ID for per-server tracking
+        // English: Derive serverId from session's connection ID for per-server tracking
+        // 한글: 서버별 추적을 위해 세션의 연결 ID에서 serverId 유도
         uint32_t serverId = static_cast<uint32_t>(session->GetId());
 
-        // Route through OrderedTaskQueue for per-serverId ordering guarantee.
+        // English: Route through OrderedTaskQueue for per-serverId ordering guarantee.
         //          RecordLatency covers both RTT stats AND ping-time persistence now
         //          (DBPingTimeManager merged into ServerLatencyManager).
         //          Fall back to a direct call when the queue is not available.
+        // 한글: serverId별 순서 보장을 위해 OrderedTaskQueue를 통해 라우팅.
+        //       RecordLatency가 RTT 통계와 핑 시간 저장을 모두 처리
+        //       (DBPingTimeManager가 ServerLatencyManager에 통합됨).
+        //       큐를 사용할 수 없으면 직접 호출로 폴백.
         if (mOrderedTaskQueue && mLatencyManager)
         {
             ServerLatencyManager* latencyMgr = mLatencyManager;
@@ -174,7 +191,8 @@ namespace Network::DBServer
         }
         else
         {
-            // Fallback: direct call (no per-serverId ordering guarantee)
+            // English: Fallback: direct call (no per-serverId ordering guarantee)
+            // 한글: 폴백: 직접 호출 (serverId별 순서 보장 없음)
             if (mLatencyManager)
             {
                 mLatencyManager->RecordLatency(serverId,
@@ -186,7 +204,8 @@ namespace Network::DBServer
 
     void ServerPacketHandler::HandleDBSavePingTimeRequest(Core::Session* session, const PKT_DBSavePingTimeReq* packet)
     {
-        // Validate pointers
+        // English: Validate pointers
+        // 한글: 포인터 유효성 검사
         if (!session || !packet)
         {
             Logger::Error("HandleDBSavePingTimeRequest: null pointer");
@@ -199,9 +218,12 @@ namespace Network::DBServer
         PKT_DBSavePingTimeRes response;
         response.serverId = packet->serverId;
 
-        // Route through OrderedTaskQueue for per-serverId ordering guarantee.
+        // English: Route through OrderedTaskQueue for per-serverId ordering guarantee.
         //          SavePingTime now lives in ServerLatencyManager (DBPingTimeManager merged).
         //          Fall back to synchronous processing when the queue is not available.
+        // 한글: serverId별 순서 보장을 위해 OrderedTaskQueue를 통해 라우팅.
+        //       SavePingTime은 이제 ServerLatencyManager에 있음 (DBPingTimeManager 통합).
+        //       큐를 사용할 수 없으면 동기 처리로 폴백.
         if (mOrderedTaskQueue && mLatencyManager)
         {
             const uint32_t    capturedServerId   = packet->serverId;
@@ -255,7 +277,8 @@ namespace Network::DBServer
         }
         else
         {
-            // Fallback: synchronous processing (no queue available)
+            // English: Fallback: synchronous processing (no queue available)
+            // 한글: 폴백: 동기 처리 (큐 없음)
             if (mLatencyManager && mLatencyManager->IsInitialized())
             {
                 const bool ok = mLatencyManager->SavePingTime(

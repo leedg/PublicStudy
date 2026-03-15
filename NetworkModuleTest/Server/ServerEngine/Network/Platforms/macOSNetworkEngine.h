@@ -1,8 +1,10 @@
 #pragma once
 
-// macOS-specific NetworkEngine implementation
+// English: macOS-specific NetworkEngine implementation
+// 한글: macOS 전용 NetworkEngine 구현
 //
 // Uses kqueue for high-performance event notification
+// kqueue를 사용한 고성능 이벤트 알림
 
 #ifdef __APPLE__
 
@@ -14,21 +16,24 @@ namespace Network::Platforms
 {
 
 // =============================================================================
-// macOS NetworkEngine
+// English: macOS NetworkEngine
+// 한글: macOS NetworkEngine
 // =============================================================================
 
 class macOSNetworkEngine : public Core::BaseNetworkEngine
 {
   public:
 	/**
-	 * Constructor
+	 * English: Constructor
+	 * 한글: 생성자
 	 */
 	explicit macOSNetworkEngine();
 	virtual ~macOSNetworkEngine();
 
   protected:
 	// =====================================================================
-	// Platform-specific implementation
+	// English: Platform-specific implementation
+	// 한글: 플랫폼별 구현
 	// =====================================================================
 
 	bool InitializePlatform() override;
@@ -39,26 +44,33 @@ class macOSNetworkEngine : public Core::BaseNetworkEngine
 	void ProcessCompletions() override;
 
   private:
-	// Create listen socket
+	// English: Create listen socket
+	// 한글: Listen 소켓 생성
 	bool CreateListenSocket();
 
-	// Queue recv for a session
+	// English: Queue recv for a session
+	// 한글: 세션 수신 등록
 	bool QueueRecv(const Core::SessionRef &session);
 
-	// Worker thread function
+	// English: Worker thread function
+	// 한글: 워커 스레드 함수
 	void WorkerThread();
 
   private:
-	// Listen socket
+	// English: Listen socket
+	// 한글: Listen 소켓
 	int mListenSocket;
 
-	// Accept loop backoff (ms) - member to avoid static variable bug
+	// English: Accept loop backoff (ms) - member to avoid static variable bug
+	// 한글: Accept 루프 백오프 (ms) - static 변수 버그 방지를 위한 멤버 변수
 	int mAcceptBackoffMs;
 
-	// Accept thread
+	// English: Accept thread
+	// 한글: Accept 스레드
 	std::thread mAcceptThread;
 
-	// Worker threads (for completion processing)
+	// English: Worker threads (for completion processing)
+	// 한글: 워커 스레드 (완료 처리용)
 	std::vector<std::thread> mWorkerThreads;
 };
 

@@ -1,4 +1,5 @@
-// ODBCDatabase implementation
+// English: ODBCDatabase implementation
+// 한글: ODBCDatabase 구현
 
 #include "ODBCDatabase.h"
 #include <algorithm>
@@ -12,7 +13,8 @@ namespace Database
 {
 
 // =============================================================================
-// ODBCDatabase Implementation
+// English: ODBCDatabase Implementation
+// 한글: ODBCDatabase 구현
 // =============================================================================
 
 ODBCDatabase::ODBCDatabase() : mEnvironment(SQL_NULL_HANDLE), mConnected(false)
@@ -77,8 +79,10 @@ void ODBCDatabase::CheckSQLReturn(SQLRETURN ret, const std::string &operation,
 void ODBCDatabase::Connect(const DatabaseConfig &config)
 {
 	mConfig = config;
-	// Open a temporary connection to validate the connection string,
+	// English: Open a temporary connection to validate the connection string,
 	//          then discard it. Real connections are obtained via CreateConnection().
+	// 한글: 연결 문자열 유효성 검사를 위해 임시 연결을 열고 즉시 폐기.
+	//       실제 연결은 CreateConnection()으로 얻음.
 	auto pConnection = std::make_unique<ODBCConnection>(mEnvironment);
 	pConnection->Open(config.mConnectionString);
 	mConnected = true;
@@ -103,9 +107,11 @@ std::unique_ptr<IStatement> ODBCDatabase::CreateStatement()
 	{
 		throw DatabaseException("Database not connected");
 	}
-	// Open a dedicated connection for this statement.
+	// English: Open a dedicated connection for this statement.
 	//          Ownership is transferred to ODBCStatement so the connection
 	//          stays alive for the statement's entire lifetime.
+	// 한글: 이 statement 전용 연결을 열고, 소유권을 ODBCStatement로 이전하여
+	//       statement 생존 기간 동안 연결이 유지되도록 함.
 	auto pConn = std::make_unique<ODBCConnection>(mEnvironment);
 	pConn->Open(mConfig.mConnectionString);
 	SQLHDBC connHandle = pConn->GetHandle();
@@ -114,8 +120,10 @@ std::unique_ptr<IStatement> ODBCDatabase::CreateStatement()
 
 void ODBCDatabase::BeginTransaction()
 {
-	// Transaction state is per-connection. Use IConnection::BeginTransaction()
+	// English: Transaction state is per-connection. Use IConnection::BeginTransaction()
 	//          on a connection obtained from CreateConnection() or a ConnectionPool.
+	// 한글: 트랜잭션 상태는 연결 단위. CreateConnection() 또는 ConnectionPool로
+	//       얻은 연결에서 IConnection::BeginTransaction()을 사용해야 함.
 	throw DatabaseException(
 		"ODBCDatabase: call IConnection::BeginTransaction() on a connection from CreateConnection()");
 }
@@ -133,7 +141,8 @@ void ODBCDatabase::RollbackTransaction()
 }
 
 // =============================================================================
-// ODBCConnection Implementation
+// English: ODBCConnection Implementation
+// 한글: ODBCConnection 구현
 // =============================================================================
 
 ODBCConnection::ODBCConnection(SQLHENV env)
@@ -153,7 +162,7 @@ void ODBCConnection::Open(const std::string &connectionString)
 {
 	if (mConnected)
 	{
-		return; // Already connected
+		return; // English: Already connected / 한글: 이미 연결됨
 	}
 
 	SQLCHAR connStrOut[1024];
@@ -256,7 +265,8 @@ std::string ODBCConnection::GetSQLErrorMessage(SQLHANDLE handle,
 }
 
 // =============================================================================
-// ODBCStatement Implementation
+// English: ODBCStatement Implementation
+// 한글: ODBCStatement 구현
 // =============================================================================
 
 ODBCStatement::ODBCStatement(SQLHDBC conn, std::unique_ptr<ODBCConnection> ownerConn)
@@ -329,9 +339,12 @@ void ODBCStatement::BindNullParameter(size_t index)
 
 void ODBCStatement::BindParameters()
 {
-	// Bind each parameter with its native C type so that int/long/double
+	// English: Bind each parameter with its native C type so that int/long/double
 	//          are not silently converted through string (which truncates precision).
 	//          mParams must not be modified between this call and SQLExecDirectA().
+	// 한글: 각 파라미터를 네이티브 C 타입으로 바인딩해 int/long/double이
+	//       문자열 경유 변환(정밀도 손실)되지 않도록 함.
+	//       이 함수 호출과 SQLExecDirectA() 사이에 mParams를 수정해서는 안 됨.
 	for (size_t i = 0; i < mParams.size(); ++i)
 	{
 		auto &p = mParams[i];
@@ -360,9 +373,11 @@ void ODBCStatement::BindParameters()
 			break;
 
 		case ParamValue::Type::Bool:
-			// Use SQL_C_BIT/SQL_BIT so PostgreSQL BOOLEAN and SQL Server BIT
+			// English: Use SQL_C_BIT/SQL_BIT so PostgreSQL BOOLEAN and SQL Server BIT
 			//          both accept the value without implicit cast errors.
 			//          intVal holds 0 or 1; on little-endian the first byte is the bit value.
+			// 한글: PostgreSQL BOOLEAN과 SQL Server BIT 모두 허용.
+			//       intVal(0/1)의 첫 번째 바이트를 SQL_C_BIT로 전달.
 			p.indicator = 0;
 			ret = SQLBindParameter(
 				mStatement, col, SQL_PARAM_INPUT,
@@ -450,8 +465,10 @@ bool ODBCStatement::Execute()
 
 void ODBCStatement::AddBatch()
 {
-	// Snapshot current parameters as one batch entry, then reset for next item.
+	// English: Snapshot current parameters as one batch entry, then reset for next item.
 	//          The query string is shared across all batch items.
+	// 한글: 현재 파라미터를 배치 항목으로 저장 후 다음 항목을 위해 초기화.
+	//       쿼리 문자열은 모든 배치 항목이 공유.
 	if (!mQuery.empty())
 	{
 		mBatches.push_back(BatchEntry{mParams});
@@ -462,7 +479,8 @@ void ODBCStatement::AddBatch()
 
 std::vector<int> ODBCStatement::ExecuteBatch()
 {
-	// Execute each batch entry sequentially via SQLExecDirectA, collect row counts
+	// English: Execute each batch entry sequentially via SQLExecDirectA, collect row counts
+	// 한글: SQLExecDirectA로 각 배치 항목을 순서대로 실행하고 행 수 수집
 	std::vector<int> results;
 	results.reserve(mBatches.size());
 
@@ -486,7 +504,8 @@ std::vector<int> ODBCStatement::ExecuteBatch()
 			results.push_back(-1);
 		}
 
-		// Close cursor / reset statement state for the next batch item
+		// English: Close cursor / reset statement state for the next batch item
+		// 한글: 다음 배치 항목을 위해 커서/구문 상태 초기화
 		SQLFreeStmt(mStatement, SQL_CLOSE);
 	}
 
@@ -535,7 +554,8 @@ std::string ODBCStatement::GetSQLErrorMessage(SQLHANDLE handle,
 }
 
 // =============================================================================
-// ODBCResultSet Implementation
+// English: ODBCResultSet Implementation
+// 한글: ODBCResultSet 구현
 // =============================================================================
 
 ODBCResultSet::ODBCResultSet(SQLHSTMT stmt)
@@ -593,7 +613,8 @@ bool ODBCResultSet::Next()
 	}
 	CheckSQLReturn(ret, "Fetch row");
 	mHasData = true;
-	// Invalidate column cache for the new row.
+	// English: Invalidate column cache for the new row.
+	// 한글: 새 행에 대한 컬럼 캐시 무효화.
 	std::fill(mRowCache.begin(), mRowCache.end(), ColumnData{});
 	return true;
 }
@@ -610,9 +631,11 @@ const ODBCResultSet::ColumnData &ODBCResultSet::FetchColumn(size_t columnIndex)
 	SQLLEN indicator = 0;
 	char buffer[4096] = {0};
 
-	// Single SQLGetData call per column per row. Caching the result means
+	// English: Single SQLGetData call per column per row. Caching the result means
 	//          IsNull() and GetString() can both be called without consuming the
 	//          column cursor twice on forward-only result sets.
+	// 한글: 행당 컬럼당 SQLGetData를 1회만 호출. 결과를 캐시하므로 IsNull()과
+	//       GetString()을 각각 호출해도 forward-only 커서를 두 번 소비하지 않음.
 	SQLRETURN ret = SQLGetData(
 		mStatement, static_cast<SQLUSMALLINT>(columnIndex + 1),
 		SQL_C_CHAR, buffer, static_cast<SQLLEN>(sizeof(buffer)), &indicator);
@@ -630,8 +653,10 @@ const ODBCResultSet::ColumnData &ODBCResultSet::FetchColumn(size_t columnIndex)
 	}
 
 	col.isNull = false;
-	// If indicator > buffer capacity the value is truncated to 4095 chars.
+	// English: If indicator > buffer capacity the value is truncated to 4095 chars.
 	//          Extend buffer or use streaming SQLGetData loop if longer values are needed.
+	// 한글: indicator > 버퍼 크기이면 4095자로 잘림.
+	//       더 긴 값이 필요하면 버퍼를 늘리거나 SQLGetData 스트리밍 루프를 사용.
 	col.value = (indicator > static_cast<SQLLEN>(sizeof(buffer) - 1))
 	                ? std::string(buffer, sizeof(buffer) - 1)
 	                : std::string(buffer);
@@ -690,8 +715,10 @@ std::string ODBCResultSet::GetColumnName(size_t columnIndex) const
 
 size_t ODBCResultSet::FindColumn(const std::string &columnName) const
 {
-	// Case-insensitive comparison — ODBC drivers vary (SQL Server uppercases,
+	// English: Case-insensitive comparison — ODBC drivers vary (SQL Server uppercases,
 	//          PostgreSQL lowercases). Matching on tolower prevents spurious not-found errors.
+	// 한글: 대소문자 무시 비교 — ODBC 드라이버마다 대소문자가 다름 (SQL Server 대문자,
+	//       PostgreSQL 소문자). tolower로 통일해 not-found 오류를 방지.
 	auto iequal = [](unsigned char a, unsigned char b) {
 		return std::tolower(a) == std::tolower(b);
 	};
@@ -709,7 +736,8 @@ size_t ODBCResultSet::FindColumn(const std::string &columnName) const
 
 void ODBCResultSet::Close()
 {
-	// Statement handle is managed by the parent statement
+	// English: Statement handle is managed by the parent statement
+	// 한글: Statement 핸들은 부모 statement에서 관리됨
 }
 
 void ODBCResultSet::CheckSQLReturn(SQLRETURN ret, const std::string &operation)
