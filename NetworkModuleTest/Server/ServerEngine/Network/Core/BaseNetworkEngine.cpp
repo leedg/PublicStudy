@@ -279,10 +279,13 @@ INetworkEngine::Statistics BaseNetworkEngine::GetStatistics() const
 {
 	std::lock_guard<std::mutex> lock(mStatsMutex);
 	Statistics stats = mStats;
-	stats.totalBytesSent = mTotalBytesSent.load(std::memory_order_relaxed);
+	stats.totalBytesSent     = mTotalBytesSent.load(std::memory_order_relaxed);
 	stats.totalBytesReceived = mTotalBytesReceived.load(std::memory_order_relaxed);
-	stats.totalConnections = mTotalConnections.load(std::memory_order_relaxed);
-	stats.activeConnections = SessionManager::Instance().GetSessionCount();
+	stats.totalConnections   = mTotalConnections.load(std::memory_order_relaxed);
+	stats.activeConnections  = SessionManager::Instance().GetSessionCount();
+	stats.totalSendErrors    = mTotalSendErrors.load(std::memory_order_relaxed);
+	stats.totalRecvErrors    = mTotalRecvErrors.load(std::memory_order_relaxed);
+	stats.totalErrors        = stats.totalSendErrors + stats.totalRecvErrors;
 	return stats;
 }
 
@@ -435,6 +438,46 @@ void BaseNetworkEngine::ProcessSendCompletion(SessionRef session,
 		Utils::Logger::Debug("Send queue empty for session " +
 							 std::to_string(session->GetId()));
 	}
+}
+
+void BaseNetworkEngine::ProcessErrorCompletion(SessionRef session,
+                                               AsyncIO::AsyncIOType ioType,
+                                               int32_t osError)
+{
+	if (!session)
+	{
+		return;
+	}
+
+	const auto connId = session->GetId();
+
+	// English: Increment the per-direction counter before routing disconnect.
+	//          Send and Recv errors are tracked separately so callers can diagnose
+	//          whether failures are on the inbound or outbound path.
+	// 한글: disconnect 라우팅 전에 방향별 카운터를 증가.
+	//       Send/Recv 에러를 분리 집계하여 인바운드/아웃바운드 경로 장애 진단 가능.
+	if (ioType == AsyncIO::AsyncIOType::Send)
+	{
+		mTotalSendErrors.fetch_add(1, std::memory_order_relaxed);
+		Utils::Logger::Error("Send error on Session " + std::to_string(connId) +
+		                     " - OS error: " + std::to_string(osError));
+	}
+	else
+	{
+		mTotalRecvErrors.fetch_add(1, std::memory_order_relaxed);
+		Utils::Logger::Error("Recv error on Session " + std::to_string(connId) +
+		                     " - OS error: " + std::to_string(osError));
+	}
+
+	// English: Route through ProcessRecvCompletion(bytesReceived=0) so that the
+	//          disconnect event is always submitted via session->mAsyncScope.
+	//          This prevents OnDisconnected() from firing on an already-closed session
+	//          (double-event) when Close() was called concurrently from another path.
+	// 한글: ProcessRecvCompletion(bytesReceived=0)을 경유하여 disconnect 이벤트를
+	//       항상 session->mAsyncScope를 통해 제출.
+	//       다른 경로에서 Close()가 동시에 호출된 경우 이미 닫힌 세션에서
+	//       OnDisconnected()가 발생하는 이중 이벤트를 방지.
+	ProcessRecvCompletion(session, 0, nullptr);
 }
 
 } // namespace Network::Core

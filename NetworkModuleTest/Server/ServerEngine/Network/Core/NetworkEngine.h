@@ -174,6 +174,10 @@ class INetworkEngine
 		uint64_t activeConnections;
 		uint64_t totalBytesSent;
 		uint64_t totalBytesReceived;
+		// English: Per-direction error counters. totalErrors == sendErrors + recvErrors.
+		// 한글: 방향별 에러 카운터. totalErrors == sendErrors + recvErrors.
+		uint64_t totalSendErrors;
+		uint64_t totalRecvErrors;
 		uint64_t totalErrors;
 		Timestamp startTime;
 	};

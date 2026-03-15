@@ -274,17 +274,14 @@ void WindowsNetworkEngine::ProcessCompletions()
 
 		if (entry.mOsError != 0 || entry.mResult <= 0)
 		{
-			// English: Route through ProcessRecvCompletion(bytesReceived=0) so the
-			//          disconnect event is submitted via session->mAsyncScope.
-			//          Direct mLogicDispatcher.Dispatch() would bypass AsyncScope,
-			//          allowing OnDisconnected() to fire even after Close() was called
-			//          from the send-failure path (double-event risk).
-			// 한글: ProcessRecvCompletion(bytesReceived=0)을 경유하여 session->mAsyncScope를
-			//       통해 disconnect 이벤트를 제출.
-			//       직접 mLogicDispatcher.Dispatch()는 AsyncScope를 우회하여
-			//       송신 실패 경로에서 이미 Close()가 호출된 후에도 OnDisconnected()가
-			//       발생할 수 있음(이중 이벤트 위험).
-			ProcessRecvCompletion(session, 0, nullptr);
+			// English: Dispatch through ProcessErrorCompletion — increments the correct
+			//          per-direction error counter (Send vs Recv) and routes disconnect
+			//          via session->mAsyncScope, preventing double-event if Close() was
+			//          already called from a concurrent path.
+			// 한글: ProcessErrorCompletion을 통해 처리 — 올바른 방향별 에러 카운터
+			//       (Send vs Recv)를 증가시키고, session->mAsyncScope 경유로 disconnect를
+			//       라우팅하여 다른 경로에서 Close()가 이미 호출된 경우 이중 이벤트 방지.
+			ProcessErrorCompletion(session, entry.mType, entry.mOsError);
 			continue;
 		}
 
@@ -322,9 +319,13 @@ void WindowsNetworkEngine::ProcessCompletions()
 					std::to_string(session->GetId()) + ": " +
 					std::string(mProvider->GetLastError()));
 
-				// English: Same AsyncScope routing as the error path above.
-				// 한글: 위 에러 경로와 동일한 AsyncScope 라우팅.
-				ProcessRecvCompletion(session, 0, nullptr);
+				// English: Failure to queue the next recv is a recv-path error.
+				//          Route through ProcessErrorCompletion(Recv) for consistent
+				//          stats tracking and AsyncScope-guarded disconnect.
+				// 한글: 다음 recv 큐 등록 실패는 recv 경로 에러.
+				//       일관된 통계 집계 및 AsyncScope 보호 disconnect를 위해
+				//       ProcessErrorCompletion(Recv)으로 라우팅.
+				ProcessErrorCompletion(session, AsyncIO::AsyncIOType::Recv, 0);
 			}
 			break;
 		}

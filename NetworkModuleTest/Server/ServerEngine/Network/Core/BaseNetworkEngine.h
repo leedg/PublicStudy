@@ -131,6 +131,27 @@ class BaseNetworkEngine : public INetworkEngine
 	 */
 	void ProcessSendCompletion(SessionRef session, int32_t bytesSent);
 
+	/**
+	 * English: Handle an I/O error completion — increments the per-direction error counter
+	 *          (mTotalSendErrors or mTotalRecvErrors) and routes the disconnect through
+	 *          ProcessRecvCompletion(0) so that session->mAsyncScope is always respected.
+	 *          Call this instead of ProcessRecvCompletion(session, 0, nullptr) directly
+	 *          whenever a completion entry carries an OS error or a non-positive result,
+	 *          so that Send and Recv errors are tracked separately.
+	 * 한글: I/O 에러 완료 처리 — 방향별 에러 카운터(mTotalSendErrors 또는 mTotalRecvErrors)를
+	 *       증가시키고, ProcessRecvCompletion(0)을 통해 disconnect를 라우팅하여
+	 *       session->mAsyncScope를 항상 준수한다.
+	 *       OS 에러나 non-positive result를 가진 completion entry에서는
+	 *       ProcessRecvCompletion(session, 0, nullptr)을 직접 호출하는 대신 이 함수를 사용해
+	 *       Send/Recv 에러를 분리 집계한다.
+	 * @param session  The session the error occurred on
+	 * @param ioType   AsyncIOType::Send or AsyncIOType::Recv
+	 * @param osError  OS-level error code (0 if not available)
+	 */
+	void ProcessErrorCompletion(SessionRef session,
+	                            AsyncIO::AsyncIOType ioType,
+	                            int32_t osError);
+
   protected:
 	// =====================================================================
 	// English: Common member variables
@@ -170,13 +191,19 @@ class BaseNetworkEngine : public INetworkEngine
 	// 한글: 세션 타임아웃 점검 등 엔진 수준 주기 작업을 위한 타이머 큐.
 	Network::Concurrency::TimerQueue mTimerQueue;
 
-	// English: Statistics - hot-path counters are atomic; cold-path data uses mutex
-	// 한글: 통계 - 핫 패스 카운터는 atomic; 콜드 패스 데이터는 mutex 사용
+	// English: Statistics - hot-path counters are atomic; cold-path data uses mutex.
+	//          Send/Recv error counters are tracked separately so GetStatistics() can
+	//          report per-direction breakdown. totalErrors = sendErrors + recvErrors.
+	// 한글: 통계 - 핫 패스 카운터는 atomic; 콜드 패스 데이터는 mutex 사용.
+	//       Send/Recv 에러 카운터를 분리 집계하여 GetStatistics()에서 방향별 분류 제공.
+	//       totalErrors = sendErrors + recvErrors.
 	mutable std::mutex mStatsMutex;
 	Statistics mStats;
 	std::atomic<uint64_t> mTotalBytesSent{0};
 	std::atomic<uint64_t> mTotalBytesReceived{0};
 	std::atomic<uint64_t> mTotalConnections{0};
+	std::atomic<uint64_t> mTotalSendErrors{0};
+	std::atomic<uint64_t> mTotalRecvErrors{0};
 };
 
 } // namespace Network::Core

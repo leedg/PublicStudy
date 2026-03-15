@@ -339,18 +339,18 @@ void LinuxNetworkEngine::ProcessCompletions()
 		// 한글: 에러 확인
 		if (entry.mOsError != 0 || entry.mResult <= 0)
 		{
-			// English: Connection error or closed
-			// 한글: 연결 에러 또는 닫힘
-			auto sessionCopy = session;
-			mLogicDispatcher.Dispatch(sessionCopy->GetId(),
-				[this, sessionCopy]()
-				{
-					sessionCopy->OnDisconnected();
-					FireEvent(Core::NetworkEvent::Disconnected,
-							  sessionCopy->GetId());
-				});
-
-			Core::SessionManager::Instance().RemoveSession(session);
+			// English: Dispatch through ProcessErrorCompletion — increments the correct
+			//          per-direction error counter (Send vs Recv) and routes disconnect
+			//          via session->mAsyncScope, preventing double-event if Close() was
+			//          already called from a concurrent path.
+			//          Previous code used mLogicDispatcher.Dispatch() directly, bypassing
+			//          AsyncScope and losing type distinction for stats.
+			// 한글: ProcessErrorCompletion을 통해 처리 — 올바른 방향별 에러 카운터
+			//       (Send vs Recv)를 증가시키고, session->mAsyncScope 경유로 disconnect를
+			//       라우팅하여 이중 이벤트 방지.
+			//       기존 코드는 mLogicDispatcher.Dispatch()를 직접 호출해 AsyncScope를
+			//       우회하고 통계 타입 구분이 불가했음.
+			ProcessErrorCompletion(session, entry.mType, entry.mOsError);
 			continue;
 		}
 
