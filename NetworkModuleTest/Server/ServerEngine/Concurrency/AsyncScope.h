@@ -141,6 +141,18 @@ class AsyncScope
 
 	std::atomic<bool> mCancelled;
 	std::atomic<size_t> mInFlight;
+	// English: mDrainMutex exists solely to satisfy the std::condition_variable contract —
+	//          condition_variable::wait requires a unique_lock even when no shared mutable
+	//          state needs protection (mInFlight is atomic and safe to read without a lock).
+	//          EndTask calls notify_all WITHOUT holding this mutex; that is intentional and
+	//          correct: notify_all does not need the mutex, and acquiring it would add
+	//          unnecessary contention on the hot EndTask path.
+	// 한글: mDrainMutex는 순전히 std::condition_variable 계약을 충족하기 위해 존재 —
+	//       condition_variable::wait는 보호할 공유 가변 상태가 없더라도 unique_lock을 요구
+	//       (mInFlight는 atomic이라 락 없이 안전하게 읽을 수 있음).
+	//       EndTask는 이 mutex를 보유하지 않고 notify_all을 호출하며, 이는 의도적이고 정확함:
+	//       notify_all은 mutex가 필요 없고, lock을 잡으면 핫 패스인 EndTask에 불필요한
+	//       contention이 발생함.
 	mutable std::mutex mDrainMutex;
 	std::condition_variable mDrainCV;
 };

@@ -6,6 +6,11 @@
 #include "SessionPool.h"
 #include "../../Utils/Logger.h"
 #include "../../Utils/Timer.h"
+#ifndef _WIN32
+// English: ECONNRESET / EPIPE / ECONNABORTED for expected-teardown detection.
+// 한글: 정상 teardown 판별용 ECONNRESET / EPIPE / ECONNABORTED.
+#include <cerrno>
+#endif
 
 namespace Network::Core
 {
@@ -459,16 +464,44 @@ void BaseNetworkEngine::ProcessErrorCompletion(SessionRef session,
 	if (ioType == AsyncIO::AsyncIOType::Send)
 	{
 		mTotalSendErrors.fetch_add(1, std::memory_order_relaxed);
-		Utils::Logger::Error("Send error on Session " + std::to_string(connId) +
-		                     " - OS error: " +
-		                     std::to_string(static_cast<uint32_t>(osError)));
 	}
 	else
 	{
 		mTotalRecvErrors.fetch_add(1, std::memory_order_relaxed);
-		Utils::Logger::Error("Recv error on Session " + std::to_string(connId) +
-		                     " - OS error: " +
-		                     std::to_string(static_cast<uint32_t>(osError)));
+	}
+
+	// English: Log at Warn for expected connection-teardown error codes — these occur
+	//          on every normal remote disconnect and should not alarm on-call operators.
+	//          Log at Error for unexpected codes that may indicate a real problem.
+	//          osError == 0 means "failed to queue next I/O operation" — also Warn,
+	//          since the underlying error was already logged by the caller (QueueRecv).
+	// 한글: 정상적인 원격 연결 종료 시 발생하는 에러 코드는 Warn 레벨 기록 —
+	//       운영자에게 불필요한 경보를 주지 않기 위함.
+	//       예상치 못한 코드는 실제 문제일 수 있으므로 Error 레벨 기록.
+	//       osError == 0은 "다음 I/O 작업 큐 등록 실패" — 하위 에러는
+	//       호출자(QueueRecv)에서 이미 기록하므로 Warn 레벨.
+#ifdef _WIN32
+	const bool isExpectedClose = (osError == WSAECONNRESET   ||
+	                              osError == WSAECONNABORTED  ||
+	                              osError == WSAESHUTDOWN     ||
+	                              osError == 0);
+#else
+	const bool isExpectedClose = (osError == ECONNRESET  ||
+	                              osError == EPIPE        ||
+	                              osError == ECONNABORTED ||
+	                              osError == 0);
+#endif
+
+	const std::string direction = (ioType == AsyncIO::AsyncIOType::Send) ? "Send" : "Recv";
+	const std::string msg = direction + " error on Session " + std::to_string(connId) +
+	                        " - OS error: " + std::to_string(static_cast<uint32_t>(osError));
+	if (isExpectedClose)
+	{
+		Utils::Logger::Warn(msg);
+	}
+	else
+	{
+		Utils::Logger::Error(msg);
 	}
 
 	// English: Route through ProcessRecvCompletion(bytesReceived=0) so that the

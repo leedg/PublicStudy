@@ -431,14 +431,22 @@ void DBTaskQueue::EnqueueTask(DBTask &&task)
         }
     }
 
+    // English: Check accepted BEFORE accessing task fields.
+    //          task was moved into the worker queue (push(std::move(task))) inside the
+    //          lock above, so it is in a moved-from state on the accepted path.
+    //          Accessing task.walSeq or task.callback after this point is only safe in
+    //          the rejected path (accepted == false) where the move never happened.
+    //          Note: the original code had this condition inverted (!accepted guarded the
+    //          success path), causing notify_one to be called on error. This is the fix.
+    // 한글: task 필드 접근 전에 accepted 확인 필수.
+    //       락 내부의 push(std::move(task))로 워커 큐에 이동되었으므로
+    //       accepted 경로에서 task는 moved-from 상태.
+    //       task.walSeq / task.callback 접근은 이동이 발생하지 않은
+    //       거부 경로(accepted == false)에서만 안전.
+    //       참고: 원래 코드는 조건이 역전(!accepted가 성공 경로를 가드)되어
+    //       에러 시 notify_one이 호출되는 버그가 있었음. 이 코드가 수정본.
     if (accepted)
     {
-        // English: task was moved into the worker queue above (push(std::move(task))).
-        //          task is now in a moved-from state — do NOT access it below.
-        //          Notify the assigned worker and return immediately.
-        // 한글: task는 위의 push(std::move(task))로 워커 큐에 이동됨.
-        //       task는 moved-from 상태 — 이후 접근 금지.
-        //       배정된 워커에 알리고 즉시 반환.
         worker.cv.notify_one();
         return;
     }
