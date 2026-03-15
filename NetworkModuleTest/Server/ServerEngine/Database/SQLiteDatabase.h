@@ -1,12 +1,9 @@
 #pragma once
 
-// English: SQLite implementation of database interfaces
+// SQLite implementation of database interfaces
 //          Compile with HAVE_SQLITE3 defined (and link sqlite3) for full support.
 //          Without HAVE_SQLITE3 a stub class that throws on Connect() is provided
 //          so the rest of the build remains unchanged.
-// 한글: 데이터베이스 인터페이스의 SQLite 구현
-//       HAVE_SQLITE3 정의 시 (및 sqlite3 링크 시) 전체 지원.
-//       HAVE_SQLITE3 없으면 Connect()에서 예외를 던지는 스텁 클래스 제공.
 
 #include "../Interfaces/DatabaseConfig.h"
 #include "../Interfaces/DatabaseException.h"
@@ -30,27 +27,23 @@ namespace Database
 
 #ifdef HAVE_SQLITE3
 
-// English: Forward declarations
-// 한글: 전방 선언
+// Forward declarations
 class SQLiteConnection;
 class SQLiteStatement;
 class SQLiteResultSet;
 
 // =============================================================================
-// English: SQLiteResultSet — wraps sqlite3_stmt result iteration
-// 한글: SQLiteResultSet — sqlite3_stmt 결과 이터레이션 래퍼
+// SQLiteResultSet — wraps sqlite3_stmt result iteration
 // =============================================================================
 
 class SQLiteResultSet : public IResultSet
 {
   public:
-	// English: Takes ownership of the prepared statement
-	// 한글: 준비된 구문의 소유권 획득
+	// Takes ownership of the prepared statement
 	explicit SQLiteResultSet(sqlite3_stmt *stmt);
 	virtual ~SQLiteResultSet();
 
-	// English: IResultSet interface (name overloads inherited from IResultSet default impl)
-	// 한글: IResultSet 인터페이스 (이름 오버로드는 IResultSet 기본 구현 상속)
+	// IResultSet interface (name overloads inherited from IResultSet default impl)
 	bool Next() override;
 	bool IsNull(size_t columnIndex) override;
 	std::string GetString(size_t columnIndex) override;
@@ -70,14 +63,12 @@ class SQLiteResultSet : public IResultSet
   private:
 	sqlite3_stmt *mStmt;
 	bool mDone;
-	bool mHasData; // English: true only while a SQLITE_ROW has been returned by Next()
-	               // 한글: Next()가 SQLITE_ROW를 반환한 동안만 true
+	bool mHasData; // true only while a SQLITE_ROW has been returned by Next()
 	std::vector<std::string> mColumnNames;
 };
 
 // =============================================================================
-// English: SQLiteStatement — prepares and executes SQL against a sqlite3 handle
-// 한글: SQLiteStatement — sqlite3 핸들에 대해 SQL 준비 및 실행
+// SQLiteStatement — prepares and executes SQL against a sqlite3 handle
 // =============================================================================
 
 class SQLiteStatement : public IStatement
@@ -100,8 +91,7 @@ class SQLiteStatement : public IStatement
 	int ExecuteUpdate() override;
 	bool Execute() override;
 
-	// English: AddBatch — snapshot current params; ExecuteBatch — run each set in a loop
-	// 한글: AddBatch — 현재 파라미터 스냅샷; ExecuteBatch — 각 파라미터 세트 루프 실행
+	// AddBatch — snapshot current params; ExecuteBatch — run each set in a loop
 	void AddBatch() override;
 	std::vector<int> ExecuteBatch() override;
 
@@ -109,8 +99,7 @@ class SQLiteStatement : public IStatement
 	void Close() override;
 
   private:
-	// English: Parameter variant (mirrors sqlite3 bind types)
-	// 한글: 파라미터 타입 변형 (sqlite3 bind 타입 대응)
+	// Parameter variant (mirrors sqlite3 bind types)
 	enum class ParamType
 	{
 		Text,
@@ -132,9 +121,8 @@ class SQLiteStatement : public IStatement
 	void BindAll(sqlite3_stmt *stmt, const std::vector<Param> &params);
 	void CheckRC(int rc, const char *op) const;
 
-	// English: Build and store a numeric Param slot. Floating-point types go to realVal;
+	// Build and store a numeric Param slot. Floating-point types go to realVal;
 	//          integer types (int, long long) go to int64Val via implicit promotion.
-	// 한글: 숫자 Param 슬롯 생성/저장. 부동소수점은 realVal, 정수형은 int64Val에 저장.
 	template<ParamType TypeTag, typename T>
 	void SetNumParam(size_t index, T value)
 	{
@@ -154,8 +142,7 @@ class SQLiteStatement : public IStatement
 };
 
 // =============================================================================
-// English: SQLiteConnection — non-owning reference to a shared sqlite3 handle
-// 한글: SQLiteConnection — 공유 sqlite3 핸들에 대한 non-owning 참조
+// SQLiteConnection — non-owning reference to a shared sqlite3 handle
 // =============================================================================
 
 class SQLiteConnection : public IConnection
@@ -189,8 +176,7 @@ class SQLiteConnection : public IConnection
 };
 
 // =============================================================================
-// English: SQLiteDatabase — opens/closes a SQLite database file
-// 한글: SQLiteDatabase — SQLite 데이터베이스 파일 열기/닫기
+// SQLiteDatabase — opens/closes a SQLite database file
 // =============================================================================
 
 class SQLiteDatabase : public IDatabase
@@ -199,8 +185,7 @@ class SQLiteDatabase : public IDatabase
 	SQLiteDatabase();
 	virtual ~SQLiteDatabase();
 
-	// English: config.mConnectionString is used as the SQLite file path
-	// 한글: config.mConnectionString을 SQLite 파일 경로로 사용
+	// config.mConnectionString is used as the SQLite file path
 	void Connect(const DatabaseConfig &config) override;
 	void Disconnect() override;
 	bool IsConnected() const override;
@@ -227,8 +212,7 @@ class SQLiteDatabase : public IDatabase
 #else // !HAVE_SQLITE3
 
 // =============================================================================
-// English: SQLiteDatabase stub — throws DatabaseException on Connect()
-// 한글: SQLiteDatabase 스텁 — Connect() 호출 시 DatabaseException 발생
+// SQLiteDatabase stub — throws DatabaseException on Connect()
 // =============================================================================
 
 class SQLiteDatabase : public IDatabase

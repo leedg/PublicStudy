@@ -1,5 +1,4 @@
-// English: TestDBServer entry point - initializes and runs the database server
-// Korean: TestDBServer 진입점 - 데이터베이스 서버 초기화 및 실행
+// TestDBServer entry point - initializes and runs the database server
 
 #include "include/TestDBServer.h"
 #include "Utils/NetworkUtils.h"
@@ -18,14 +17,12 @@
 #include <windows.h>
 #endif
 
-// English: Global server instance for signal handling
-// Korean: 시그널 처리용 전역 서버 인스턴스
+// Global server instance for signal handling
 static Network::DBServer::TestDBServer* g_pServer = nullptr;
 static std::atomic<bool> g_Running{ true };
 static std::atomic<bool> g_ShutdownComplete{ false };
 
-// English: Signal handler for graceful shutdown
-// Korean: 정상 종료를 위한 시그널 핸들러
+// Signal handler for graceful shutdown
 void SignalHandler(int signum)
 {
     Network::Utils::Logger::Info("Signal received: " + std::to_string(signum));
@@ -33,8 +30,7 @@ void SignalHandler(int signum)
 }
 
 #ifdef _WIN32
-// English: Console ctrl handler — catches CTRL_CLOSE_EVENT / taskkill so server.Stop() runs.
-// 한글: 콘솔 컨트롤 핸들러 — CTRL_CLOSE_EVENT/창 닫기 시 server.Stop()이 실행되도록 보장.
+// Console ctrl handler — catches CTRL_CLOSE_EVENT / taskkill so server.Stop() runs.
 static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
 {
     switch (ctrlType)
@@ -45,19 +41,17 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
         Network::Utils::Logger::Info("Console shutdown event received (" +
                                      std::to_string(ctrlType) + "), stopping DBServer...");
         g_Running = false;
-        // English: Wait up to 8s for main thread to finish server.Stop()
-        // 한글: 메인 스레드가 server.Stop()을 완료할 때까지 최대 8초 대기
+        // Wait up to 8s for main thread to finish server.Stop()
         for (int i = 0; i < 80 && !g_ShutdownComplete.load(); ++i)
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         return TRUE;
     default:
-        return FALSE;  // CTRL_C_EVENT / CTRL_BREAK_EVENT: std::signal이 처리
+        return FALSE;
     }
 }
 #endif
 
-// English: Print usage information
-// Korean: 사용법 출력
+// Print usage information
 void PrintUsage(const char* programName)
 {
     std::cout << "Usage: " << programName << " [options]" << std::endl;
@@ -68,8 +62,7 @@ void PrintUsage(const char* programName)
     std::cout << "  -h              Show this help" << std::endl;
 }
 
-// English: Parse log level string
-// Korean: 로그 레벨 문자열 파싱
+// Parse log level string
 Network::Utils::LogLevel ParseLogLevel(const std::string& level)
 {
     std::string upper = Network::Utils::StringUtils::ToUpper(level);
@@ -82,13 +75,11 @@ Network::Utils::LogLevel ParseLogLevel(const std::string& level)
 int main(int argc, char* argv[])
 {
 #ifdef _WIN32
-    // English: Set console code page to UTF-8 for Korean output
-    // Korean: 한글 출력을 위해 콘솔 코드 페이지를 UTF-8로 설정
+    // Set console code page to UTF-8 for Korean output
     SetConsoleCP(65001);
     SetConsoleOutputCP(65001);
 
-    // English: Install crash dump handler — writes .dmp + .crash on unhandled exception
-    // 한글: 크래시 덤프 핸들러 설치 — 미처리 예외 발생 시 .dmp + .crash 파일 기록
+    // Install crash dump handler — writes .dmp + .crash on unhandled exception
     Network::Utils::CrashDump::Initialize("./dumps/");
 #endif
 
@@ -96,14 +87,12 @@ int main(int argc, char* argv[])
     std::cout << "  TestDBServer - Database Server" << std::endl;
     std::cout << "====================================" << std::endl;
 
-    // English: Default settings
-    // Korean: 기본 설정
+    // Default settings
     uint16_t port          = Network::Utils::DEFAULT_TEST_DB_PORT;
     size_t   dbWorkerCount = Network::Utils::DEFAULT_DB_WORKER_COUNT;
     Network::Utils::LogLevel logLevel = Network::Utils::LogLevel::Info;
 
-    // English: Parse command line arguments
-    // Korean: 커맨드라인 인자 파싱
+    // Parse command line arguments
     for (int i = 1; i < argc; ++i)
     {
         std::string arg = argv[i];
@@ -133,27 +122,22 @@ int main(int argc, char* argv[])
         }
     }
 
-    // English: Setup logging
-    // Korean: 로깅 설정
+    // Setup logging
     Network::Utils::Logger::SetLevel(logLevel);
 
-    // English: Register signal handlers
-    // Korean: 시그널 핸들러 등록
+    // Register signal handlers
     std::signal(SIGINT, SignalHandler);
     std::signal(SIGTERM, SignalHandler);
 #ifdef _WIN32
-    // English: SIGBREAK is Windows-specific
-    // Korean: SIGBREAK는 Windows 전용
+    // SIGBREAK is Windows-specific
     #ifdef SIGBREAK
     std::signal(SIGBREAK, SignalHandler);
     #endif
-    // English: Catch CTRL_CLOSE_EVENT for graceful shutdown on window close / taskkill
-    // 한글: 창 닫기 / taskkill 시 정상 종료를 위한 ConsoleCtrlHandler 등록
+    // Catch CTRL_CLOSE_EVENT for graceful shutdown on window close / taskkill
     SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
 #endif
 
-    // English: Create and initialize server
-    // Korean: 서버 생성 및 초기화
+    // Create and initialize server
     Network::DBServer::TestDBServer server;
     g_pServer = &server;
 
@@ -165,8 +149,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // English: Start server
-    // Korean: 서버 시작
+    // Start server
     if (!server.Start())
     {
         Network::Utils::Logger::Error("Failed to start server");
@@ -175,12 +158,9 @@ int main(int argc, char* argv[])
 
     Network::Utils::Logger::Info("TestDBServer is running. Press Ctrl+C to stop.");
 
-    // English: Main loop — waits for SIGINT/SIGTERM, ConsoleCtrlHandler, or Named Event.
+    // Main loop — waits for SIGINT/SIGTERM, ConsoleCtrlHandler, or Named Event.
     //          Named event "TestDBServer_GracefulShutdown" allows test scripts to trigger
     //          graceful shutdown without console manipulation (no TerminateProcess).
-    // 한글: 메인 루프 — SIGINT/SIGTERM, ConsoleCtrlHandler, 또는 Named Event 대기.
-    //       Named Event "TestDBServer_GracefulShutdown"으로 테스트 스크립트가
-    //       콘솔 없이 정상 종료를 트리거할 수 있음 (TerminateProcess 불필요).
 #ifdef _WIN32
     HANDLE hShutdownEvent = CreateEventA(nullptr, FALSE, FALSE, "TestDBServer_GracefulShutdown");
     while (g_Running && server.IsRunning())
@@ -199,14 +179,12 @@ int main(int argc, char* argv[])
     }
 #endif
 
-    // English: Graceful shutdown
-    // Korean: 정상 종료
+    // Graceful shutdown
     Network::Utils::Logger::Info("Shutting down TestDBServer...");
     server.Stop();
     g_pServer = nullptr;
 
-    // English: Signal ConsoleCtrlHandler (if waiting) that cleanup is done
-    // 한글: 정리 완료를 ConsoleCtrlHandler에 알림
+    // Signal ConsoleCtrlHandler (if waiting) that cleanup is done
     g_ShutdownComplete.store(true);
 
     Network::Utils::Logger::Info("TestDBServer stopped.");

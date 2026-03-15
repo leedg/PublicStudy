@@ -1,7 +1,6 @@
 #pragma once
 
-// English: In-memory mock database implementation for testing (no external dependencies)
-// 한글: 테스트용 인메모리 Mock 데이터베이스 구현 (외부 의존성 없음)
+// In-memory mock database implementation for testing (no external dependencies)
 
 #include "../Interfaces/DatabaseConfig.h"
 #include "../Interfaces/DatabaseException.h"
@@ -19,14 +18,12 @@ namespace Network
 namespace Database
 {
 
-// English: Forward declarations
-// 한글: 전방 선언
+// Forward declarations
 class MockConnection;
 class MockStatement;
 
 // =============================================================================
-// English: ExecutedQuery — record of a query execution (for test verification)
-// 한글: ExecutedQuery — 쿼리 실행 기록 (테스트 검증용)
+// ExecutedQuery — record of a query execution (for test verification)
 // =============================================================================
 
 struct ExecutedQuery
@@ -36,8 +33,7 @@ struct ExecutedQuery
 };
 
 // =============================================================================
-// English: MockResultSet — empty result set (Next() always returns false)
-// 한글: MockResultSet — 빈 결과 집합 (Next()는 항상 false 반환)
+// MockResultSet — empty result set (Next() always returns false)
 // =============================================================================
 
 class MockResultSet : public IResultSet
@@ -73,8 +69,7 @@ class MockResultSet : public IResultSet
 };
 
 // =============================================================================
-// English: MockStatement — logs every query + parameters, returns success
-// 한글: MockStatement — 쿼리 + 파라미터 로그 기록, 항상 성공 반환
+// MockStatement — logs every query + parameters, returns success
 // =============================================================================
 
 class MockStatement : public IStatement
@@ -138,16 +133,14 @@ class MockStatement : public IStatement
 		return true;
 	}
 
-	// English: AddBatch — snapshot current params to batch list, then clear for next set
-	// 한글: AddBatch — 현재 파라미터를 배치 목록에 저장 후 초기화
+	// AddBatch — snapshot current params to batch list, then clear for next set
 	void AddBatch() override
 	{
 		mBatchEntries.push_back({mQuery, mCurrentParams});
 		mCurrentParams.clear();
 	}
 
-	// English: ExecuteBatch — record all batched entries to log, return success codes
-	// 한글: ExecuteBatch — 배치 항목 전체를 로그에 기록, 성공 코드 반환
+	// ExecuteBatch — record all batched entries to log, return success codes
 	std::vector<int> ExecuteBatch() override
 	{
 		std::vector<int> results;
@@ -189,8 +182,7 @@ class MockStatement : public IStatement
 };
 
 // =============================================================================
-// English: MockConnection — tracks open/transaction state, creates MockStatements
-// 한글: MockConnection — 연결/트랜잭션 상태 추적, MockStatement 생성
+// MockConnection — tracks open/transaction state, creates MockStatements
 // =============================================================================
 
 class MockConnection : public IConnection
@@ -229,8 +221,7 @@ class MockConnection : public IConnection
 };
 
 // =============================================================================
-// English: MockDatabase — in-memory mock, shared query log for all connections
-// 한글: MockDatabase — 인메모리 Mock, 모든 커넥션이 쿼리 로그 공유
+// MockDatabase — in-memory mock, shared query log for all connections
 // =============================================================================
 
 class MockDatabase : public IDatabase
@@ -253,12 +244,10 @@ class MockDatabase : public IDatabase
 	DatabaseType GetType() const override { return DatabaseType::Mock; }
 	const DatabaseConfig &GetConfig() const override { return mConfig; }
 
-	// English: Test verification — retrieve all logged query executions
-	// 한글: 테스트 검증용 — 실행된 모든 쿼리 로그 조회
+	// Test verification — retrieve all logged query executions
 	std::vector<ExecutedQuery> GetExecutedQueries() const;
 
-	// English: Clear the query log
-	// 한글: 쿼리 로그 초기화
+	// Clear the query log
 	void ClearLog();
 
   private:

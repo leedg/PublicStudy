@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Client packet handler for TestServer
-// 한글: TestServer용 클라이언트 패킷 핸들러
+// Client packet handler for TestServer
 
 #include "Network/Core/Session.h"
 #include "Network/Core/PacketDefine.h"
@@ -16,35 +15,29 @@ namespace Network::TestServer
     using Core::PacketType;
 
     // =============================================================================
-    // English: ClientPacketHandler - handles packets from game clients using functor array
-    // 한글: ClientPacketHandler - 펑터 배열을 사용하여 게임 클라이언트 패킷 처리
+    // ClientPacketHandler - handles packets from game clients using functor array
     // =============================================================================
 
     class ClientPacketHandler
     {
     public:
-        // English: Packet handler functor type
-        // 한글: 패킷 핸들러 펑터 타입
+        // Packet handler functor type
         using PacketHandlerFunc = std::function<void(Core::Session*, const char*, uint32_t)>;
 
         ClientPacketHandler();
         virtual ~ClientPacketHandler();
 
-        // English: Process incoming packet from client (uses functor dispatch)
-        // 한글: 클라이언트로부터 받은 패킷 처리 (펑터 디스패치 사용)
+        // Process incoming packet from client (uses functor dispatch)
         void ProcessPacket(Core::Session* session, const char* data, uint32_t size);
 
     private:
-        // English: Packet handler functor map (PacketType -> Handler)
-        // 한글: 패킷 핸들러 펑터 맵 (PacketType -> Handler)
+        // Packet handler functor map (PacketType -> Handler)
         std::unordered_map<uint16_t, PacketHandlerFunc> mHandlers;
 
-        // English: Register all packet handlers
-        // 한글: 모든 패킷 핸들러 등록
+        // Register all packet handlers
         void RegisterHandlers();
 
-        // English: Individual packet handlers
-        // 한글: 개별 패킷 핸들러들
+        // Individual packet handlers
         void HandleConnectRequest(Core::Session* session, const Core::PKT_SessionConnectReq* packet);
         void HandlePingRequest(Core::Session* session, const Core::PKT_PingReq* packet);
     };

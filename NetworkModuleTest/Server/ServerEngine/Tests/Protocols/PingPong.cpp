@@ -1,5 +1,4 @@
-// English: Implementation of PingPong handler
-// 한글: PingPong 핸들러 구현
+// Implementation of PingPong handler
 
 #include "PingPong.h"
 
@@ -65,8 +64,7 @@ bool ReadString(const std::vector<uint8_t> &buffer, size_t &offset,
 	offset += length;
 	return true;
 }
-// English: Write a variable-length validation array: [uint8_t count][T × count]
-// 한글: 가변 길이 검증 배열 직렬화: [uint8_t count][T × count]
+// Write a variable-length validation array: [uint8_t count][T × count]
 template <typename T>
 void WriteValidationArray(std::vector<uint8_t> &buffer, const std::vector<T> &arr)
 {
@@ -89,8 +87,7 @@ bool ReadValidationArray(const std::vector<uint8_t> &buffer, size_t &offset,
 	return true;
 }
 
-// English: Generate 1–5 random uint32 numbers and 1–5 random printable ASCII chars.
-// 한글: 랜덤 uint32 숫자 1~5개 및 출력 가능한 ASCII 문자 1~5개 생성.
+// Generate 1–5 random uint32 numbers and 1–5 random printable ASCII chars.
 inline void GenerateValidationPayload(std::vector<uint32_t> &nums,
                                       std::vector<char> &chars)
 {
@@ -117,8 +114,7 @@ inline void GenerateValidationPayload(std::vector<uint32_t> &nums,
 namespace Network::Protocols
 {
 // =============================================================================
-// English: Constructor and Destructor
-// 한글: 생성자 및 소멸자
+// Constructor and Destructor
 // =============================================================================
 
 PingPongHandler::PingPongHandler()
@@ -132,8 +128,7 @@ PingPongHandler::PingPongHandler()
 PingPongHandler::~PingPongHandler() = default;
 
 // =============================================================================
-// English: Serialization methods (protobuf optional)
-// 한글: 직렬화 메소드 (protobuf 선택)
+// Serialization methods (protobuf optional)
 // =============================================================================
 
 std::vector<uint8_t> PingPongHandler::CreatePing(const std::string &message,
@@ -152,7 +147,6 @@ std::vector<uint8_t> PingPongHandler::CreatePing(const std::string &message,
 	data.resize(ping.ByteSizeLong());
 	ping.SerializeToArray(data.data(), static_cast<int>(data.size()));
 
-	// 한글: protobuf 사용 시에도 마지막 값을 보관해서 공통 접근을 지원한다.
 	mLastPingTimestamp = timestamp;
 	mLastPingSequence = actualSequence;
 	mLastPingMessage = actualMessage;
@@ -220,7 +214,6 @@ PingPongHandler::CreatePong(const std::vector<uint8_t> &pingData,
 	WriteScalar(data, mLastPingSequence);
 	WriteString(data, actualResponse);
 	// Echo the validation payload parsed from the ping back to the sender.
-	// 수신한 ping의 검증 페이로드를 그대로 에코 반환.
 	WriteValidationArray(data, mLastPingValidationNums);
 	WriteValidationArray(data, mLastPingValidationChars);
 
@@ -234,8 +227,7 @@ PingPongHandler::CreatePong(const std::vector<uint8_t> &pingData,
 }
 
 // =============================================================================
-// English: Deserialization methods
-// 한글: 역직렬화 메소드
+// Deserialization methods
 // =============================================================================
 
 bool PingPongHandler::ParsePing(const std::vector<uint8_t> &data)
@@ -272,7 +264,6 @@ bool PingPongHandler::ParsePing(const std::vector<uint8_t> &data)
 	if (!ReadString(data, offset, message))
 		return false;
 	// Read and store validation payload so CreatePong can echo it back.
-	// 검증 페이로드를 읽어 저장 — CreatePong이 에코할 때 사용.
 	if (!ReadValidationArray(data, offset, mLastPingValidationNums))
 		return false;
 	if (!ReadValidationArray(data, offset, mLastPingValidationChars))
@@ -325,7 +316,6 @@ bool PingPongHandler::ParsePong(const std::vector<uint8_t> &data)
 		return false;
 
 	// Read echoed validation payload and verify against the original sent in CreatePing.
-	// 에코된 검증 페이로드를 읽어 CreatePing에서 송신한 원본과 대조.
 	std::vector<uint32_t> echoNums;
 	std::vector<char>     echoChars;
 	if (!ReadValidationArray(data, offset, echoNums))
@@ -345,8 +335,7 @@ bool PingPongHandler::ParsePong(const std::vector<uint8_t> &data)
 }
 
 // =============================================================================
-// English: Utility methods
-// 한글: 유틸리티 메소드
+// Utility methods
 // =============================================================================
 
 uint64_t PingPongHandler::CalculateRTT(uint64_t pingTimestamp,
@@ -389,8 +378,7 @@ uint32_t PingPongHandler::GetLastPongPingSequence() const
 }
 
 // =============================================================================
-// English: Accessors (protobuf only)
-// 한글: 접근자 (protobuf 전용)
+// Accessors (protobuf only)
 // =============================================================================
 
 #ifdef HAS_PROTOBUF

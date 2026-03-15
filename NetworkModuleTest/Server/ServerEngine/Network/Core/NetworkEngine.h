@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Core network abstraction layer for NetworkModule
-// 한글: NetworkModule용 핵심 네트워크 추상화 레이어
+// Core network abstraction layer for NetworkModule
 
 #include "../../Utils/NetworkUtils.h"
 #include "AsyncIOProvider.h"
@@ -10,41 +9,33 @@
 
 namespace Network::Core
 {
-// English: Import utility types into Core namespace
-// 한글: Core 네임스페이스에 유틸리티 타입 가져오기
+// Import utility types into Core namespace
 using Utils::ConnectionId;
 using Utils::Timestamp;
 // =============================================================================
-// English: Network event types
-// 한글: 네트워크 이벤트 타입
+// Network event types
 // =============================================================================
 
 enum class NetworkEvent : uint8_t
 {
-	// English: New connection established
-	// 한글: 새 연결 수립
+	// New connection established
 	Connected,
 
-	// English: Connection closed
-	// 한글: 연결 종료
+	// Connection closed
 	Disconnected,
 
-	// English: Data received
-	// 한글: 데이터 수신
+	// Data received
 	DataReceived,
 
-	// English: Data sent successfully
-	// 한글: 데이터 전송 성공
+	// Data sent successfully
 	DataSent,
 
-	// English: Error occurred
-	// 한글: 에러 발생
+	// Error occurred
 	Error
 };
 
 // =============================================================================
-// English: Network event data
-// 한글: 네트워크 이벤트 데이터
+// Network event data
 // =============================================================================
 
 struct NetworkEventData
@@ -58,32 +49,27 @@ struct NetworkEventData
 };
 
 // =============================================================================
-// English: Event callback type
-// 한글: 이벤트 콜백 타입
+// Event callback type
 // =============================================================================
 
 using NetworkEventCallback = std::function<void(const NetworkEventData &)>;
 
 // =============================================================================
-// English: Core network interface
-// 한글: 핵심 네트워크 인터페이스
+// Core network interface
 // =============================================================================
 
 class INetworkEngine
 {
   public:
-	// English: Virtual destructor
-	// 한글: 가상 소멸자
+	// Virtual destructor
 	virtual ~INetworkEngine() = default;
 
 	// =====================================================================
-	// English: Lifecycle management
-	// 한글: 생명주기 관리
+	// Lifecycle management
 	// =====================================================================
 
 	/**
-	 * English: Initialize the network engine
-	 * 한글: 네트워크 엔진 초기화
+	 * Initialize the network engine
 	 * @param maxConnections Maximum allowed connections
 	 * @param port Port number to listen on
 	 * @return True if initialization succeeded
@@ -91,33 +77,28 @@ class INetworkEngine
 	virtual bool Initialize(size_t maxConnections, uint16_t port) = 0;
 
 	/**
-	 * English: Start the network engine
-	 * 한글: 네트워크 엔진 시작
+	 * Start the network engine
 	 * @return True if started successfully
 	 */
 	virtual bool Start() = 0;
 
 	/**
-	 * English: Stop the network engine
-	 * 한글: 네트워크 엔진 중지
+	 * Stop the network engine
 	 */
 	virtual void Stop() = 0;
 
 	/**
-	 * English: Check if engine is running
-	 * 한글: 엔진 실행 상태 확인
+	 * Check if engine is running
 	 * @return True if running
 	 */
 	virtual bool IsRunning() const = 0;
 
 	// =====================================================================
-	// English: Event handling
-	// 한글: 이벤트 처리
+	// Event handling
 	// =====================================================================
 
 	/**
-	 * English: Register event callback
-	 * 한글: 이벤트 콜백 등록
+	 * Register event callback
 	 * @param eventType Event type to register for
 	 * @param callback Callback function
 	 * @return True if registration succeeded
@@ -126,20 +107,17 @@ class INetworkEngine
 										   NetworkEventCallback callback) = 0;
 
 	/**
-	 * English: Unregister event callback
-	 * 한글: 이벤트 콜백 등록 해제
+	 * Unregister event callback
 	 * @param eventType Event type
 	 */
 	virtual void UnregisterEventCallback(NetworkEvent eventType) = 0;
 
 	// =====================================================================
-	// English: Connection management
-	// 한글: 연결 관리
+	// Connection management
 	// =====================================================================
 
 	/**
-	 * English: Send data to specific connection
-	 * 한글: 특정 연결로 데이터 전송
+	 * Send data to specific connection
 	 * @param connectionId Connection ID
 	 * @param data Data to send
 	 * @param size Data size
@@ -149,23 +127,20 @@ class INetworkEngine
 						  size_t size) = 0;
 
 	/**
-	 * English: Close specific connection
-	 * 한글: 특정 연결 종료
+	 * Close specific connection
 	 * @param connectionId Connection ID
 	 */
 	virtual void CloseConnection(ConnectionId connectionId) = 0;
 
 	/**
-	 * English: Get connection information
-	 * 한글: 연결 정보 조회
+	 * Get connection information
 	 * @param connectionId Connection ID
 	 * @return Connection info or empty if not found
 	 */
 	virtual std::string GetConnectionInfo(ConnectionId connectionId) const = 0;
 
 	// =====================================================================
-	// English: Statistics
-	// 한글: 통계
+	// Statistics
 	// =====================================================================
 
 	struct Statistics
@@ -174,8 +149,7 @@ class INetworkEngine
 		uint64_t activeConnections;
 		uint64_t totalBytesSent;
 		uint64_t totalBytesReceived;
-		// English: Per-direction error counters. totalErrors == sendErrors + recvErrors.
-		// 한글: 방향별 에러 카운터. totalErrors == sendErrors + recvErrors.
+		// Per-direction error counters. totalErrors == sendErrors + recvErrors.
 		uint64_t totalSendErrors;
 		uint64_t totalRecvErrors;
 		uint64_t totalErrors;
@@ -183,21 +157,18 @@ class INetworkEngine
 	};
 
 	/**
-	 * English: Get engine statistics
-	 * 한글: 엔진 통계 조회
+	 * Get engine statistics
 	 * @return Statistics object
 	 */
 	virtual Statistics GetStatistics() const = 0;
 };
 
 // =============================================================================
-// English: Factory function
-// 한글: 팩토리 함수
+// Factory function
 // =============================================================================
 
 /**
- * English: Create network engine instance
- * 한글: 네트워크 엔진 인스턴스 생성
+ * Create network engine instance
  * @param engineType Engine type (e.g., "auto", "epoll", "iocp")
  * @return Network engine instance or nullptr
  */
@@ -205,8 +176,7 @@ std::unique_ptr<INetworkEngine>
 CreateNetworkEngine(const std::string &engineType = "auto");
 
 /**
- * English: Get list of available engine types
- * 한글: 사용 가능한 엔진 타입 목록 조회
+ * Get list of available engine types
  * @return Vector of engine type names
  */
 std::vector<std::string> GetAvailableEngineTypes();

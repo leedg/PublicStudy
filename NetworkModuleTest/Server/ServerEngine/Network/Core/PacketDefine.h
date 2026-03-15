@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Binary packet definitions for network framing
-// 한글: 네트워크 프레이밍용 바이너리 패킷 정의
+// Binary packet definitions for network framing
 
 #include <cstdint>
 #include <limits>
@@ -9,41 +8,34 @@
 namespace Network::Core
 {
 // =============================================================================
-// English: Packet type IDs
-// 한글: 패킷 타입 ID
+// Packet type IDs
 // =============================================================================
 
 enum class PacketType : uint16_t
 {
-	// English: Session connect request (Client -> Server)
-	// 한글: 세션 연결 요청 (클라이언트 -> 서버)
+	// Session connect request (Client -> Server)
 	SessionConnectReq = 0x0001,
 
-	// English: Session connect response (Server -> Client)
-	// 한글: 세션 연결 응답 (서버 -> 클라이언트)
+	// Session connect response (Server -> Client)
 	SessionConnectRes = 0x0002,
 
-	// English: Ping request (Client -> Server)
-	// 한글: 핑 요청 (클라이언트 -> 서버)
+	// Ping request (Client -> Server)
 	PingReq = 0x0003,
 
-	// English: Pong response (Server -> Client)
-	// 한글: 퐁 응답 (서버 -> 클라이언트)
+	// Pong response (Server -> Client)
 	PongRes = 0x0004,
 };
 
 // =============================================================================
-// English: Packet header (common to all packets)
-// 한글: 패킷 헤더 (모든 패킷의 공통 헤더)
+// Packet header (common to all packets)
 // =============================================================================
 
 #pragma pack(push, 1)
 
 struct PacketHeader
 {
-	uint16_t size; // English: Total packet size (including header) / 한글: 패킷
-					   // 전체 크기 (헤더 포함)
-	uint16_t id; // English: Packet type ID / 한글: 패킷 타입 ID
+	uint16_t size; // Total packet size (including header)
+	uint16_t id; // Packet type ID
 
 	PacketHeader() : size(0), id(0) {}
 
@@ -56,8 +48,7 @@ struct PacketHeader
 static_assert(sizeof(PacketHeader) == 4, "PacketHeader must be 4 bytes");
 
 // =============================================================================
-// English: Session connect request packet
-// 한글: 세션 연결 요청 패킷
+// Session connect request packet
 // =============================================================================
 
 struct PKT_SessionConnectReq
@@ -73,8 +64,7 @@ struct PKT_SessionConnectReq
 };
 
 // =============================================================================
-// English: Session connect response packet
-// 한글: 세션 연결 응답 패킷
+// Session connect response packet
 // =============================================================================
 
 enum class ConnectResult : uint8_t
@@ -90,8 +80,8 @@ struct PKT_SessionConnectRes
 {
 	PacketHeader header;
 	uint64_t sessionId;
-	uint32_t serverTime; // English: Unix timestamp / 한글: 유닉스 타임스탬프
-	uint8_t result;      // English: ConnectResult / 한글: 연결 결과
+	uint32_t serverTime; // Unix timestamp
+	uint8_t result;      // ConnectResult
 
 	PKT_SessionConnectRes()
 		: header(sizeof(PKT_SessionConnectRes), PacketType::SessionConnectRes),
@@ -102,16 +92,14 @@ struct PKT_SessionConnectRes
 };
 
 // =============================================================================
-// English: Ping request packet
-// 한글: 핑 요청 패킷
+// Ping request packet
 // =============================================================================
 
 struct PKT_PingReq
 {
 	PacketHeader header;
-	uint64_t clientTime; // English: Client timestamp (ms) / 한글: 클라이언트
-						 // 시간 (밀리초)
-	uint32_t sequence; // English: Sequence number / 한글: 시퀀스 번호
+	uint64_t clientTime; // Client timestamp (ms)
+	uint32_t sequence; // Sequence number
 
 	PKT_PingReq()
 		: header(sizeof(PKT_PingReq), PacketType::PingReq), clientTime(0),
@@ -121,18 +109,17 @@ struct PKT_PingReq
 };
 
 // =============================================================================
-// English: Pong response packet
-// 한글: 퐁 응답 패킷
+// Pong response packet
 // =============================================================================
 
 struct PKT_PongRes
 {
 	PacketHeader header;
 	uint64_t
-		clientTime; // English: Echo of client time / 한글: 클라이언트 시간 에코
+		clientTime; // Echo of client time
 	uint64_t
-		serverTime; // English: Server timestamp (ms) / 한글: 서버 시간 (밀리초)
-	uint32_t sequence; // English: Echo of sequence / 한글: 시퀀스 에코
+		serverTime; // Server timestamp (ms)
+	uint32_t sequence; // Echo of sequence
 
 	PKT_PongRes()
 		: header(sizeof(PKT_PongRes), PacketType::PongRes), clientTime(0),
@@ -144,17 +131,13 @@ struct PKT_PongRes
 #pragma pack(pop)
 
 // =============================================================================
-// English: Network constants
-// 한글: 네트워크 상수
+// Network constants
 // =============================================================================
 
 constexpr uint32_t MAX_PACKET_SIZE = 4096;
 constexpr uint32_t RECV_BUFFER_SIZE = 8192;
 constexpr uint32_t SEND_BUFFER_SIZE = 8192;
 
-// [Fix A-2] IOContext::buffer는 RECV_BUFFER_SIZE를 기준으로 정의됨.
-// Send 경로는 SEND_BUFFER_SIZE로 검증하므로, 두 값이 다를 경우 버퍼 오버플로우가 발생한다.
-// 상수 수정 시 반드시 두 값을 함께 조정해야 한다.
 static_assert(SEND_BUFFER_SIZE == RECV_BUFFER_SIZE,
     "SEND_BUFFER_SIZE must equal RECV_BUFFER_SIZE: IOContext::buffer uses RECV_BUFFER_SIZE "
     "but Send() validates against SEND_BUFFER_SIZE. Mismatch causes buffer overflow.");
@@ -164,13 +147,10 @@ constexpr uint32_t PING_TIMEOUT_MS = 30000;
 constexpr size_t MAX_SEND_QUEUE_DEPTH = 1000;
 constexpr size_t MAX_LOGIC_QUEUE_DEPTH = 10000;
 
-// ─── 패킷 크기 명시적 상수 ────────────────────────────────────────────────────
-// MAX_PACKET_SIZE = 전체 와이어 크기 (PacketHeader + payload 합산)
 constexpr uint32_t PACKET_HEADER_SIZE      = sizeof(PacketHeader);
-constexpr uint32_t MAX_PACKET_TOTAL_SIZE   = MAX_PACKET_SIZE;   // 명시적 alias
+constexpr uint32_t MAX_PACKET_TOTAL_SIZE   = MAX_PACKET_SIZE;
 constexpr uint32_t MAX_PACKET_PAYLOAD_SIZE = MAX_PACKET_SIZE - PACKET_HEADER_SIZE;
 
-// ─── 컴파일 타임 불변식 ──────────────────────────────────────────────────────
 static_assert(MAX_PACKET_SIZE > PACKET_HEADER_SIZE,
     "MAX_PACKET_SIZE must be > PACKET_HEADER_SIZE");
 static_assert(MAX_PACKET_SIZE <= (std::numeric_limits<uint16_t>::max)(),

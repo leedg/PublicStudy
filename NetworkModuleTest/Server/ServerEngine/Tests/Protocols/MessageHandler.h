@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Simple message handler for network messages
-// 한글: 네트워크 메시지용 간단한 메시지 핸들러
+// Simple message handler for network messages
 
 #include <cstdint>
 #include <functional>
@@ -13,63 +12,51 @@
 namespace Network::Protocols
 {
 // =============================================================================
-// English: Type definitions
-// 한글: 타입 정의
+// Type definitions
 // =============================================================================
 
 using ConnectionId = uint64_t;
 
 // =============================================================================
-// English: Message types
-// 한글: 메시지 타입
+// Message types
 // =============================================================================
 
 enum class MessageType : uint32_t
 {
-	// English: Unknown or invalid message
-	// 한글: 알 수 없거나 유효하지 않은 메시지
+	// Unknown or invalid message
 	Unknown = 0,
 
-	// English: Ping message
-	// 한글: Ping 메시지
+	// Ping message
 	Ping = 1,
 
-	// English: Pong response
-	// 한글: Pong 응답
+	// Pong response
 	Pong = 2,
 
-	// English: Custom message start
-	// 한글: 커스텀 메시지 시작
+	// Custom message start
 	CustomStart = 1000
 };
 
 // =============================================================================
-// English: Message structure
-// 한글: 메시지 구조체
+// Message structure
 // =============================================================================
 
 struct Message
 {
-	// English: Message type
-	// 한글: 메시지 타입
+	// Message type
 	MessageType mType = MessageType::Unknown;
 
-	// English: Connection ID that sent this message
-	// 한글: 이 메시지를 보낸 연결 ID
+	// Connection ID that sent this message
 	ConnectionId mConnectionId = 0;
 
-	// English: Message payload (header excluded)
-	// 한글: 메시지 페이로드 (헤더 제외)
+	// Message payload (header excluded)
 	std::vector<uint8_t> mData;
 
-	// English: Timestamp from message header
-	// 한글: 메시지 헤더에 포함된 타임스탬프
+	// Timestamp from message header
 	uint64_t mTimestamp = 0;
 };
 
 // =============================================================================
-// English: Message handler interface
-// 한글: 메시지 핸들러 인터페이스
+// Message handler interface
 // =============================================================================
 
 using MessageHandlerCallback = std::function<void(const Message &)>;
@@ -77,22 +64,18 @@ using MessageHandlerCallback = std::function<void(const Message &)>;
 class MessageHandler
 {
   public:
-	// English: Constructor
-	// 한글: 생성자
+	// Constructor
 	MessageHandler();
 
-	// English: Destructor
-	// 한글: 소멸자
+	// Destructor
 	virtual ~MessageHandler() = default;
 
 	// =====================================================================
-	// English: Registration
-	// 한글: 등록
+	// Registration
 	// =====================================================================
 
 	/**
-	 * English: Register a callback for specific message type
-	 * 한글: 특정 메시지 타입용 콜백 등록
+	 * Register a callback for specific message type
 	 * @param type Message type
 	 * @param callback Handler function
 	 * @return True if registration successful
@@ -100,20 +83,17 @@ class MessageHandler
 	bool RegisterHandler(MessageType type, MessageHandlerCallback callback);
 
 	/**
-	 * English: Unregister a handler
-	 * 한글: 핸들러 등록 해제
+	 * Unregister a handler
 	 * @param type Message type
 	 */
 	void UnregisterHandler(MessageType type);
 
 	// =====================================================================
-	// English: Message processing
-	// 한글: 메시지 처리
+	// Message processing
 	// =====================================================================
 
 	/**
-	 * English: Process incoming message data
-	 * 한글: 수신 메시지 데이터 처리
+	 * Process incoming message data
 	 * @param connectionId Source connection ID
 	 * @param data Raw message data
 	 * @param size Data size
@@ -123,8 +103,7 @@ class MessageHandler
 						size_t size);
 
 	/**
-	 * English: Create message for sending
-	 * 한글: 전송용 메시지 생성
+	 * Create message for sending
 	 * @param type Message type
 	 * @param connectionId Target connection ID
 	 * @param data Message payload
@@ -136,20 +115,17 @@ class MessageHandler
 										   const void *data, size_t size);
 
 	// =====================================================================
-	// English: Utility
-	// 한글: 유틸리티
+	// Utility
 	// =====================================================================
 
 	/**
-	 * English: Get current timestamp in milliseconds
-	 * 한글: 현재 타임스탬프(밀리초) 조회
+	 * Get current timestamp in milliseconds
 	 * @return Current timestamp
 	 */
 	uint64_t GetCurrentTimestamp() const;
 
 	/**
-	 * English: Get message type from raw data
-	 * 한글: 원본 데이터로부터 메시지 타입 조회
+	 * Get message type from raw data
 	 * @param data Raw message data
 	 * @param size Data size
 	 * @return Message type (Unknown if invalid)
@@ -157,8 +133,7 @@ class MessageHandler
 	static MessageType GetMessageType(const uint8_t *data, size_t size);
 
 	/**
-	 * English: Validate message format
-	 * 한글: 메시지 형식 검증
+	 * Validate message format
 	 * @param data Raw message data
 	 * @param size Data size
 	 * @return True if message format is valid
@@ -166,16 +141,13 @@ class MessageHandler
 	static bool ValidateMessage(const uint8_t *data, size_t size);
 
   private:
-	// English: Registered handlers
-	// 한글: 등록된 핸들러들
+	// Registered handlers
 	std::unordered_map<MessageType, MessageHandlerCallback> mHandlers;
 
-	// English: Next message ID
-	// 한글: 다음 메시지 ID
+	// Next message ID
 	uint32_t mNextMessageId;
 
-	// English: Thread safety
-	// 한글: 스레드 안전성
+	// Thread safety
 	std::mutex mMutex;
 };
 

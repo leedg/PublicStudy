@@ -1,5 +1,4 @@
-// English: SessionPool implementation
-// 한글: SessionPool 구현
+// SessionPool implementation
 
 #include "SessionPool.h"
 #include "../../Utils/Logger.h"
@@ -34,10 +33,8 @@ bool SessionPool::Initialize(size_t capacity)
         mFreeList.push_back(i);
 
 #ifdef _WIN32
-        // English: Build immutable OVERLAPPED→IOType map from fixed slot addresses.
+        // Build immutable OVERLAPPED→IOType map from fixed slot addresses.
         //          Sessions never move (stored in array), so these pointers are stable.
-        // 한글: 고정 슬롯 주소로 불변 OVERLAPPED→IOType 맵 구축.
-        //       세션은 배열에 저장되어 이동하지 않으므로 포인터가 안정적.
         mIOContextMap[static_cast<const OVERLAPPED *>(
             &mSlots[i].session.GetRecvContext())] = IOType::Recv;
         mIOContextMap[static_cast<const OVERLAPPED *>(
@@ -86,8 +83,7 @@ SessionRef SessionPool::Acquire()
     slot.inUse.store(true, std::memory_order_release);
     mActiveCount.fetch_add(1, std::memory_order_relaxed);
 
-    // English: Custom deleter captures slotIdx — no pointer arithmetic needed.
-    // 한글: Custom deleter가 slotIdx를 캡처 — 포인터 산술 불필요.
+    // Custom deleter captures slotIdx — no pointer arithmetic needed.
     return SessionRef(&slot.session, [this, slotIdx](Session *) { ReleaseInternal(slotIdx); });
 }
 
@@ -98,20 +94,13 @@ void SessionPool::ReleaseInternal(size_t slotIdx)
 
     PoolSlot &slot = mSlots[slotIdx];
 
-    // English: Full teardown sequence for pool reuse:
+    // Full teardown sequence for pool reuse:
     //   1. Close()              — closes socket, cancels AsyncScope (no blocking)
     //   2. WaitForPendingTasks()— blocks until all in-flight logic tasks complete
     //                             (pool sessions skip ~Session() so ~AsyncScope() never runs)
     //   3. Reset()              — clears state including mRecvAccumBuffer
     //                             (safe only after WaitForPendingTasks; AsyncScope::Reset()
     //                              asserts mInFlight == 0)
-    // 한글: 풀 재사용을 위한 완전한 teardown 순서:
-    //   1. Close()              — 소켓 닫기, AsyncScope 취소 (블로킹 없음)
-    //   2. WaitForPendingTasks()— 모든 in-flight 로직 태스크 완료까지 블로킹
-    //                             (풀 세션은 ~Session() 미호출로 ~AsyncScope() 미실행)
-    //   3. Reset()              — mRecvAccumBuffer 포함 상태 초기화
-    //                             (WaitForPendingTasks 이후에만 안전; AsyncScope::Reset()이
-    //                              mInFlight == 0을 assert함)
     slot.session.Close();
     slot.session.WaitForPendingTasks();
     slot.session.Reset();
@@ -131,8 +120,7 @@ bool SessionPool::ResolveIOType(const OVERLAPPED *ov, IOType &outType) const
     if (!ov)
         return false;
 
-    // English: mIOContextMap is immutable after Initialize() — no lock needed.
-    // 한글: mIOContextMap은 Initialize() 이후 불변 — 락 불필요.
+    // mIOContextMap is immutable after Initialize() — no lock needed.
     const auto it = mIOContextMap.find(ov);
     if (it == mIOContextMap.end())
         return false;

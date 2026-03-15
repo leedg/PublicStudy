@@ -1,18 +1,14 @@
 #pragma once
 
-// English: Database Server main header
-// 한글: 데이터베이스 서버 메인 헤더
+// Database Server main header
 
-// English: DBPingTimeManager replaced by ServerLatencyManager (merged) — see DBPingTimeManager.h for migration notes
-// 한글: DBPingTimeManager는 ServerLatencyManager로 통합됨 — 마이그레이션 노트는 DBPingTimeManager.h 참조
+// DBPingTimeManager replaced by ServerLatencyManager (merged) — see DBPingTimeManager.h for migration notes
 #include "ServerLatencyManager.h"
 
-// English: Forward-declare IDatabase; full definition included in DBServer.cpp
-// 한글: IDatabase 전방 선언; DBServer.cpp에서 전체 정의 포함
+// Forward-declare IDatabase; full definition included in DBServer.cpp
 namespace Network { namespace Database { class IDatabase; } }
 
-// English: DatabaseType for local config
-// 한글: 로컬 config용 DatabaseType
+// DatabaseType for local config
 #include "../ServerEngine/Interfaces/DatabaseType_enum.h"
 #include "../ServerEngine/Utils/NetworkTypes.h"
 #include "../ServerEngine/Network/Core/AsyncIOProvider.h"
@@ -27,32 +23,26 @@ namespace Network { namespace Database { class IDatabase; } }
 
 namespace Network::DBServer
 {
-// 한글: Protocols의 ConnectionId를 DBServer 범위에서 재사용한다.
 using Protocols::ConnectionId;
 // =============================================================================
-// English: Database Server class
-// ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 ?????
+// Database Server class
 // =============================================================================
 
 class DBServer
 {
   public:
-	// English: Constructor
-	// ???: ??밴쉐??
+	// Constructor
 	DBServer();
 
-	// English: Destructor
-	// ???: ???늾??
+	// Destructor
 	~DBServer();
 
 	// =====================================================================
-	// English: Lifecycle management
-	// ???: ??몄구雅뚯눊由??온??
+	// Lifecycle management
 	// =====================================================================
 
 	/**
-	 * English: Initialize the database server
-	 * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 ?λ뜃由??
+	 * Initialize the database server
 	 * @param port Port number to listen on
 	 * @param maxConnections Maximum allowed connections
 	 * @return True if initialization succeeded
@@ -60,33 +50,28 @@ class DBServer
 	bool Initialize(uint16_t port = Network::Utils::DEFAULT_TEST_DB_PORT, size_t maxConnections = 1000);
 
 	/**
-	 * English: Start the database server
-	 * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 ??뽰삂
+	 * Start the database server
 	 * @return True if server started successfully
 	 */
 	bool Start();
 
 	/**
-	 * English: Stop the database server
-	 * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 餓λ쵐?
+	 * Stop the database server
 	 */
 	void Stop();
 
 	/**
-	 * English: Check if server is running
-	 * ???: ??뺤쒔 ??쎈뻬 ?怨밴묶 ?類ㅼ뵥
+	 * Check if server is running
 	 * @return True if server is running
 	 */
 	bool IsRunning() const;
 
 	// =====================================================================
-	// English: Configuration
-	// ???: ??쇱젟
+	// Configuration
 	// =====================================================================
 
 	/**
-	 * English: Set database connection parameters
-	 * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ?怨뚭퍙 ???뵬沃섎챸苑???쇱젟
+	 * Set database connection parameters
 	 * @param host Database host
 	 * @param port Database port
 	 * @param database Database name
@@ -100,27 +85,23 @@ class DBServer
 
   private:
 	// =====================================================================
-	// English: Network event handlers
-	// ???: ??쎈뱜??곌쾿 ??源???紐껊굶??
+	// Network event handlers
 	// =====================================================================
 
 	/**
-	 * English: Handle new connection
-	 * ???: ???怨뚭퍙 筌ｌ꼶??
+	 * Handle new connection
 	 * @param connectionId Connection ID
 	 */
 	void OnConnectionEstablished(ConnectionId connectionId);
 
 	/**
-	 * English: Handle connection closed
-	 * ???: ?怨뚭퍙 ?ル굝利?筌ｌ꼶??
+	 * Handle connection closed
 	 * @param connectionId Connection ID
 	 */
 	void OnConnectionClosed(ConnectionId connectionId);
 
 	/**
-	 * English: Handle data received
-	 * ???: ?怨쀬뵠????뤿뻿 筌ｌ꼶??
+	 * Handle data received
 	 * @param connectionId Connection ID
 	 * @param data Received data
 	 * @param size Data size
@@ -129,56 +110,48 @@ class DBServer
 						size_t size);
 
 	/**
-	 * English: Handle Ping message
-	 * ???: Ping 筌롫뗄?놅쭪? 筌ｌ꼶??
+	 * Handle Ping message
 	 * @param message Ping message
 	 */
 	void OnPingMessage(const Protocols::Message &message);
 
 	/**
-	 * English: Handle Pong message
-	 * 한글: Pong 메시지 처리
+	 * Handle Pong message
 	 * @param message Pong message
 	 */
 	void OnPongMessage(const Protocols::Message &message);
 
 	// =====================================================================
-	// English: Database operations
-	// ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ?臾믩씜
+	// Database operations
 	// =====================================================================
 
 	/**
-	 * English: Connect to database
-	 * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ?怨뚭퍙
+	 * Connect to database
 	 * @return True if connection succeeded
 	 */
 	bool ConnectToDatabase();
 
 	/**
-	 * English: Disconnect from database
-	 * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ?怨뚭퍙 ??곸젫
+	 * Disconnect from database
 	 */
 	void DisconnectFromDatabase();
 
 	/**
-	 * English: Execute query
-	 * ???: ?묒눖????쎈뻬
+	 * Execute query
 	 * @param query SQL query
 	 * @return Query result
 	 */
 	std::string ExecuteQuery(const std::string &query);
 
 	// =====================================================================
-	// English: Private members
-	// ???: ??쑨?у첎?筌롢끇苡?
+	// Private members
 	// =====================================================================
 
 	// Network components
 	std::unique_ptr<AsyncIO::AsyncIOProvider> mAsyncIOProvider;
 	std::unique_ptr<Protocols::MessageHandler> mMessageHandler;
 	std::unique_ptr<Protocols::PingPongHandler> mPingPongHandler;
-	// 한글: Ping/Pong 레이턴시 + 시간 저장 — ServerLatencyManager로 통합 (이전: DBPingTimeManager)
-	// English: Ping/Pong latency + time persistence — unified into ServerLatencyManager (was: DBPingTimeManager)
+	// Ping/Pong latency + time persistence — unified into ServerLatencyManager (was: DBPingTimeManager)
 	std::unique_ptr<ServerLatencyManager> mLatencyManager;
 
 	// Server state
@@ -195,13 +168,11 @@ class DBServer
 		std::string database = "networkdb";
 		std::string username = "postgres";
 		std::string password = "password";
-		// English: Default to Mock so the server works out-of-the-box without an external DB
-		// 한글: 외부 DB 없이 바로 동작하도록 기본값을 Mock으로 설정
+		// Default to Mock so the server works out-of-the-box without an external DB
 		Network::Database::DatabaseType type = Network::Database::DatabaseType::Mock;
 	} mDbConfig;
 
-	// English: Owned database instance (created by ConnectToDatabase)
-	// 한글: ConnectToDatabase가 생성하는 소유 데이터베이스 인스턴스
+	// Owned database instance (created by ConnectToDatabase)
 	std::unique_ptr<Network::Database::IDatabase> mDatabase;
 
 	// Worker thread
@@ -212,19 +183,16 @@ class DBServer
 	std::mutex mConnectionsMutex;
 
 	// =====================================================================
-	// English: Private methods
-	// ???: ??쑨?у첎?筌롫뗄???
+	// Private methods
 	// =====================================================================
 
 	/**
-	 * English: Worker thread function
-	 * ???: ???묽 ??살쟿????λ땾
+	 * Worker thread function
 	 */
 	void WorkerThread();
 
 	/**
-	 * English: Send message to connection
-	 * ???: ?怨뚭퍙嚥?筌롫뗄?놅쭪? ?袁⑸꽊
+	 * Send message to connection
 	 * @param connectionId Connection ID
 	 * @param type Message type
 	 * @param data Message data
@@ -234,8 +202,7 @@ class DBServer
 					 const void *data, size_t size);
 
 	/**
-	 * English: Get current timestamp
-	 * ???: ?袁⑹삺 ???袁⑸뮞??遊?鈺곌퀬??
+	 * Get current timestamp
 	 * @return Timestamp in milliseconds
 	 */
 	uint64_t GetCurrentTimestamp() const;

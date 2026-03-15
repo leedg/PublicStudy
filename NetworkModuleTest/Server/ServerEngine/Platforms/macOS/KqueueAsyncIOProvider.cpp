@@ -1,5 +1,4 @@
-// English: kqueue-based AsyncIOProvider implementation for macOS/BSD
-// 한글: macOS/BSD용 kqueue 기반 AsyncIOProvider 구현
+// kqueue-based AsyncIOProvider implementation for macOS/BSD
 
 #ifdef __APPLE__
 
@@ -17,8 +16,7 @@ namespace AsyncIO
 namespace BSD
 {
 // =============================================================================
-// English: Constructor & Destructor
-// 한글: 생성자 및 소멸자
+// Constructor & Destructor
 // =============================================================================
 
 KqueueAsyncIOProvider::KqueueAsyncIOProvider()
@@ -30,8 +28,7 @@ KqueueAsyncIOProvider::KqueueAsyncIOProvider()
 KqueueAsyncIOProvider::~KqueueAsyncIOProvider() { Shutdown(); }
 
 // =============================================================================
-// English: Lifecycle Management
-// 한글: 생명주기 관리
+// Lifecycle Management
 // =============================================================================
 
 AsyncIOError KqueueAsyncIOProvider::Initialize(size_t queueDepth,
@@ -40,8 +37,7 @@ AsyncIOError KqueueAsyncIOProvider::Initialize(size_t queueDepth,
 	if (mInitialized)
 		return AsyncIOError::AlreadyInitialized;
 
-	// English: Create kqueue file descriptor
-	// 한글: kqueue 파일 디스크립터 생성
+	// Create kqueue file descriptor
 	mKqueueFd = kqueue();
 	if (mKqueueFd < 0)
 	{
@@ -51,8 +47,7 @@ AsyncIOError KqueueAsyncIOProvider::Initialize(size_t queueDepth,
 
 	mMaxConcurrentOps = maxConcurrent;
 
-	// English: Initialize provider info
-	// 한글: 공급자 정보 초기화
+	// Initialize provider info
 	mInfo.mPlatformType = PlatformType::Kqueue;
 	mInfo.mName = "kqueue";
 	mInfo.mMaxQueueDepth = queueDepth;
@@ -72,8 +67,7 @@ void KqueueAsyncIOProvider::Shutdown()
 
 	std::lock_guard<std::mutex> lock(mMutex);
 
-	// English: Close kqueue file descriptor
-	// 한글: kqueue 파일 디스크립터 닫기
+	// Close kqueue file descriptor
 	if (mKqueueFd >= 0)
 	{
 		close(mKqueueFd);
@@ -89,8 +83,7 @@ void KqueueAsyncIOProvider::Shutdown()
 bool KqueueAsyncIOProvider::IsInitialized() const { return mInitialized; }
 
 // =============================================================================
-// English: Socket Association
-// 한글: 소켓 연결
+// Socket Association
 // =============================================================================
 
 AsyncIOError KqueueAsyncIOProvider::AssociateSocket(SocketHandle socket,
@@ -99,8 +92,7 @@ AsyncIOError KqueueAsyncIOProvider::AssociateSocket(SocketHandle socket,
 	if (!mInitialized)
 		return AsyncIOError::NotInitialized;
 
-	// English: Register socket with kqueue for read/write events
-	// 한글: kqueue에 소켓을 읽기/쓰기 이벤트로 등록
+	// Register socket with kqueue for read/write events
 	if (!RegisterSocketEvents(socket))
 	{
 		mLastError = "Failed to register socket events with kqueue";
@@ -114,14 +106,12 @@ AsyncIOError KqueueAsyncIOProvider::AssociateSocket(SocketHandle socket,
 }
 
 // =============================================================================
-// English: Buffer Management
-// 한글: 버퍼 관리
+// Buffer Management
 // =============================================================================
 
 int64_t KqueueAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 {
-	// English: kqueue doesn't support pre-registered buffers (no-op)
-	// 한글: kqueue는 사전 등록 버퍼를 지원하지 않음 (no-op)
+	// kqueue doesn't support pre-registered buffers (no-op)
 	return -1;
 }
 
@@ -131,8 +121,7 @@ AsyncIOError KqueueAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
 }
 
 // =============================================================================
-// English: Async I/O Operations
-// 한글: 비동기 I/O 작업
+// Async I/O Operations
 // =============================================================================
 
 AsyncIOError KqueueAsyncIOProvider::SendAsync(SocketHandle socket,
@@ -147,8 +136,7 @@ AsyncIOError KqueueAsyncIOProvider::SendAsync(SocketHandle socket,
 
 	std::lock_guard<std::mutex> lock(mMutex);
 
-	// English: Store pending operation with buffer copy
-	// 한글: 버퍼 복사와 함께 대기 작업 저장
+	// Store pending operation with buffer copy
 	PendingOperation pending;
 	pending.mContext = context;
 	pending.mType = AsyncIOType::Send;
@@ -162,8 +150,7 @@ AsyncIOError KqueueAsyncIOProvider::SendAsync(SocketHandle socket,
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
 
-	// English: Dynamically add EVFILT_WRITE so we get notified when socket is writable
-	// 한글: 소켓이 쓰기 가능할 때 알림을 받기 위해 EVFILT_WRITE 동적 추가
+	// Dynamically add EVFILT_WRITE so we get notified when socket is writable
 	struct kevent ev;
 	EV_SET(&ev, socket, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, nullptr);
 	kevent(mKqueueFd, &ev, 1, nullptr, 0, nullptr);
@@ -200,8 +187,7 @@ AsyncIOError KqueueAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 AsyncIOError KqueueAsyncIOProvider::FlushRequests()
 {
-	// English: kqueue doesn't support batch processing (no-op)
-	// 한글: kqueue는 배치 처리를 지원하지 않음 (no-op)
+	// kqueue doesn't support batch processing (no-op)
 	if (!mInitialized)
 		return AsyncIOError::NotInitialized;
 
@@ -209,8 +195,7 @@ AsyncIOError KqueueAsyncIOProvider::FlushRequests()
 }
 
 // =============================================================================
-// English: Completion Processing
-// 한글: 완료 처리
+// Completion Processing
 // =============================================================================
 
 int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
@@ -221,8 +206,7 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 	if (!entries || maxEntries == 0 || mKqueueFd < 0)
 		return static_cast<int>(AsyncIOError::InvalidParameter);
 
-	// English: Prepare timeout structure
-	// 한글: 타임아웃 구조체 준비
+	// Prepare timeout structure
 	struct timespec ts;
 	struct timespec *pts = nullptr;
 
@@ -233,8 +217,7 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		pts = &ts;
 	}
 
-	// English: Poll for events
-	// 한글: 이벤트 폴링
+	// Poll for events
 	std::unique_ptr<struct kevent[]> events(new struct kevent[maxEntries]);
 	int numEvents = kevent(mKqueueFd, nullptr, 0, events.get(),
 							   static_cast<int>(maxEntries), pts);
@@ -250,8 +233,7 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		struct kevent &event = events[i];
 		SocketHandle socket = static_cast<SocketHandle>(event.ident);
 
-		// English: Handle errors/EOF
-		// 한글: 에러/EOF 처리
+		// Handle errors/EOF
 		if (event.flags & EV_ERROR)
 		{
 			std::lock_guard<std::mutex> lock(mMutex);
@@ -347,8 +329,7 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 				}
 			}
 
-			// English: Remove EVFILT_WRITE after consuming send op (or if none found)
-			// 한글: 송신 작업 소비 후 (또는 없을 경우) EVFILT_WRITE 제거
+			// Remove EVFILT_WRITE after consuming send op (or if none found)
 			struct kevent delev;
 			EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
 			kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
@@ -383,14 +364,12 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 }
 
 // =============================================================================
-// English: Helper Methods
-// 한글: 헬퍼 메서드
+// Helper Methods
 // =============================================================================
 
 bool KqueueAsyncIOProvider::RegisterSocketEvents(SocketHandle socket)
 {
-	// English: Register for read events only; EVFILT_WRITE added dynamically on SendAsync
-	// 한글: 읽기 이벤트만 등록; EVFILT_WRITE는 SendAsync 시 동적으로 추가
+	// Register for read events only; EVFILT_WRITE added dynamically on SendAsync
 	struct kevent ev;
 	EV_SET(&ev, socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, nullptr);
 
@@ -399,21 +378,18 @@ bool KqueueAsyncIOProvider::RegisterSocketEvents(SocketHandle socket)
 
 bool KqueueAsyncIOProvider::UnregisterSocketEvents(SocketHandle socket)
 {
-	// English: Delete read and write events
-	// 한글: 읽기 및 쓰기 이벤트 삭제
+	// Delete read and write events
 	struct kevent events[2];
 	EV_SET(&events[0], socket, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
 	EV_SET(&events[1], socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
 
-	// English: Ignore errors (socket might already be closed)
-	// 한글: 에러 무시 (소켓이 이미 닫혔을 수 있음)
+	// Ignore errors (socket might already be closed)
 	kevent(mKqueueFd, events, 2, nullptr, 0, nullptr);
 	return true;
 }
 
 // =============================================================================
-// English: Information & Statistics
-// 한글: 정보 및 통계
+// Information & Statistics
 // =============================================================================
 
 const ProviderInfo &KqueueAsyncIOProvider::GetInfo() const { return mInfo; }
@@ -426,8 +402,7 @@ const char *KqueueAsyncIOProvider::GetLastError() const
 }
 
 // =============================================================================
-// English: Factory Function
-// 한글: 팩토리 함수
+// Factory Function
 // =============================================================================
 
 std::unique_ptr<AsyncIOProvider> CreateKqueueProvider()

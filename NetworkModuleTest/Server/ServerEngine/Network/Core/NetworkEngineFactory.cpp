@@ -1,4 +1,4 @@
-// English: NetworkEngine factory implementation
+// NetworkEngine factory implementation
 
 #include "NetworkEngine.h"
 #include "PlatformDetect.h"
@@ -15,14 +15,14 @@ namespace Network::Core
 {
 
 // =============================================================================
-// English: Factory function
+// Factory function
 // =============================================================================
 
 std::unique_ptr<INetworkEngine>
 CreateNetworkEngine(const std::string &engineType)
 {
 #ifdef _WIN32
-	// English: Windows platform
+	// Windows platform
 	if (engineType == "auto" || engineType == "default" || engineType.empty())
 	{
 		if (Network::AsyncIO::Platform::IsWindowsRIOSupported())
@@ -56,12 +56,12 @@ CreateNetworkEngine(const std::string &engineType)
 	}
 
 #elif defined(__linux__)
-	// English: Linux platform
+	// Linux platform
 	if (engineType == "auto" || engineType == "default" || engineType.empty())
 	{
-		// English: Auto-detect best backend for Linux
+		// Auto-detect best backend for Linux
 
-		// English: Try io_uring first (Linux 5.1+)
+		// Try io_uring first (Linux 5.1+)
 		struct utsname unameData;
 		if (uname(&unameData) == 0)
 		{
@@ -78,7 +78,7 @@ CreateNetworkEngine(const std::string &engineType)
 			}
 		}
 
-		// English: Fallback to epoll
+		// Fallback to epoll
 		Utils::Logger::Info("Using epoll backend (auto)");
 		return std::make_unique<Platforms::LinuxNetworkEngine>(
 			Platforms::LinuxNetworkEngine::Mode::Epoll);
@@ -103,7 +103,7 @@ CreateNetworkEngine(const std::string &engineType)
 	}
 
 #elif defined(__APPLE__)
-	// English: macOS platform
+	// macOS platform
 	if (engineType == "auto" || engineType == "default" || engineType.empty() ||
 		engineType == "kqueue")
 	{
@@ -124,7 +124,7 @@ CreateNetworkEngine(const std::string &engineType)
 }
 
 // =============================================================================
-// English: Get available engine types
+// Get available engine types
 // =============================================================================
 
 std::vector<std::string> GetAvailableEngineTypes()

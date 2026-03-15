@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Database factory for creating database instances
-// 한글: 데이터베이스 인스턴스 생성용 팩토리
+// Database factory for creating database instances
 
 #include "../Interfaces/DatabaseType_enum.h"
 #include "../Interfaces/IDatabase.h"
@@ -13,23 +12,19 @@ namespace Database
 {
 
 // =============================================================================
-// English: DatabaseFactory class
-// 한글: DatabaseFactory 클래스
+// DatabaseFactory class
 // =============================================================================
 
 /**
- * English: Database factory for creating database instances
- * 한글: 데이터베이스 인스턴스 생성용 팩토리
+ * Database factory for creating database instances
  */
 class DatabaseFactory
 {
   public:
-	// English: Create database by type
-	// 한글: 타입별 데이터베이스 생성
+	// Create database by type
 	static std::unique_ptr<IDatabase> CreateDatabase(DatabaseType type);
 
-	// English: Convenience methods
-	// 한글: 편의 메서드
+	// Convenience methods
 	static std::unique_ptr<IDatabase> CreateODBCDatabase();
 	static std::unique_ptr<IDatabase> CreateOLEDBDatabase();
 	static std::unique_ptr<IDatabase> CreateMockDatabase();

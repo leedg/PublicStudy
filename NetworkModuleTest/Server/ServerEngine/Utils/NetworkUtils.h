@@ -1,13 +1,10 @@
 #pragma once
 
-// English: Unified utility functions for NetworkModule
-// 한글: NetworkModule용 통합 유틸리티 함수
+// Unified utility functions for NetworkModule
 //
-// English: This header includes all utility classes for convenience
-// 한글: 이 헤더는 편의를 위해 모든 유틸리티 클래스를 포함합니다
+// This header includes all utility classes for convenience
 //
-// English: Individual headers can be included separately if needed:
-// 한글: 필요한 경우 개별 헤더를 따로 포함할 수 있습니다:
+// Individual headers can be included separately if needed:
 //   - NetworkTypes.h    : Type definitions and constants
 //   - Timer.h           : Time measurement utility
 //   - StringUtils.h     : std::string manipulation utilities

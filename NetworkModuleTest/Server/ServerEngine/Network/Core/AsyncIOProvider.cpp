@@ -1,12 +1,10 @@
-// English: Factory function implementations for AsyncIOProvider
-// 한글: AsyncIOProvider 팩토리 함수 구현
+// Factory function implementations for AsyncIOProvider
 
 #include "AsyncIOProvider.h"
 #include "PlatformDetect.h"
 #include <cstring>
 
-// English: Forward declarations - each factory lives in its platform
-// sub-namespace 한글: 전방 선언 - 각 팩토리는 플랫폼 하위 네임스페이스에 존재
+// Forward declarations - each factory lives in its platform
 #ifdef _WIN32
 namespace Network
 {
@@ -54,17 +52,12 @@ namespace AsyncIO
 {
 
 // =============================================================================
-// English: Factory Function Implementations
-// 한글: 팩토리 함수 구현
+// Factory Function Implementations
 // =============================================================================
 
 std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider()
 {
-	// English: Get the default backend for current platform
-	// 한글: 현재 플랫폼의 기본 백엔드 조회
-	// Windows -> PlatformType::IOCP (기본 백엔드)
-	// Linux -> PlatformType::Epoll (기본 백엔드)
-	// macOS -> PlatformType::Kqueue (기본 백엔드)
+	// Get the default backend for current platform
 	PlatformType platform = GetCurrentPlatform();
 
 	switch (platform)
@@ -73,28 +66,23 @@ std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider()
 	case PlatformType::IOCP:
 	case PlatformType::RIO:
 	{
-		// English: Windows fallback chain: RIO -> IOCP -> nullptr
-		// 한글: Windows 폴백 체인: RIO -> IOCP -> nullptr
+		// Windows fallback chain: RIO -> IOCP -> nullptr
 
-		// English: Try RIO first (high-performance, Windows 8+)
-		// 한글: 먼저 RIO 시도 (고성능, Windows 8+)
+		// Try RIO first (high-performance, Windows 8+)
 		if (Platform::IsWindowsRIOSupported())
 		{
 			auto provider = Windows::CreateRIOProvider();
 			if (provider)
 				return provider;
-			// English: RIO creation failed -> try IOCP next
-			// 한글: RIO 생성 실패 -> 다음 IOCP 시도
+			// RIO creation failed -> try IOCP next
 		}
 
-		// English: Use IOCP (always available on Windows)
-		// 한글: IOCP 사용 (Windows에서 항상 사용 가능)
+		// Use IOCP (always available on Windows)
 		auto provider = Windows::CreateIocpProvider();
 		if (provider)
 			return provider;
 
-		// English: Both RIO and IOCP failed -> fatal error
-		// 한글: RIO와 IOCP 모두 실패 -> 치명적 에러
+		// Both RIO and IOCP failed -> fatal error
 		return nullptr;
 	}
 #endif
@@ -103,30 +91,25 @@ std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider()
 	case PlatformType::Epoll:
 	case PlatformType::IOUring:
 	{
-		// English: Linux fallback chain: io_uring -> epoll -> nullptr
-		// 한글: Linux 폴백 체인: io_uring -> epoll -> nullptr
+		// Linux fallback chain: io_uring -> epoll -> nullptr
 
 #ifdef NETWORK_ENABLE_IO_URING
-		// English: Try io_uring first (high-performance, kernel 5.1+)
-		// 한글: 먼저 io_uring 시도 (고성능, 커널 5.1+)
+		// Try io_uring first (high-performance, kernel 5.1+)
 		if (Platform::IsLinuxIOUringSupported())
 		{
 			auto provider = Linux::CreateIOUringProvider();
 			if (provider)
 				return provider;
-			// English: io_uring creation failed -> try epoll next
-			// 한글: io_uring 생성 실패 -> 다음 epoll 시도
+			// io_uring creation failed -> try epoll next
 		}
 #endif
 
-		// English: Use epoll (always available on Linux)
-		// 한글: epoll 사용 (Linux에서 항상 사용 가능)
+		// Use epoll (always available on Linux)
 		auto provider = Linux::CreateEpollProvider();
 		if (provider)
 			return provider;
 
-		// English: Both io_uring and epoll failed -> fatal error
-		// 한글: io_uring과 epoll 모두 실패 -> 치명적 에러
+		// Both io_uring and epoll failed -> fatal error
 		return nullptr;
 	}
 #endif
@@ -134,8 +117,7 @@ std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider()
 #ifdef __APPLE__
 	case PlatformType::Kqueue:
 	{
-		// English: macOS: kqueue only (no fallback)
-		// 한글: macOS: kqueue만 사용 (폴백 없음)
+		// macOS: kqueue only (no fallback)
 		auto provider = BSD::CreateKqueueProvider();
 		if (provider)
 			return provider;
@@ -151,8 +133,7 @@ std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider()
 
 std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider(const char *platformHint)
 {
-	// English: Create a specific backend implementation by name
-	// 한글: 이름으로 특정 백엔드 구현 생성
+	// Create a specific backend implementation by name
 
 	if (!platformHint)
 		return nullptr;
@@ -193,8 +174,7 @@ std::unique_ptr<AsyncIOProvider> CreateAsyncIOProvider(const char *platformHint)
 
 bool IsPlatformSupported(const char *platformHint)
 {
-	// English: Check if a specific platform is supported
-	// 한글: 특정 플랫폼 지원 여부 확인
+	// Check if a specific platform is supported
 
 	if (!platformHint)
 		return false;
@@ -223,8 +203,7 @@ bool IsPlatformSupported(const char *platformHint)
 	return false;
 }
 
-// English: Static storage for supported platform names
-// 한글: 지원 플랫폼 이름의 정적 저장소
+// Static storage for supported platform names
 static const char *sSupportedPlatforms[] = {
 #ifdef _WIN32
 	"IOCP",   "RIO",
@@ -242,23 +221,20 @@ static const char *sSupportedPlatforms[] = {
 
 const char **GetSupportedPlatforms(size_t &outCount)
 {
-	// English: Return array of supported platform names
-	// 한글: 지원 플랫폼 이름 배열 반환
+	// Return array of supported platform names
 	outCount = sizeof(sSupportedPlatforms) / sizeof(sSupportedPlatforms[0]);
 	return const_cast<const char **>(sSupportedPlatforms);
 }
 
 PlatformType GetCurrentPlatform()
 {
-	// English: Delegate to platform detection
-	// 한글: 플랫폼 감지에 위임
+	// Delegate to platform detection
 	return Platform::DetectPlatform();
 }
 
 PlatformInfo GetPlatformInfo()
 {
-	// English: Delegate to detailed platform info
-	// 한글: 상세 플랫폼 정보에 위임
+	// Delegate to detailed platform info
 	return Platform::GetDetailedPlatformInfo();
 }
 

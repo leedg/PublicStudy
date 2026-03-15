@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Thread pool implementation
-// 한글: 스레드 풀 구현
+// Thread pool implementation
 
 #include "Logger.h"
 #include "SafeQueue.h"
@@ -17,15 +16,13 @@
 namespace Network::Utils
 {
 // =============================================================================
-// English: ThreadPool - manages a pool of worker threads for async tasks
-// 한글: ThreadPool - 비동기 작업을 위한 워커 스레드 풀 관리
+// ThreadPool - manages a pool of worker threads for async tasks
 // =============================================================================
 
 class ThreadPool
 {
 public:
-	// English: Constructor - creates worker threads
-	// 한글: 생성자 - 워커 스레드 생성
+	// Constructor - creates worker threads
 	// @param numThreads - Number of threads (0 = hardware concurrency)
 	// @param maxQueueDepth - Max task queue depth (0 = unlimited)
 	ThreadPool(size_t numThreads = std::thread::hardware_concurrency(),
@@ -41,8 +38,7 @@ public:
 		}
 	}
 
-	// English: Destructor - stops all threads and waits for completion
-	// 한글: 소멸자 - 모든 스레드 중지 및 완료 대기
+	// Destructor - stops all threads and waits for completion
 	~ThreadPool()
 	{
 		mStop = true;
@@ -57,8 +53,7 @@ public:
 		}
 	}
 
-	// English: Submit a task to the thread pool - returns false if queue is full
-	// 한글: 스레드 풀에 작업 제출 - 큐가 가득 찬 경우 false 반환
+	// Submit a task to the thread pool - returns false if queue is full
 	// @param f - Function to execute
 	// @param args - Arguments for the function
 	// @return true if task was queued, false if queue was full (task dropped)
@@ -77,16 +72,11 @@ public:
 		return true;
 	}
 
-	// English: Wait for all tasks to complete
-	// 한글: 모든 작업 완료 대기
+	// Wait for all tasks to complete
 	// Note: There may be a ±1 tolerance in mActiveTasks during task transitions.
 	// Between the moment a worker increments mActiveTasks and processes a task,
 	// or between completing the task and decrementing mActiveTasks, a small
 	// discrepancy may occur. This is acceptable for synchronization purposes.
-	// 한글 주석: 작업 전환 중에 mActiveTasks에서 ±1 허용 오차가 발생할 수 있습니다.
-	// 워커가 mActiveTasks를 증가시키고 작업을 처리하는 순간 또는 작업을 완료하고
-	// mActiveTasks를 감소시키는 사이에 작은 불일치가 발생할 수 있습니다.
-	// 동기화 목적으로는 이 정도의 오차는 허용됩니다.
 	void WaitForAll()
 	{
 		std::unique_lock<std::mutex> lock(mWaitMutex);
@@ -95,12 +85,10 @@ public:
 		});
 	}
 
-	// English: Get number of worker threads
-	// 한글: 워커 스레드 수 가져오기
+	// Get number of worker threads
 	size_t GetThreadCount() const { return mWorkers.size(); }
 
-	// English: Get number of active tasks
-	// 한글: 활성 작업 수 가져오기
+	// Get number of active tasks
 	size_t GetActiveTaskCount() const { return mActiveTasks.load(); }
 
 private:
@@ -111,8 +99,7 @@ private:
 	std::mutex mWaitMutex;
 	std::condition_variable mWaitCV;
 
-	// English: Worker thread function
-	// 한글: 워커 스레드 함수
+	// Worker thread function
 	void WorkerThread()
 	{
 		while (!mStop)
@@ -127,20 +114,17 @@ private:
 				}
 				catch (const std::exception &e)
 				{
-					// English: Log exception from worker thread task
-					// 한글: 워커 스레드 작업에서 발생한 예외 로깅
+					// Log exception from worker thread task
 					Logger::Error("[ThreadPool] Task threw exception: " +
 								  std::string(e.what()));
 				}
 				catch (...)
 				{
-					// English: Catch unknown exception types
-					// 한글: 알 수 없는 예외 타입 처리
+					// Catch unknown exception types
 					Logger::Error("[ThreadPool] Task threw unknown exception");
 				}
 				--mActiveTasks;
-				// English: Notify WaitForAll() when task completes
-				// 한글: 작업 완료 시 WaitForAll() 알림
+				// Notify WaitForAll() when task completes
 				mWaitCV.notify_one();
 			}
 		}

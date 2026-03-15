@@ -45,8 +45,7 @@ public:
     size_t PoolSize()  const override { return mPoolSize; }
     size_t FreeCount() const override;
 
-    // English: RIO concrete extensions (non-virtual — use concrete type directly).
-    // 한글: RIO 구체 확장 메서드 (비-가상 — 구체 타입으로 직접 호출).
+    // RIO concrete extensions (non-virtual — use concrete type directly).
     uint64_t GetRIOBufferId(size_t index) const;
     size_t   GetRIOOffset  (size_t index) const { return index * mSlotSize; }
 

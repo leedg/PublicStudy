@@ -1,7 +1,6 @@
 #pragma once
 
-// English: epoll-based AsyncIOProvider implementation for Linux
-// 한글: Linux용 epoll 기반 AsyncIOProvider 구현
+// epoll-based AsyncIOProvider implementation for Linux
 
 #include "AsyncIOProvider.h"
 
@@ -20,29 +19,24 @@ namespace AsyncIO
 namespace Linux
 {
 // =============================================================================
-// English: epoll-based AsyncIOProvider Implementation
-// 한글: epoll 기반 AsyncIOProvider 구현
+// epoll-based AsyncIOProvider Implementation
 // =============================================================================
 
 class EpollAsyncIOProvider : public AsyncIOProvider
 {
   public:
-	// English: Constructor
-	// 한글: 생성자
+	// Constructor
 	EpollAsyncIOProvider();
 
-	// English: Destructor - releases epoll resources
-	// 한글: 소멸자 - epoll 리소스 해제
+	// Destructor - releases epoll resources
 	virtual ~EpollAsyncIOProvider();
 
-	// English: Prevent copy (move-only semantics)
-	// 한글: 복사 방지 (move-only 의미론)
+	// Prevent copy (move-only semantics)
 	EpollAsyncIOProvider(const EpollAsyncIOProvider &) = delete;
 	EpollAsyncIOProvider &operator=(const EpollAsyncIOProvider &) = delete;
 
 	// =====================================================================
-	// English: Lifecycle Management
-	// 한글: 생명주기 관리
+	// Lifecycle Management
 	// =====================================================================
 
 	AsyncIOError Initialize(size_t queueDepth, size_t maxConcurrent) override;
@@ -50,24 +44,21 @@ class EpollAsyncIOProvider : public AsyncIOProvider
 	bool IsInitialized() const override;
 
 	// =====================================================================
-	// English: Socket Association
-	// 한글: 소켓 연결
+	// Socket Association
 	// =====================================================================
 
 	AsyncIOError AssociateSocket(SocketHandle socket,
 								RequestContext context) override;
 
 	// =====================================================================
-	// English: Buffer Management
-	// 한글: 버퍼 관리
+	// Buffer Management
 	// =====================================================================
 
 	int64_t RegisterBuffer(const void *ptr, size_t size) override;
 	AsyncIOError UnregisterBuffer(int64_t bufferId) override;
 
 	// =====================================================================
-	// English: Async I/O Requests
-	// 한글: 비동기 I/O 요청
+	// Async I/O Requests
 	// =====================================================================
 
 	AsyncIOError SendAsync(SocketHandle socket, const void *buffer, size_t size,
@@ -79,16 +70,14 @@ class EpollAsyncIOProvider : public AsyncIOProvider
 	AsyncIOError FlushRequests() override;
 
 	// =====================================================================
-	// English: Completion Processing
-	// 한글: 완료 처리
+	// Completion Processing
 	// =====================================================================
 
 	int ProcessCompletions(CompletionEntry *entries, size_t maxEntries,
 							   int timeoutMs = 0) override;
 
 	// =====================================================================
-	// English: Information & Statistics
-	// 한글: 정보 및 통계
+	// Information & Statistics
 	// =====================================================================
 
 	const ProviderInfo &GetInfo() const override;
@@ -97,45 +86,38 @@ class EpollAsyncIOProvider : public AsyncIOProvider
 
   private:
 	// =====================================================================
-	// English: Internal Data Structures
-	// 한글: 내부 데이터 구조
+	// Internal Data Structures
 	// =====================================================================
 
-	// English: Pending operation tracking structure
-	// 한글: 대기 중인 작업 추적 구조체
+	// Pending operation tracking structure
 	struct PendingOperation
 	{
-		RequestContext mContext; // English: User request context / 한글: 사용자
-								 // 요청 컨텍스트
-		AsyncIOType mType; // English: Operation type / 한글: 작업 타입
-		SocketHandle mSocket; // English: Socket handle / 한글: 소켓 핸들
-		uint8_t *mBuffer; // English: Buffer pointer (recv or owned send buffer)
-						  // 한글: 버퍼 포인터 (수신 또는 송신 소유 버퍼)
-		std::unique_ptr<uint8_t[]> mOwnedBuffer; // English: Owned buffer for send
-												 // 한글: 송신용 소유 버퍼
-		uint32_t mBufferSize; // English: Buffer size / 한글: 버퍼 크기
+		RequestContext mContext; // User request context
+		AsyncIOType mType; // Operation type
+		SocketHandle mSocket; // Socket handle
+		uint8_t *mBuffer; // Buffer pointer (recv or owned send buffer)
+		std::unique_ptr<uint8_t[]> mOwnedBuffer; // Owned buffer for send
+		uint32_t mBufferSize; // Buffer size
 	};
 
 	// =====================================================================
-	// English: Member Variables
-	// 한글: 멤버 변수
+	// Member Variables
 	// =====================================================================
 
-	int mEpollFd; // English: epoll file descriptor / 한글: epoll 파일
-				  // 디스크립터
+	int mEpollFd; // epoll file descriptor
 	std::map<SocketHandle, PendingOperation>
-		mPendingRecvOps; // English: Pending recv operations / 한글: 대기 수신 작업
+		mPendingRecvOps; // Pending recv operations
 	std::map<SocketHandle, PendingOperation>
-		mPendingSendOps; // English: Pending send operations / 한글: 대기 송신 작업
+		mPendingSendOps; // Pending send operations
 	mutable std::mutex
-		mMutex; // English: Thread safety mutex / 한글: 스레드 안전성 뮤텍스
-	ProviderInfo mInfo;   // English: Provider info / 한글: 공급자 정보
-	ProviderStats mStats; // English: Statistics / 한글: 통계
+		mMutex; // Thread safety mutex
+	ProviderInfo mInfo;   // Provider info
+	ProviderStats mStats; // Statistics
 	std::string
-		mLastError; // English: Last error message / 한글: 마지막 에러 메시지
+		mLastError; // Last error message
 	size_t
-		mMaxConcurrentOps; // English: Max concurrent ops / 한글: 최대 동시 작업
-	bool mInitialized;     // English: Initialization flag / 한글: 초기화 플래그
+		mMaxConcurrentOps; // Max concurrent ops
+	bool mInitialized;     // Initialization flag
 };
 
 } // namespace Linux

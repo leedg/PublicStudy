@@ -1,9 +1,6 @@
-// English: io_uring AsyncIOProvider + IOUringBufferPool test suite.
+// io_uring AsyncIOProvider + IOUringBufferPool test suite.
 //          No GTest dependency - uses std::cout (same pattern as AsyncIOTest.cpp).
 //          Compiled and run only on Linux with HAVE_LIBURING defined.
-// 한글: io_uring AsyncIOProvider + IOUringBufferPool 테스트.
-//       GTest 미사용, std::cout 기반 (AsyncIOTest.cpp 패턴).
-//       Linux + HAVE_LIBURING 환경에서만 컴파일 및 실행.
 
 #if defined(__linux__) && defined(HAVE_LIBURING)
 #include "Network/Core/AsyncIOProvider.h"
@@ -34,8 +31,7 @@ void TestIOUringProviderInit()
     const char *name = "IOUringProviderInit";
     IOUringAsyncIOProvider provider;
     auto err = provider.Initialize(256, 128);
-    // English: PlatformNotSupported is acceptable on kernels without io_uring.
-    // 한글: io_uring 미지원 커널에서 PlatformNotSupported는 정상.
+    // PlatformNotSupported is acceptable on kernels without io_uring.
     if (err == AsyncIOError::Success ||
         err == AsyncIOError::PlatformNotSupported)
         Pass(name);
@@ -61,8 +57,7 @@ void TestIOUringBufferPoolInit()
         Pass(name);
     else
         Fail(name, "Pool init failed or wrong counts");
-    // English: Pool must shut down before provider to allow clean buffer deregistration.
-    // 한글: 버퍼 해제 등록을 위해 pool을 provider보다 먼저 종료해야 함.
+    // Pool must shut down before provider to allow clean buffer deregistration.
     pool.Shutdown();
     provider.Shutdown();
 }
@@ -102,8 +97,7 @@ void TestIOUringBufferPoolAcquireRelease()
             Fail(name, "Release did not restore availability");
     }
 
-    // English: Pool must shut down before provider to allow clean buffer deregistration.
-    // 한글: 버퍼 해제 등록을 위해 pool을 provider보다 먼저 종료해야 함.
+    // Pool must shut down before provider to allow clean buffer deregistration.
     pool.Shutdown();
     provider.Shutdown();
 }
@@ -129,15 +123,14 @@ void TestIOUringBufferPoolExhaustion()
     int64_t id1 = -1, id2 = -1, id3 = -1;
     pool.Acquire(id1);
     pool.Acquire(id2);
-    uint8_t *buf3 = pool.Acquire(id3); // English: must return nullptr / 한글: nullptr 반환 필수
+    uint8_t *buf3 = pool.Acquire(id3); // must return nullptr
 
     if (buf3 == nullptr && id3 == -1)
         Pass(name);
     else
         Fail(name, "Expected nullptr on pool exhaustion");
 
-    // English: Pool must shut down before provider to allow clean buffer deregistration.
-    // 한글: 버퍼 해제 등록을 위해 pool을 provider보다 먼저 종료해야 함.
+    // Pool must shut down before provider to allow clean buffer deregistration.
     pool.Shutdown();
     provider.Shutdown();
 }

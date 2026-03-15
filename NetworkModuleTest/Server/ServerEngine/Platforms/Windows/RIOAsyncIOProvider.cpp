@@ -1,4 +1,4 @@
-// English: Windows RIO AsyncIOProvider implementation
+// Windows RIO AsyncIOProvider implementation
 
 #ifdef _WIN32
 
@@ -128,7 +128,6 @@ AsyncIOError RIOAsyncIOProvider::Initialize(size_t queueDepth,
 	mMaxConcurrentOps = (maxConcurrent > 0) ? maxConcurrent : 128;
 
 	// Initialize pre-registered slab pools (each loads RIO fn pointers + 1x RIORegisterBuffer)
-	// 사전 등록 슬랩 풀 초기화 (각 풀이 RIO 함수 포인터 로드 + 1회 RIORegisterBuffer)
 	const size_t slotSize = 8192;
 	if (!mRecvPool.Initialize(mMaxConcurrentOps, slotSize))
 	{
@@ -200,7 +199,6 @@ void RIOAsyncIOProvider::Shutdown()
 	}
 
 	// Shutdown slab pools (1x RIODeregisterBuffer + VirtualFree each, inverse of Initialize)
-	// 슬랩 풀 종료 (각 1회 RIODeregisterBuffer + VirtualFree, Initialize의 역순)
 	mRecvPool.Shutdown();
 	mSendPool.Shutdown();
 
@@ -247,7 +245,7 @@ AsyncIOError RIOAsyncIOProvider::GetOrCreateRequestQueue(
 		return AsyncIOError::Success;
 	}
 
-	// English: Per-socket queue limits must fit the shared CQ capacity.
+	// Per-socket queue limits must fit the shared CQ capacity.
 	// Keep these small because this engine posts at most one recv and one send
 	// per socket at a time.
 	const ULONG maxOutstandingReceive = 1;
@@ -279,7 +277,6 @@ AsyncIOError RIOAsyncIOProvider::AssociateSocket(SocketHandle socket,
 	}
 
 	// Assign a pre-registered recv slab slot to this socket
-	// 이 소켓에 사전 등록 recv 슬랩 슬롯 할당
 	{
 		std::lock_guard<std::mutex> lock(mMutex);
 		if (mSocketRecvSlot.count(socket))
@@ -399,7 +396,6 @@ AsyncIOError RIOAsyncIOProvider::SendAsync(SocketHandle socket,
 	op->mOpId = opKey;
 
 	// Acquire a send slab slot (pool has its own lock; acquired before mMutex)
-	// 송신 슬랩 슬롯 획득 (풀 자체 lock 사용; mMutex 획득 전에 호출)
 	auto sendSlot = mSendPool.Acquire();
 	if (!sendSlot.ptr)
 	{
@@ -411,7 +407,6 @@ AsyncIOError RIOAsyncIOProvider::SendAsync(SocketHandle socket,
 	op->mSendSlotIdx = sendSlot.index;
 
 	// Copy payload into the pre-registered slab slot (exclusive ownership, no lock needed)
-	// 사전 등록 슬랩 슬롯으로 페이로드 복사 (독점 소유권, lock 불필요)
 	std::memcpy(sendSlot.ptr, buffer, size);
 
 	RIO_BUF rioBuffer;
@@ -494,7 +489,6 @@ AsyncIOError RIOAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	}
 
 	// Use the socket's pre-assigned recv slab slot (set in AssociateSocket)
-	// 소켓에 사전 할당된 recv 슬랩 슬롯 사용 (AssociateSocket에서 할당)
 	auto slotIt = mSocketRecvSlot.find(socket);
 	if (slotIt == mSocketRecvSlot.end())
 	{
@@ -555,18 +549,15 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		return static_cast<int>(AsyncIOError::InvalidParameter);
 	}
 
-	// RIO 알림 직렬화: 한 번에 한 스레드만 RIONotify + 이벤트 대기 수행
 	// Serialize RIO notification: only one thread calls RIONotify + waits at a time
 	std::unique_lock<std::mutex> notifyLock(mNotifyMutex, std::try_to_lock);
 	if (!notifyLock.owns_lock())
 	{
-		// 다른 스레드가 이미 알림 대기 중 - 짧게 양보 후 0 반환
 		// Another thread is already waiting for notification - yield briefly and return 0
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		return 0;
 	}
 
-	// RIO 이벤트 알림 활성화 (dequeue 전에 반드시 호출해야 함)
 	// Arm RIO event notification (must be called before dequeue to avoid missed wakeups)
 	bool notifyOk = (mPfnRIONotify(mCompletionQueue) != FALSE);
 	if (!notifyOk)
@@ -574,19 +565,16 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		DWORD err = ::GetLastError();
 		if (err != 0)
 		{
-			// 실제 오류인 경우에만 에러 처리
 			// Only treat as error when GetLastError is non-zero
 			mLastError = "RIONotify failed: " + std::to_string(err);
 			std::lock_guard<std::mutex> lock(mMutex);
 			mStats.mErrorCount++;
 			return static_cast<int>(AsyncIOError::OperationFailed);
 		}
-		// err == 0: 이미 알림이 대기 중이거나 이벤트가 이미 설정됨 → 즉시 dequeue
 		// err == 0: notification already pending or event already set → dequeue immediately
 	}
 	else
 	{
-		// 완료 이벤트가 신호될 때까지 블로킹 대기 (timeoutMs 기반)
 		// Block until completion event is signaled (timeoutMs-based)
 		DWORD waitMs = (timeoutMs < 0) ? INFINITE : static_cast<DWORD>(timeoutMs);
 		DWORD waitResult = WaitForSingleObject(mCompletionEvent, waitMs);
@@ -601,7 +589,6 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		}
 	}
 
-	// 이벤트 수신(또는 기존 완료 감지) 후 항목 dequeue
 	// Dequeue completions after event signaled (or existing completions detected)
 	std::vector<RIORESULT> rioResults(maxEntries);
 	ULONG numResults = mPfnRIODequeueCompletion(
@@ -668,7 +655,6 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			std::lock_guard<std::mutex> lock(mMutex);
 
 			// Recv: copy received bytes from slab slot to session buffer
-			// recv: 슬랩 슬롯 → 세션 버퍼로 수신 데이터 복사
 			if (op->mType == AsyncIOType::Recv && !hasError &&
 				rioResults[i].BytesTransferred > 0 && op->mBufferPtr)
 			{
@@ -686,12 +672,10 @@ int RIOAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			}
 
 			// Send: return slab slot to send pool
-			// 송신: 슬랩 슬롯을 송신 풀에 반환
 			if (op->mType == AsyncIOType::Send && op->mSendSlotIdx != SIZE_MAX)
 				mSendPool.Release(op->mSendSlotIdx);
 
 			// Recv disconnect: return recv slot and clean up socket mappings
-			// recv 연결 해제: recv 슬롯 반환 및 소켓 맵 정리
 			if (isDisconnect && op->mType == AsyncIOType::Recv)
 			{
 				auto slotIt = mSocketRecvSlot.find(op->mSocket);

@@ -1,5 +1,4 @@
-// English: Implementation of MessageHandler
-// 한글: MessageHandler 구현
+// Implementation of MessageHandler
 
 #include "MessageHandler.h"
 // #include "ping.pb.h"  // TODO: Generate Protocol Buffer files
@@ -10,15 +9,13 @@
 namespace Network::Protocols
 {
 // =============================================================================
-// English: Constructor and Destructor
-// 한글: 생성자 및 소멸자
+// Constructor and Destructor
 // =============================================================================
 
 MessageHandler::MessageHandler() : mNextMessageId(1) {}
 
 // =============================================================================
-// English: Handler registration
-// 한글: 핸들러 등록
+// Handler registration
 // =============================================================================
 
 bool MessageHandler::RegisterHandler(MessageType type,
@@ -38,8 +35,7 @@ void MessageHandler::UnregisterHandler(MessageType type)
 }
 
 // =============================================================================
-// English: Message processing
-// 한글: 메시지 처리
+// Message processing
 // =============================================================================
 
 bool MessageHandler::ProcessMessage(ConnectionId connectionId,
@@ -63,7 +59,6 @@ bool MessageHandler::ProcessMessage(ConnectionId connectionId,
 		return false;
 	}
 
-	// 한글: 헤더에서 타임스탬프를 파싱하고 페이로드만 전달한다.
 	uint64_t headerTimestamp = 0;
 	std::memcpy(&headerTimestamp,
 				data + sizeof(uint32_t) + sizeof(ConnectionId),
@@ -126,8 +121,7 @@ std::vector<uint8_t> MessageHandler::CreateMessage(MessageType type,
 }
 
 // =============================================================================
-// English: Static utility methods
-// 한글: 정적 유틸리티 메소드
+// Static utility methods
 // =============================================================================
 
 MessageType MessageHandler::GetMessageType(const uint8_t *data, size_t size)
@@ -162,8 +156,7 @@ bool MessageHandler::ValidateMessage(const uint8_t *data, size_t size)
 }
 
 // =============================================================================
-// English: Private helper method
-// 한글: 비공개 헬퍼 메소드
+// Private helper method
 // =============================================================================
 
 uint64_t MessageHandler::GetCurrentTimestamp() const

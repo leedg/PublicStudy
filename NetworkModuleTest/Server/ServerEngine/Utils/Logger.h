@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Logging utility
-// 한글: 로깅 유틸리티
+// Logging utility
 
 #include <atomic>
 #include <mutex>
@@ -26,8 +25,7 @@
 namespace Network::Utils
 {
 // =============================================================================
-// English: Log levels
-// 한글: 로그 레벨
+// Log levels
 // =============================================================================
 
 enum class LogLevel : int
@@ -39,26 +37,22 @@ enum class LogLevel : int
 };
 
 // =============================================================================
-// English: Logger - provides logging functionality with levels
-// 한글: Logger - 레벨별 로깅 기능 제공
+// Logger - provides logging functionality with levels
 // =============================================================================
 
 class Logger
 {
 public:
-	// English: Set minimum log level
-	// 한글: 최소 로그 레벨 설정
+	// Set minimum log level
 	static void SetLevel(LogLevel level) { sCurrentLevel.store(level); }
 
-	// English: Set log file path and open file for writing
-	// 한글: 로그 파일 경로 설정 및 쓰기용 파일 열기
+	// Set log file path and open file for writing
 	static void SetLogFile(const std::string &filename)
 	{
 		std::lock_guard<std::mutex> lock(sMutex);
 		sLogFile = filename;
 		
-		// English: Open log file in append mode
-		// 한글: 추가 모드로 로그 파일 열기
+		// Open log file in append mode
 		if (!filename.empty())
 		{
 			sLogFileStream = std::make_unique<std::ofstream>(filename, std::ios::app);
@@ -74,40 +68,35 @@ public:
 		}
 	}
 
-	// English: Log debug message
-	// 한글: 디버그 메시지 로깅
+	// Log debug message
 	template <typename... Args>
 	static void Debug(const std::string &format, Args... /*args*/)
 	{
 		WriteLog(LogLevel::Debug, format);
 	}
 
-	// English: Log info message
-	// 한글: 정보 메시지 로깅
+	// Log info message
 	template <typename... Args>
 	static void Info(const std::string &format, Args... /*args*/)
 	{
 		WriteLog(LogLevel::Info, format);
 	}
 
-	// English: Log warning message
-	// 한글: 경고 메시지 로깅
+	// Log warning message
 	template <typename... Args>
 	static void Warn(const std::string &format, Args... /*args*/)
 	{
 		WriteLog(LogLevel::Warn, format);
 	}
 
-	// English: Log error message
-	// 한글: 오류 메시지 로깅
+	// Log error message
 	template <typename... Args>
 	static void Error(const std::string &format, Args... /*args*/)
 	{
 		WriteLog(LogLevel::Err, format);
 	}
 
-	// English: Flush output buffer
-	// 한글: 출력 버퍼 플러시
+	// Flush output buffer
 	static void Flush() { std::cout.flush(); }
 
 private:
@@ -117,29 +106,25 @@ private:
 	static inline std::mutex sMutex;
 	static inline std::atomic<bool> sConsoleInitialized{false};
 
-	// English: Initialize console for UTF-8 output (Korean support)
-	// 한글: 콘솔 UTF-8 출력 초기화 (한글 지원)
+	// Initialize console for UTF-8 output (Korean support)
 	static void InitConsoleUTF8()
 	{
 		if (sConsoleInitialized.exchange(true))
 		{
-			return; // English: Already initialized / 한글: 이미 초기화됨
+			return; // Already initialized
 		}
 
 #ifdef _WIN32
-		// English: Set console code page to UTF-8 for Korean output
-		// 한글: 한글 출력을 위해 콘솔 코드 페이지를 UTF-8로 설정
+		// Set console code page to UTF-8 for Korean output
 		SetConsoleCP(65001);
 		SetConsoleOutputCP(65001);
 #endif
 	}
 
-	// English: Write log message with level check to console and file
-	// 한글: 레벨 확인 후 콘솔과 파일에 로그 메시지 작성
+	// Write log message with level check to console and file
 	static void WriteLog(LogLevel level, const std::string &message)
 	{
-		// English: Ensure console is initialized for UTF-8 on first use
-		// 한글: 최초 사용 시 콘솔 UTF-8 초기화 보장
+		// Ensure console is initialized for UTF-8 on first use
 		InitConsoleUTF8();
 
 		if (static_cast<int>(level) < static_cast<int>(sCurrentLevel.load()))
@@ -151,12 +136,10 @@ private:
 
 		std::lock_guard<std::mutex> lock(sMutex);
 		
-		// English: Write to console
-		// 한글: 콘솔에 작성
+		// Write to console
 		std::cout << formatted << std::endl;
 		
-		// English: Write to file if available
-		// 한글: 파일이 있으면 파일에도 작성
+		// Write to file if available
 		if (sLogFileStream && sLogFileStream->is_open())
 		{
 			*sLogFileStream << formatted << std::endl;
@@ -164,8 +147,7 @@ private:
 		}
 	}
 
-	// English: Format log message with timestamp and level (optimized)
-	// 한글: 타임스탬프와 레벨로 로그 메시지 포맷 (최적화)
+	// Format log message with timestamp and level (optimized)
 	static std::string FormatMessage(LogLevel level, const std::string &message)
 	{
 		const char *levelStr = "???";
@@ -197,8 +179,7 @@ private:
 #endif
 		std::strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &localTime);
 
-		// English: Use string reserve and append to avoid multiple allocations
-		// 한글: 여러 할당을 피하기 위해 string reserve 및 append 사용
+		// Use string reserve and append to avoid multiple allocations
 		std::string result;
 		result.reserve(64 + message.size());
 		result.append("[").append(timeStr).append("] [").append(levelStr).append("] ").append(message);

@@ -1,5 +1,4 @@
-// English: macOS NetworkEngine implementation
-// 한글: macOS NetworkEngine 구현
+// macOS NetworkEngine implementation
 
 #ifdef __APPLE__
 
@@ -27,19 +26,16 @@ macOSNetworkEngine::~macOSNetworkEngine()
 }
 
 // =============================================================================
-// English: Platform-specific implementation
-// 한글: 플랫폼별 구현
+// Platform-specific implementation
 // =============================================================================
 
 bool macOSNetworkEngine::InitializePlatform()
 {
-	// English: Create kqueue AsyncIOProvider
-	// 한글: kqueue AsyncIOProvider 생성
+	// Create kqueue AsyncIOProvider
 	mProvider = std::make_shared<AsyncIO::BSD::KqueueAsyncIOProvider>();
 	Utils::Logger::Info("Using kqueue backend");
 
-	// English: Initialize provider
-	// 한글: Provider 초기화
+	// Initialize provider
 	auto error = mProvider->Initialize(
 		1024,                         // Queue depth
 		mMaxConnections > 0 ? static_cast<size_t>(mMaxConnections) : 128 // Max concurrent
@@ -52,8 +48,7 @@ bool macOSNetworkEngine::InitializePlatform()
 		return false;
 	}
 
-	// English: Create listen socket
-	// 한글: Listen 소켓 생성
+	// Create listen socket
 	if (!CreateListenSocket())
 	{
 		return false;
@@ -64,16 +59,14 @@ bool macOSNetworkEngine::InitializePlatform()
 
 void macOSNetworkEngine::ShutdownPlatform()
 {
-	// English: Close listen socket
-	// 한글: Listen 소켓 닫기
+	// Close listen socket
 	if (mListenSocket != -1)
 	{
 		close(mListenSocket);
 		mListenSocket = -1;
 	}
 
-	// English: Shutdown provider
-	// 한글: Provider 종료
+	// Shutdown provider
 	if (mProvider)
 	{
 		mProvider->Shutdown();
@@ -84,8 +77,7 @@ void macOSNetworkEngine::ShutdownPlatform()
 
 bool macOSNetworkEngine::StartPlatformIO()
 {
-	// English: Start worker threads for completion processing
-	// 한글: 완료 처리를 위한 워커 스레드 시작
+	// Start worker threads for completion processing
 	uint32_t workerCount = std::thread::hardware_concurrency();
 	if (workerCount == 0)
 	{
@@ -97,8 +89,7 @@ bool macOSNetworkEngine::StartPlatformIO()
 		mWorkerThreads.emplace_back([this]() { this->WorkerThread(); });
 	}
 
-	// English: Start accept thread
-	// 한글: Accept 스레드 시작
+	// Start accept thread
 	mAcceptThread = std::thread([this]() { this->AcceptLoop(); });
 
 	Utils::Logger::Info("Started " + std::to_string(workerCount) +
@@ -108,8 +99,7 @@ bool macOSNetworkEngine::StartPlatformIO()
 
 void macOSNetworkEngine::StopPlatformIO()
 {
-	// English: Stop accept thread
-	// 한글: Accept 스레드 중지
+	// Stop accept thread
 	if (mListenSocket != -1)
 	{
 		close(mListenSocket);
@@ -121,8 +111,7 @@ void macOSNetworkEngine::StopPlatformIO()
 		mAcceptThread.join();
 	}
 
-	// English: Stop worker threads (they check mRunning flag)
-	// 한글: 워커 스레드 중지 (mRunning 플래그 확인)
+	// Stop worker threads (they check mRunning flag)
 	for (auto &thread : mWorkerThreads)
 	{
 		if (thread.joinable())
@@ -144,8 +133,7 @@ void macOSNetworkEngine::AcceptLoop()
 
 	while (mRunning)
 	{
-		// English: Accept incoming connection
-		// 한글: 들어오는 연결 수락
+		// Accept incoming connection
 		int clientSocket = accept(
 			mListenSocket,
 			reinterpret_cast<sockaddr *>(&clientAddr),
@@ -155,23 +143,20 @@ void macOSNetworkEngine::AcceptLoop()
 		{
 			if (errno == EINTR || errno == EBADF)
 			{
-				// English: Socket closed (shutdown signal)
-				// 한글: 소켓 닫힘 (종료 신호)
+				// Socket closed (shutdown signal)
 				break;
 			}
 
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
 			{
-				// English: Non-blocking listen socket — no connection pending; yield briefly.
-				// 한글: 논블로킹 listen 소켓에서 대기 중인 연결 없음 — 오류가 아니므로 로그 없이 짧게 양보.
+				// Non-blocking listen socket — no connection pending; yield briefly.
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				continue;
 			}
 
 			if (errno == EMFILE || errno == ENFILE || errno == ENOMEM)
 			{
-				// English: System resource exhaustion — back off longer before retrying.
-				// 한글: 시스템 리소스 고갈 시 더 길게 대기 후 재시도한다.
+				// System resource exhaustion — back off longer before retrying.
 				Utils::Logger::Error("Accept resource exhaustion (" +
 									 std::string(strerror(errno)) +
 									 ") - sleeping 5 s");
@@ -181,27 +166,23 @@ void macOSNetworkEngine::AcceptLoop()
 
 			Utils::Logger::Error("Accept failed: " + std::string(strerror(errno)));
 
-			// English: Exponential backoff on error (member var, not static)
-			// 한글: 에러 시 지수 백오프 (static 대신 멤버 변수 사용)
+			// Exponential backoff on error (member var, not static)
 			std::this_thread::sleep_for(std::chrono::milliseconds(mAcceptBackoffMs));
 			mAcceptBackoffMs = (std::min)(mAcceptBackoffMs * 2, 1000);
 			continue;
 		}
 
-		// English: Reset backoff on success
-		// 한글: 성공 시 백오프 리셋
+		// Reset backoff on success
 		mAcceptBackoffMs = 10;
 
-		// English: Set socket to non-blocking mode
-		// 한글: 소켓을 논블로킹 모드로 설정
+		// Set socket to non-blocking mode
 		int flags = fcntl(clientSocket, F_GETFL, 0);
 		if (flags != -1)
 		{
 			fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK);
 		}
 
-		// English: Create session
-		// 한글: 세션 생성
+		// Create session
 		Core::SessionRef session =
 			Core::SessionManager::Instance().CreateSession(clientSocket);
 		if (!session)
@@ -210,8 +191,7 @@ void macOSNetworkEngine::AcceptLoop()
 			continue;
 		}
 
-		// English: Associate client socket with kqueue async I/O provider
-		// 한글: 클라이언트 소켓을 kqueue 비동기 I/O 프로바이더에 연결
+		// Associate client socket with kqueue async I/O provider
 		auto assocResult = mProvider->AssociateSocket(
 			clientSocket,
 			static_cast<AsyncIO::RequestContext>(session->GetId()));
@@ -222,31 +202,22 @@ void macOSNetworkEngine::AcceptLoop()
 				std::to_string(session->GetId()) + ": " +
 				std::string(mProvider->GetLastError()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			// English: Do NOT call close(clientSocket) here — RemoveSession calls
+			// Do NOT call close(clientSocket) here — RemoveSession calls
 			//          session->Close() which already closes the socket via the
 			//          pool deleter. A second close() is a use-after-free of the fd.
-			// 한글: 여기서 close(clientSocket)를 호출하지 않음 — RemoveSession이
-			//       session->Close()를 호출하여 풀 deleter를 통해 소켓을 이미 닫음.
-			//       두 번째 close()는 fd의 use-after-free.
 			continue;
 		}
 
-		// English: Set async provider so session can queue sends via EVFILT_WRITE
-		// 한글: EVFILT_WRITE를 통해 세션이 송신을 큐에 넣을 수 있도록 async 공급자 설정
+		// Set async provider so session can queue sends via EVFILT_WRITE
 		session->SetAsyncProvider(mProvider);
 
-		// English: Update stats (atomic)
-		// 한글: 통계 업데이트 (atomic)
+		// Update stats (atomic)
 		mTotalConnections.fetch_add(1, std::memory_order_relaxed);
 
-		// English: Fire Connected event asynchronously on logic thread.
+		// Fire Connected event asynchronously on logic thread.
 		//          Use mLogicDispatcher (KeyedDispatcher) keyed by sessionId so that
 		//          Connected and any subsequent events for this session always route to
 		//          the same worker thread — same pattern as LinuxNetworkEngine.
-		// 한글: 로직 스레드에서 비동기로 Connected 이벤트 발생.
-		//       sessionId를 키로 mLogicDispatcher(KeyedDispatcher)를 사용하여
-		//       이 세션의 Connected 및 이후 모든 이벤트가 항상 동일한 워커로 라우팅
-		//       — LinuxNetworkEngine과 동일한 패턴.
 		auto sessionCopy = session;
 		mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 			[this, sessionCopy]()
@@ -255,22 +226,18 @@ void macOSNetworkEngine::AcceptLoop()
 				FireEvent(Core::NetworkEvent::Connected, sessionCopy->GetId());
 			});
 
-		// English: Start receiving on this session
-		// 한글: 이 세션에서 수신 시작
+		// Start receiving on this session
 		if (!QueueRecv(session))
 		{
 			Utils::Logger::Error("Failed to queue recv - Session " +
 								 std::to_string(session->GetId()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			// English: Do NOT call close(clientSocket) — same rationale as above:
+			// Do NOT call close(clientSocket) — same rationale as above:
 			//          RemoveSession → session->Close() already closes the fd.
-			// 한글: close(clientSocket) 호출 금지 — 위와 동일한 이유:
-			//       RemoveSession → session->Close()가 이미 fd를 닫음.
 			continue;
 		}
 
-		// English: Log connection
-		// 한글: 연결 로깅
+		// Log connection
 		char clientIP[INET_ADDRSTRLEN];
 		inet_ntop(AF_INET, &clientAddr.sin_addr, clientIP, sizeof(clientIP));
 		Utils::Logger::Info("Client connected - IP: " + std::string(clientIP) +
@@ -283,22 +250,19 @@ void macOSNetworkEngine::AcceptLoop()
 
 void macOSNetworkEngine::ProcessCompletions()
 {
-	// English: Process completions from AsyncIOProvider
-	// 한글: AsyncIOProvider로부터 완료 처리
+	// Process completions from AsyncIOProvider
 	AsyncIO::CompletionEntry entries[64];
 	int count = mProvider->ProcessCompletions(entries, 64, 100);
 
 	if (count < 0)
 	{
-		// English: Error occurred
-		// 한글: 에러 발생
+		// Error occurred
 		Utils::Logger::Error("ProcessCompletions failed: " +
 							 std::string(mProvider->GetLastError()));
 		return;
 	}
 
-	// English: No completions - provider already waited with timeout, just return
-	// 한글: 완료 없음 - 프로바이더가 이미 타임아웃으로 대기했으므로 바로 리턴
+	// No completions - provider already waited with timeout, just return
 	if (count == 0)
 	{
 		return;
@@ -308,57 +272,43 @@ void macOSNetworkEngine::ProcessCompletions()
 	{
 		auto &entry = entries[i];
 
-		// English: Get session from context (ConnectionId stored in context)
-		// 한글: 컨텍스트에서 세션 가져오기 (ConnectionId가 컨텍스트에 저장됨)
+		// Get session from context (ConnectionId stored in context)
 		Utils::ConnectionId connId = static_cast<Utils::ConnectionId>(entry.mContext);
 		auto session = Core::SessionManager::Instance().GetSession(connId);
 
 		if (!session)
 		{
-			// English: Session no longer exists
-			// 한글: 세션이 더 이상 존재하지 않음
+			// Session no longer exists
 			continue;
 		}
 
-		// English: Check for errors
-		// 한글: 에러 확인
+		// Check for errors
 		if (entry.mOsError != 0 || entry.mResult <= 0)
 		{
-			// English: Dispatch through ProcessErrorCompletion — increments the correct
+			// Dispatch through ProcessErrorCompletion — increments the correct
 			//          per-direction error counter (Send vs Recv) and routes disconnect
 			//          via session->mAsyncScope, preventing double-event if Close() was
 			//          already called from a concurrent path.
 			//          Previous code used mLogicThreadPool.Submit() directly, bypassing
 			//          AsyncScope and losing type distinction for stats.
-			// 한글: ProcessErrorCompletion을 통해 처리 — 올바른 방향별 에러 카운터
-			//       (Send vs Recv)를 증가시키고, session->mAsyncScope 경유로 disconnect를
-			//       라우팅하여 이중 이벤트 방지.
-			//       기존 코드는 mLogicThreadPool.Submit()을 직접 호출해 AsyncScope를
-			//       우회하고 통계 타입 구분이 불가했음.
 			ProcessErrorCompletion(session, entry.mType, entry.mOsError);
 			continue;
 		}
 
-		// English: Process based on I/O type
-		// 한글: I/O 타입에 따라 처리
+		// Process based on I/O type
 		switch (entry.mType)
 		{
 		case AsyncIO::AsyncIOType::Recv:
 		{
-			// English: Get received data from session's recv buffer
-			// 한글: 세션의 수신 버퍼에서 받은 데이터 가져오기
+			// Get received data from session's recv buffer
 			const char *recvBuffer = session->GetRecvBuffer();
 			ProcessRecvCompletion(session, entry.mResult, recvBuffer);
 
-			// English: Guard: only re-queue recv if the session is still connected.
+			// Guard: only re-queue recv if the session is still connected.
 			//          A concurrent Send-error on another worker may have already
 			//          called Close() on this session's socket between ProcessRecvCompletion
 			//          and here. Calling QueueRecv on a closed fd risks registering
 			//          kqueue interest on a recycled file descriptor.
-			// 한글: 가드: 세션이 여전히 연결 상태일 때만 recv 재등록.
-			//       다른 워커에서 동시에 발생한 송신 에러가 이미 Close()를 호출하여
-			//       소켓이 닫혔을 수 있음. 닫힌 fd에 QueueRecv를 호출하면
-			//       재사용된 파일 디스크립터에 kqueue 관심이 등록될 위험.
 			if (session->IsConnected() && !QueueRecv(session))
 			{
 				ProcessErrorCompletion(session, AsyncIO::AsyncIOType::Recv, 0);
@@ -384,8 +334,7 @@ void macOSNetworkEngine::WorkerThread()
 
 	while (mRunning)
 	{
-		// English: Process completions in loop
-		// 한글: 루프에서 완료 처리
+		// Process completions in loop
 		ProcessCompletions();
 	}
 
@@ -415,14 +364,12 @@ bool macOSNetworkEngine::QueueRecv(const Core::SessionRef &session)
 }
 
 // =============================================================================
-// English: Private helper methods
-// 한글: Private 헬퍼 메서드
+// Private helper methods
 // =============================================================================
 
 bool macOSNetworkEngine::CreateListenSocket()
 {
-	// English: Create socket
-	// 한글: 소켓 생성
+	// Create socket
 	mListenSocket = socket(AF_INET, SOCK_STREAM, 0);
 
 	if (mListenSocket < 0)
@@ -432,16 +379,14 @@ bool macOSNetworkEngine::CreateListenSocket()
 		return false;
 	}
 
-	// English: Set socket to non-blocking mode
-	// 한글: 소켓을 논블로킹 모드로 설정
+	// Set socket to non-blocking mode
 	int flags = fcntl(mListenSocket, F_GETFL, 0);
 	if (flags != -1)
 	{
 		fcntl(mListenSocket, F_SETFL, flags | O_NONBLOCK);
 	}
 
-	// English: Set socket options
-	// 한글: 소켓 옵션 설정
+	// Set socket options
 	int reuseAddr = 1;
 	if (setsockopt(mListenSocket, SOL_SOCKET, SO_REUSEADDR,
 				   &reuseAddr, sizeof(reuseAddr)) < 0)
@@ -449,8 +394,7 @@ bool macOSNetworkEngine::CreateListenSocket()
 		Utils::Logger::Warn("Failed to set SO_REUSEADDR");
 	}
 
-	// English: Bind socket
-	// 한글: 소켓 바인드
+	// Bind socket
 	sockaddr_in serverAddr;
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_addr.s_addr = INADDR_ANY;
@@ -466,8 +410,7 @@ bool macOSNetworkEngine::CreateListenSocket()
 		return false;
 	}
 
-	// English: Listen for connections
-	// 한글: 연결 대기
+	// Listen for connections
 	if (listen(mListenSocket, SOMAXCONN) < 0)
 	{
 		Utils::Logger::Error("Listen failed: " +

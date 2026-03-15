@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Connection pool implementation
-// 한글: 연결 풀 구현
+// Connection pool implementation
 
 #include "../Interfaces/DatabaseConfig.h"
 #include "../Interfaces/DatabaseException.h"
@@ -20,13 +19,11 @@ namespace Database
 {
 
 // =============================================================================
-// English: ConnectionPool class
-// 한글: ConnectionPool 클래스
+// ConnectionPool class
 // =============================================================================
 
 /**
- * English: Connection pool implementation
- * 한글: 연결 풀 구현
+ * Connection pool implementation
  */
 class ConnectionPool : public IConnectionPool
 {
@@ -34,43 +31,35 @@ class ConnectionPool : public IConnectionPool
 	ConnectionPool();
 	virtual ~ConnectionPool();
 
-	// English: Initialization
-	// 한글: 초기화
+	// Initialization
 	bool Initialize(const DatabaseConfig &config);
 	void Shutdown();
 
-	// English: IConnectionPool interface
-	// 한글: IConnectionPool 인터페이스
+	// IConnectionPool interface
 	std::shared_ptr<IConnection> GetConnection() override;
 	void ReturnConnection(std::shared_ptr<IConnection> pConnection) override;
 	void Clear() override;
 	size_t GetActiveConnections() const override;
 	size_t GetAvailableConnections() const override;
 
-	// English: Configuration
-	// 한글: 설정
+	// Configuration
 	void SetMaxPoolSize(size_t size);
 	void SetMinPoolSize(size_t size);
 	void SetConnectionTimeout(int seconds);
 	void SetIdleTimeout(int seconds);
 
-	// English: Status
-	// 한글: 상태
+	// Status
 	bool IsInitialized() const { return mInitialized.load(); }
 
 	size_t GetTotalConnections() const;
 
   private:
-	// English: ClearLocked — Close idle connections WITHOUT acquiring mMutex.
+	// ClearLocked — Close idle connections WITHOUT acquiring mMutex.
 	//          Callers (Clear, Shutdown) must already hold mMutex.
 	//          Prevents deadlock when Shutdown() calls Clear() while owning the lock.
-	// 한글: ClearLocked — mMutex 획득 없이 유휴 연결 닫기.
-	//       호출자(Clear, Shutdown)가 이미 mMutex를 보유해야 함.
-	//       Shutdown()이 락 보유 상태에서 Clear()를 호출할 때 발생하는 데드락 방지.
 	void ClearLocked();
 
-	// English: Pooled connection structure
-	// 한글: 풀링된 연결 구조체
+	// Pooled connection structure
 	struct PooledConnection
 	{
 		std::shared_ptr<IConnection> mConnection;
@@ -84,8 +73,7 @@ class ConnectionPool : public IConnectionPool
 		}
 	};
 
-	// English: Helper methods
-	// 한글: 헬퍼 메서드
+	// Helper methods
 	std::shared_ptr<IConnection> CreateNewConnection();
 	void CleanupIdleConnections();
 
@@ -98,8 +86,7 @@ class ConnectionPool : public IConnectionPool
 	std::atomic<bool> mInitialized;
 	std::atomic<size_t> mActiveConnections;
 
-	// English: Pool settings
-	// 한글: 풀 설정
+	// Pool settings
 	size_t mMaxPoolSize;
 	size_t mMinPoolSize;
 	std::chrono::seconds mConnectionTimeout;
@@ -107,13 +94,11 @@ class ConnectionPool : public IConnectionPool
 };
 
 // =============================================================================
-// English: ScopedConnection class
-// 한글: ScopedConnection 클래스
+// ScopedConnection class
 // =============================================================================
 
 /**
- * English: RAII wrapper for automatic connection return to pool
- * 한글: 풀에 자동으로 연결을 반환하는 RAII 래퍼
+ * RAII wrapper for automatic connection return to pool
  */
 class ScopedConnection
 {
@@ -131,21 +116,18 @@ class ScopedConnection
 		}
 	}
 
-	// English: Prevent copy
-	// 한글: 복사 방지
+	// Prevent copy
 	ScopedConnection(const ScopedConnection &) = delete;
 	ScopedConnection &operator=(const ScopedConnection &) = delete;
 
-	// English: Allow move
-	// 한글: 이동 허용
+	// Allow move
 	ScopedConnection(ScopedConnection &&other) noexcept
 		: mConnection(std::move(other.mConnection)), mPool(other.mPool)
 	{
 		other.mPool = nullptr;
 	}
 
-	// English: Access operators
-	// 한글: 접근 연산자
+	// Access operators
 	IConnection *operator->() { return mConnection.get(); }
 
 	IConnection &operator*() { return *mConnection; }
@@ -154,15 +136,13 @@ class ScopedConnection
 
 	const IConnection &operator*() const { return *mConnection; }
 
-	// English: Validation
-	// 한글: 유효성 검사
+	// Validation
 	bool IsValid() const
 	{
 		return mConnection != nullptr && mConnection->IsOpen();
 	}
 
-	// English: Direct access
-	// 한글: 직접 접근
+	// Direct access
 	IConnection *Get() { return mConnection.get(); }
 
 	const IConnection *Get() const { return mConnection.get(); }

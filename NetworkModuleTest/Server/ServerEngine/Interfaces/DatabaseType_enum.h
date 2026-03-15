@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Database type enumeration
-// 한글: 데이터베이스 타입 열거형
+// Database type enumeration
 
 namespace Network
 {
@@ -9,38 +8,30 @@ namespace Database
 {
 
 // =============================================================================
-// English: DatabaseType enumeration
-// 한글: DatabaseType 열거형
+// DatabaseType enumeration
 // =============================================================================
 
 /**
- * English: Database type enumeration
- * 한글: 데이터베이스 타입 열거형
+ * Database type enumeration
  */
 enum class DatabaseType
 {
-	// English: ODBC (Open Database Connectivity)
-	// 한글: ODBC (개방형 데이터베이스 연결)
+	// ODBC (Open Database Connectivity)
 	ODBC,
 
-	// English: OLE DB (Object Linking and Embedding Database)
-	// 한글: OLE DB (객체 연결 및 포함 데이터베이스)
+	// OLE DB (Object Linking and Embedding Database)
 	OLEDB,
 
-	// English: MySQL
-	// 한글: MySQL
+	// MySQL
 	MySQL,
 
-	// English: PostgreSQL
-	// 한글: PostgreSQL
+	// PostgreSQL
 	PostgreSQL,
 
-	// English: SQLite
-	// 한글: SQLite
+	// SQLite
 	SQLite,
 
-	// English: Mock (in-memory, no external dependency, for testing)
-	// 한글: Mock (인메모리, 외부 의존성 없음, 테스트용)
+	// Mock (in-memory, no external dependency, for testing)
 	Mock
 };
 

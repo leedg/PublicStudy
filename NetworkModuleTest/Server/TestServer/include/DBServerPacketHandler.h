@@ -1,7 +1,6 @@
 #pragma once
 
-// English: DB Server packet handler for TestServer
-// 한글: TestServer용 DB 서버 패킷 핸들러
+// DB Server packet handler for TestServer
 
 #include "Network/Core/Session.h"
 #include "Network/Core/ServerPacketDefine.h"
@@ -16,50 +15,41 @@ namespace Network::TestServer
     using Utils::ConnectionId;
 
     // =============================================================================
-    // English: DBServerPacketHandler - handles packets from/to DB server using functor array
-    // 한글: DBServerPacketHandler - 펑터 배열을 사용하여 DB 서버 패킷 처리
+    // DBServerPacketHandler - handles packets from/to DB server using functor array
     // =============================================================================
 
     class DBServerPacketHandler
     {
     public:
-        // English: Packet handler functor type
-        // 한글: 패킷 핸들러 펑터 타입
+        // Packet handler functor type
         using PacketHandlerFunc = std::function<void(Core::Session*, const char*, uint32_t)>;
 
         DBServerPacketHandler();
         virtual ~DBServerPacketHandler();
 
-        // English: Process incoming packet from DB server (uses functor dispatch)
-        // 한글: DB 서버로부터 받은 패킷 처리 (펑터 디스패치 사용)
+        // Process incoming packet from DB server (uses functor dispatch)
         void ProcessPacket(Core::Session* session, const char* data, uint32_t size);
 
-        // English: Send ping to DB server
-        // 한글: DB 서버로 Ping 전송
+        // Send ping to DB server
         void SendPingToDBServer(Core::Session* session);
 
-        // English: Request saving ping time to database
-        // 한글: Ping 시간을 데이터베이스에 저장 요청
+        // Request saving ping time to database
         void RequestSavePingTime(Core::Session* session, uint32_t serverId, const char* serverName);
 
     private:
-        // English: Packet handler functor map (ServerPacketType -> Handler)
-        // 한글: 패킷 핸들러 펑터 맵 (ServerPacketType -> Handler)
+        // Packet handler functor map (ServerPacketType -> Handler)
         std::unordered_map<uint16_t, PacketHandlerFunc> mHandlers;
 
-        // English: Register all packet handlers
-        // 한글: 모든 패킷 핸들러 등록
+        // Register all packet handlers
         void RegisterHandlers();
 
-        // English: Individual packet handlers
-        // 한글: 개별 패킷 핸들러들
+        // Individual packet handlers
         void HandleServerPongResponse(Core::Session* session, const Core::PKT_ServerPongRes* packet);
         void HandleDBSavePingTimeResponse(Core::Session* session, const Core::PKT_DBSavePingTimeRes* packet);
 
     private:
-        // English: Ping sequence counter. Atomic because SendPingToDBServer() may be
+        // Ping sequence counter. Atomic because SendPingToDBServer() may be
         //          called from a timer thread while I/O callbacks run on worker threads.
-        // 한글: 핑 시퀀스 카운터. 타이머 스레드와 I/O 워커 스레드가 동시에 접근할 수 있으므로 atomic 사용.
         std::atomic<uint32_t> mPingSequence;
     };
 

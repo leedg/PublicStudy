@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Key-affinity dispatcher for ordered async execution.
-// 한글: 키 친화도 기반 순서 보장 비동기 디스패처.
+// Key-affinity dispatcher for ordered async execution.
 
 #include "ExecutionQueue.h"
 #include "Utils/Logger.h"
@@ -19,13 +18,10 @@
 namespace Network::Concurrency
 {
 // =============================================================================
-// English: KeyedDispatcher
+// KeyedDispatcher
 // - Same key always maps to same worker queue.
 // - FIFO per worker queue => ordering guarantee per key.
 //
-// 한글: KeyedDispatcher
-// - 동일 key는 항상 동일 worker 큐로 라우팅.
-// - worker 큐 FIFO 특성으로 key 단위 순서 보장.
 // =============================================================================
 
 class KeyedDispatcher
@@ -33,8 +29,7 @@ class KeyedDispatcher
   public:
 	struct Options
 	{
-		size_t mWorkerCount = 0; // English: 0 -> hardware_concurrency fallback
-		                         // 한글: 0 -> hardware_concurrency 사용
+		size_t mWorkerCount = 0; // 0 -> hardware_concurrency fallback
 		ExecutionQueueOptions<std::function<void()>> mQueueOptions;
 		std::string mName = "KeyedDispatcher";
 	};
@@ -134,8 +129,7 @@ class KeyedDispatcher
 							std::to_string(mRejected.load(std::memory_order_relaxed)));
 
 		{
-			// English: Exclusive lock — prevents Dispatch() from accessing mWorkers while we clear.
-			// 한글: exclusive lock — clear 중 Dispatch()가 mWorkers에 접근하지 못하도록 함.
+			// Exclusive lock — prevents Dispatch() from accessing mWorkers while we clear.
 			std::unique_lock<std::shared_mutex> exclusiveLock(mWorkersMutex);
 			mWorkers.clear();
 		}
@@ -143,10 +137,8 @@ class KeyedDispatcher
 
 	bool Dispatch(uint64_t key, std::function<void()> task, int timeoutMs = -1)
 	{
-		// English: Shared lock prevents TOCTOU race with Shutdown() calling mWorkers.clear().
+		// Shared lock prevents TOCTOU race with Shutdown() calling mWorkers.clear().
 		//          Checked under the lock so mWorkers cannot be cleared between check and access.
-		// 한글: shared lock으로 Shutdown()의 mWorkers.clear()와의 TOCTOU 경쟁 방지.
-		//       lock 범위 안에서 확인하므로 체크와 접근 사이에 mWorkers가 소멸되지 않음.
 		std::shared_lock<std::shared_mutex> sharedLock(mWorkersMutex);
 
 		if (!mRunning.load(std::memory_order_acquire) || !task || mWorkers.empty())
@@ -219,13 +211,10 @@ class KeyedDispatcher
 
 	void WorkerThreadFunc(size_t workerIndex)
 	{
-		// English: Raw reference is safe: mWorkers is only cleared in Shutdown() under
+		// Raw reference is safe: mWorkers is only cleared in Shutdown() under
 		//          an exclusive lock, AFTER all worker threads have been joined.
 		//          Thread join happens before clear(), so this reference is always valid
 		//          for the lifetime of this function.
-		// 한글: Raw 참조 안전: mWorkers는 Shutdown()에서 exclusive lock 하에 워커 스레드
-		//       join 완료 후에만 clear됨. join이 clear()보다 먼저이므로 이 함수의
-		//       생명주기 동안 참조는 항상 유효함.
 		Worker &worker = *mWorkers[workerIndex];
 		std::function<void()> task;
 
@@ -269,8 +258,7 @@ class KeyedDispatcher
 	std::string mName;
 	std::atomic<bool> mRunning;
 	std::vector<std::unique_ptr<Worker>> mWorkers;
-	mutable std::shared_mutex mWorkersMutex;  // English: Protects mWorkers during concurrent Dispatch/Shutdown
-	                                           // 한글: 동시 Dispatch/Shutdown으로부터 mWorkers 보호
+	mutable std::shared_mutex mWorkersMutex;  // Protects mWorkers during concurrent Dispatch/Shutdown
 
 	std::atomic<size_t> mSubmitted;
 	std::atomic<size_t> mRejected;

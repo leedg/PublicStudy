@@ -1,20 +1,17 @@
 #pragma once
 
-// English: Server-to-Server packet definitions
-// 한글: 서버 간 패킷 정의
+// Server-to-Server packet definitions
 
 #include <cstdint>
 #include <ctime>
 
-// English: Disable padding for network packets to ensure consistent byte layout
-// 한글: 네트워크 패킷의 패딩을 비활성화하여 일관된 바이트 레이아웃 보장
+// Disable padding for network packets to ensure consistent byte layout
 #pragma pack(push, 1)
 
 namespace Network::Core
 {
     // =============================================================================
-    // English: Server packet types
-    // 한글: 서버 패킷 타입
+    // Server packet types
     // =============================================================================
 
     enum class ServerPacketType : uint16_t
@@ -35,8 +32,7 @@ namespace Network::Core
     };
 
     // =============================================================================
-    // English: Server packet header
-    // 한글: 서버 패킷 헤더
+    // Server packet header
     // =============================================================================
 
     struct ServerPacketHeader
@@ -61,8 +57,7 @@ namespace Network::Core
     };
 
     // =============================================================================
-    // English: Server Ping/Pong packets
-    // 한글: 서버 Ping/Pong 패킷
+    // Server Ping/Pong packets
     // =============================================================================
 
     struct PKT_ServerPingReq
@@ -95,8 +90,7 @@ namespace Network::Core
     };
 
     // =============================================================================
-    // English: DB Save Ping Time packets
-    // 한글: DB Ping 시간 저장 패킷
+    // DB Save Ping Time packets
     // =============================================================================
 
     struct PKT_DBSavePingTimeReq
@@ -132,8 +126,7 @@ namespace Network::Core
     };
 
     // =============================================================================
-    // English: Generic DB Query packets
-    // 한글: 범용 DB 쿼리 패킷
+    // Generic DB Query packets
     // =============================================================================
 
     struct PKT_DBQueryReq
@@ -171,6 +164,5 @@ namespace Network::Core
 
 } // namespace Network::Core
 
-// English: Restore default packing
-// 한글: 기본 패킹으로 복원
+// Restore default packing
 #pragma pack(pop)

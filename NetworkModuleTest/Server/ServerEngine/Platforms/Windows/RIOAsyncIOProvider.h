@@ -1,6 +1,6 @@
 #pragma once
 
-// English: RIO (Registered I/O) based AsyncIOProvider implementation for
+// RIO (Registered I/O) based AsyncIOProvider implementation for
 // Windows 8+
 
 #include "Network/Core/AsyncIOProvider.h"
@@ -101,13 +101,12 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	};
 
 	RIO_CQ mCompletionQueue;
-	std::unordered_map<SocketHandle, RIO_RQ> mRequestQueues;           // English: O(1) request queue lookup / 한글: O(1) 요청 큐 탐색
-	std::unordered_map<int64_t, RegisteredBufferEntry> mRegisteredBuffers; // English: O(1) buffer lookup / 한글: O(1) 버퍼 탐색
-	std::unordered_map<uintptr_t, std::shared_ptr<PendingOperation>> mPendingOps; // English: O(1) pending op lookup / 한글: O(1) 대기 작업 탐색
+	std::unordered_map<SocketHandle, RIO_RQ> mRequestQueues;           // O(1) request queue lookup
+	std::unordered_map<int64_t, RegisteredBufferEntry> mRegisteredBuffers; // O(1) buffer lookup
+	std::unordered_map<uintptr_t, std::shared_ptr<PendingOperation>> mPendingOps; // O(1) pending op lookup
 	mutable std::mutex mMutex;
 
 	// Pre-registered slab pools (mRecvPool / mSendPool own VirtualAlloc + 1x RIORegisterBuffer each)
-	// 사전 등록 슬랩 풀 (각 풀이 VirtualAlloc + 1회 RIORegisterBuffer 보유)
 	::Network::Core::Memory::RIOBufferPool mRecvPool;
 	::Network::Core::Memory::RIOBufferPool mSendPool;
 	std::unordered_map<SocketHandle, size_t> mSocketRecvSlot; // guarded by mMutex
@@ -123,8 +122,7 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	PfnRIORecv mPfnRIORecv;
 
 	HANDLE mCompletionEvent;
-	mutable std::mutex mNotifyMutex; // English: Serializes RIONotify + event wait to one thread at a time
-									 // 한글: RIONotify + 이벤트 대기를 한 스레드씩 직렬화
+	mutable std::mutex mNotifyMutex; // Serializes RIONotify + event wait to one thread at a time
 	ProviderInfo mInfo;
 	ProviderStats mStats;
 	std::string mLastError;

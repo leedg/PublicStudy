@@ -1,5 +1,4 @@
-// English: MockDatabase implementation
-// 한글: MockDatabase 구현
+// MockDatabase implementation
 
 #include "MockDatabase.h"
 

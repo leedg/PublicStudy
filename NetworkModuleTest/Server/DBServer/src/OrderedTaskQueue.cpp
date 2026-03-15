@@ -1,5 +1,4 @@
-// English: OrderedTaskQueue implementation - serverId-based thread affinity
-// 한글: OrderedTaskQueue 구현 - serverId 기반 스레드 친화도
+// OrderedTaskQueue implementation - serverId-based thread affinity
 
 #include "../include/OrderedTaskQueue.h"
 #include <exception>
@@ -50,8 +49,7 @@ namespace Network::DBServer
         options.mQueueOptions.mCapacity = 8192;
         Logger::Info("OrderedTaskQueue: lock-free backend enabled");
 #else
-        // English: Default to mutex backend for predictable behavior.
-        // 한글: 기본은 예측 가능한 동작을 위해 mutex 백엔드 사용.
+        // Default to mutex backend for predictable behavior.
         options.mQueueOptions.mBackend = Network::Concurrency::QueueBackend::Mutex;
         options.mQueueOptions.mCapacity = 8192;
 #endif
@@ -82,11 +80,9 @@ namespace Network::DBServer
         Logger::Info("Shutting down OrderedTaskQueue...");
         mIsRunning.store(false, std::memory_order_release);
         
-        // English: mDispatcher.Shutdown() is blocking and waits for all
+        // mDispatcher.Shutdown() is blocking and waits for all
         //          enqueued tasks to complete. This ensures accurate statistics
         //          before printing them.
-        // 한글: mDispatcher.Shutdown()은 blocking이며 모든 인큐된 작업이
-        //       완료될 때까지 대기. 통계 출력 전 정확성 보장.
         mDispatcher.Shutdown();
 
         Logger::Info("OrderedTaskQueue shutdown complete - Enqueued: " +
@@ -105,13 +101,10 @@ namespace Network::DBServer
             return;
         }
 
-        // English: mTotalProcessed / mTotalFailed are tracked here in the wrapper.
+        // mTotalProcessed / mTotalFailed are tracked here in the wrapper.
         //          KeyedDispatcher::WorkerThreadFunc also tracks mCompleted/mFailed
         //          independently — use GetStats() for dispatcher-level metrics,
         //          GetTotalProcessedCount() for OrderedTaskQueue-level metrics.
-        // 한글: mTotalProcessed / mTotalFailed는 이 래퍼에서만 집계.
-        //       KeyedDispatcher 내부의 mCompleted/mFailed는 별도 dispatcher 수준 메트릭.
-        //       dispatcher 수준은 GetStats(), 큐 수준은 GetTotalProcessedCount() 사용.
         bool queued = mDispatcher.Dispatch(
             key,
             [this, workerKey = key, task = std::move(taskFunc)]() mutable {
@@ -143,8 +136,7 @@ namespace Network::DBServer
             return;
         }
 
-        // English: Count silently dropped tasks so shutdown stats reflect true failures.
-        // 한글: 조용히 드롭된 태스크도 집계하여 셧다운 통계에 실제 실패가 반영되도록 함.
+        // Count silently dropped tasks so shutdown stats reflect true failures.
         mTotalFailed.fetch_add(1, std::memory_order_relaxed);
         Logger::Warn("OrderedTaskQueue enqueue rejected - key: " +
                      std::to_string(key));

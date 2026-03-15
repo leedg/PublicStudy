@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Database configuration structure
-// 한글: 데이터베이스 설정 구조체
+// Database configuration structure
 
 #include "DatabaseType_enum.h"
 #include <string>
@@ -13,46 +12,36 @@ namespace Database
 {
 
 // =============================================================================
-// English: DatabaseConfig structure
-// 한글: DatabaseConfig 구조체
+// DatabaseConfig structure
 // =============================================================================
 
 /**
- * English: Database configuration structure
- * 한글: 데이터베이스 설정 구조체
+ * Database configuration structure
  */
 struct DatabaseConfig
 {
-	// English: Connection string
-	// 한글: 연결 문자열
+	// Connection string
 	std::string mConnectionString;
 
-	// English: Database type
-	// 한글: 데이터베이스 타입
+	// Database type
 	DatabaseType mType = DatabaseType::ODBC;
 
-	// English: Connection timeout in seconds
-	// 한글: 연결 타임아웃 (초)
+	// Connection timeout in seconds
 	int mConnectionTimeout = 30;
 
-	// English: Command timeout in seconds
-	// 한글: 명령 타임아웃 (초)
+	// Command timeout in seconds
 	int mCommandTimeout = 30;
 
-	// English: Auto-commit mode
-	// 한글: 자동 커밋 모드
+	// Auto-commit mode
 	bool mAutoCommit = true;
 
-	// English: Maximum pool size
-	// 한글: 최대 풀 크기
+	// Maximum pool size
 	int mMaxPoolSize = 10;
 
-	// English: Minimum pool size
-	// 한글: 최소 풀 크기
+	// Minimum pool size
 	int mMinPoolSize = 2;
 
-	// English: Server host / port for connection string helpers (below).
-	// 한글: 연결 문자열 헬퍼용 서버 호스트 / 포트.
+	// Server host / port for connection string helpers (below).
 	std::string mHost     = "localhost";
 	uint16_t    mPort     = 1433;   // SQL Server default
 	std::string mDatabase;

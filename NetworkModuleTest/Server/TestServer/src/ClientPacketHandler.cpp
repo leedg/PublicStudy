@@ -1,5 +1,4 @@
-// English: Client packet handler implementation
-// 한글: 클라이언트 패킷 핸들러 구현
+// Client packet handler implementation
 
 #include "../include/ClientPacketHandler.h"
 #include "Utils/PingPongConfig.h"
@@ -12,8 +11,7 @@ namespace Network::TestServer
 
     ClientPacketHandler::ClientPacketHandler()
     {
-        // English: Register all packet handlers on construction
-        // 한글: 생성 시 모든 패킷 핸들러 등록
+        // Register all packet handlers on construction
         RegisterHandlers();
     }
 
@@ -23,16 +21,14 @@ namespace Network::TestServer
 
     void ClientPacketHandler::RegisterHandlers()
     {
-        // English: Register SessionConnectReq handler
-        // 한글: SessionConnectReq 핸들러 등록
+        // Register SessionConnectReq handler
         mHandlers[static_cast<uint16_t>(PacketType::SessionConnectReq)] =
             [this](Core::Session* session, const char* data, uint32_t size)
             {
                 HandleConnectRequest(session, reinterpret_cast<const PKT_SessionConnectReq*>(data));
             };
 
-        // English: Register PingReq handler
-        // 한글: PingReq 핸들러 등록
+        // Register PingReq handler
         mHandlers[static_cast<uint16_t>(PacketType::PingReq)] =
             [this](Core::Session* session, const char* data, uint32_t size)
             {
@@ -63,8 +59,7 @@ namespace Network::TestServer
             return;
         }
 
-        // English: Validate minimal payload size per packet id before reinterpret_cast in handlers.
-        // 한글: 핸들러 내부 reinterpret_cast 전에 패킷 ID별 최소 길이 검증.
+        // Validate minimal payload size per packet id before reinterpret_cast in handlers.
         uint32_t requiredSize = sizeof(PacketHeader);
         switch (static_cast<PacketType>(header->id))
         {
@@ -86,8 +81,7 @@ namespace Network::TestServer
             return;
         }
 
-        // English: Dispatch to handler using functor map
-        // 한글: 펑터 맵을 사용하여 핸들러로 디스패치
+        // Dispatch to handler using functor map
         auto it = mHandlers.find(header->id);
         if (it != mHandlers.end())
         {
@@ -101,8 +95,7 @@ namespace Network::TestServer
 
     void ClientPacketHandler::HandleConnectRequest(Core::Session* session, const PKT_SessionConnectReq* packet)
     {
-        // English: Validate pointers
-        // 한글: 포인터 유효성 검사
+        // Validate pointers
         if (!session || !packet)
         {
             Logger::Error("HandleConnectRequest: null pointer");
@@ -112,8 +105,7 @@ namespace Network::TestServer
         Logger::Info("Client connect request - Session: " + std::to_string(session->GetId()) +
             ", ClientVersion: " + std::to_string(packet->clientVersion));
 
-        // English: Send connect response
-        // 한글: 접속 응답 전송
+        // Send connect response
         PKT_SessionConnectRes response;
         response.sessionId = session->GetId();
         response.serverTime = static_cast<uint32_t>(std::time(nullptr));
@@ -124,8 +116,7 @@ namespace Network::TestServer
 
     void ClientPacketHandler::HandlePingRequest(Core::Session* session, const PKT_PingReq* packet)
     {
-        // English: Validate pointers
-        // 한글: 포인터 유효성 검사
+        // Validate pointers
         if (!session || !packet)
         {
             Logger::Error("HandlePingRequest: null pointer");
@@ -134,8 +125,7 @@ namespace Network::TestServer
 
         session->SetLastPingTime(Timer::GetCurrentTimestamp());
 
-        // English: Send pong response
-        // 한글: 퐁 응답 전송
+        // Send pong response
         PKT_PongRes response;
         response.clientTime = packet->clientTime;
         response.serverTime = Timer::GetCurrentTimestamp();

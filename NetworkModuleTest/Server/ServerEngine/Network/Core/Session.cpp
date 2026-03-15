@@ -1,5 +1,4 @@
-// English: Session class implementation
-// 한글: Session 클래스 구현
+// Session class implementation
 
 #include "Session.h"
 #include "SendBufferPool.h"
@@ -44,8 +43,7 @@ Session::~Session()
 #ifdef _WIN32
 bool Session::TryResolveIOType(const OVERLAPPED *overlapped, IOType &outType)
 {
-	// English: Delegate to SessionPool — lock-free read from immutable map.
-	// 한글: SessionPool에 위임 — 불변 맵에서 lock-free 읽기.
+	// Delegate to SessionPool — lock-free read from immutable map.
 	return SessionPool::Instance().ResolveIOType(overlapped, outType);
 }
 #endif
@@ -76,8 +74,7 @@ void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 	mRecvAccumBuffer.clear();
 	mRecvAccumOffset = 0;
 
-	// English: Pre-reserve batch buffer capacity for the general recv path.
-	// 한글: 일반 recv 경로용 배치 버퍼 용량 사전 예약.
+	// Pre-reserve batch buffer capacity for the general recv path.
 	if (mRecvBatchBuf.capacity() == 0)
 	{
 		mRecvBatchBuf.reserve(MAX_PACKET_SIZE * 4);
@@ -88,20 +85,14 @@ void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 
 void Session::Reset()
 {
-	// English: Lightweight state reset for pool reuse. Call after Close() + WaitForDrain().
+	// Lightweight state reset for pool reuse. Call after Close() + WaitForDrain().
 	//          mAsyncProvider is cleaned in Close(). mRecvAccumBuffer is cleared here
 	//          (not in Close()) to avoid racing with ProcessRawRecv on a logic worker
 	//          thread — see Close() comment for full rationale.
-	// 한글: 풀 재사용을 위한 경량 상태 초기화. Close() + WaitForDrain() 이후에 호출.
-	//       mAsyncProvider는 Close()에서 정리. mRecvAccumBuffer는 여기서 초기화
-	//       (Close()에서 하지 않음) — 로직 워커 스레드의 ProcessRawRecv와의 race 방지.
-	//       전체 이유는 Close() 주석 참고.
 	mId = 0;
-	// English: Send queue MUST be empty here — Close() drains it under mSendMutex.
+	// Send queue MUST be empty here — Close() drains it under mSendMutex.
 	//          A non-empty queue at this point indicates Close() was skipped, which
 	//          violates the Close() → WaitForPendingTasks() → Reset() contract.
-	// 한글: 여기서 송신 큐는 반드시 비어 있어야 함 — Close()가 mSendMutex 하에 드레인.
-	//       비어 있지 않다면 Close()가 건너뛰어진 것으로, 계약 위반.
 	assert(mSendQueue.empty() && "Reset() called without prior Close() — send queue not empty");
 	mRecvAccumBuffer.clear();
 	mRecvAccumOffset = 0;
@@ -110,12 +101,9 @@ void Session::Reset()
 	mIsSending.store(false, std::memory_order_relaxed);
 	mSendQueueSize.store(0, std::memory_order_relaxed);
 	mOnRecvCb = nullptr;
-	// English: Reset AsyncScope so reused pool slots accept new tasks.
+	// Reset AsyncScope so reused pool slots accept new tasks.
 	//          Safe here: all in-flight lambdas held sessionCopy refs and have
 	//          already completed before ReleaseInternal drops the last ref.
-	// 한글: 재사용 풀 슬롯이 새 태스크를 수락하도록 AsyncScope 초기화.
-	//       안전: 모든 in-flight 람다가 sessionCopy ref를 보유하고
-	//       ReleaseInternal이 마지막 ref를 해제하기 전 완료됨이 보장됨.
 	mAsyncScope.Reset();
 #ifdef _WIN32
 	mCurrentSendSlotIdx = ~size_t(0);
@@ -129,19 +117,16 @@ void Session::SetOnRecv(OnRecvCallback cb)
 
 void Session::Close()
 {
-	// English: Atomic exchange prevents TOCTOU double-close race
-	// 한글: atomic exchange로 TOCTOU 이중 닫기 경쟁 방지
+	// Atomic exchange prevents TOCTOU double-close race
 	SessionState prev = mState.exchange(SessionState::Disconnected, std::memory_order_acq_rel);
 	if (prev == SessionState::Disconnected)
 	{
 		return;
 	}
 
-	// English: mAsyncProvider is reset inside mSendMutex (below, with queue drain).
+	// mAsyncProvider is reset inside mSendMutex (below, with queue drain).
 	//          State is already Disconnected; any concurrent Send() will exit at
 	//          IsConnected() before reaching the provider check.
-	// 한글: mAsyncProvider는 mSendMutex 내에서 초기화 (아래 큐 드레인 구간).
-	//       상태가 이미 Disconnected이므로 concurrent Send()는 IsConnected()에서 종료.
 
 	const SocketHandle socketToClose =
 		mSocket.exchange(GetInvalidSocket(), std::memory_order_acq_rel);
@@ -155,12 +140,9 @@ void Session::Close()
 #endif
 	}
 
-	// English: Release any in-flight send pool slot AFTER closesocket().
+	// Release any in-flight send pool slot AFTER closesocket().
 	//          closesocket() aborts the pending WSASend so the kernel no longer
 	//          references the buffer — safe to return the slot here.
-	// 한글: closesocket() 이후 전송 중인 풀 슬롯 반납.
-	//       closesocket()이 대기 중인 WSASend를 중단시켜 커널이 버퍼를
-	//       더 이상 참조하지 않으므로 여기서 슬롯을 안전하게 반납 가능.
 #ifdef _WIN32
 	if (mCurrentSendSlotIdx != ~size_t(0))
 	{
@@ -169,14 +151,12 @@ void Session::Close()
 	}
 #endif
 
-	// English: Reset async provider and drain send queue under a single lock.
-	// 한글: 단일 락 내에서 async provider 초기화 및 송신 큐 드레인.
+	// Reset async provider and drain send queue under a single lock.
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
 		mAsyncProvider.reset();
 #ifdef _WIN32
-		// English: Return all queued (unsent) pool slots before draining the queue.
-		// 한글: 큐 비우기 전 미전송 풀 슬롯 전체 반납.
+		// Return all queued (unsent) pool slots before draining the queue.
 		while (!mSendQueue.empty())
 		{
 			SendBufferPool::Instance().Release(mSendQueue.front().slotIdx);
@@ -190,34 +170,21 @@ void Session::Close()
 #endif
 		mSendQueueSize.store(0, std::memory_order_relaxed);
 	}
-	// English: mRecvAccumBuffer is NOT cleared here.
+	// mRecvAccumBuffer is NOT cleared here.
 	//          Rationale: PostSend() failure on an IOCP worker thread calls Close()
 	//          directly (not routed through KeyedDispatcher), so clearing the buffer
 	//          here could race with ProcessRawRecv running concurrently on a logic
 	//          worker thread. The buffer is cleared in Reset(), which is called only
 	//          after AsyncScope::WaitForDrain() ensures all in-flight ProcessRawRecv
 	//          lambdas have completed.
-	// 한글: mRecvAccumBuffer는 여기서 초기화하지 않음.
-	//       이유: PostSend() 실패 시 IOCP 워커 스레드가 Close()를 직접 호출
-	//       (KeyedDispatcher를 거치지 않음). 여기서 버퍼를 초기화하면
-	//       로직 워커 스레드에서 동시에 실행 중인 ProcessRawRecv와 race 발생 가능.
-	//       버퍼 초기화는 Reset()에서 수행하며, Reset()은 AsyncScope::WaitForDrain()으로
-	//       모든 ProcessRawRecv 람다 완료가 보장된 이후에만 호출됨.
 
-	// English: Cancel queued logic tasks. Tasks already running will finish normally;
+	// Cancel queued logic tasks. Tasks already running will finish normally;
 	//          tasks still in the dispatcher queue will be silently skipped.
 	//          WaitForDrain() is NOT called here — it blocks, and Close() can be called
 	//          from an IOCP worker thread (send-failure path). Callers that need to
 	//          ensure all tasks are done before recycling the session must call
 	//          WaitForPendingTasks() after Close(). For pool sessions this is done by
 	//          SessionPool::ReleaseInternal. For non-pool sessions ~AsyncScope() drains.
-	// 한글: 큐잉된 로직 작업 취소. 이미 실행 중인 작업은 정상 완료;
-	//       아직 디스패처 큐에 있는 작업은 조용히 건너뜀.
-	//       WaitForDrain()은 여기서 호출하지 않음 — 블로킹이며, Close()는
-	//       IOCP 워커 스레드에서 호출될 수 있음(송신 실패 경로).
-	//       세션 재사용 전 모든 태스크 완료가 필요한 호출자는 Close() 후
-	//       WaitForPendingTasks()를 호출해야 함. 풀 세션은 SessionPool::ReleaseInternal이,
-	//       비풀 세션은 ~AsyncScope()가 드레인을 담당함.
 	mAsyncScope.Cancel();
 
 	Utils::Logger::Info("Session closed - ID: " + std::to_string(mId));
@@ -225,14 +192,10 @@ void Session::Close()
 
 void Session::WaitForPendingTasks()
 {
-	// English: Block until all in-flight AsyncScope tasks have completed.
+	// Block until all in-flight AsyncScope tasks have completed.
 	//          Cancel() is called by Close(), so pending-but-not-yet-running tasks will
 	//          be skipped quickly. Only truly in-flight (currently executing) tasks
 	//          need to finish. After this returns, Reset() is safe to call.
-	// 한글: 모든 in-flight AsyncScope 태스크가 완료될 때까지 블로킹.
-	//       Cancel()은 Close()에서 호출되므로 아직 실행되지 않은 대기 태스크는
-	//       빠르게 건너뜀. 실제로 실행 중인 태스크만 완료를 기다림.
-	//       반환 후 Reset() 호출이 안전함.
 	mAsyncScope.WaitForDrain(-1);
 }
 
@@ -258,10 +221,8 @@ Session::SendResult Session::Send(const void *data, uint32_t size)
 			return SendResult::NotConnected;
 		}
 
-		// English: Copy shared_ptr under mSendMutex, then use snapshot outside lock.
+		// Copy shared_ptr under mSendMutex, then use snapshot outside lock.
 		//          This prevents a race with Close() resetting mAsyncProvider.
-		// 한글: mSendMutex 내에서 shared_ptr을 복사하고 락 해제 후 스냅샷 사용.
-		//       Close()가 mAsyncProvider를 초기화하는 race를 방지한다.
 		std::shared_ptr<AsyncIO::AsyncIOProvider> providerSnapshot;
 		{
 			std::lock_guard<std::mutex> lock(mSendMutex);
@@ -270,8 +231,7 @@ Session::SendResult Session::Send(const void *data, uint32_t size)
 
 		if (providerSnapshot)
 		{
-			// English: RIO path - delegate directly to async provider
-			// 한글: RIO 경로 - 비동기 공급자에 직접 위임
+			// RIO path - delegate directly to async provider
 			auto error = providerSnapshot->SendAsync(
 				socket, data, size, static_cast<AsyncIO::RequestContext>(mId));
 			if (error != AsyncIO::AsyncIOError::Success)
@@ -290,10 +250,8 @@ Session::SendResult Session::Send(const void *data, uint32_t size)
 	}
 #endif
 
-	// English: Back-pressure: return QueueFull if send queue exceeds threshold.
+	// Back-pressure: return QueueFull if send queue exceeds threshold.
 	//          Caller receives explicit feedback instead of a silent drop.
-	// 한글: 백프레셔: 송신 큐가 임계값을 초과하면 QueueFull 반환.
-	//       호출자에게 묵시적 드롭 대신 명시적 피드백 제공.
 	if (mSendQueueSize.load(std::memory_order_relaxed) >=
 	    Utils::SEND_QUEUE_BACKPRESSURE_THRESHOLD)
 	{
@@ -302,12 +260,10 @@ Session::SendResult Session::Send(const void *data, uint32_t size)
 		return SendResult::QueueFull;
 	}
 
-	// English: Lock contention optimization using atomic queue size counter
-	// 한글: Atomic 큐 크기 카운터를 사용한 Lock 경합 최적화
+	// Lock contention optimization using atomic queue size counter
 
 #ifdef _WIN32
-	// English: IOCP path — acquire a pool slot (O(1), no heap alloc) and copy once.
-	// 한글: IOCP 경로 — 풀 슬롯 획득 (O(1), 힙 할당 없음) 후 1회 복사.
+	// IOCP path — acquire a pool slot (O(1), no heap alloc) and copy once.
 	auto slot = SendBufferPool::Instance().Acquire();
 	if (!slot.ptr)
 	{
@@ -323,8 +279,7 @@ Session::SendResult Session::Send(const void *data, uint32_t size)
 		mSendQueueSize.fetch_add(1, std::memory_order_release);
 	}
 #else
-	// English: Non-IOCP path — copy into a heap buffer (existing behaviour).
-	// 한글: 비 IOCP 경로 — 힙 버퍼로 복사 (기존 동작).
+	// Non-IOCP path — copy into a heap buffer (existing behaviour).
 	std::vector<char> buffer(size);
 	std::memcpy(buffer.data(), data, size);
 
@@ -335,16 +290,14 @@ Session::SendResult Session::Send(const void *data, uint32_t size)
 	}
 #endif
 
-	// English: Always try to flush (CAS inside will prevent double send)
-	// 한글: 항상 플러시 시도 (내부 CAS가 이중 전송 방지)
+	// Always try to flush (CAS inside will prevent double send)
 	FlushSendQueue();
 	return SendResult::Ok;
 }
 
 void Session::FlushSendQueue()
 {
-	// English: CAS to prevent concurrent sends
-	// 한글: CAS로 동시 전송 방지
+	// CAS to prevent concurrent sends
 	bool expected = false;
 	if (!mIsSending.compare_exchange_strong(expected, true))
 	{
@@ -356,16 +309,13 @@ void Session::FlushSendQueue()
 
 bool Session::PostSend()
 {
-	// English: Fast path - check queue size before acquiring lock
-	// 한글: Fast path - 락 획득 전 큐 크기 확인
+	// Fast path - check queue size before acquiring lock
 	if (mSendQueueSize.load(std::memory_order_acquire) == 0)
 	{
-		// English: Queue is empty, release sending flag
-		// 한글: 큐가 비어있음, 전송 플래그 해제
+		// Queue is empty, release sending flag
 
 #ifdef _WIN32
-		// English: Release the previous in-flight slot (send just completed).
-		// 한글: 이전 전송 중 슬롯 반납 (방금 전송 완료).
+		// Release the previous in-flight slot (send just completed).
 		if (mCurrentSendSlotIdx != ~size_t(0))
 		{
 			SendBufferPool::Instance().Release(mCurrentSendSlotIdx);
@@ -375,8 +325,7 @@ bool Session::PostSend()
 
 		mIsSending.store(false, std::memory_order_release);
 
-		// English: [Fix D-3] TOCTOU guard: re-check queue size after releasing flag.
-		// 한글: [Fix D-3] TOCTOU 방어: 플래그 해제 후 큐 크기 재확인.
+		// [Fix D-3] TOCTOU guard: re-check queue size after releasing flag.
 		if (mSendQueueSize.load(std::memory_order_acquire) > 0)
 		{
 			FlushSendQueue();
@@ -393,8 +342,7 @@ bool Session::PostSend()
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
 
-		// English: Double-check queue after acquiring lock (TOCTOU prevention)
-		// 한글: Lock 획득 후 재확인 (TOCTOU 방지)
+		// Double-check queue after acquiring lock (TOCTOU prevention)
 		if (mSendQueue.empty())
 		{
 #ifdef _WIN32
@@ -416,14 +364,12 @@ bool Session::PostSend()
 		mSendQueue.pop();
 #endif
 
-		// English: Decrement queue size atomically
-		// 한글: Atomic으로 큐 크기 감소
+		// Decrement queue size atomically
 		mSendQueueSize.fetch_sub(1, std::memory_order_release);
 	}
 
 #ifdef _WIN32
-	// English: Release the previous in-flight slot before committing the next one.
-	// 한글: 다음 슬롯 커밋 전에 이전 전송 중 슬롯 반납.
+	// Release the previous in-flight slot before committing the next one.
 	if (mCurrentSendSlotIdx != ~size_t(0))
 	{
 		SendBufferPool::Instance().Release(mCurrentSendSlotIdx);
@@ -438,8 +384,7 @@ bool Session::PostSend()
 		return false;
 	}
 
-	// English: Zero-copy: point wsaBuf directly at the pool slot (no memcpy into mSendContext.buffer).
-	// 한글: Zero-copy: wsaBuf를 풀 슬롯에 직접 지정 (mSendContext.buffer로의 memcpy 없음).
+	// Zero-copy: point wsaBuf directly at the pool slot (no memcpy into mSendContext.buffer).
 	mSendContext.Reset();
 	mSendContext.wsaBuf.buf = SendBufferPool::Instance().SlotPtr(req.slotIdx);
 	mSendContext.wsaBuf.len = static_cast<ULONG>(req.size);
@@ -465,8 +410,7 @@ bool Session::PostSend()
 
 	return true;
 #else
-	// English: POSIX path — copy provider snapshot under mSendMutex to avoid race with Close().
-	// 한글: POSIX 경로 — Close()와의 race 방지를 위해 mSendMutex 내에서 provider 스냅샷 복사.
+	// POSIX path — copy provider snapshot under mSendMutex to avoid race with Close().
 	std::shared_ptr<AsyncIO::AsyncIOProvider> providerSnapshot;
 	{
 		std::lock_guard<std::mutex> lock(mSendMutex);
@@ -493,8 +437,7 @@ bool Session::PostSend()
 		return false;
 	}
 
-	// English: mIsSending stays true until send completion fires ProcessSendCompletion.
-	// 한글: 송신 완료 콜백(ProcessSendCompletion) 호출 전까지 mIsSending 유지.
+	// mIsSending stays true until send completion fires ProcessSendCompletion.
 	return true;
 #endif
 }
@@ -536,12 +479,9 @@ bool Session::PostRecv()
 
 	return true;
 #else
-	// English: POSIX platforms delegate recv to AsyncIOProvider::RecvAsync().
+	// POSIX platforms delegate recv to AsyncIOProvider::RecvAsync().
 	//          PostRecv() is not used on this path — recv is driven by the
 	//          platform engine (epoll/io_uring/kqueue) directly.
-	// 한글: POSIX 플랫폼은 recv를 AsyncIOProvider::RecvAsync()에 위임.
-	//       PostRecv()는 이 경로에서 사용되지 않으며 recv는
-	//       플랫폼 엔진(epoll/io_uring/kqueue)이 직접 구동한다.
 	return false;
 #endif
 }
@@ -575,27 +515,20 @@ size_t Session::GetRecvBufferSize() const
 
 void Session::ProcessRawRecv(const char *data, uint32_t size)
 {
-	// English: Guard against in-flight recv tasks that were queued before Close() fired
+	// Guard against in-flight recv tasks that were queued before Close() fired
 	//          from the IOCP send-failure path. mRecvAccumBuffer must not be accessed
 	//          after Close() — it is cleared only in Reset() (post-WaitForDrain).
-	// 한글: Close()가 IOCP 송신 실패 경로에서 호출되기 이전에 큐잉된
-	//       in-flight recv 태스크 방어. mRecvAccumBuffer는 Close() 이후 접근 금지.
-	//       초기화는 Reset()(WaitForDrain 이후)에서만 수행됨.
 	if (!IsConnected())
 	{
 		return;
 	}
 
-	// English: PacketSpan records offset+size within the flat batch buffer (no per-packet alloc).
-	// 한글: PacketSpan은 평탄 배치 버퍼 내 offset+size만 기록 (패킷별 alloc 없음).
+	// PacketSpan records offset+size within the flat batch buffer (no per-packet alloc).
 	struct PacketSpan { uint32_t offset; uint32_t size; };
 
-	// English: Fast-path check — no accumulated data and exactly one complete packet.
+	// Fast-path check — no accumulated data and exactly one complete packet.
 	//          No lock needed: KeyedDispatcher guarantees this method is only called
 	//          from the session's dedicated worker thread.
-	// 한글: 패스트패스 검사 — 누적 데이터 없고 정확히 1개의 완성 패킷인 경우.
-	//       락 불필요: KeyedDispatcher가 이 메서드가 세션 전용 워커 스레드에서만
-	//       호출됨을 보장.
 	bool fastPath = false;
 	if (mRecvAccumBuffer.empty() && size >= PACKET_HEADER_SIZE)
 	{
@@ -610,32 +543,25 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 
 	if (fastPath)
 	{
-		// English: Zero-alloc fast path: deliver raw recv buffer directly.
-		// 한글: 할당 없는 패스트패스: 원시 recv 버퍼를 직접 전달.
+		// Zero-alloc fast path: deliver raw recv buffer directly.
 		OnRecv(data, size);
 		return;
 	}
 
-	// English: General path — batch complete packets into mRecvBatchBuf (reused across calls),
+	// General path — batch complete packets into mRecvBatchBuf (reused across calls),
 	//          swap with a local variable before dispatching.
 	//          No lock needed: serialization is guaranteed by KeyedDispatcher affinity.
-	// 한글: 일반 경로 — 완성 패킷을 mRecvBatchBuf(호출 간 재사용)에 배치 처리하고,
-	//       디스패치 전 지역 변수와 swap.
-	//       락 불필요: KeyedDispatcher 친화도로 직렬화 보장.
 	std::vector<char>       localBatch;
 	std::vector<PacketSpan> spans;
 	bool shouldClose = false;
 
 	{
 
-		// English: Overflow guard (slow-loris / flood defense).
-		// 한글: 오버플로우 방어 (slow-loris / 플러드 방어).
+		// Overflow guard (slow-loris / flood defense).
 		constexpr size_t kMaxAccumSize = MAX_PACKET_SIZE * 4;
-		// English: Defensive reset in case of internal regression — the invariant
+		// Defensive reset in case of internal regression — the invariant
 		//          (offset <= size) is maintained by the parsing loop below, but
 		//          resetting here prevents size_t underflow from causing OOB reads.
-		// 한글: 내부 회귀 대비 방어 초기화 — 아래 파싱 루프가 불변식을 유지하지만
-		//       여기서 리셋하면 size_t underflow로 인한 OOB 읽기를 방지한다.
 		if (mRecvAccumOffset > mRecvAccumBuffer.size())
 			mRecvAccumOffset = 0;
 		const size_t unread = mRecvAccumBuffer.size() - mRecvAccumOffset;
@@ -674,8 +600,7 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 				}
 
 				const uint32_t packetSize = hdr->size;
-				// English: Append packet bytes to reusable batch buffer and record its span.
-				// 한글: 패킷 바이트를 재사용 배치 버퍼에 추가하고 span 기록.
+				// Append packet bytes to reusable batch buffer and record its span.
 				spans.push_back({static_cast<uint32_t>(mRecvBatchBuf.size()), packetSize});
 				mRecvBatchBuf.insert(mRecvBatchBuf.end(),
 					mRecvAccumBuffer.begin() + static_cast<std::ptrdiff_t>(mRecvAccumOffset),
@@ -696,11 +621,9 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 				mRecvAccumOffset = 0;
 			}
 
-			// English: Transfer batch to localBatch, then immediately re-arm mRecvBatchBuf
+			// Transfer batch to localBatch, then immediately re-arm mRecvBatchBuf
 			//          with pre-reserved capacity so the next call skips the reserve() call.
 			//          swap() alone resets mRecvBatchBuf.capacity() to 0 (defeats the intent).
-			// 한글: 배치를 localBatch로 이전 후, mRecvBatchBuf를 즉시 재무장.
-			//       swap()만 하면 capacity()가 0이 되어 다음 호출 시 reserve() 재실행.
 			mRecvBatchBuf.swap(localBatch);
 			mRecvBatchBuf.reserve(MAX_PACKET_SIZE * 4);
 		}
@@ -712,8 +635,7 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 		return;
 	}
 
-	// English: Dispatch all packets from localBatch (mRecvMutex not held).
-	// 한글: localBatch에서 모든 패킷 디스패치 (mRecvMutex 미보유 상태).
+	// Dispatch all packets from localBatch (mRecvMutex not held).
 	for (const auto &sp : spans)
 	{
 		OnRecv(localBatch.data() + sp.offset, sp.size);
