@@ -143,6 +143,9 @@ namespace Network::DBServer
             return;
         }
 
+        // English: Count silently dropped tasks so shutdown stats reflect true failures.
+        // 한글: 조용히 드롭된 태스크도 집계하여 셧다운 통계에 실제 실패가 반영되도록 함.
+        mTotalFailed.fetch_add(1, std::memory_order_relaxed);
         Logger::Warn("OrderedTaskQueue enqueue rejected - key: " +
                      std::to_string(key));
     }

@@ -431,33 +431,34 @@ void DBTaskQueue::EnqueueTask(DBTask &&task)
         }
     }
 
-    if (!accepted)
-
+    if (accepted)
     {
-
-        if (shouldWriteDone)
-
-        {
-
-            WalWriteDone(canceledWalSeq);
-        }
-
-        Logger::Error("Cannot enqueue task - DBTaskQueue shutting down");
-
-        if (task.callback)
-
-        {
-
-            task.callback(false, "DBTaskQueue shutting down");
-        }
-
+        // English: task was moved into the worker queue above (push(std::move(task))).
+        //          task is now in a moved-from state — do NOT access it below.
+        //          Notify the assigned worker and return immediately.
+        // 한글: task는 위의 push(std::move(task))로 워커 큐에 이동됨.
+        //       task는 moved-from 상태 — 이후 접근 금지.
+        //       배정된 워커에 알리고 즉시 반환.
+        worker.cv.notify_one();
         return;
     }
 
-    // English: Notify the assigned worker thread.
-    // 한글: 배정된 워커 스레드에 알림.
+    // English: Reached only in the rejected path — task was NOT moved, so
+    //          task.walSeq and task.callback are still valid to access.
+    // 한글: 거부 경로에서만 도달 — task가 이동되지 않았으므로
+    //       task.walSeq, task.callback 접근 안전.
 
-    worker.cv.notify_one();
+    if (shouldWriteDone)
+    {
+        WalWriteDone(canceledWalSeq);
+    }
+
+    Logger::Error("Cannot enqueue task - DBTaskQueue shutting down");
+
+    if (task.callback)
+    {
+        task.callback(false, "DBTaskQueue shutting down");
+    }
 }
 
 void DBTaskQueue::RecordConnectTime(ConnectionId sessionId,
@@ -1297,10 +1298,19 @@ void DBTaskQueue::WalRecover()
 
     const std::string backupPath = mWalPath + kWalBackupSuffix;
 
-    // English: Remove stale backup from a previous interrupted recovery, if
-    // any.
-
+    // English: Remove stale backup from a previous interrupted recovery, if any.
+    //          Crash window note: if the process crashes between this remove and
+    //          the rename below, both files are gone. However, pendingMap was already
+    //          populated by parseWalFile() above, so the in-memory state is intact
+    //          for the current run. The data is only permanently lost if the crash
+    //          occurs here AND the process does not recover in this same run.
+    //          On first startup (no stale backup) std::remove() is a silent no-op.
     // 한글: 이전 복구가 중단되어 남은 스테일 백업 파일 제거.
+    //       크래시 윈도우 주의: 이 remove와 아래 rename 사이에 크래시 발생 시
+    //       두 파일 모두 사라짐. 단, pendingMap은 이미 위의 parseWalFile()에서
+    //       채워졌으므로 현재 실행에서의 in-memory 상태는 유효.
+    //       데이터 영구 손실은 이 지점에서 크래시 + 동일 실행에서 복구 불가 시에만 발생.
+    //       최초 시작 시(스테일 백업 없음) std::remove()는 조용한 no-op.
 
     std::remove(backupPath.c_str());
 

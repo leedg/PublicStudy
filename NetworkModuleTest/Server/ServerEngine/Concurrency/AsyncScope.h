@@ -37,12 +37,16 @@ class AsyncScope
 		mCancelled.store(true, std::memory_order_release);
 	}
 
-	// English: Reset for pool reuse. Safe only when mInFlight == 0, which is
-	//          guaranteed by the time SessionPool::ReleaseInternal calls Session::Reset()
-	//          because all in-flight lambdas hold a sessionCopy ref and have already run.
-	// 한글: 풀 재사용을 위한 초기화. mInFlight == 0일 때만 안전하며,
-	//       모든 in-flight 람다가 sessionCopy ref를 보유하고 이미 실행됐을 때
-	//       SessionPool::ReleaseInternal → Session::Reset() 호출 시 보장됨.
+	// English: Reset for pool reuse. Safe only when mInFlight == 0.
+	//          Callers MUST call WaitForDrain(-1) (via Session::WaitForPendingTasks())
+	//          before calling Reset(). SessionPool::ReleaseInternal enforces this order:
+	//            Close() → WaitForPendingTasks() → Reset()
+	//          The assert below fires immediately if the contract is violated.
+	// 한글: 풀 재사용을 위한 초기화. mInFlight == 0일 때만 안전.
+	//       호출자는 Reset() 전에 WaitForDrain(-1) (Session::WaitForPendingTasks() 경유)을
+	//       반드시 호출해야 함. SessionPool::ReleaseInternal이 이 순서를 강제:
+	//         Close() → WaitForPendingTasks() → Reset()
+	//       계약 위반 시 아래 assert가 즉시 발동.
 	void Reset()
 	{
 		// English: Precondition: mInFlight MUST be 0. Call WaitForDrain(-1) before Reset().

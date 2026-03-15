@@ -274,16 +274,17 @@ void WindowsNetworkEngine::ProcessCompletions()
 
 		if (entry.mOsError != 0 || entry.mResult <= 0)
 		{
-			auto sessionCopy = session;
-			mLogicDispatcher.Dispatch(sessionCopy->GetId(),
-				[this, sessionCopy]()
-				{
-					sessionCopy->OnDisconnected();
-					FireEvent(Core::NetworkEvent::Disconnected,
-							  sessionCopy->GetId());
-				});
-
-			Core::SessionManager::Instance().RemoveSession(session);
+			// English: Route through ProcessRecvCompletion(bytesReceived=0) so the
+			//          disconnect event is submitted via session->mAsyncScope.
+			//          Direct mLogicDispatcher.Dispatch() would bypass AsyncScope,
+			//          allowing OnDisconnected() to fire even after Close() was called
+			//          from the send-failure path (double-event risk).
+			// 한글: ProcessRecvCompletion(bytesReceived=0)을 경유하여 session->mAsyncScope를
+			//       통해 disconnect 이벤트를 제출.
+			//       직접 mLogicDispatcher.Dispatch()는 AsyncScope를 우회하여
+			//       송신 실패 경로에서 이미 Close()가 호출된 후에도 OnDisconnected()가
+			//       발생할 수 있음(이중 이벤트 위험).
+			ProcessRecvCompletion(session, 0, nullptr);
 			continue;
 		}
 
@@ -321,15 +322,9 @@ void WindowsNetworkEngine::ProcessCompletions()
 					std::to_string(session->GetId()) + ": " +
 					std::string(mProvider->GetLastError()));
 
-				auto sessionCopy = session;
-				mLogicDispatcher.Dispatch(sessionCopy->GetId(),
-					[this, sessionCopy]()
-					{
-						sessionCopy->OnDisconnected();
-						FireEvent(Core::NetworkEvent::Disconnected,
-								  sessionCopy->GetId());
-					});
-				Core::SessionManager::Instance().RemoveSession(session);
+				// English: Same AsyncScope routing as the error path above.
+				// 한글: 위 에러 경로와 동일한 AsyncScope 라우팅.
+				ProcessRecvCompletion(session, 0, nullptr);
 			}
 			break;
 		}

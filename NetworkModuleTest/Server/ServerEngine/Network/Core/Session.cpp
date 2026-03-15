@@ -199,13 +199,34 @@ void Session::Close()
 
 	// English: Cancel queued logic tasks. Tasks already running will finish normally;
 	//          tasks still in the dispatcher queue will be silently skipped.
-	//          WaitForDrain() is deferred to AsyncScope's RAII dtor (Session destruction).
+	//          WaitForDrain() is NOT called here — it blocks, and Close() can be called
+	//          from an IOCP worker thread (send-failure path). Callers that need to
+	//          ensure all tasks are done before recycling the session must call
+	//          WaitForPendingTasks() after Close(). For pool sessions this is done by
+	//          SessionPool::ReleaseInternal. For non-pool sessions ~AsyncScope() drains.
 	// 한글: 큐잉된 로직 작업 취소. 이미 실행 중인 작업은 정상 완료;
 	//       아직 디스패처 큐에 있는 작업은 조용히 건너뜀.
-	//       WaitForDrain()은 AsyncScope RAII 소멸자(Session 소멸 시)로 미룸.
+	//       WaitForDrain()은 여기서 호출하지 않음 — 블로킹이며, Close()는
+	//       IOCP 워커 스레드에서 호출될 수 있음(송신 실패 경로).
+	//       세션 재사용 전 모든 태스크 완료가 필요한 호출자는 Close() 후
+	//       WaitForPendingTasks()를 호출해야 함. 풀 세션은 SessionPool::ReleaseInternal이,
+	//       비풀 세션은 ~AsyncScope()가 드레인을 담당함.
 	mAsyncScope.Cancel();
 
 	Utils::Logger::Info("Session closed - ID: " + std::to_string(mId));
+}
+
+void Session::WaitForPendingTasks()
+{
+	// English: Block until all in-flight AsyncScope tasks have completed.
+	//          Cancel() is called by Close(), so pending-but-not-yet-running tasks will
+	//          be skipped quickly. Only truly in-flight (currently executing) tasks
+	//          need to finish. After this returns, Reset() is safe to call.
+	// 한글: 모든 in-flight AsyncScope 태스크가 완료될 때까지 블로킹.
+	//       Cancel()은 Close()에서 호출되므로 아직 실행되지 않은 대기 태스크는
+	//       빠르게 건너뜀. 실제로 실행 중인 태스크만 완료를 기다림.
+	//       반환 후 Reset() 호출이 안전함.
+	mAsyncScope.WaitForDrain(-1);
 }
 
 Session::SendResult Session::Send(const void *data, uint32_t size)

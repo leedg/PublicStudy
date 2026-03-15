@@ -93,10 +93,26 @@ class Session : public std::enable_shared_from_this<Session>
 	void Initialize(Utils::ConnectionId id, SocketHandle socket);
 	void Close();
 
-	// English: Reset session state for pool reuse. Call after Close() and before re-Initialize().
-	//          Clears ID, state, counters. mAsyncProvider and buffers are already cleaned by Close().
-	// 한글: 풀 재사용을 위한 세션 상태 초기화. Close() 이후, 재Initialize() 이전에 호출.
-	//       ID·상태·카운터 초기화. mAsyncProvider·버퍼는 Close()에서 이미 정리됨.
+	// English: Block until all in-flight AsyncScope tasks have completed.
+	//          MUST be called between Close() and Reset() when returning a pool session.
+	//          Close() calls mAsyncScope.Cancel() (skips pending tasks) but does NOT wait;
+	//          pool sessions never call ~Session() so the RAII drain in ~AsyncScope()
+	//          never fires. This method closes that gap.
+	// 한글: 모든 in-flight AsyncScope 태스크가 완료될 때까지 블로킹.
+	//       풀 세션 반납 시 Close()와 Reset() 사이에 반드시 호출해야 함.
+	//       Close()는 mAsyncScope.Cancel() 호출(대기 태스크 건너뜀)하지만 대기하지 않음.
+	//       풀 세션은 ~Session()이 호출되지 않으므로 ~AsyncScope()의 RAII 드레인이
+	//       실행되지 않는다. 이 메서드가 그 빈틈을 채운다.
+	void WaitForPendingTasks();
+
+	// English: Reset session state for pool reuse. Call after Close() + WaitForPendingTasks()
+	//          and before re-Initialize(). Clears ID, state, counters, and recv accum buffers.
+	//          mAsyncProvider is cleaned in Close(). mRecvAccumBuffer is cleared here
+	//          (not in Close()) — see Close() comment for race rationale.
+	// 한글: 풀 재사용을 위한 세션 상태 초기화. Close() + WaitForPendingTasks() 이후,
+	//       재Initialize() 이전에 호출. ID·상태·카운터·recv 누적 버퍼 초기화.
+	//       mAsyncProvider는 Close()에서 정리. mRecvAccumBuffer는 여기서 초기화
+	//       (Close()에서 하지 않음) — race 이유는 Close() 주석 참고.
 	void Reset();
 
 	// English: Send result — returned by Send() to give the caller backpressure feedback.

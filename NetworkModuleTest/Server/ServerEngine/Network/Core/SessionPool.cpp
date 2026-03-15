@@ -98,9 +98,22 @@ void SessionPool::ReleaseInternal(size_t slotIdx)
 
     PoolSlot &slot = mSlots[slotIdx];
 
-    // English: Ensure the session is closed before returning to pool.
-    // 한글: 풀 반납 전 세션 닫힘 보장.
+    // English: Full teardown sequence for pool reuse:
+    //   1. Close()              — closes socket, cancels AsyncScope (no blocking)
+    //   2. WaitForPendingTasks()— blocks until all in-flight logic tasks complete
+    //                             (pool sessions skip ~Session() so ~AsyncScope() never runs)
+    //   3. Reset()              — clears state including mRecvAccumBuffer
+    //                             (safe only after WaitForPendingTasks; AsyncScope::Reset()
+    //                              asserts mInFlight == 0)
+    // 한글: 풀 재사용을 위한 완전한 teardown 순서:
+    //   1. Close()              — 소켓 닫기, AsyncScope 취소 (블로킹 없음)
+    //   2. WaitForPendingTasks()— 모든 in-flight 로직 태스크 완료까지 블로킹
+    //                             (풀 세션은 ~Session() 미호출로 ~AsyncScope() 미실행)
+    //   3. Reset()              — mRecvAccumBuffer 포함 상태 초기화
+    //                             (WaitForPendingTasks 이후에만 안전; AsyncScope::Reset()이
+    //                              mInFlight == 0을 assert함)
     slot.session.Close();
+    slot.session.WaitForPendingTasks();
     slot.session.Reset();
 
     slot.inUse.store(false, std::memory_order_release);
