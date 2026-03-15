@@ -1,0 +1,1 @@
+﻿Write-Output "ps1 ok"

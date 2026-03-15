@@ -934,6 +934,25 @@ uint64_t DBTaskQueue::WalNextSeq()
     return mWalSeq.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
+bool DBTaskQueue::EnsureWalOpen()
+
+{
+
+    // English: Caller MUST hold mWalMutex before calling this function.
+    // 한글: 이 함수를 호출하기 전에 mWalMutex를 보유하고 있어야 합니다.
+
+    if (mWalFile.is_open())
+
+    {
+
+        return true;
+    }
+
+    mWalFile.open(mWalPath, std::ios::app | std::ios::out);
+
+    return mWalFile.is_open();
+}
+
 void DBTaskQueue::WalWritePending(const DBTask &task, uint64_t seq)
 
 {
@@ -949,20 +968,13 @@ void DBTaskQueue::WalWritePending(const DBTask &task, uint64_t seq)
     // conditions. 한글: mWalFile의 lazy-open은 mWalMutex로 보호되어 경합 방지.
     std::lock_guard<std::mutex> lock(mWalMutex);
 
-    if (!mWalFile.is_open())
+    if (!EnsureWalOpen())
 
     {
 
-        mWalFile.open(mWalPath, std::ios::app | std::ios::out);
+        Logger::Warn("WAL: Failed to open WAL file: " + mWalPath);
 
-        if (!mWalFile.is_open())
-
-        {
-
-            Logger::Warn("WAL: Failed to open WAL file: " + mWalPath);
-
-            return;
-        }
+        return;
     }
 
     // English: Escape '|' in data field to avoid parse ambiguity
@@ -1009,18 +1021,11 @@ void DBTaskQueue::WalWriteDone(uint64_t seq)
     // conditions. 한글: mWalFile의 lazy-open은 mWalMutex로 보호되어 경합 방지.
     std::lock_guard<std::mutex> lock(mWalMutex);
 
-    if (!mWalFile.is_open())
+    if (!EnsureWalOpen())
 
     {
 
-        mWalFile.open(mWalPath, std::ios::app | std::ios::out);
-
-        if (!mWalFile.is_open())
-
-        {
-
-            return;
-        }
+        return;
     }
 
     // D|<seq>

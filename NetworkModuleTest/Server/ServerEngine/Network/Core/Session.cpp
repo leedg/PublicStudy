@@ -4,6 +4,7 @@
 #include "Session.h"
 #include "SendBufferPool.h"
 #include "SessionPool.h"
+#include <cassert>
 #include <cstring>
 #include <iostream>
 #include <sstream>
@@ -66,7 +67,7 @@ void Session::Initialize(Utils::ConnectionId id, SocketHandle socket)
 	mConnectTime = Utils::Timer::GetCurrentTimestamp();
 	mLastPingTime = mConnectTime;
 	mPingSequence.store(0, std::memory_order_relaxed);
-	mIsSending = false;
+	mIsSending.store(false, std::memory_order_release);
 	mSendQueueSize.store(0, std::memory_order_relaxed);
 	// mAsyncProvider is set separately via SetAsyncProvider()
 #ifdef _WIN32
@@ -96,6 +97,12 @@ void Session::Reset()
 	//       (Close()에서 하지 않음) — 로직 워커 스레드의 ProcessRawRecv와의 race 방지.
 	//       전체 이유는 Close() 주석 참고.
 	mId = 0;
+	// English: Send queue MUST be empty here — Close() drains it under mSendMutex.
+	//          A non-empty queue at this point indicates Close() was skipped, which
+	//          violates the Close() → WaitForPendingTasks() → Reset() contract.
+	// 한글: 여기서 송신 큐는 반드시 비어 있어야 함 — Close()가 mSendMutex 하에 드레인.
+	//       비어 있지 않다면 Close()가 건너뛰어진 것으로, 계약 위반.
+	assert(mSendQueue.empty() && "Reset() called without prior Close() — send queue not empty");
 	mRecvAccumBuffer.clear();
 	mRecvAccumOffset = 0;
 	mState.store(SessionState::None, std::memory_order_relaxed);
@@ -240,7 +247,7 @@ Session::SendResult Session::Send(const void *data, uint32_t size)
 	{
 		Utils::Logger::Warn("Send size exceeds MAX_PACKET_TOTAL_SIZE - packet dropped (Session: " +
 							std::to_string(mId) + ", Size: " + std::to_string(size) + ")");
-		return SendResult::QueueFull;
+		return SendResult::InvalidArgument;
 	}
 
 #ifdef _WIN32
@@ -712,6 +719,5 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 		OnRecv(localBatch.data() + sp.offset, sp.size);
 	}
 }
-
 
 } // namespace Network::Core

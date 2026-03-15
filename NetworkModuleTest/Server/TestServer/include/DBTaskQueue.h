@@ -149,6 +149,11 @@ namespace Network::TestServer
         void     WalWriteDone(uint64_t seq);
         void     WalRecover();
         uint64_t WalNextSeq();
+        // English: Open WAL file if not already open. Must be called under mWalMutex.
+        //          Returns true if the file is open (or was opened successfully).
+        // 한글: WAL 파일이 열려 있지 않으면 엽니다. mWalMutex 하에서 호출해야 함.
+        //       파일이 열려 있거나 성공적으로 열렸으면 true 반환.
+        bool     EnsureWalOpen();
 
     private:
         // English: Per-worker data — each worker owns its queue, mutex, cv, and thread.

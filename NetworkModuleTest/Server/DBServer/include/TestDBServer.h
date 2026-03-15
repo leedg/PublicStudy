@@ -71,9 +71,6 @@ namespace Network::DBServer
         void OnConnectionClosed(const Core::NetworkEventData& eventData);
         void OnDataReceived(const Core::NetworkEventData& eventData);
 
-        // English: Session factory
-        // Korean: 세션 팩토리
-        Core::SessionRef CreateDBSession();
 
     private:
         // English: Network engine (multi-platform support)

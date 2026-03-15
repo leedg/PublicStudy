@@ -223,9 +223,4 @@ namespace Network::DBServer
             " bytes from Connection: " + std::to_string(eventData.connectionId));
     }
 
-    SessionRef TestDBServer::CreateDBSession()
-    {
-        return std::make_shared<DBSession>();
-    }
-
 } // namespace Network::DBServer

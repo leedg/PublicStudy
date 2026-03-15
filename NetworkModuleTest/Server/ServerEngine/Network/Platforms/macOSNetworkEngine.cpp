@@ -222,7 +222,12 @@ void macOSNetworkEngine::AcceptLoop()
 				std::to_string(session->GetId()) + ": " +
 				std::string(mProvider->GetLastError()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			close(clientSocket);
+			// English: Do NOT call close(clientSocket) here — RemoveSession calls
+			//          session->Close() which already closes the socket via the
+			//          pool deleter. A second close() is a use-after-free of the fd.
+			// 한글: 여기서 close(clientSocket)를 호출하지 않음 — RemoveSession이
+			//       session->Close()를 호출하여 풀 deleter를 통해 소켓을 이미 닫음.
+			//       두 번째 close()는 fd의 use-after-free.
 			continue;
 		}
 
@@ -257,7 +262,10 @@ void macOSNetworkEngine::AcceptLoop()
 			Utils::Logger::Error("Failed to queue recv - Session " +
 								 std::to_string(session->GetId()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			close(clientSocket);
+			// English: Do NOT call close(clientSocket) — same rationale as above:
+			//          RemoveSession → session->Close() already closes the fd.
+			// 한글: close(clientSocket) 호출 금지 — 위와 동일한 이유:
+			//       RemoveSession → session->Close()가 이미 fd를 닫음.
 			continue;
 		}
 
@@ -342,11 +350,16 @@ void macOSNetworkEngine::ProcessCompletions()
 			const char *recvBuffer = session->GetRecvBuffer();
 			ProcessRecvCompletion(session, entry.mResult, recvBuffer);
 
-			// English: Post next receive. On failure, route through ProcessErrorCompletion
-			//          so the session is cleanly disconnected and recv error stats updated.
-			// 한글: 다음 수신 등록. 실패 시 ProcessErrorCompletion으로 라우팅하여
-			//       세션을 정상 종료하고 recv 에러 통계를 업데이트.
-			if (!QueueRecv(session))
+			// English: Guard: only re-queue recv if the session is still connected.
+			//          A concurrent Send-error on another worker may have already
+			//          called Close() on this session's socket between ProcessRecvCompletion
+			//          and here. Calling QueueRecv on a closed fd risks registering
+			//          kqueue interest on a recycled file descriptor.
+			// 한글: 가드: 세션이 여전히 연결 상태일 때만 recv 재등록.
+			//       다른 워커에서 동시에 발생한 송신 에러가 이미 Close()를 호출하여
+			//       소켓이 닫혔을 수 있음. 닫힌 fd에 QueueRecv를 호출하면
+			//       재사용된 파일 디스크립터에 kqueue 관심이 등록될 위험.
+			if (session->IsConnected() && !QueueRecv(session))
 			{
 				ProcessErrorCompletion(session, AsyncIO::AsyncIOType::Recv, 0);
 			}

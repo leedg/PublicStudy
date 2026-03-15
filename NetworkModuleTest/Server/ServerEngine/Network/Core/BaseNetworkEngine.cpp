@@ -171,7 +171,16 @@ void BaseNetworkEngine::Stop()
 	SessionManager::Instance().CloseAllSessions();
 
 	// English: Shutdown logic dispatcher after all sessions are closed.
+	//          CloseAllSessions() calls session->Close() which cancels AsyncScope,
+	//          causing pending-but-not-yet-running disconnect tasks to be silently
+	//          skipped inside WorkerThreadFunc. Applications may not receive
+	//          OnDisconnected callbacks for sessions that had pending tasks at
+	//          shutdown time — this is intentional (engine is stopping).
 	// 한글: 모든 세션 종료 후 로직 디스패처 종료.
+	//       CloseAllSessions()가 session->Close()를 호출하여 AsyncScope를 취소하므로
+	//       아직 실행되지 않은 disconnect 태스크는 WorkerThreadFunc 내에서 조용히 건너뜀.
+	//       종료 시 대기 중인 태스크가 있던 세션에 대해 OnDisconnected 콜백이
+	//       전달되지 않을 수 있음 — 엔진이 종료 중이므로 의도된 동작임.
 	mLogicDispatcher.Shutdown();
 
 	// English: Shutdown platform resources
@@ -414,6 +423,16 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 				const char *recvData = dataCopy->data();
 				sessionCopy->ProcessRawRecv(recvData,
 				                            static_cast<uint32_t>(bytesReceived));
+				// English: DataReceived carries raw TCP segment bytes, NOT necessarily
+				//          complete application packets. ProcessRawRecv handles packet
+				//          assembly internally and invokes OnRecv per complete packet.
+				//          Use OnRecv / SetOnRecv for application packet processing;
+				//          DataReceived is intended for raw byte monitoring/tracing only.
+				// 한글: DataReceived는 완성된 애플리케이션 패킷이 아닌 원시 TCP 세그먼트
+				//       바이트를 전달한다. 패킷 조립은 ProcessRawRecv가 내부적으로 처리하며
+				//       완성된 패킷마다 OnRecv를 호출한다.
+				//       애플리케이션 패킷 처리에는 OnRecv / SetOnRecv를 사용하고,
+				//       DataReceived는 원시 바이트 모니터링/트레이싱 전용으로 의도됨.
 				FireEvent(NetworkEvent::DataReceived, sessionCopy->GetId(),
 				          reinterpret_cast<const uint8_t *>(recvData), bytesReceived);
 			}))
@@ -425,10 +444,25 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 }
 
 void BaseNetworkEngine::ProcessSendCompletion(SessionRef session,
-												  int32_t bytesSent)
+											  int32_t bytesSent)
 {
 	if (!session)
 	{
+		return;
+	}
+
+	// English: A zero or negative completion on the send path means the remote
+	//          closed the connection or an OS-level error occurred. Route through
+	//          ProcessErrorCompletion so the session is cleanly disconnected and
+	//          send error stats are updated. Firing DataSent or calling PostSend
+	//          on such a completion would be incorrect.
+	// 한글: 송신 경로의 0 또는 음수 완료는 원격 종료 또는 OS 수준 에러를 의미.
+	//       ProcessErrorCompletion으로 라우팅하여 세션을 정상 종료하고
+	//       송신 에러 통계를 업데이트한다. 이런 완료에서 DataSent를 발생시키거나
+	//       PostSend를 호출하는 것은 잘못된 동작이다.
+	if (bytesSent <= 0)
+	{
+		ProcessErrorCompletion(session, AsyncIO::AsyncIOType::Send, 0);
 		return;
 	}
 

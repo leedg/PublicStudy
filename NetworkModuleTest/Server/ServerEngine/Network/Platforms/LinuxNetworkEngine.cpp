@@ -365,11 +365,16 @@ void LinuxNetworkEngine::ProcessCompletions()
 			const char *recvBuffer = session->GetRecvBuffer();
 			ProcessRecvCompletion(session, entry.mResult, recvBuffer);
 
-			// English: Post next receive. On failure, route through ProcessErrorCompletion
-			//          so the session is cleanly disconnected and recv error stats updated.
-			// 한글: 다음 수신 등록. 실패 시 ProcessErrorCompletion으로 라우팅하여
-			//       세션을 정상 종료하고 recv 에러 통계를 업데이트.
-			if (!QueueRecv(session))
+			// English: Guard: only re-queue recv if the session is still connected.
+			//          A concurrent Send-error on another worker may have already
+			//          called Close() on this session's socket between ProcessRecvCompletion
+			//          and here. Calling QueueRecv on a closed fd risks registering
+			//          epoll/io_uring interest on a recycled file descriptor.
+			// 한글: 가드: 세션이 여전히 연결 상태일 때만 recv 재등록.
+			//       다른 워커에서 동시에 발생한 송신 에러가 이미 Close()를 호출하여
+			//       소켓이 닫혔을 수 있음. 닫힌 fd에 QueueRecv를 호출하면
+			//       재사용된 파일 디스크립터에 epoll/io_uring 관심이 등록될 위험.
+			if (session->IsConnected() && !QueueRecv(session))
 			{
 				ProcessErrorCompletion(session, AsyncIO::AsyncIOType::Recv, 0);
 			}

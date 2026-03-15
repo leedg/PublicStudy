@@ -119,9 +119,10 @@ class Session : public std::enable_shared_from_this<Session>
 	// 한글: 전송 결과 — 호출자에게 백프레셔 피드백을 제공하는 Send() 반환값.
 	enum class SendResult : uint8_t
 	{
-		Ok,           // English: Packet enqueued/sent successfully / 한글: 패킷 큐잉/전송 성공
-		QueueFull,    // English: Send queue above backpressure threshold / 한글: 송신 큐 백프레셔 임계값 초과
-		NotConnected, // English: Session not connected / 한글: 세션 미연결
+		Ok,              // English: Packet enqueued/sent successfully / 한글: 패킷 큐잉/전송 성공
+		QueueFull,       // English: Send queue above backpressure threshold / 한글: 송신 큐 백프레셔 임계값 초과
+		NotConnected,    // English: Session not connected / 한글: 세션 미연결
+		InvalidArgument, // English: Oversized or null packet — do not retry / 한글: 과도한 크기이거나 null 패킷 — 재시도 불필요
 	};
 
 	// English: Send packet. Returns SendResult for backpressure feedback.

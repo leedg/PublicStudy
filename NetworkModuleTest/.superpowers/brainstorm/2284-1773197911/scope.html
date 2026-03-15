@@ -1,0 +1,44 @@
+<h2>draw.io 6개 다이어그램 중 가장 손봐야 할 것은?</h2>
+<p class="subtitle">다중 선택 가능 — 우선순위가 높은 것을 골라주세요</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="arch" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>diag_arch — 전체 아키텍처</h3>
+      <p>Client → NetworkEngine → BaseNetworkEngine → Windows/Linux/macOS → I/O Provider 계층 구조. 현재 영어 위주, 초보자용 설명 없음.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="seq" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>diag_seq — 연결·패킷 흐름 시퀀스</h3>
+      <p>TCP connect → Session 생성 → Recv/Send 흐름. 화살표 라벨 9px로 너무 작고, 모두 영어.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="async1" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content">
+      <h3>diag_async_1 — 스레드 디스패치</h3>
+      <p>IO Worker → KeyedDispatcher → Logic Worker → DB Layer. 이미 한국어 설명 일부 있음.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="async2" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content">
+      <h3>diag_async_2/3 — Keyed·ExecQueue 상세</h3>
+      <p>아직 파악 중. 내용 확인 필요.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="db" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content">
+      <h3>diag_db — DB 처리 상세</h3>
+      <p>DBTaskQueue · WAL · IDatabase 계층. 한국어 많고 잘 구성됨. WAL 개념 설명 부족.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px">
+  <p class="subtitle">선택 안 해도 됩니다 — "전부 다"라고 말해줘도 OK</p>
+</div>

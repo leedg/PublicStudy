@@ -156,12 +156,6 @@ class KeyedDispatcher
 		}
 
 		const size_t workerIndex = KeyToWorkerIndex(key);
-		// English: KeyToWorkerIndex() returns (key % mWorkers.size()),
-		// so workerIndex is always < mWorkers.size() by definition.
-		// This condition is unreachable dead code.
-		// 한글: KeyToWorkerIndex()는 (key % mWorkers.size())를 반환하므로
-		// workerIndex는 정의상 항상 mWorkers.size()보다 작습니다.
-		// 이 조건은 도달 불가능한 dead code입니다.
 
 		bool queued = mWorkers[workerIndex]->mQueue.Push(std::move(task), timeoutMs);
 		if (queued)
@@ -225,6 +219,13 @@ class KeyedDispatcher
 
 	void WorkerThreadFunc(size_t workerIndex)
 	{
+		// English: Raw reference is safe: mWorkers is only cleared in Shutdown() under
+		//          an exclusive lock, AFTER all worker threads have been joined.
+		//          Thread join happens before clear(), so this reference is always valid
+		//          for the lifetime of this function.
+		// 한글: Raw 참조 안전: mWorkers는 Shutdown()에서 exclusive lock 하에 워커 스레드
+		//       join 완료 후에만 clear됨. join이 clear()보다 먼저이므로 이 함수의
+		//       생명주기 동안 참조는 항상 유효함.
 		Worker &worker = *mWorkers[workerIndex];
 		std::function<void()> task;
 

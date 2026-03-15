@@ -22,6 +22,25 @@ void SessionManager::SetSessionConfigurator(std::function<void(Session *)> confi
 
 SessionRef SessionManager::CreateSession(SocketHandle socket)
 {
+	// English: Check session limit BEFORE acquiring a pool slot.
+	//          If we return nullptr here, the socket has NOT been given to any session
+	//          object — the caller is responsible for closing it.
+	//          Checking after Initialize() would cause the pool deleter to call Close()
+	//          (closing the socket) while the caller also calls close(fd) — double-close.
+	// 한글: 풀 슬롯 획득 전에 세션 한도를 확인.
+	//       여기서 nullptr을 반환하면 소켓이 세션 객체에 아직 전달되지 않은 상태이므로
+	//       호출자가 소켓 닫기 책임을 진다.
+	//       Initialize() 이후에 확인하면 풀 deleter가 Close()로 소켓을 닫은 뒤
+	//       호출자도 close(fd)를 호출하여 이중 닫기가 발생한다.
+	{
+		NET_LOCK_GUARD(mMutex);
+		if (mSessions.size() >= Utils::MAX_CONNECTIONS)
+		{
+			Utils::Logger::Warn("Max session count reached");
+			return nullptr;
+		}
+	}
+
 	SessionRef session = SessionPool::Instance().Acquire();
 	if (!session)
 	{
@@ -42,13 +61,6 @@ SessionRef SessionManager::CreateSession(SocketHandle socket)
 
 	{
 		NET_LOCK_GUARD(mMutex);
-
-		if (mSessions.size() >= Utils::MAX_CONNECTIONS)
-		{
-			Utils::Logger::Warn("Max session count reached");
-			return nullptr;
-		}
-
 		mSessions[id] = session;
 	}
 
