@@ -1,0 +1,95 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net">
+  <diagram name="Graceful Shutdown Sequence">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" page="1" pageWidth="1920" pageHeight="1080">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ── Participants (top row) ── -->
+        <mxCell id="p0" value="Signal/Main Thread" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" value="TestServer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="40" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" value="DBReconnectThread" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="470" y="40" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" value="DBTaskQueue" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="690" y="40" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" value="Local DB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="900" y="40" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" value="DB Server Socket" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="40" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p6" value="ClientEngine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="40" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p7" value="SessionManager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="40" width="150" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ── Step labels ── -->
+        <mxCell id="sLabel" value="Shutdown Sequence" style="text;html=1;align=left;verticalAlign=middle;resizable=0;strokeColor=none;fillColor=none;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="300" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ── Messages ── -->
+        <!-- 1. Main → TestServer: Stop() -->
+        <mxCell id="e0" value="1. Stop()" style="endArrow=block;html=1;strokeWidth=2;" edge="1" parent="1" source="p0" target="p1">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="120" y="150"/><mxPoint x="335" y="150"/></Array></mxGeometry>
+        </mxCell>
+        <!-- 2. TestServer → DBReconnectThread: notify_all + join -->
+        <mxCell id="e1" value="2. notify_all + join" style="endArrow=block;html=1;strokeWidth=2;" edge="1" parent="1" source="p1" target="p2">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="335" y="200"/><mxPoint x="550" y="200"/></Array></mxGeometry>
+        </mxCell>
+        <!-- 3. TestServer → SessionManager: ForEachSession -->
+        <mxCell id="e2" value="3. ForEachSession(...)" style="endArrow=block;html=1;strokeWidth=2;" edge="1" parent="1" source="p1" target="p7">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="335" y="250"/><mxPoint x="1605" y="250"/></Array></mxGeometry>
+        </mxCell>
+        <!-- 4. TestServer → DBTaskQueue: enqueue disconnect records -->
+        <mxCell id="e3" value="4. enqueue disconnect records" style="endArrow=block;html=1;strokeWidth=2;" edge="1" parent="1" source="p1" target="p3">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="335" y="300"/><mxPoint x="765" y="300"/></Array></mxGeometry>
+        </mxCell>
+        <!-- 5. TestServer → DBTaskQueue: Shutdown() / drain -->
+        <mxCell id="e4" value="5. Shutdown() / drain remaining tasks" style="endArrow=block;html=1;strokeWidth=2;" edge="1" parent="1" source="p1" target="p3">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="335" y="350"/><mxPoint x="765" y="350"/></Array></mxGeometry>
+        </mxCell>
+        <!-- 6. DBTaskQueue → Local DB: flush pending DB writes -->
+        <mxCell id="e5" value="6. flush pending DB writes" style="endArrow=block;html=1;strokeWidth=2;" edge="1" parent="1" source="p3" target="p4">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="765" y="400"/><mxPoint x="975" y="400"/></Array></mxGeometry>
+        </mxCell>
+        <!-- 7. TestServer → DB Server Socket: Disconnect() -->
+        <mxCell id="e6" value="7. Disconnect()" style="endArrow=block;html=1;strokeWidth=2;" edge="1" parent="1" source="p1" target="p5">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="335" y="450"/><mxPoint x="1185" y="450"/></Array></mxGeometry>
+        </mxCell>
+        <!-- 8. TestServer → DB Server Socket: DisconnectFromDBServer() -->
+        <mxCell id="e7" value="8. DisconnectFromDBServer()" style="endArrow=block;html=1;strokeWidth=2;" edge="1" parent="1" source="p1" target="p5">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="335" y="500"/><mxPoint x="1185" y="500"/></Array></mxGeometry>
+        </mxCell>
+        <!-- 9. TestServer → ClientEngine: Stop() -->
+        <mxCell id="e8" value="9. Stop()" style="endArrow=block;html=1;strokeWidth=2;" edge="1" parent="1" source="p1" target="p6">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="335" y="550"/><mxPoint x="1395" y="550"/></Array></mxGeometry>
+        </mxCell>
+        <!-- 10. ClientEngine → SessionManager: CloseAllSessions() -->
+        <mxCell id="e9" value="10. CloseAllSessions()" style="endArrow=block;html=1;strokeWidth=2;" edge="1" parent="1" source="p6" target="p7">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1395" y="600"/><mxPoint x="1605" y="600"/></Array></mxGeometry>
+        </mxCell>
+
+        <!-- ── Legend ── -->
+        <mxCell id="legendBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="650" width="400" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTitle" value="Shutdown Order" style="text;html=1;align=left;verticalAlign=top;spacingLeft=8;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="655" width="380" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legendText" value="DBReconnectThread join → SessionDisconnect records enqueue → DBTaskQueue drain → DB socket close → ClientEngine stop → SessionManager cleanup" style="text;html=1;align=left;verticalAlign=top;spacingLeft=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="675" width="380" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
