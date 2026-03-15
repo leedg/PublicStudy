@@ -209,7 +209,7 @@ def build_title_page(doc: Document):
         ("기준 리포지토리", "NetworkModuleTest"),
         ("분석 대상",      "ServerEngine / TestServer / DBServer"),
         ("작성일",         "2026-03-15"),
-        ("버전",           "1.3"),
+        ("버전",           "1.4"),
     ]
     for label, value in meta:
         p = _shade(before=0, after=4, indent=4)
@@ -402,6 +402,10 @@ def section_changelog(doc: Document):
     make_table(doc,
         ["날짜", "주요 변경 내용"],
         [
+            ["2026-03-15",
+             "단순화(v1.4): ExecutionQueue lock-free 백엔드 제거, BoundedLockFreeQueue 삭제,\n"
+             "mutex 단일 백엔드로 통일 (533→157줄). draw.io 다이어그램 전면 갱신,\n"
+             "03/04 시퀀스 다이어그램 draw.io 소스 추가."],
             ["2026-03-15",
              "코드 정리(v1.3): 미구현 DBTaskType enum 제거(SaveGameProgress·Custom),\n"
              "미사용 include 제거(<iostream>·<cstring>),\n"
@@ -675,7 +679,7 @@ def section_async(doc: Document):
     image_drawio(doc, "diag_async_2_keyed.png",
                  caption="KeyedDispatcher 세션 라우팅 (draw.io)", style=DRAWIO_STYLE)
     image_drawio(doc, "diag_async_3_execqueue.png",
-                 caption="ExecutionQueue 이중 백엔드 — Mutex / Lock-Free (draw.io)", style=DRAWIO_STYLE)
+                 caption="ExecutionQueue — Mutex 단일 백엔드 (draw.io)", style=DRAWIO_STYLE)
 
     h2(doc, "3.4 OrderedTaskQueue — DBServer 키 순서 보장")
     body(doc, (
