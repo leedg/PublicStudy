@@ -127,23 +127,23 @@ Core::Session
     └── DBServerSession — DB 서버 전용. DBServerPacketHandler 소유.
 ```
 
-- `ClientSession`이 `GameSession`을 대체.
-  `DBTaskQueue*`는 **생성자 주입** 방식: `TestServer::MakeClientSessionFactory()`가 반환하는 람다가 캡처 → 주입.
-  `static DBTaskQueue* sDBTaskQueue` 전역 상태 제거 — 여러 `TestServer` 인스턴스가 독립적으로 공존 가능.
+- 현재 기본 세션 생성 경로는 `SessionManager::CreateSession()` + `SetSessionConfigurator()`이다.
+  실제 세션 객체는 `SessionPool`의 `Core::Session`이며, recv 콜백은 configurator가 `SetOnRecv()`로 주입한다.
+- `ClientSession`은 코드 트리에 남아 있지만, 현재 기본 실행 경로를 설명하는 기준 문서로는 사용하지 않는다.
 - `DBServerSession`이 raw `Core::Session` 직접 사용을 대체.
-- 연결 생명주기(소켓, recv/ping 스레드) 관리는 `TestServer`가 담당.
+- 연결 생명주기(소켓, recv 스레드, ping 스케줄링) 관리는 `TestServer`가 담당.
 
 ---
 
 ## 핵심 설계 원칙 (유지 필수)
 
-1. **논블로킹 세션**: `ClientSession`에서 DB 작업은 `DBTaskQueue`를 통해 비동기 처리
+1. **DB 기록 진입점 명시**: 현재 접속/종료 DB 기록은 `TestServer` 이벤트 핸들러가 `DBTaskQueue`에 비동기로 enqueue
 2. **스레드 안전**: `SafeQueue`, `std::atomic`, `std::mutex` 기반 동기화
 3. **팩토리 패턴**: `CreateNetworkEngine()`, `CreateAsyncIOProvider()`로 런타임 선택
 4. **Graceful Shutdown**: 세션 전부 종료 → 큐 드레인 → 스레드 Join 순서 엄수
 5. **자동 재연결**: 서버↔서버, 클라이언트↔서버 연결 끊김 시 재연결 로직 유지
 6. **재연결 에러 구분**: `WSAECONNREFUSED`(서버 종료/재기동 중) → 1s 고정 간격; 그 외 → 지수 백오프(최대 30s)
-7. **DBTaskQueue 워커 1개**: `RecordConnectTime`/`RecordDisconnectTime` 같은 같은 세션 작업의 순서를 보장하기 위해 `Initialize(1)` 유지. 멀티워커 처리량이 필요하면 `OrderedTaskQueue`(해시 기반 친화도)로 전환.
+7. **DBTaskQueue 설정과 구현 구분**: 현재 `TestServer` 설정은 `Initialize(1, ...)`이지만, 구현 자체는 워커별 독립 큐 + `sessionId % workerCount` 라우팅이다. 문서에서 이를 단일 공유 큐로 설명하지 않는다.
 8. **의존성 주입 우선**: 클래스 `static` 멤버 전역 상태 대신 생성자/팩토리 람다 캡처 방식으로 주입.
 9. **이벤트 일관성**: `OnDisconnected` / `FireEvent`는 항상 `mLogicThreadPool.Submit()`을 통해 실행 (`CloseConnection` 포함).
 

@@ -1,6 +1,8 @@
 # 01. Overall Architecture
 
-이 페이지는 서버 전체 구성을 한 장으로 보여주고, 어떤 컴포넌트가 어디를 책임지는지 빠르게 정리합니다.
+이 페이지는 현재 `TestServer` 실행 경로를 한 장으로 요약한다.
+중요한 기준은 "`ClientSession` 중심 설명"이 아니라
+"`SessionPool` + `SessionManager` + `TestServer` 이벤트 핸들러" 구조라는 점이다.
 
 ## 정적 이미지 (SVG)
 ![Overall Architecture](./assets/01-overall-architecture.svg)
@@ -23,78 +25,59 @@ flowchart LR
     subgraph TS[TestServer]
         Engine[Client Engine<br/>auto backend]
         SessionMgr[SessionManager]
-        ClientSess[ClientSession]
-        DBSess[DBServerSession]
-        DBQueue[DBTaskQueue<br/>worker=1]
+        SessionPool[SessionPool]
+        Session[Core::Session]
+        SessionCfg[SessionConfigurator<br/>SetOnRecv]
+        EventFlow[Connected / Disconnected<br/>event handlers]
+        DBQueue[DBTaskQueue<br/>workerCount=1 now<br/>per-worker queues internally]
         LocalDB[Local DB<br/>Mock or SQLite]
-        DBSocket[DB socket +<br/>recv/ping threads]
-    end
-
-    subgraph SE[ServerEngine]
-        Core[Network Core]
-        Provider[AsyncIOProvider]
-        DBModule[Database Module]
+        TimerQ[TimerQueue<br/>DB ping scheduler]
+        DBSocket[DB socket + recv thread]
     end
 
     Client <-->|TCP Packet| Engine
-    Engine --> SessionMgr --> ClientSess
-    ClientSess -->|enqueue| DBQueue --> LocalDB
-    DBSess <-->|server packet| DBSocket <-->|TCP| DBServer
-    Engine -.-> Core
-    Engine -.-> Provider
-    DBQueue -.-> DBModule
+    Engine --> SessionMgr --> SessionPool --> Session
+    SessionMgr --> SessionCfg --> Session
+    Engine --> EventFlow --> DBQueue --> LocalDB
+    TimerQ --> DBSocket
+    DBSocket <-->|TCP| DBServer
 
     classDef external fill:#EEF2FF,stroke:#4F46E5,color:#1E1B4B,stroke-width:1.2px;
     classDef component fill:#E0F2FE,stroke:#0284C7,color:#0C4A6E,stroke-width:1.2px;
     classDef db fill:#ECFDF5,stroke:#059669,color:#064E3B,stroke-width:1.2px;
     classDef infra fill:#FFF7ED,stroke:#C2410C,color:#7C2D12,stroke-width:1.2px;
     class Client,DBServer external;
-    class Engine,SessionMgr,ClientSess,DBSess,DBQueue component;
-    class LocalDB,DBModule db;
-    class Core,Provider,DBSocket infra;
+    class Engine,SessionMgr,SessionPool,Session,SessionCfg,EventFlow,DBQueue component;
+    class LocalDB db;
+    class TimerQ,DBSocket infra;
 ```
 
-## 런타임 백엔드 선택
-```mermaid
-%%{init: {'theme':'base', 'themeVariables': {
-'fontFamily':'Segoe UI, Noto Sans KR, sans-serif',
-'lineColor':'#64748B',
-'primaryTextColor':'#0F172A'
-}}}%%
-flowchart TD
-    Auto[CreateNetworkEngine auto]
-    Win[Windows<br/>RIO -> IOCP]
-    Linux[Linux<br/>io_uring -> epoll]
-    Mac[macOS<br/>kqueue]
+## 빠르게 보기
 
-    Auto --> Win
-    Auto --> Linux
-    Auto --> Mac
+1. 세션 객체는 현재 `SessionPool`의 `Core::Session`으로 생성된다.
+2. recv 콜백은 `SetSessionConfigurator()`가 `SetOnRecv()`로 붙인다.
+3. 접속/종료 DB 기록은 `TestServer` 이벤트 핸들러가 `DBTaskQueue`에 enqueue 한다.
+4. `DBTaskQueue`는 내부적으로 워커별 독립 큐를 가지지만, 현재 `TestServer` 설정은 workerCount=1 이다.
+5. DB 서버 ping은 `DBPingLoop`가 아니라 `TimerQueue::ScheduleRepeat()`로 구동된다.
 
-    classDef choose fill:#E0F2FE,stroke:#0284C7,color:#0C4A6E,stroke-width:1.2px;
-    classDef backend fill:#FFF7ED,stroke:#C2410C,color:#7C2D12,stroke-width:1.2px;
-    class Auto choose;
-    class Win,Linux,Mac backend;
-```
+## 개발 체크
 
-## 한눈에 보기
-1. `TestServer`는 클라이언트용 네트워크 엔진과 DB 연동 경로를 함께 관리합니다.
-2. 로컬 DB(Mock/SQLite) 경로와 TestDBServer 연동 경로가 공존합니다.
-3. DB 관련 동기 작업은 세션 스레드에서 직접 처리하지 않고 `DBTaskQueue`로 넘깁니다.
+1. 문서에 "세션 팩토리로 `ClientSession` 생성"이라고 쓰지 않는다.
+2. 문서에 `DBTaskQueue`를 "단일 공유 큐"로 고정 설명하지 않는다.
+3. 현재 설정값(workerCount=1)과 구현 구조(워커별 독립 큐)는 분리해서 적는다.
+4. ping 반복 경로는 `TimerQueue` 기준으로 설명한다.
 
-## 개발자 체크
-1. 새 기능 추가 시 먼저 어느 계층(`Session`, `DBTaskQueue`, `DBServerSession`)에 배치할지 결정합니다.
-2. 동기 블로킹 코드가 세션 콜백 경로에 들어가지 않도록 확인합니다.
-3. 백엔드 선택 로직은 `CreateNetworkEngine("auto")` 동작을 깨지 않게 유지합니다.
+## 운영 체크
 
-## 운영자 체크
-1. 클라이언트 지연이 높으면 DBTaskQueue 적체 여부를 먼저 봅니다.
-2. DB 서버 연동 장애와 로컬 DB 경로를 분리해 증상을 확인합니다.
-3. Windows 경로와 Linux/macOS 경로의 안정성 기대치를 동일하게 두지 않습니다(검증 범위 차이).
+1. 접속/종료 기록이 어긋나면 `TestServer` 이벤트 로그와 `DBTaskQueue` 로그를 같이 본다.
+2. DB 지연이 보이면 `GetQueueSize()`와 WAL 복구 로그를 먼저 확인한다.
+3. graceful shutdown 검증 시 큐 드레인 이후 로컬 DB disconnect 순서를 확인한다.
 
 ## 참고 코드
-- `Server/TestServer/src/TestServer.cpp`
-- `Server/TestServer/include/TestServer.h`
-- `Doc/02_Architecture.md`
 
-검증일: 2026-02-20
+- `Server/TestServer/src/TestServer.cpp`
+- `Server/ServerEngine/Network/Core/SessionManager.cpp`
+- `Server/ServerEngine/Network/Core/SessionPool.cpp`
+- `Server/TestServer/src/DBTaskQueue.cpp`
+
+검증일: 2026-03-15

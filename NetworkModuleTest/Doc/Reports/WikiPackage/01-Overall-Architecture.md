@@ -13,7 +13,7 @@
 - Windows: RIO 우선, 실패 시 IOCP 폴백
 - Linux: io_uring 우선, 실패 시 epoll 폴백
 - macOS: kqueue
-- `ClientSession`의 DB 기록은 논블로킹(`DBTaskQueue`)으로 처리
+- TestServer의 접속/종료 DB 기록은 이벤트 핸들러 -> `DBTaskQueue` 경로로 비동기 처리
 - 종료 시 `DBTaskQueue` 드레인 -> DB 해제 -> 네트워크 종료 순서로 graceful shutdown 수행
 
 ## 2. 분석 범위

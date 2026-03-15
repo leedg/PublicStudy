@@ -1,6 +1,7 @@
 # 02. Session Layer
 
-이 페이지는 세션 클래스 관계와 책임을 빠르게 파악하기 위한 문서입니다.
+이 페이지는 현재 활성 세션 경로와 관련 객체 책임을 정리한다.
+핵심은 "기본 런타임 세션은 `Core::Session`"이라는 점이다.
 
 ## 정적 이미지 (SVG)
 ![Session Layer](./assets/02-session-layer.svg)
@@ -14,19 +15,33 @@
 }}}%%
 classDiagram
     class Session {
+      +Initialize(id, socket)
+      +SetOnRecv(callback)
       +OnConnected()
       +OnDisconnected()
-      +OnRecv(data,size)
     }
 
-    class ClientSession {
-      -weak_ptr~DBTaskQueue~ mDBTaskQueue
-      +AsyncRecordConnectTime()
-      +AsyncRecordDisconnectTime()
+    class SessionPool {
+      +Acquire()
+      +ReleaseInternal()
     }
 
-    class ServerSession {
-      +SetReconnectCallback(cb)
+    class SessionManager {
+      +CreateSession(socket)
+      +SetSessionConfigurator(callback)
+    }
+
+    class TestServer {
+      -shared_ptr~DBTaskQueue~ mDBTaskQueue
+      -unique_ptr~IDatabase~ mLocalDatabase
+      +OnClientConnectionEstablished()
+      +OnClientConnectionClosed()
+    }
+
+    class DBTaskQueue {
+      +Initialize(workerCount, walPath, db)
+      +RecordConnectTime(sessionId, ts)
+      +RecordDisconnectTime(sessionId, ts)
     }
 
     class DBServerSession {
@@ -34,53 +49,65 @@ classDiagram
       +GetPacketHandler()
     }
 
-    class TestServer {
-      -shared_ptr~DBTaskQueue~ mDBTaskQueue
-      -unique_ptr~IDatabase~ mLocalDatabase
-      +MakeClientSessionFactory()
-    }
-
-    class DBTaskQueue {
-      +Initialize(workerCount=1)
-      +RecordConnectTime(sessionId,ts)
-      +RecordDisconnectTime(sessionId,ts)
-    }
-
-    Session <|-- ClientSession
-    Session <|-- ServerSession
-    ServerSession <|-- DBServerSession
-
+    SessionManager --> SessionPool : acquire
+    SessionManager --> Session : initialize + configure
+    TestServer ..> SessionManager : set configurator
     TestServer o-- DBTaskQueue : owns
     TestServer o-- DBServerSession : owns
-    TestServer ..> ClientSession : factory
-    ClientSession ..> DBTaskQueue : weak_ptr lock
     DBServerSession *-- DBServerPacketHandler
 ```
 
-## 한눈에 보기
-1. `ClientSession`: 클라이언트 패킷 처리 + 비동기 DB 작업 요청
-2. `ServerSession`: 서버간 통신 공통 베이스 + 재연결 콜백
-3. `DBServerSession`: DB 서버 전용 패킷 처리(`DBServerPacketHandler`)
-4. `TestServer`: 수명주기/스레드/소켓/DBTaskQueue 소유 및 종료 순서 관리
+## 핵심 책임
+
+1. `SessionPool`: 재사용 가능한 `Core::Session` 보관
+2. `SessionManager`: 세션 생성, 초기화, configurator 적용, 등록/조회
+3. `TestServer`: 이벤트 수신, DBTaskQueue 소유, 로컬 DB/원격 DB 수명주기 관리
+4. `DBTaskQueue`: 비동기 DB 작업 큐와 WAL 복구 담당
+5. `DBServerSession`: TestDBServer와의 소켓 통신 담당
+
+## 현재 활성 경로
+
+1. 플랫폼 엔진이 `SessionManager::CreateSession()`을 호출한다.
+2. `SessionManager`는 `SessionPool`에서 `Core::Session`을 획득한다.
+3. `SetSessionConfigurator()`에 등록된 콜백이 `SetOnRecv()`를 붙인다.
+4. 접속/종료 DB 기록은 세션 객체 내부가 아니라 `TestServer` 이벤트 핸들러가 enqueue 한다.
+
+## `ClientSession`에 대한 현재 판단
+
+- `ClientSession` 클래스는 저장소에 남아 있다.
+- `weak_ptr<DBTaskQueue>`와 비동기 기록 메서드 구현도 유지되어 있다.
+- 하지만 현재 기본 세션 생성 경로는 `ClientSession`을 사용하지 않는다.
+
+따라서 문서에서 `ClientSession`을 설명할 때는 다음 중 하나로 명확히 써야 한다.
+
+- 현재 활성 경로가 아님
+- 참고용/레거시 구현
 
 ## 설계상 중요한 점
-1. `ClientSession`은 `DBTaskQueue`를 `weak_ptr`로 참조합니다.
-2. `DBTaskQueue`는 워커 1개를 기본값으로 유지해 세션별 작업 순서를 보장합니다.
-3. 세션 생성은 `MakeClientSessionFactory()` 람다를 통해 주입됩니다.
 
-## 개발자 체크
-1. 세션에서 DB 작업이 필요하면 새 API를 `DBTaskQueue`에 추가한 뒤 비동기로 호출합니다.
-2. 수명주기 경계(Stop 중 late callback)에서 `weak_ptr.lock()` 실패 처리를 반드시 유지합니다.
-3. 서버간 패킷 해석 로직은 `DBServerSession`보다는 `DBServerPacketHandler`로 모읍니다.
+1. `SessionFactory` 기반 설명은 현재 기준 문서가 아니다.
+2. recv 콜백은 configurator가 첫 recv 전에 붙여 준다.
+3. `DBTaskQueue`는 현재 설정이 1 worker일 뿐, 내부 구현은 워커별 독립 큐다.
+4. 접속/종료 기록의 진입점은 `ClientSession`보다 `TestServer` 이벤트 핸들러가 더 중요하다.
 
-## 운영자 체크
-1. 접속/종료 로그는 `ClientSession`과 `DBTaskQueue` 로그를 함께 봐야 흐름이 맞습니다.
-2. DB 서버 연결이 끊겨도 클라이언트 경로 자체는 계속 동작할 수 있음을 전제로 모니터링합니다.
+## 개발 체크
+
+1. 세션 생성 설명에는 `CreateSession()`과 `SetSessionConfigurator()`를 쓴다.
+2. DB 기록 설명에는 `OnClientConnectionEstablished()` / `OnClientConnectionClosed()`를 쓴다.
+3. `ClientSession`을 기준 문서로 삼지 않는다.
+
+## 운영 체크
+
+1. 세션 생성 문제는 `SessionPool` 고갈 여부와 `SessionManager` 로그를 먼저 본다.
+2. 접속/종료 DB 기록 문제는 `TestServer` 이벤트 로그와 `DBTaskQueue` 로그를 같이 본다.
 
 ## 참고 코드
-- `Server/TestServer/include/ClientSession.h`
-- `Server/TestServer/include/ServerSession.h`
-- `Server/TestServer/include/DBServerSession.h`
-- `Server/TestServer/include/TestServer.h`
 
-검증일: 2026-02-20
+- `Server/ServerEngine/Network/Core/SessionManager.h`
+- `Server/ServerEngine/Network/Core/SessionManager.cpp`
+- `Server/ServerEngine/Network/Core/SessionPool.h`
+- `Server/ServerEngine/Network/Core/SessionPool.cpp`
+- `Server/TestServer/include/TestServer.h`
+- `Server/TestServer/src/TestServer.cpp`
+
+검증일: 2026-03-15

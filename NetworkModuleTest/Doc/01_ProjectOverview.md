@@ -88,8 +88,8 @@ DB 연동은 프로토타입(로그/플레이스홀더 중심) 단계입니다.
 
 - `ProcessRawRecv` O(n) erase → O(1) 오프셋 기반 누적 버퍼 처리 (mRecvAccumOffset)
 - `mPingSequence` `uint32_t` → `std::atomic<uint32_t>` (핑 타이머-IO 스레드 경쟁 조건 해소)
-- `ClientSession` 의존성 주입: `static sDBTaskQueue` 전역 제거 → 생성자 주입, `MakeClientSessionFactory()` 람다 패턴
-- `DBTaskQueue` 워커 수 2 → 1 (세션별 Connect/Disconnect 작업 순서 보장)
+- 세션 생성 경로 정리: `SessionFactory` 제거 → `SessionPool`의 `Core::Session` + `SessionManager::SetSessionConfigurator()` 경로로 통일
+- `DBTaskQueue` 내부 구조 개편: 단일 공유 큐에서 워커별 독립 큐 + `sessionId % workerCount` 라우팅으로 전환. 현재 `TestServer` 설정값은 `Initialize(1, ...)` 유지
 - `CloseConnection` 이벤트 경로: `mLogicDispatcher` 기반 직렬 처리로 정리
 - `DBPingTimeManager` → `ServerLatencyManager` 통합
 - `PlatformDetect.h`: `PLATFORM_WINDOWS/LINUX/MACOS` + `DB_BACKEND_ODBC/OLEDB` 컴파일 타임 매크로 추가

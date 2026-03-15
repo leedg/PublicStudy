@@ -208,8 +208,8 @@ def build_title_page(doc: Document):
     meta = [
         ("기준 리포지토리", "NetworkModuleTest"),
         ("분석 대상",      "ServerEngine / TestServer / DBServer"),
-        ("작성일",         "2026-03-10"),
-        ("버전",           "1.0"),
+        ("작성일",         "2026-03-15"),
+        ("버전",           "1.2"),
     ]
     for label, value in meta:
         p = _shade(before=0, after=4, indent=4)
@@ -396,6 +396,32 @@ def divider(doc: Document):
     add_bottom_border(p, color_hex="CCCCCC", sz=4)
 
 
+# ── 변경 이력 ─────────────────────────────────────────────────────────────────
+def section_changelog(doc: Document):
+    h1(doc, "변경 이력")
+    make_table(doc,
+        ["날짜", "주요 변경 내용"],
+        [
+            ["2026-03-15",
+             "에러 처리 3-플랫폼 통합(ProcessErrorCompletion), SendResult::InvalidArgument 추가,\n"
+             "방향별 에러 통계(totalSendErrors / totalRecvErrors) 분리,\n"
+             "DB 워커 수 config화(-w CLI, DEFAULT_DB_WORKER_COUNT / DEFAULT_TASK_QUEUE_WORKER_COUNT),\n"
+             "DBTaskQueue.cpp 포맷 정리, Session::Reset() assert, SessionManager 이중 close 방지"],
+            ["2026-03-10",
+             "섹션 11 신규 추가 — 동기화·락·비동기 핵심 메커니즘.\n"
+             "Mermaid 다이어그램 4개 추가."],
+            ["2026-03-02",
+             "비동기 로직 고도화 A~E, Linux Docker 통합 테스트, AsyncScope 풀 재사용 버그 수정"],
+            ["2026-03-01",
+             "Core/Memory 버퍼 모듈, 핑퐁 검증, SessionFactory 제거, KeyedDispatcher 도입"],
+            ["2026-02-28", "RIO slab pool (WSA 10055 수정), MAX_CONNECTIONS=1000"],
+            ["2026-02-26", "초기 작성"],
+        ],
+        col_widths_cm=[3.0, 15.0]
+    )
+    divider(doc)
+
+
 # ── 섹션 1: 개요 ──────────────────────────────────────────────────────────────
 def section_overview(doc: Document):
     h1(doc, "1. 개요")
@@ -515,23 +541,55 @@ def section_network(doc: Document):
 
     h2(doc, "2.5 송신 처리")
     body(doc, (
-        "송신 경로는 플랫폼에 따라 분기된다. "
+        "Session::Send()는 SendResult를 반환해 호출자에게 백프레셔 피드백을 제공한다. "
         "mIsSending CAS와 mSendQueueSize atomic으로 불필요한 락 경쟁과 이중 전송을 방지한다."
     ))
     make_table(doc,
-        ["경로", "처리 방식", "코드 포인트"],
+        ["SendResult 값", "의미", "호출자 조치"],
         [
-            ["Windows + RIO",     "Send() → provider SendAsync() 직행\n(큐 경유 없음)",
-             "Session.cpp:155"],
-            ["IOCP / epoll / kqueue", "mSendQueue enqueue\n→ FlushSendQueue()\n→ PostSend()",
-             "Session.cpp:248, 261"],
+            ["Ok",              "전송 성공 (큐잉 또는 즉시 전송)",  "없음"],
+            ["QueueFull",       "큐 백프레셔 임계값 초과",           "잠시 후 재시도 또는 세션 종료"],
+            ["NotConnected",    "세션 미연결",                       "재시도 금지"],
+            ["InvalidArgument", "null 또는 최대 크기 초과 패킷",     "재시도 금지 — 호출 측 버그"],
         ],
-        col_widths_cm=[4.0, 7.0, 7.0]
+        col_widths_cm=[4.0, 6.5, 7.5]
     )
+    callout(doc, (
+        "bytesSent <= 0인 송신 완료는 DataSent 이벤트를 발생시키지 않고 "
+        "ProcessErrorCompletion()으로 라우팅하여 세션을 정상 종료한다. "
+        "(BaseNetworkEngine.cpp:ProcessSendCompletion)"
+    ), style="note")
     callout(doc, (
         "이벤트 스레드 일관성: OnDisconnected는 CloseConnection() 경로와 recv 오류 경로 모두 "
         "로직 스레드풀로 전달되어 실행된다. 콜백 호출 스레드가 일관하게 유지된다."
     ), style="note")
+
+    h2(doc, "2.6 에러 처리 통합 (ProcessErrorCompletion)")
+    body(doc, (
+        "3개 플랫폼(Windows/Linux/macOS) 에러 완료 경로를 단일 헬퍼로 통합했다. "
+        "Send/Recv 방향 구분, AsyncScope 경유 disconnect, 방향별 통계 집계를 "
+        "모든 플랫폼에서 일관되게 처리한다."
+    ))
+    make_table(doc,
+        ["항목", "내용"],
+        [
+            ["함수 시그니처",
+             "ProcessErrorCompletion(SessionRef, AsyncIOType, OSError)"],
+            ["방향별 카운터",
+             "AsyncIOType::Send → mTotalSendErrors++\n"
+             "AsyncIOType::Recv → mTotalRecvErrors++\n"
+             "Statistics::totalErrors = sendErrors + recvErrors"],
+            ["예상 종료 판별",
+             "WSAECONNRESET / WSAESHUTDOWN / EPIPE / ECONNRESET / osError==0\n"
+             "→ Logger::Warn (정상 종료)\n그 외 → Logger::Error (비정상)"],
+            ["disconnect 경로",
+             "ProcessRecvCompletion(session, 0, nullptr) 경유\n"
+             "→ AsyncScope 경유 OnDisconnected — 모든 플랫폼 동일"],
+            ["코드 포인트",
+             "BaseNetworkEngine.cpp:ProcessErrorCompletion"],
+        ],
+        col_widths_cm=[4.0, 14.0]
+    )
     divider(doc)
 
 
@@ -557,12 +615,16 @@ def section_async(doc: Document):
              "accept / recv / send 완료 감지\n로직 스레드풀로 패킷 전달"],
             ["로직 워커 스레드", "KeyedDispatcher",
              "패킷 처리 · OnConnected · OnDisconnected\n세션 키 친화도 라우팅 (FIFO 순서 보장)"],
-            ["DB 워커 스레드",   "DBTaskQueue (워커 1개)\nOrderedTaskQueue",
-             "논블로킹 DB I/O 실행\nWAL 영속성 보장"],
+            ["DB 워커 스레드 (TestServer)",
+             "DBTaskQueue\n기본 1개, -w 플래그로 설정\n(DEFAULT_TASK_QUEUE_WORKER_COUNT)",
+             "논블로킹 DB I/O 실행\nWAL 영속성 보장\nsessionId % workerCount 해시 친화도"],
+            ["DB 워커 스레드 (DBServer)",
+             "OrderedTaskQueue\n기본 4개, -w 플래그로 설정\n(DEFAULT_DB_WORKER_COUNT)",
+             "serverId 단위 순서 보장\nKeyedDispatcher 래핑"],
             ["재연결 스레드",    "TestServer DBReconnectLoop",
              "DB 서버 끊김 시 지수 백오프 재시도\nStop() 신호 시 즉시 종료"],
         ],
-        col_widths_cm=[4.0, 4.5, 9.5]
+        col_widths_cm=[4.5, 4.5, 9.0]
     )
 
     callout(doc, (
@@ -573,15 +635,23 @@ def section_async(doc: Document):
 
     h2(doc, "3.2 DBTaskQueue — 논블로킹 DB 오프로딩 (TestServer)")
     body(doc, (
-        "ClientSession은 접속/해제 시점을 직접 DB에 기록하지 않고 DBTaskQueue에 enqueue한다. "
-        "DB I/O 지연이 로직 워커를 블로킹하지 않으며, 워커 1개로 같은 sessionId 작업의 순서를 보장한다."
+        "TestServer는 접속/해제 시점을 직접 DB에 기록하지 않고 DBTaskQueue에 enqueue한다. "
+        "DB I/O 지연이 로직 워커를 블로킹하지 않는다. "
+        "워커 수는 CLI -w 플래그로 설정 가능하며 기본값은 1(DEFAULT_TASK_QUEUE_WORKER_COUNT)이다."
     ))
-    bullet(doc, "OnConnected → AsyncRecordConnectTime → RecordConnectTime")
-    bullet(doc, "OnDisconnected → AsyncRecordDisconnectTime → RecordDisconnectTime")
-    bullet(doc, "멀티워커 필요 시 OrderedTaskQueue로 전환 (코드 주석에 가이드 있음)")
-    code_ref(doc, "ClientSession.cpp:32, 76, 114", "비동기 기록 진입점")
-    code_ref(doc, "DBTaskQueue.cpp:206", "작업 enqueue")
-    code_ref(doc, "DBTaskQueue.cpp:321", "워커 실행 루프")
+    bullet(doc, "OnClientConnectionEstablished → RecordConnectTime")
+    bullet(doc, "OnClientConnectionClosed → RecordDisconnectTime")
+    bullet(doc, "sessionId % workerCount 해시 친화도 — 워커 수와 무관하게 세션별 순서 보장")
+    bullet(doc, "1 워커: 가장 단순, 친화도 계산 불필요")
+    bullet(doc, "N 워커: 처리량 향상, 세션별 순서는 해시 친화도로 여전히 보장")
+    callout(doc,
+        "워커 수를 바꿔도 순서는 깨지지 않는다. WAL 복구도 seq 순 정렬 재인큐이므로 "
+        "재시작 시 worker count 변경이 안전하다.",
+        style="tip")
+    code_ref(doc, "TestServer.cpp:OnClientConnectionEstablished", "비동기 기록 진입점")
+    code_ref(doc, "DBTaskQueue.cpp:EnqueueTask", "작업 enqueue")
+    code_ref(doc, "DBTaskQueue.cpp:WorkerThreadFunc", "워커 실행 루프")
+    code_ref(doc, "NetworkTypes.h:DEFAULT_TASK_QUEUE_WORKER_COUNT", "기본 워커 수 상수")
 
     h2(doc, "3.3 WAL 기반 크래시 복구")
     body(doc, (
@@ -606,11 +676,14 @@ def section_async(doc: Document):
     h2(doc, "3.4 OrderedTaskQueue — DBServer 키 순서 보장")
     body(doc, (
         "TestDBServer는 serverId 단위 작업 순서 보장을 위해 OrderedTaskQueue를 사용한다. "
-        "내부적으로 KeyedDispatcher를 래핑하여 같은 key(serverId)를 항상 같은 워커로 라우팅한다."
+        "내부적으로 KeyedDispatcher를 래핑하여 같은 key(serverId)를 항상 같은 워커로 라우팅한다. "
+        "워커 수는 CLI -w 플래그로 설정 가능하며 기본값은 4(DEFAULT_DB_WORKER_COUNT)이다."
     ))
-    bullet(doc, "facade: OrderedTaskQueue.cpp:29")
-    bullet(doc, "keyed dispatch: OrderedTaskQueue.cpp:109")
-    bullet(doc, "dispatcher 구현: Concurrency/KeyedDispatcher.h:30")
+    bullet(doc, "facade: OrderedTaskQueue.cpp:Initialize()")
+    bullet(doc, "keyed dispatch: OrderedTaskQueue.cpp:EnqueueTask()")
+    bullet(doc, "dispatcher 구현: Concurrency/KeyedDispatcher.h")
+    code_ref(doc, "NetworkTypes.h:DEFAULT_DB_WORKER_COUNT", "기본 워커 수 상수 (기본값 4)")
+    code_ref(doc, "DBServer/main.cpp:-w 옵션", "런타임 워커 수 설정")
 
     h2(doc, "3.5 DB 서버 재연결 루프 (TestServer, Windows 전용)")
     body(doc, "DB 서버 연결이 끊기면 재연결 스레드가 지수 백오프로 재시도한다.")
@@ -780,6 +853,9 @@ def section_assessment(doc: Document):
     bullet(doc, "DBTaskQueue WAL 복구로 크래시 후 데이터 손실 방지")
     bullet(doc, "재연결 정책(ECONNREFUSED 분리, 지수 백오프)으로 운영 복원력 확보")
     bullet(doc, "KeyedDispatcher 도입으로 mRecvMutex 제거 — 세션 단위 순서 보장과 경쟁 감소 동시 달성")
+    bullet(doc, "ProcessErrorCompletion 단일 헬퍼로 3-플랫폼 에러 처리 통합 — Send/Recv 방향 구분, 통계 분리")
+    bullet(doc, "SendResult::InvalidArgument 추가 — 재시도 불가 에러와 재시도 가능 에러(QueueFull) 명시적 구분")
+    bullet(doc, "DB 워커 수 config화(-w CLI, DEFAULT_DB_WORKER_COUNT / DEFAULT_TASK_QUEUE_WORKER_COUNT) — 매직넘버 제거")
 
     h2(doc, "6.2 유의점")
     bullet(doc, "TestServer의 DB 서버 소켓 경로는 Windows 전용 (#ifdef _WIN32)")
@@ -790,16 +866,18 @@ def section_assessment(doc: Document):
     make_table(doc,
         ["우선순위", "개선 항목", "효과"],
         [
-            ["High",   "TestDBServer에 설정 기반 DB 주입 경로 추가\n(main 옵션으로 연결)",
+            ["High",   "TestDBServer에 설정 기반 DB 주입 경로 추가\n(main -d 옵션 → ServerLatencyManager::SetDatabase())",
              "영구 DB 저장 활성화\n운영/실험 경로 통합"],
-            ["High",   "포트 기본값(8001/8002) 정책 단일화\n(코드·스크립트·문서 일관)",
-             "배포 혼동 방지"],
             ["Medium", "TestServer DB 서버 연결 경로를\n플랫폼 공통 AsyncIO로 통합",
-             "Linux/macOS 지원 확대"],
+             "Linux/macOS 지원 확대 (현재 Windows 전용)"],
             ["Low",    "운영 문서에\nTestDBServer vs DBServer.cpp 경로 명시",
              "신규 팀원 혼동 방지"],
+            ["완료",   "DB 워커 수 config화 (-w CLI, 상수 정의)\n(DBServer 기본 4, TestServer 기본 1)",
+             "매직넘버 제거\n런타임 설정 가능"],
+            ["완료",   "3-플랫폼 에러 처리 통합\n(ProcessErrorCompletion, 방향별 통계)",
+             "플랫폼 간 동작 일관성 보장\nSend/Recv 에러 가시성 향상"],
         ],
-        col_widths_cm=[2.5, 8.0, 7.5]
+        col_widths_cm=[2.5, 9.0, 6.5]
     )
     divider(doc)
 
@@ -818,6 +896,7 @@ def section_references(doc: Document):
     code_ref(doc, "Server/ServerEngine/Network/Platforms/LinuxNetworkEngine.cpp")
 
     h2(doc, "비동기 / 동시성 계층")
+    code_ref(doc, "Server/ServerEngine/Utils/NetworkTypes.h", "DEFAULT_DB_WORKER_COUNT / DEFAULT_TASK_QUEUE_WORKER_COUNT")
     code_ref(doc, "Server/ServerEngine/Utils/ThreadPool.h")
     code_ref(doc, "Server/ServerEngine/Concurrency/KeyedDispatcher.h")
     code_ref(doc, "Server/ServerEngine/Concurrency/AsyncScope.h")
@@ -846,6 +925,7 @@ def main():
     print(f"[Build] 보고서 생성 중: {out_path}  (draw.io style={DRAWIO_STYLE})")
     doc = setup_document()
     build_title_page(doc)
+    section_changelog(doc)
     section_overview(doc)
     section_network(doc)
     section_async(doc)

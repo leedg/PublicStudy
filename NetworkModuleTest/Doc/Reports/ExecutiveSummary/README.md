@@ -41,22 +41,22 @@
 - Windows: RIO 우선, 실패 시 IOCP 폴백
 - Linux: io_uring 우선, 실패 시 epoll 폴백
 - macOS: kqueue
-- `ClientSession`의 DB 기록은 논블로킹(`DBTaskQueue`)으로 처리
+- TestServer의 접속/종료 DB 기록은 이벤트 핸들러 -> `DBTaskQueue` 경로로 비동기 처리
 - 종료 시 `DBTaskQueue` 드레인 -> DB 해제 -> 네트워크 종료 순서로 graceful shutdown 수행
 
 
 ## 6.2 TestServer <-> TestDBServer
 
 1. TestServer가 `ConnectToDBServer()`로 별도 소켓 연결(Windows)
-2. `DBPingLoop`에서 `PKT_ServerPingReq` 주기 전송
+2. `TimerQueue::ScheduleRepeat()`가 `SendDBPing()`을 주기 호출
 3. TestDBServer가 `ServerPongRes` 응답
 4. 주기적으로 `PKT_DBSavePingTimeReq` 전송/응답
 5. 끊김 시 `DBReconnectLoop` 재시도
 
 관련 코드:
 
-- 연결/스레드 시작: `Server/TestServer/src/TestServer.cpp:264`
-- ping 루프: `.../TestServer.cpp:548`
+- 연결/스레드 시작: `Server/TestServer/src/TestServer.cpp:336`
+- ping 스케줄링: `.../TestServer.cpp:430`
 - DBServer 패킷 처리: `Server/DBServer/src/ServerPacketHandler.cpp:116`
 
 
