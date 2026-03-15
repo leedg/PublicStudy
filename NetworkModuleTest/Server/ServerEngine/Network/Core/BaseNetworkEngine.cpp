@@ -442,7 +442,7 @@ void BaseNetworkEngine::ProcessSendCompletion(SessionRef session,
 
 void BaseNetworkEngine::ProcessErrorCompletion(SessionRef session,
                                                AsyncIO::AsyncIOType ioType,
-                                               int32_t osError)
+                                               OSError osError)
 {
 	if (!session)
 	{
@@ -460,13 +460,15 @@ void BaseNetworkEngine::ProcessErrorCompletion(SessionRef session,
 	{
 		mTotalSendErrors.fetch_add(1, std::memory_order_relaxed);
 		Utils::Logger::Error("Send error on Session " + std::to_string(connId) +
-		                     " - OS error: " + std::to_string(osError));
+		                     " - OS error: " +
+		                     std::to_string(static_cast<uint32_t>(osError)));
 	}
 	else
 	{
 		mTotalRecvErrors.fetch_add(1, std::memory_order_relaxed);
 		Utils::Logger::Error("Recv error on Session " + std::to_string(connId) +
-		                     " - OS error: " + std::to_string(osError));
+		                     " - OS error: " +
+		                     std::to_string(static_cast<uint32_t>(osError)));
 	}
 
 	// English: Route through ProcessRecvCompletion(bytesReceived=0) so that the

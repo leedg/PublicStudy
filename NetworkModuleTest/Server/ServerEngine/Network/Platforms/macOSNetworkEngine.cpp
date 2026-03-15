@@ -234,10 +234,16 @@ void macOSNetworkEngine::AcceptLoop()
 		// 한글: 통계 업데이트 (atomic)
 		mTotalConnections.fetch_add(1, std::memory_order_relaxed);
 
-		// English: Fire Connected event asynchronously on logic thread
-		// 한글: 로직 스레드에서 비동기로 Connected 이벤트 발생
+		// English: Fire Connected event asynchronously on logic thread.
+		//          Use mLogicDispatcher (KeyedDispatcher) keyed by sessionId so that
+		//          Connected and any subsequent events for this session always route to
+		//          the same worker thread — same pattern as LinuxNetworkEngine.
+		// 한글: 로직 스레드에서 비동기로 Connected 이벤트 발생.
+		//       sessionId를 키로 mLogicDispatcher(KeyedDispatcher)를 사용하여
+		//       이 세션의 Connected 및 이후 모든 이벤트가 항상 동일한 워커로 라우팅
+		//       — LinuxNetworkEngine과 동일한 패턴.
 		auto sessionCopy = session;
-		mLogicThreadPool.Submit(
+		mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 			[this, sessionCopy]()
 			{
 				sessionCopy->OnConnected();
@@ -336,9 +342,14 @@ void macOSNetworkEngine::ProcessCompletions()
 			const char *recvBuffer = session->GetRecvBuffer();
 			ProcessRecvCompletion(session, entry.mResult, recvBuffer);
 
-			// English: Post next receive
-			// 한글: 다음 수신 등록
-			QueueRecv(session);
+			// English: Post next receive. On failure, route through ProcessErrorCompletion
+			//          so the session is cleanly disconnected and recv error stats updated.
+			// 한글: 다음 수신 등록. 실패 시 ProcessErrorCompletion으로 라우팅하여
+			//       세션을 정상 종료하고 recv 에러 통계를 업데이트.
+			if (!QueueRecv(session))
+			{
+				ProcessErrorCompletion(session, AsyncIO::AsyncIOType::Recv, 0);
+			}
 			break;
 		}
 

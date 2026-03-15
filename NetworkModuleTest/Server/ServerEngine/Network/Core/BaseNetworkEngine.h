@@ -150,7 +150,7 @@ class BaseNetworkEngine : public INetworkEngine
 	 */
 	void ProcessErrorCompletion(SessionRef session,
 	                            AsyncIO::AsyncIOType ioType,
-	                            int32_t osError);
+	                            OSError osError);
 
   protected:
 	// =====================================================================

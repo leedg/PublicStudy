@@ -365,9 +365,14 @@ void LinuxNetworkEngine::ProcessCompletions()
 			const char *recvBuffer = session->GetRecvBuffer();
 			ProcessRecvCompletion(session, entry.mResult, recvBuffer);
 
-			// English: Post next receive
-			// 한글: 다음 수신 등록
-			QueueRecv(session);
+			// English: Post next receive. On failure, route through ProcessErrorCompletion
+			//          so the session is cleanly disconnected and recv error stats updated.
+			// 한글: 다음 수신 등록. 실패 시 ProcessErrorCompletion으로 라우팅하여
+			//       세션을 정상 종료하고 recv 에러 통계를 업데이트.
+			if (!QueueRecv(session))
+			{
+				ProcessErrorCompletion(session, AsyncIO::AsyncIOType::Recv, 0);
+			}
 			break;
 		}
 
