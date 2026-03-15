@@ -7,7 +7,6 @@
 // 한글: 로컬 DB 인스턴스 생성에 필요한 IDatabase / DatabaseFactory 전체 정의
 #include "Interfaces/IDatabase.h"
 #include "Database/DatabaseFactory.h"
-#include <iostream>
 #include <mutex>
 #include <thread>
 #include <chrono>
