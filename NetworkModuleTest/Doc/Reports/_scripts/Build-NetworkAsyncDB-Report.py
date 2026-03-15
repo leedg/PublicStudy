@@ -209,7 +209,7 @@ def build_title_page(doc: Document):
         ("기준 리포지토리", "NetworkModuleTest"),
         ("분석 대상",      "ServerEngine / TestServer / DBServer"),
         ("작성일",         "2026-03-15"),
-        ("버전",           "1.2"),
+        ("버전",           "1.3"),
     ]
     for label, value in meta:
         p = _shade(before=0, after=4, indent=4)
@@ -402,6 +402,10 @@ def section_changelog(doc: Document):
     make_table(doc,
         ["날짜", "주요 변경 내용"],
         [
+            ["2026-03-15",
+             "코드 정리(v1.3): 미구현 DBTaskType enum 제거(SaveGameProgress·Custom),\n"
+             "미사용 include 제거(<iostream>·<cstring>),\n"
+             "Shutdown() 불필요 mutex 제거, 이중 언어 주석 영어 단일화(119파일 −2,180줄)"],
             ["2026-03-15",
              "에러 처리 3-플랫폼 통합(ProcessErrorCompletion), SendResult::InvalidArgument 추가,\n"
              "방향별 에러 통계(totalSendErrors / totalRecvErrors) 분리,\n"
