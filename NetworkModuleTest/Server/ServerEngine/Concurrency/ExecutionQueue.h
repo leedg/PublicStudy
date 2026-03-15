@@ -166,10 +166,8 @@ class ExecutionQueue
 	bool PopWait(T &out, int timeoutMs)
 	{
 		const auto deadline =
-			(timeoutMs < 0)
-				? std::chrono::steady_clock::time_point::max()
-				: std::chrono::steady_clock::now() +
-				  std::chrono::milliseconds(timeoutMs);
+			std::chrono::steady_clock::now() +
+			std::chrono::milliseconds(timeoutMs >= 0 ? timeoutMs : 0);
 		while (!mShutdown.load(std::memory_order_acquire))
 		{
 			std::unique_lock<std::mutex> lock(mMutex);

@@ -331,9 +331,6 @@
     <ClInclude Include="Concurrency\AsyncScope.h">
       <Filter>Concurrency</Filter>
     </ClInclude>
-    <ClInclude Include="Concurrency\BoundedLockFreeQueue.h">
-      <Filter>Concurrency</Filter>
-    </ClInclude>
     <ClInclude Include="Concurrency\Channel.h">
       <Filter>Concurrency</Filter>
     </ClInclude>

@@ -218,7 +218,6 @@
   <ItemGroup>
     <!-- Concurrency Utilities -->
     <ClInclude Include="Concurrency\AsyncScope.h" />
-    <ClInclude Include="Concurrency\BoundedLockFreeQueue.h" />
     <ClInclude Include="Concurrency\Channel.h" />
     <ClInclude Include="Concurrency\ConcurrencyRuntime.h" />
     <ClInclude Include="Concurrency\ExecutionQueue.h" />

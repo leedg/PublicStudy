@@ -1,4 +1,4 @@
-// English: Base NetworkEngine implementation
+// Base NetworkEngine implementation
 // 한글: 기본 NetworkEngine 구현
 
 #include "BaseNetworkEngine.h"
@@ -7,7 +7,7 @@
 #include "../../Utils/Logger.h"
 #include "../../Utils/Timer.h"
 #ifndef _WIN32
-// English: ECONNRESET / EPIPE / ECONNABORTED for expected-teardown detection.
+// ECONNRESET / EPIPE / ECONNABORTED for expected-teardown detection.
 // 한글: 정상 teardown 판별용 ECONNRESET / EPIPE / ECONNABORTED.
 #include <cerrno>
 #endif
@@ -27,7 +27,7 @@ BaseNetworkEngine::~BaseNetworkEngine()
 }
 
 // =============================================================================
-// English: INetworkEngine interface implementation
+// INetworkEngine interface implementation
 // 한글: INetworkEngine 인터페이스 구현
 // =============================================================================
 
@@ -43,7 +43,7 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 	mMaxConnections = maxConnections;
 	mStats.startTime = Utils::Timer::GetCurrentTimestamp();
 
-	// English: Initialize session pool (one-time, allocates all session slots).
+	// Initialize session pool (one-time, allocates all session slots).
 	// 한글: 세션 풀 초기화 (1회, 모든 세션 슬롯 사전 할당).
 	if (!SessionPool::Instance().Initialize(maxConnections))
 	{
@@ -51,12 +51,11 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 		return false;
 	}
 
-	// English: Initialize logic dispatcher (KeyedDispatcher — session-affinity worker pool).
+	// Initialize logic dispatcher (KeyedDispatcher — session-affinity worker pool).
 	// 한글: 로직 디스패처 초기화 (KeyedDispatcher — 세션 친화도 워커 풀).
 	{
 		Network::Concurrency::KeyedDispatcher::Options opts;
 		opts.mWorkerCount = 4;
-		opts.mQueueOptions.mBackend     = Network::Concurrency::QueueBackend::LockFree;
 		opts.mQueueOptions.mCapacity    = MAX_LOGIC_QUEUE_DEPTH;
 		opts.mQueueOptions.mBackpressure = Network::Concurrency::BackpressurePolicy::RejectNewest;
 		opts.mName = "LogicDispatcher";
@@ -67,7 +66,7 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 		}
 	}
 
-	// English: Initialize engine-level timer queue.
+	// Initialize engine-level timer queue.
 	// 한글: 엔진 수준 타이머 큐 초기화.
 	if (!mTimerQueue.Initialize())
 	{
@@ -75,12 +74,12 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 		return false;
 	}
 
-	// English: Schedule periodic session-timeout check every PING_TIMEOUT_MS/2.
+	// Schedule periodic session-timeout check every PING_TIMEOUT_MS/2.
 	// 한글: PING_TIMEOUT_MS/2 주기로 세션 타임아웃 점검 등록.
 	mTimerQueue.ScheduleRepeat(
 		[this]() -> bool
 		{
-			// English: Check inactive sessions and close timed-out ones.
+			// Check inactive sessions and close timed-out ones.
 			// 한글: 비활성 세션 점검 및 타임아웃 세션 종료.
 			if (!mRunning.load(std::memory_order_acquire))
 			{
@@ -106,7 +105,7 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 		},
 		PING_TIMEOUT_MS / 2);
 
-	// English: Call platform-specific initialization
+	// Call platform-specific initialization
 	// 한글: 플랫폼별 초기화 호출
 	if (!InitializePlatform())
 	{
@@ -136,7 +135,7 @@ bool BaseNetworkEngine::Start()
 
 	mRunning.store(true, std::memory_order_release);
 
-	// English: Start platform-specific I/O
+	// Start platform-specific I/O
 	// 한글: 플랫폼별 I/O 시작
 	if (!StartPlatformIO())
 	{
@@ -158,19 +157,19 @@ void BaseNetworkEngine::Stop()
 
 	mRunning.store(false, std::memory_order_release);
 
-	// English: Stop timer queue first (cancels periodic session-timeout checks).
+	// Stop timer queue first (cancels periodic session-timeout checks).
 	// 한글: 타이머 큐 먼저 종료 (주기 세션 타임아웃 점검 취소).
 	mTimerQueue.Shutdown();
 
-	// English: Stop platform-specific I/O
+	// Stop platform-specific I/O
 	// 한글: 플랫폼별 I/O 중지
 	StopPlatformIO();
 
-	// English: Close all sessions
+	// Close all sessions
 	// 한글: 모든 세션 종료
 	SessionManager::Instance().CloseAllSessions();
 
-	// English: Shutdown logic dispatcher after all sessions are closed.
+	// Shutdown logic dispatcher after all sessions are closed.
 	//          CloseAllSessions() calls session->Close() which cancels AsyncScope,
 	//          causing pending-but-not-yet-running disconnect tasks to be silently
 	//          skipped inside WorkerThreadFunc. Applications may not receive
@@ -183,7 +182,7 @@ void BaseNetworkEngine::Stop()
 	//       전달되지 않을 수 있음 — 엔진이 종료 중이므로 의도된 동작임.
 	mLogicDispatcher.Shutdown();
 
-	// English: Shutdown platform resources
+	// Shutdown platform resources
 	// 한글: 플랫폼 리소스 종료
 	ShutdownPlatform();
 
@@ -224,7 +223,7 @@ bool BaseNetworkEngine::SendData(Utils::ConnectionId connectionId,
 		return false;
 	}
 
-	// English: Session::Send now returns SendResult — check result directly.
+	// Session::Send now returns SendResult — check result directly.
 	// 한글: Session::Send가 SendResult를 반환하므로 결과를 직접 확인.
 	const auto sendResult = session->Send(data, static_cast<uint32_t>(size));
 	if (sendResult != Session::SendResult::Ok)
@@ -245,7 +244,7 @@ void BaseNetworkEngine::CloseConnection(Utils::ConnectionId connectionId)
 		return;
 	}
 
-	// English: Dispatch OnDisconnected + FireEvent to the same worker as this session's
+	// Dispatch OnDisconnected + FireEvent to the same worker as this session's
 	//          ProcessRawRecv tasks (KeyedDispatcher key = sessionId).
 	//          This ensures Close() and ProcessRawRecv are always serialized for the session.
 	//          The session shared_ptr keeps the object alive until the task runs.
@@ -254,7 +253,7 @@ void BaseNetworkEngine::CloseConnection(Utils::ConnectionId connectionId)
 	//       Close()와 ProcessRawRecv가 항상 세션 단위로 직렬화됨.
 	//       세션 shared_ptr이 작업 실행 전까지 객체를 살아있게 유지.
 	auto sessionCopy = session;
-	// English: Route through AsyncScope — consistent with ProcessRecvCompletion disconnect path.
+	// Route through AsyncScope — consistent with ProcessRecvCompletion disconnect path.
 	//          If Close() was already called (Cancel() set), the event is silently dropped.
 	// 한글: AsyncScope 경유 — ProcessRecvCompletion disconnect path와 일관성 유지.
 	//       Close()가 이미 호출된 경우 (Cancel() 완료) 이벤트를 조용히 건너뜀.
@@ -271,7 +270,7 @@ void BaseNetworkEngine::CloseConnection(Utils::ConnectionId connectionId)
 		                    std::to_string(connectionId));
 	}
 
-	// English: Remove from manager immediately (caller's thread) — same as ProcessRecvCompletion
+	// Remove from manager immediately (caller's thread) — same as ProcessRecvCompletion
 	// 한글: 호출 스레드에서 즉시 매니저에서 제거 — ProcessRecvCompletion과 동일한 패턴
 	SessionManager::Instance().RemoveSession(session);
 }
@@ -304,7 +303,7 @@ INetworkEngine::Statistics BaseNetworkEngine::GetStatistics() const
 }
 
 // =============================================================================
-// English: Helper methods for derived classes
+// Helper methods for derived classes
 // 한글: 파생 클래스용 헬퍼 메서드
 // =============================================================================
 
@@ -323,7 +322,7 @@ void BaseNetworkEngine::FireEvent(NetworkEvent eventType,
 		}
 	}
 
-	// English: Create event data
+	// Create event data
 	// 한글: 이벤트 데이터 생성
 	NetworkEventData eventData;
 	eventData.eventType = eventType;
@@ -338,14 +337,14 @@ void BaseNetworkEngine::FireEvent(NetworkEvent eventType,
 		std::memcpy(eventData.data.get(), data, dataSize);
 	}
 
-	// English: Call callback
+	// Call callback
 	// 한글: 콜백 호출
 	if (callback)
 	{
 		callback(eventData);
 	}
 
-	// English: Publish to multi-subscriber event bus (NetworkEventBus).
+	// Publish to multi-subscriber event bus (NetworkEventBus).
 	//          NetworkBusEventData is copyable so it can be sent to multiple channels.
 	// 한글: 다중 구독자 이벤트 버스에 발행 (NetworkEventBus).
 	//       NetworkBusEventData는 복사 가능하여 다수의 채널에 전달 가능.
@@ -376,7 +375,7 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 
 	if (bytesReceived <= 0)
 	{
-		// English: Connection closed or error — route through AsyncScope so that if
+		// Connection closed or error — route through AsyncScope so that if
 		//          Close() was called first (Cancel() already set), the event is silently
 		//          dropped instead of firing OnDisconnected() on an already-closed session.
 		// 한글: 연결 종료 또는 에러 — AsyncScope를 경유해 Close()가 먼저 호출된 경우
@@ -401,11 +400,11 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 		return;
 	}
 
-	// English: Update stats (atomic, no lock needed)
+	// Update stats (atomic, no lock needed)
 	// 한글: 통계 업데이트 (atomic, 락 불필요)
 	mTotalBytesReceived.fetch_add(bytesReceived, std::memory_order_relaxed);
 
-	// English: Dispatch via AsyncScope so that pending tasks are skipped after session Close().
+	// Dispatch via AsyncScope so that pending tasks are skipped after session Close().
 	//          KeyedDispatcher key = sessionId guarantees FIFO order per session.
 	// 한글: AsyncScope를 통해 디스패치하여 세션 Close() 이후 대기 작업 건너뜀.
 	//       KeyedDispatcher key = sessionId로 세션 단위 FIFO 순서 보장.
@@ -423,7 +422,7 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 				const char *recvData = dataCopy->data();
 				sessionCopy->ProcessRawRecv(recvData,
 				                            static_cast<uint32_t>(bytesReceived));
-				// English: DataReceived carries raw TCP segment bytes, NOT necessarily
+				// DataReceived carries raw TCP segment bytes, NOT necessarily
 				//          complete application packets. ProcessRawRecv handles packet
 				//          assembly internally and invokes OnRecv per complete packet.
 				//          Use OnRecv / SetOnRecv for application packet processing;
@@ -451,7 +450,7 @@ void BaseNetworkEngine::ProcessSendCompletion(SessionRef session,
 		return;
 	}
 
-	// English: A zero or negative completion on the send path means the remote
+	// A zero or negative completion on the send path means the remote
 	//          closed the connection or an OS-level error occurred. Route through
 	//          ProcessErrorCompletion so the session is cleanly disconnected and
 	//          send error stats are updated. Firing DataSent or calling PostSend
@@ -466,11 +465,11 @@ void BaseNetworkEngine::ProcessSendCompletion(SessionRef session,
 		return;
 	}
 
-	// English: Fire DataSent event
+	// Fire DataSent event
 	// 한글: DataSent 이벤트 발생
 	FireEvent(NetworkEvent::DataSent, session->GetId());
 
-	// English: Continue sending if queue has more data
+	// Continue sending if queue has more data
 	// 한글: 큐에 더 많은 데이터가 있으면 계속 전송
 	if (!session->PostSend())
 	{
@@ -490,7 +489,7 @@ void BaseNetworkEngine::ProcessErrorCompletion(SessionRef session,
 
 	const auto connId = session->GetId();
 
-	// English: Increment the per-direction counter before routing disconnect.
+	// Increment the per-direction counter before routing disconnect.
 	//          Send and Recv errors are tracked separately so callers can diagnose
 	//          whether failures are on the inbound or outbound path.
 	// 한글: disconnect 라우팅 전에 방향별 카운터를 증가.
@@ -504,7 +503,7 @@ void BaseNetworkEngine::ProcessErrorCompletion(SessionRef session,
 		mTotalRecvErrors.fetch_add(1, std::memory_order_relaxed);
 	}
 
-	// English: Log at Warn for expected connection-teardown error codes — these occur
+	// Log at Warn for expected connection-teardown error codes — these occur
 	//          on every normal remote disconnect and should not alarm on-call operators.
 	//          Log at Error for unexpected codes that may indicate a real problem.
 	//          osError == 0 means "failed to queue next I/O operation" — also Warn,
@@ -538,7 +537,7 @@ void BaseNetworkEngine::ProcessErrorCompletion(SessionRef session,
 		Utils::Logger::Error(msg);
 	}
 
-	// English: Route through ProcessRecvCompletion(bytesReceived=0) so that the
+	// Route through ProcessRecvCompletion(bytesReceived=0) so that the
 	//          disconnect event is always submitted via session->mAsyncScope.
 	//          This prevents OnDisconnected() from firing on an already-closed session
 	//          (double-event) when Close() was called concurrently from another path.
