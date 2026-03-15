@@ -82,25 +82,25 @@ namespace Network::TestServer
 
     bool TestServer::Initialize(uint16_t port,
                                 const std::string& dbConnectionString,
-                                const std::string& engineType)
+                                const std::string& engineType,
+                                size_t             dbWorkerCount)
     {
         mPort = port;
         mDbConnectionString = dbConnectionString;
         mEngineType = engineType.empty() ? "auto" : engineType;
 
         // English: Initialize asynchronous DB task queue FIRST (needed by session factory).
-        //          1 worker thread is intentional: guarantees per-session task ordering.
-        //          RecordConnectTime / RecordDisconnectTime for the same sessionId must
-        //          execute in submission order. With 2+ workers, tasks for the same session
-        //          can run on different threads simultaneously — breaking ordering.
-        //          Use OrderedTaskQueue (hash-based affinity) if multi-worker throughput
-        //          is required while preserving per-session ordering.
+        //          DBTaskQueue routes each task by sessionId % workerCount, so all tasks
+        //          for the same session always land on the same worker (FIFO within worker).
+        //          Default = DEFAULT_TASK_QUEUE_WORKER_COUNT (1); configurable via CLI -w.
+        //          1 worker: simplest deployment, no affinity math needed.
+        //          N workers: higher throughput; per-session ordering still guaranteed by hash affinity.
         // 한글: 비동기 DB 작업 큐를 먼저 초기화 (세션 팩토리에서 필요).
-        //       워커 스레드 1개는 의도적: 세션별 작업 순서를 보장하기 위함.
-        //       같은 sessionId의 RecordConnectTime / RecordDisconnectTime은 제출 순서대로
-        //       실행되어야 함. 2개 이상 워커 시 동일 세션 작업이 서로 다른 스레드에서
-        //       동시 실행될 수 있어 순서가 깨짐.
-        //       멀티워커 처리량이 필요하면 OrderedTaskQueue(해시 기반 친화도)로 전환.
+        //       DBTaskQueue는 sessionId % workerCount로 라우팅하므로 동일 세션 작업은
+        //       항상 같은 워커에 배정됨 (워커 내 FIFO 보장).
+        //       기본값 = DEFAULT_TASK_QUEUE_WORKER_COUNT (1); CLI -w로 재설정 가능.
+        //       1 워커: 가장 단순, 친화도 계산 불필요.
+        //       N 워커: 처리량 향상; 해시 친화도로 세션별 순서 여전히 보장.
         // English: Create local database — SQLite when a path is given, Mock otherwise.
         //          The owned instance is injected into DBTaskQueue so it can persist
         //          connect/disconnect/player-data records without a separate DB server.
@@ -129,7 +129,7 @@ namespace Network::TestServer
         }
 
         mDBTaskQueue = std::make_shared<DBTaskQueue>();
-        if (!mDBTaskQueue->Initialize(1, "db_tasks.wal", mLocalDatabase.get()))
+        if (!mDBTaskQueue->Initialize(dbWorkerCount, "db_tasks.wal", mLocalDatabase.get()))
         {
             Logger::Error("Failed to initialize DB task queue");
             return false;

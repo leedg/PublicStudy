@@ -65,7 +65,7 @@ namespace Network::DBServer
         }
     }
 
-    bool TestDBServer::Initialize(uint16_t port)
+    bool TestDBServer::Initialize(uint16_t port, size_t dbWorkerCount)
     {
         mPort = port;
 
@@ -82,12 +82,14 @@ namespace Network::DBServer
             return false;
         }
 
-        // English: Initialize ordered task queue with 4 worker threads
-        //          Uses serverId-based hash affinity for per-server ordering guarantee
-        // Korean: 4개 워커 스레드로 순서 보장 작업 큐 초기화
-        //         서버별 순서 보장을 위해 serverId 기반 해시 친화도 사용
+        // English: Initialize ordered task queue with the configured worker count.
+        //          Uses serverId-based hash affinity for per-server ordering guarantee.
+        //          Configurable via CLI (-w flag); default = DEFAULT_DB_WORKER_COUNT.
+        // Korean: 설정된 워커 수로 순서 보장 작업 큐 초기화.
+        //         서버별 순서 보장을 위해 serverId 기반 해시 친화도 사용.
+        //         CLI(-w 플래그)로 재설정 가능; 기본값 = DEFAULT_DB_WORKER_COUNT.
         mOrderedTaskQueue = std::make_unique<OrderedTaskQueue>();
-        if (!mOrderedTaskQueue->Initialize(4))
+        if (!mOrderedTaskQueue->Initialize(dbWorkerCount))
         {
             Logger::Error("Failed to initialize ordered task queue");
             return false;

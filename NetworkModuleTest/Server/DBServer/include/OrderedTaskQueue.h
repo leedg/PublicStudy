@@ -26,7 +26,7 @@ namespace Network::DBServer
 
         // English: Initialize with specified number of worker threads
         // 한글: 지정한 수의 워커 스레드로 초기화
-        bool Initialize(size_t workerCount = 4);
+        bool Initialize(size_t workerCount = Utils::DEFAULT_DB_WORKER_COUNT);
 
         // English: Shutdown all workers gracefully (drain remaining tasks)
         // 한글: 모든 워커 정상 종료 (남은 작업 drain)

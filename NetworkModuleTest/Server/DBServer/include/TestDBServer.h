@@ -59,7 +59,8 @@ namespace Network::DBServer
 
         // English: Lifecycle
         // Korean: 생명주기
-        bool Initialize(uint16_t port = Utils::DEFAULT_TEST_DB_PORT);
+        bool Initialize(uint16_t port           = Utils::DEFAULT_TEST_DB_PORT,
+                        size_t   dbWorkerCount = Utils::DEFAULT_DB_WORKER_COUNT);
         bool Start();
         void Stop();
         bool IsRunning() const;

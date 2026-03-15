@@ -63,6 +63,7 @@ void PrintUsage(const char* programName)
     std::cout << "Usage: " << programName << " [options]" << std::endl;
     std::cout << "Options:" << std::endl;
     std::cout << "  -p <port>       Server port (default: " << Network::Utils::DEFAULT_TEST_DB_PORT << ")" << std::endl;
+    std::cout << "  -w <count>      DB worker threads (default: " << Network::Utils::DEFAULT_DB_WORKER_COUNT << ")" << std::endl;
     std::cout << "  -l <level>      Log level: DEBUG, INFO, WARN, ERROR (default: INFO)" << std::endl;
     std::cout << "  -h              Show this help" << std::endl;
 }
@@ -97,7 +98,8 @@ int main(int argc, char* argv[])
 
     // English: Default settings
     // Korean: 기본 설정
-    uint16_t port = Network::Utils::DEFAULT_TEST_DB_PORT;
+    uint16_t port          = Network::Utils::DEFAULT_TEST_DB_PORT;
+    size_t   dbWorkerCount = Network::Utils::DEFAULT_DB_WORKER_COUNT;
     Network::Utils::LogLevel logLevel = Network::Utils::LogLevel::Info;
 
     // English: Parse command line arguments
@@ -114,6 +116,10 @@ int main(int argc, char* argv[])
         else if (arg == "-p" && i + 1 < argc)
         {
             port = static_cast<uint16_t>(std::stoi(argv[++i]));
+        }
+        else if (arg == "-w" && i + 1 < argc)
+        {
+            dbWorkerCount = static_cast<size_t>(std::stoi(argv[++i]));
         }
         else if (arg == "-l" && i + 1 < argc)
         {
@@ -153,7 +159,7 @@ int main(int argc, char* argv[])
 
     Network::Utils::Logger::Info("Initializing TestDBServer on port " + std::to_string(port));
 
-    if (!server.Initialize(port))
+    if (!server.Initialize(port, dbWorkerCount))
     {
         Network::Utils::Logger::Error("Failed to initialize server");
         return 1;

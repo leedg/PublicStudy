@@ -73,9 +73,8 @@ void PrintUsage(const char *programName)
 	std::cout << "  --db-host <h>   DB server host" << std::endl;
 	std::cout << "  --db-port <p>   DB server port" << std::endl;
 	std::cout << "  --engine <name> Network engine (default: auto)" << std::endl;
-	std::cout << "  -l <level>      Log level: DEBUG, INFO, WARN, ERROR "
-				 "(default: INFO)"
-				  << std::endl;
+	std::cout << "  -w <count>      DB task queue worker threads (default: " << Network::Utils::DEFAULT_TASK_QUEUE_WORKER_COUNT << ")" << std::endl;
+	std::cout << "  -l <level>      Log level: DEBUG, INFO, WARN, ERROR (default: INFO)" << std::endl;
 	std::cout << "  -h              Show this help" << std::endl;
 }
 
@@ -112,13 +111,14 @@ int main(int argc, char *argv[])
 
 	// English: Default settings
 	// 한글: 기본 설정
-	uint16_t port = Network::Utils::DEFAULT_TEST_SERVER_PORT;
+	uint16_t    port          = Network::Utils::DEFAULT_TEST_SERVER_PORT;
+	size_t      dbWorkerCount = Network::Utils::DEFAULT_TASK_QUEUE_WORKER_COUNT;
 	std::string dbConnectionString;
 	Network::Utils::LogLevel logLevel = Network::Utils::LogLevel::Info;
-	bool dbConnectRequested = false;
-	std::string dbHost = "127.0.0.1";
-    uint16_t dbPort = Network::Utils::DEFAULT_TEST_DB_PORT;
-    std::string engineType = "auto";
+	bool        dbConnectRequested = false;
+	std::string dbHost             = "127.0.0.1";
+	uint16_t    dbPort             = Network::Utils::DEFAULT_TEST_DB_PORT;
+	std::string engineType         = "auto";
 
 	// English: Parse command line arguments
 	// 한글: 커맨드라인 인자 파싱
@@ -161,6 +161,10 @@ int main(int argc, char *argv[])
 		{
 			engineType = argv[++i];
 		}
+		else if (arg == "-w" && i + 1 < argc)
+		{
+			dbWorkerCount = static_cast<size_t>(std::stoi(argv[++i]));
+		}
 		else
 		{
 			std::cerr << "Unknown option: " << arg << std::endl;
@@ -196,7 +200,7 @@ int main(int argc, char *argv[])
 	Network::Utils::Logger::Info("Initializing server on port " +
 								 std::to_string(port));
 
-	if (!server.Initialize(port, dbConnectionString, engineType))
+	if (!server.Initialize(port, dbConnectionString, engineType, dbWorkerCount))
 	{
 		Network::Utils::Logger::Error("Failed to initialize server");
 		return 1;

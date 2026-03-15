@@ -49,4 +49,11 @@ constexpr Timestamp INVALID_TIMESTAMP = 0;
 //       하드 한도 (MAX_SEND_QUEUE_DEPTH = 1000)는 PacketDefine.h에 정의.
 constexpr size_t SEND_QUEUE_BACKPRESSURE_THRESHOLD = 64;
 
+// English: Default worker thread counts for DB queues.
+//          Override at startup via CLI (-w flag) to match deployment topology.
+// 한글: DB 큐 기본 워커 스레드 수.
+//       배포 토폴로지에 맞게 CLI(-w 플래그)로 시작 시 재설정 가능.
+constexpr size_t DEFAULT_DB_WORKER_COUNT         = 4; // OrderedTaskQueue (DBServer)
+constexpr size_t DEFAULT_TASK_QUEUE_WORKER_COUNT = 1; // DBTaskQueue (TestServer) — see DBTaskQueue.h for ordering rationale
+
 } // namespace Network::Utils
