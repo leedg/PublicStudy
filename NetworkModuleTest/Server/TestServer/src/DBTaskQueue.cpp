@@ -362,7 +362,7 @@ void DBTaskQueue::WorkerThreadFunc(size_t workerIndex)
 
     while (mIsRunning.load())
     {
-        DBTask task(DBTaskType::Custom, 0);
+        DBTask task(DBTaskType::RecordConnectTime, 0);
         bool   hasTask = false;
 
         // English: Wait on this worker's own CV — not a shared global CV.
@@ -434,8 +434,8 @@ bool DBTaskQueue::ProcessTask(const DBTask& task)
             break;
 
         default:
-            result = "Unknown task type (SaveGameProgress and Custom are not yet implemented)";
-            Logger::Error("Unknown DB task type - SaveGameProgress and Custom tasks are not yet implemented");
+            result = "Unknown DB task type: " + std::to_string(static_cast<int>(task.type));
+            Logger::Error("Unknown DB task type: " + std::to_string(static_cast<int>(task.type)));
             break;
         }
 

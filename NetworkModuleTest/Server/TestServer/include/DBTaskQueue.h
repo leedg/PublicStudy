@@ -27,17 +27,11 @@ namespace Network::TestServer
     // 한글: DB 작업 타입
     // =============================================================================
 
-    enum class DBTaskType
+    enum class DBTaskType : uint8_t
     {
         RecordConnectTime,      // 접속 시간 기록
         RecordDisconnectTime,   // 접속 종료 시간 기록
         UpdatePlayerData,       // 플레이어 데이터 업데이트
-        // TODO(#implement): 아래 두 타입은 ProcessTask()에 핸들러 미구현.
-        //                   사용 시 "Unknown DB task type" 오류로 실패함.
-        // TODO(#implement): The two types below have no handler in ProcessTask().
-        //                   Calls will fail with "Unknown DB task type".
-        SaveGameProgress,       // 게임 진행 상황 저장 (UNIMPLEMENTED)
-        Custom                  // 커스텀 쿼리 (UNIMPLEMENTED)
     };
 
     // =============================================================================
