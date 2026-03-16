@@ -71,10 +71,16 @@
     <ClCompile Include="src\DBTaskQueue.cpp">
       <Filter>Database</Filter>
     </ClCompile>
+    <ClCompile Include="src\DBServerTaskQueue.cpp">
+      <Filter>Database</Filter>
+    </ClCompile>
     <ClCompile Include="src\TestDatabaseManager.cpp">
       <Filter>Database</Filter>
     </ClCompile>
     <ClInclude Include="include\DBTaskQueue.h">
+      <Filter>Database</Filter>
+    </ClInclude>
+    <ClInclude Include="include\DBServerTaskQueue.h">
       <Filter>Database</Filter>
     </ClInclude>
     <ClInclude Include="include\TestDatabaseManager.h">
