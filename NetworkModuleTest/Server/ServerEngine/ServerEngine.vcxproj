@@ -230,6 +230,7 @@
     <!-- Utility Source Files -->
     <ClInclude Include="Utils\LockProfiling.h" />
     <ClInclude Include="Utils\Logger.h" />
+    <ClInclude Include="Utils\KeyGenerator.h" />
     <ClInclude Include="Utils\NetworkTypes.h" />
     <ClInclude Include="Utils\NetworkUtils.h" />
     <ClInclude Include="Utils\SafeQueue.h" />
