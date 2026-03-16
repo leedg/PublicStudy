@@ -39,8 +39,8 @@ bool DBServerTaskQueue::Initialize(size_t workerCount,
         return true;
     }
 
-    // workerIndex is encoded in upper 8 bits of requestId → max 255 workers
-    // 한글: requestId 상위 8비트에 workerIndex 인코딩 → 최대 255개 워커
+    // KeyGenerator slot field is uint8_t → max 255 workers
+    // 한글: KeyGenerator slot 필드가 uint8_t → 최대 255개 워커
     if (workerCount == 0 || workerCount > 255)
     {
         Logger::Error("DBServerTaskQueue: workerCount must be in [1, 255], got " +
@@ -59,9 +59,7 @@ bool DBServerTaskQueue::Initialize(size_t workerCount,
 
     for (size_t i = 0; i < workerCount; ++i)
     {
-        auto wd    = std::make_unique<WorkerData>();
-        wd->index  = i;
-        mWorkers.push_back(std::move(wd));
+        mWorkers.push_back(std::make_unique<WorkerData>(i));
     }
 
     for (size_t i = 0; i < mWorkers.size(); ++i)
@@ -181,12 +179,13 @@ void DBServerTaskQueue::EnqueueTask(DBServerTask&& task)
 // 한글: DBRecvThread에서 호출
 // =============================================================================
 
-void DBServerTaskQueue::OnDBResponse(uint32_t requestId, ResultCode result,
+void DBServerTaskQueue::OnDBResponse(uint64_t requestId, ResultCode result,
                                      const std::string& detail)
 {
-    // Extract workerIndex from upper 8 bits of requestId.
-    // 한글: requestId 상위 8비트에서 workerIndex 추출.
-    const size_t workerIndex = (requestId >> 24) & 0xFFu;
+    // Extract workerIndex from slot field via KeyGenerator helper.
+    // 한글: KeyGenerator 헬퍼로 slot 필드에서 workerIndex 추출 (매직 시프트 제거).
+    const size_t workerIndex = static_cast<size_t>(
+        Utils::KeyGenerator::GetSlot(requestId));
 
     if (workerIndex >= mWorkers.size())
     {
@@ -336,18 +335,17 @@ void DBServerTaskQueue::ProcessTask(size_t workerIndex, DBServerTask task)
         return;
     }
 
-    // Generate requestId and check for wrap-around collision.
-    // 한글: requestId 발급 및 랩어라운드 충돌 확인.
-    const uint32_t requestId = NextRequestId(worker);
+    // Generate collision-free requestId via KeyGenerator (tag=DBQuery, slot=workerIndex).
+    // 한글: KeyGenerator로 충돌 없는 requestId 발급 (48-bit seq, wrap ~8,900년 @ 1M/s).
+    const uint64_t requestId = worker.keyGen.Next();
 
     // Ensure session state entry exists.
     // 한글: 세션 상태 항목 확보.
     SessionState& ss = worker.sessions[task.sessionId];
 
     // Invariant: session must be idle here — in-flight case was already handled above.
-    // 한글: 여기서 세션은 반드시 idle — in-flight 케이스는 위에서 이미 처리됨.
-    // (requestId wrap-around collision across sessions is astronomically unlikely at
-    //  16M ops per worker; if it becomes a concern, scan worker.sessions by requestId.)
+    // (KeyGenerator::Next() guarantees no seq reuse within the lifetime of any
+    //  realistic session — 48-bit seq wraps after ~8,900 years at 1M ops/s.)
     assert(ss.requestId == 0);
 
     // STORE before SEND — response may arrive before Send() returns.
@@ -524,21 +522,5 @@ bool DBServerTaskQueue::CheckTask(const DBServerTask& task)
     }
 }
 
-// =============================================================================
-// NextRequestId — worker-thread only
-// 한글: 워커 스레드 전용
-// =============================================================================
-
-uint32_t DBServerTaskQueue::NextRequestId(WorkerData& worker)
-{
-    // Advance lower 24 bits; skip 0 so idle state (requestId==0) is unambiguous.
-    // 한글: 하위 24비트 증가; 0은 idle 상태이므로 건너뜀.
-    worker.seqCounter = (worker.seqCounter + 1) & 0x00FFFFFFu;
-    if (worker.seqCounter == 0)
-    {
-        worker.seqCounter = 1;
-    }
-    return (static_cast<uint32_t>(worker.index) << 24) | worker.seqCounter;
-}
 
 } // namespace Network::TestServer

@@ -10,7 +10,7 @@
 //
 // Routing:
 //   task   → worker[sessionId % workerCount]  (key-affinity, per-session FIFO)
-//   response → worker[(requestId>>24) & 0xFF] (encoded in requestId by worker)
+//   response → worker[KeyGenerator::GetSlot(requestId)] (slot field in 64-bit KeyId)
 
 #include "Utils/KeyGenerator.h"
 #include "Interfaces/ResultCode.h"
