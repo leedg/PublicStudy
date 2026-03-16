@@ -1,9 +1,9 @@
 #pragma once
 
-// English: Asynchronous DB task queue - separates game logic from database operations
+// Asynchronous DB task queue - separates game logic from database operations
 // 한글: 비동기 DB 작업 큐 - 게임 로직과 데이터베이스 작업 분리
 
-// English: Forward-declare IDatabase to avoid pulling in ServerEngine headers here
+// Forward-declare IDatabase to avoid pulling in ServerEngine headers here
 // 한글: ServerEngine 헤더 전이 방지를 위한 IDatabase 전방 선언
 namespace Network { namespace Database { class IDatabase; } }
 
@@ -23,7 +23,7 @@ namespace Network::TestServer
     using Utils::ConnectionId;
 
     // =============================================================================
-    // English: DB task types
+    // DB task types
     // 한글: DB 작업 타입
     // =============================================================================
 
@@ -35,7 +35,7 @@ namespace Network::TestServer
     };
 
     // =============================================================================
-    // English: DB task data
+    // DB task data
     // 한글: DB 작업 데이터
     // =============================================================================
 
@@ -45,7 +45,7 @@ namespace Network::TestServer
         ConnectionId sessionId;
         std::string data;     // JSON 또는 직렬화된 데이터
         std::function<void(bool success, const std::string& result)> callback;  // 선택적 콜백
-        uint64_t walSeq = 0;  // English: WAL sequence (0 = not WAL-tracked, e.g. recovered tasks)
+        uint64_t walSeq = 0;  // WAL sequence (0 = not WAL-tracked, e.g. recovered tasks)
                               // 한글: WAL 시퀀스 번호 (0 = WAL 추적 안 함, 예: 복구된 태스크)
 
         DBTask(DBTaskType t, ConnectionId id, std::string d = "")
@@ -61,10 +61,10 @@ namespace Network::TestServer
     };
 
     // =============================================================================
-    // English: Asynchronous DB task queue with key-affinity routing.
+    // Asynchronous DB task queue with key-affinity routing.
     // 한글: 키 친화도 라우팅이 적용된 비동기 DB 작업 큐.
     //
-    // English: Per-session ordering guarantee:
+    // Per-session ordering guarantee:
     //   Each task is routed to worker[sessionId % workerCount].
     //   The same session always maps to the same worker.
     //   Each worker is a single thread processing tasks FIFO, so:
@@ -88,7 +88,7 @@ namespace Network::TestServer
         DBTaskQueue();
         ~DBTaskQueue();
 
-        // English: Lifecycle
+        // Lifecycle
         // 한글: 생명주기
         bool Initialize(size_t workerThreadCount = 1,
                         const std::string& walPath = "db_tasks.wal",
@@ -96,40 +96,40 @@ namespace Network::TestServer
         void Shutdown();
         bool IsRunning() const;
 
-        // English: Task submission (non-blocking, move semantics)
+        // Task submission (non-blocking, move semantics)
         // 한글: 작업 제출 (논블로킹, 이동 의미론)
         void EnqueueTask(DBTask&& task);
 
-        // English: Convenience methods for common operations
+        // Convenience methods for common operations
         // 한글: 일반적인 작업을 위한 편의 메서드
         void RecordConnectTime(ConnectionId sessionId, const std::string& timestamp);
         void RecordDisconnectTime(ConnectionId sessionId, const std::string& timestamp);
         void UpdatePlayerData(ConnectionId sessionId, const std::string& jsonData,
                               std::function<void(bool, const std::string&)> callback = nullptr);
 
-        // English: Statistics
+        // Statistics
         // 한글: 통계
         size_t GetQueueSize() const;
         size_t GetProcessedCount() const;
         size_t GetFailedCount() const;
 
     private:
-        // English: Worker thread function
+        // Worker thread function
         // 한글: 워커 스레드 함수
         void WorkerThreadFunc(size_t workerIndex);
 
-        // English: Process individual task
+        // Process individual task
         // 한글: 개별 작업 처리
         bool ProcessTask(const DBTask& task);
 
-        // English: Specific task handlers
+        // Specific task handlers
         // 한글: 특정 작업 핸들러
         bool HandleRecordConnectTime(const DBTask& task, std::string& result);
         bool HandleRecordDisconnectTime(const DBTask& task, std::string& result);
         bool HandleUpdatePlayerData(const DBTask& task, std::string& result);
 
         // =====================================================================
-        // English: WAL (Write-Ahead Log) for crash recovery
+        // WAL (Write-Ahead Log) for crash recovery
         // 한글: 크래시 복구를 위한 WAL (Write-Ahead Log)
         //
         // Format per line:
@@ -143,14 +143,14 @@ namespace Network::TestServer
         void     WalWriteDone(uint64_t seq);
         void     WalRecover();
         uint64_t WalNextSeq();
-        // English: Open WAL file if not already open. Must be called under mWalMutex.
+        // Open WAL file if not already open. Must be called under mWalMutex.
         //          Returns true if the file is open (or was opened successfully).
         // 한글: WAL 파일이 열려 있지 않으면 엽니다. mWalMutex 하에서 호출해야 함.
         //       파일이 열려 있거나 성공적으로 열렸으면 true 반환.
         bool     EnsureWalOpen();
 
     private:
-        // English: Per-worker data — each worker owns its queue, mutex, cv, and thread.
+        // Per-worker data — each worker owns its queue, mutex, cv, and thread.
         //   Routing: sessionId % workerCount → same session always → same worker.
         //   Within a worker: single thread + FIFO → task B is never dequeued until task A completes.
         // 한글: 워커별 데이터 — 각 워커는 자체 큐, mutex, cv, 스레드를 소유합니다.
@@ -166,25 +166,23 @@ namespace Network::TestServer
 
         std::vector<std::unique_ptr<WorkerData>> mWorkers;
 
-        // English: Global queue size counter across all workers (lock-free GetQueueSize)
+        // Global queue size counter across all workers (lock-free GetQueueSize)
         // 한글: 전체 워커에 걸친 글로벌 큐 크기 카운터 (lock-free GetQueueSize)
         std::atomic<size_t>             mQueueSize;
 
         std::atomic<bool>               mIsRunning;
 
-        // English: Statistics
+        // Statistics
         // 한글: 통계
         std::atomic<size_t>             mProcessedCount;
         std::atomic<size_t>             mFailedCount;
 
-        // English: WAL crash-recovery members
+        // WAL crash-recovery members
         // 한글: WAL 크래시 복구 멤버
         std::string                     mWalPath;       // WAL 파일 경로
         std::ofstream                   mWalFile;       // 추가 전용 스트림
         mutable std::mutex              mWalMutex;      // WAL 파일 쓰기 직렬화
-        std::atomic<uint64_t>           mWalSeq{0};     // 단조 증가 시퀀스 번호
-
-        // English: Injected database (non-owning); nullptr = log-only mode
+        // Injected database (non-owning); nullptr = log-only mode
         // 한글: 주입된 데이터베이스 (non-owning); nullptr이면 로그만 출력
         Network::Database::IDatabase* mDatabase = nullptr;
     };
