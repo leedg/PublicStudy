@@ -1,9 +1,11 @@
-// English: DB Server packet handler implementation
+// DB Server packet handler implementation
 // 한글: DB 서버 패킷 핸들러 구현
 
 #include "../include/DBServerPacketHandler.h"
 #include "Utils/PingPongConfig.h"
 #include "Utils/StringUtil.h"
+#include "../include/DBServerTaskQueue.h"
+#include "Interfaces/ResultCode.h"
 #include <chrono>
 
 namespace Network::TestServer
@@ -14,7 +16,7 @@ namespace Network::TestServer
     DBServerPacketHandler::DBServerPacketHandler()
         : mPingSequence(0)
     {
-        // English: Register all packet handlers
+        // Register all packet handlers
         // 한글: 모든 패킷 핸들러 등록
         RegisterHandlers();
     }
@@ -25,7 +27,7 @@ namespace Network::TestServer
 
     void DBServerPacketHandler::RegisterHandlers()
     {
-        // English: Register handler functors for each packet type
+        // Register handler functors for each packet type
         // 한글: 각 패킷 타입에 대한 핸들러 펑터 등록
         mHandlers[static_cast<uint16_t>(ServerPacketType::ServerPongRes)] =
             [this](Core::Session* session, const char* data, uint32_t size)
@@ -37,6 +39,13 @@ namespace Network::TestServer
             [this](Core::Session* session, const char* data, uint32_t size)
             {
                 HandleDBSavePingTimeResponse(session, reinterpret_cast<const PKT_DBSavePingTimeRes*>(data));
+            };
+
+        mHandlers[static_cast<uint16_t>(ServerPacketType::DBQueryRes)] =
+            [this](Core::Session* session, const char* data, uint32_t size)
+            {
+                HandleDBQueryResponse(session,
+                    reinterpret_cast<const PKT_DBQueryRes*>(data));
             };
     }
 
@@ -63,7 +72,7 @@ namespace Network::TestServer
             return;
         }
 
-        // English: Validate minimal packet size per server packet id.
+        // Validate minimal packet size per server packet id.
         // 한글: 서버 패킷 ID별 최소 길이 검증.
         uint32_t requiredSize = sizeof(ServerPacketHeader);
         switch (static_cast<ServerPacketType>(header->id))
@@ -73,6 +82,9 @@ namespace Network::TestServer
             break;
         case ServerPacketType::DBSavePingTimeRes:
             requiredSize = sizeof(PKT_DBSavePingTimeRes);
+            break;
+        case ServerPacketType::DBQueryRes:
+            requiredSize = sizeof(PKT_DBQueryRes);
             break;
         default:
             break;
@@ -86,7 +98,7 @@ namespace Network::TestServer
             return;
         }
 
-        // English: Use functor map to dispatch packet handler
+        // Use functor map to dispatch packet handler
         // 한글: 펑터 맵을 사용하여 패킷 핸들러 디스패치
         auto it = mHandlers.find(header->id);
         if (it != mHandlers.end())
@@ -148,7 +160,7 @@ namespace Network::TestServer
 
     void DBServerPacketHandler::HandleServerPongResponse(Core::Session* session, const PKT_ServerPongRes* packet)
     {
-        // English: Validate pointers
+        // Validate pointers
         // 한글: 포인터 유효성 검사
         if (!session || !packet)
         {
@@ -171,7 +183,7 @@ namespace Network::TestServer
         }
 #endif
 
-        // English: Update session's last ping time
+        // Update session's last ping time
         // 한글: 세션의 마지막 Ping 시간 갱신
         if (session->IsConnected())
         {
@@ -181,7 +193,7 @@ namespace Network::TestServer
 
     void DBServerPacketHandler::HandleDBSavePingTimeResponse(Core::Session* session, const PKT_DBSavePingTimeRes* packet)
     {
-        // English: Validate pointers
+        // Validate pointers
         // 한글: 포인터 유효성 검사
         if (!session || !packet)
         {
@@ -198,6 +210,33 @@ namespace Network::TestServer
             Logger::Error("Failed to save ping time in DB - ServerId: " + std::to_string(packet->serverId) +
                 ", Error: " + std::string(packet->message));
         }
+    }
+
+    void DBServerPacketHandler::HandleDBQueryResponse(
+        Core::Session* session, const Core::PKT_DBQueryRes* packet)
+    {
+        if (!packet)
+        {
+            Logger::Error("HandleDBQueryResponse: null packet");
+            return;
+        }
+
+        if (!mTaskQueue)
+        {
+            Logger::Warn("HandleDBQueryResponse: no DBServerTaskQueue registered");
+            return;
+        }
+
+        const ResultCode result = static_cast<ResultCode>(packet->result);
+        const size_t detailLen  = std::min<size_t>(packet->detailLength,
+                                                    sizeof(packet->detail));
+        const std::string detail(packet->detail, detailLen);
+
+        Logger::Debug("DBQueryRes received - queryId: " +
+                      std::to_string(packet->queryId) +
+                      ", result: " + Network::ToString(result));
+
+        mTaskQueue->OnDBResponse(packet->queryId, result, detail);
     }
 
 } // namespace Network::TestServer
