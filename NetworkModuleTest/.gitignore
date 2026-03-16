@@ -64,3 +64,6 @@ crash_logs/
 
 # Claude
 .claude/
+
+# Git worktrees
+.worktrees/
