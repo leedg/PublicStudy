@@ -1,8 +1,9 @@
-// English: SessionManager implementation
+// SessionManager implementation
 // 한글: SessionManager 구현
 
 #include "SessionManager.h"
 #include "SessionPool.h"
+#include "Utils/KeyGenerator.h"
 #include "Utils/LockProfiling.h"
 #include <sstream>
 
@@ -22,7 +23,7 @@ void SessionManager::SetSessionConfigurator(std::function<void(Session *)> confi
 
 SessionRef SessionManager::CreateSession(SocketHandle socket)
 {
-	// English: Check session limit BEFORE acquiring a pool slot.
+	// Check session limit BEFORE acquiring a pool slot.
 	//          If we return nullptr here, the socket has NOT been given to any session
 	//          object — the caller is responsible for closing it.
 	//          Checking after Initialize() would cause the pool deleter to call Close()
@@ -51,7 +52,7 @@ SessionRef SessionManager::CreateSession(SocketHandle socket)
 	Utils::ConnectionId id = GenerateSessionId();
 	session->Initialize(id, socket);
 
-	// English: Apply application-level configuration before PostRecv() is issued.
+	// Apply application-level configuration before PostRecv() is issued.
 	//          Called here (before the session enters mSessions) so recv completions
 	//          cannot fire before the callback is set.
 	// 한글: PostRecv() 이전에 애플리케이션 수준 설정 적용.
@@ -90,18 +91,18 @@ void SessionManager::RemoveSession(SessionRef session)
 		return;
 	}
 
-	// English: Store ID first to avoid race condition
+	// Store ID first to avoid race condition
 	// 한글: Race condition 방지를 위해 ID를 먼저 저장
 	Utils::ConnectionId id = session->GetId();
 
-	// English: Close session before removing to cleanup resources
+	// Close session before removing to cleanup resources
 	// 한글: 리소스 정리를 위해 제거 전 세션 닫기
 	if (session->IsConnected())
 	{
 		session->Close();
 	}
 
-	// English: Remove from manager using pre-stored ID
+	// Remove from manager using pre-stored ID
 	// 한글: 미리 저장한 ID를 사용하여 매니저에서 제거
 	RemoveSession(id);
 }
@@ -121,7 +122,7 @@ SessionRef SessionManager::GetSession(Utils::ConnectionId id)
 
 void SessionManager::ForEachSession(const std::function<void(SessionRef)>& func)
 {
-	// English: Copy session list to avoid long lock duration
+	// Copy session list to avoid long lock duration
 	// 한글: 긴 잠금 시간을 피하기 위해 세션 리스트 복사
 	std::vector<SessionRef> sessionsCopy;
 	{
@@ -133,7 +134,7 @@ void SessionManager::ForEachSession(const std::function<void(SessionRef)>& func)
 		}
 	}
 
-	// English: Process sessions without holding lock
+	// Process sessions without holding lock
 	// 한글: 잠금 없이 세션 처리
 	for (auto &session : sessionsCopy)
 	{
@@ -143,7 +144,7 @@ void SessionManager::ForEachSession(const std::function<void(SessionRef)>& func)
 
 std::vector<SessionRef> SessionManager::GetAllSessions()
 {
-	// English: Return snapshot of all sessions (caller owns the shared_ptr references)
+	// Return snapshot of all sessions (caller owns the shared_ptr references)
 	// 한글: 모든 세션의 스냅샷 반환 (호출자가 shared_ptr 참조 소유)
 	std::vector<SessionRef> sessionsCopy;
 	NET_LOCK_GUARD(mMutex);
@@ -163,7 +164,7 @@ size_t SessionManager::GetSessionCount() const
 
 void SessionManager::CloseAllSessions()
 {
-	// English: Copy session list to avoid deadlock (pattern same as ForEachSession)
+	// Copy session list to avoid deadlock (pattern same as ForEachSession)
 	// 한글: 교착 상태 방지를 위해 세션 리스트 복사 (ForEachSession과 동일 패턴)
 	// Deadlock scenario prevention:
 	//   Thread A: CloseAllSessions() holds mMutex -> calls session->Close() -> waits for Session::mSendMutex
@@ -186,7 +187,7 @@ void SessionManager::CloseAllSessions()
 		}
 	}
 
-	// English: Close sessions without holding mMutex
+	// Close sessions without holding mMutex
 	// 한글: mMutex를 보유하지 않은 채로 세션 닫기
 	for (auto &session : sessionsCopy)
 	{
@@ -196,7 +197,7 @@ void SessionManager::CloseAllSessions()
 		}
 	}
 
-	// English: Clear session map after all sessions are closed
+	// Clear session map after all sessions are closed
 	// 한글: 모든 세션이 닫힌 후 세션 맵 정리
 	{
 		NET_LOCK_GUARD(mMutex);
@@ -207,7 +208,9 @@ void SessionManager::CloseAllSessions()
 
 Utils::ConnectionId SessionManager::GenerateSessionId()
 {
-	return mNextSessionId.fetch_add(1);
+	// KeyGenerator::NextGlobalId() — monotonic uint64_t, lock-free, starts at 1.
+	// 한글: KeyGenerator 전역 ID — 단조 증가 uint64_t, 락-프리, 1부터 시작.
+	return Utils::KeyGenerator::NextGlobalId();
 }
 
 } // namespace Network::Core
