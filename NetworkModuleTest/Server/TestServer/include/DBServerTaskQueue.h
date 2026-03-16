@@ -12,6 +12,7 @@
 //   task   → worker[sessionId % workerCount]  (key-affinity, per-session FIFO)
 //   response → worker[(requestId>>24) & 0xFF] (encoded in requestId by worker)
 
+#include "Utils/KeyGenerator.h"
 #include "Interfaces/ResultCode.h"
 #include "Network/Core/ServerPacketDefine.h"
 #include "Utils/NetworkUtils.h"
@@ -89,7 +90,7 @@ namespace Network::TestServer
 
         // Called by DBServerPacketHandler when PKT_DBQueryRes arrives.
         // 한글: PKT_DBQueryRes 도착 시 DBServerPacketHandler에서 호출.
-        void OnDBResponse(uint32_t requestId, ResultCode result,
+        void OnDBResponse(uint64_t requestId, ResultCode result,
                           const std::string& detail);
 
         // Convenience methods
@@ -107,7 +108,7 @@ namespace Network::TestServer
         // =====================================================================
         struct DBResponseEvent
         {
-            uint32_t    requestId = 0;
+            uint64_t    requestId = 0;      // KeyGenerator::KeyId (was uint32_t)
             ResultCode  result    = ResultCode::Unknown;
             std::string detail;
         };
@@ -118,7 +119,7 @@ namespace Network::TestServer
         // =====================================================================
         struct SessionState
         {
-            uint32_t  requestId = 0;   // 0 = idle
+            uint64_t  requestId = 0;   // 0 = idle (KeyGenerator::kInvalid); was uint32_t
             std::function<void(ResultCode, const std::string&)> callback;
             std::queue<DBServerTask> pending;
         };
@@ -130,6 +131,11 @@ namespace Network::TestServer
         // =====================================================================
         struct WorkerData
         {
+            explicit WorkerData(size_t idx)
+                : keyGen(Utils::KeyTag::DBQuery, static_cast<uint8_t>(idx))
+                , index(idx)
+            {}
+
             // Shared — protected by mutex
             std::queue<DBServerTask>    taskQueue;
             std::queue<DBResponseEvent> responseQueue;
@@ -139,8 +145,8 @@ namespace Network::TestServer
 
             // Worker-exclusive — only touched by this worker's thread
             std::unordered_map<ConnectionId, SessionState> sessions;
-            uint32_t  seqCounter = 0;   // lower 24 bits of requestId
-            size_t    index      = 0;   // this worker's index
+            Utils::KeyGenerator         keyGen;  // replaces seqCounter; tag=DBQuery,slot=index
+            size_t                      index;   // worker index (for logging)
         };
 
         // Worker thread entry point
@@ -161,10 +167,6 @@ namespace Network::TestServer
         // Internal type-based check (B approach; extended by task.checkFunc).
         // 한글: 타입별 내부 검증 (B 방식; task.checkFunc으로 확장 가능).
         bool CheckTask(const DBServerTask& task);
-
-        // Generate next requestId for this worker.
-        // 한글: 워커별 다음 requestId 생성.
-        uint32_t NextRequestId(WorkerData& worker);
 
     private:
         std::vector<std::unique_ptr<WorkerData>> mWorkers;
