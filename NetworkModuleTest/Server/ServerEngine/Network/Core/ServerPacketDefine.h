@@ -1,19 +1,19 @@
 #pragma once
 
-// English: Server-to-Server packet definitions
+// Server-to-Server packet definitions
 // 한글: 서버 간 패킷 정의
 
 #include <cstdint>
 #include <ctime>
 
-// English: Disable padding for network packets to ensure consistent byte layout
+// Disable padding for network packets to ensure consistent byte layout
 // 한글: 네트워크 패킷의 패딩을 비활성화하여 일관된 바이트 레이아웃 보장
 #pragma pack(push, 1)
 
 namespace Network::Core
 {
     // =============================================================================
-    // English: Server packet types
+    // Server packet types
     // 한글: 서버 패킷 타입
     // =============================================================================
 
@@ -35,7 +35,7 @@ namespace Network::Core
     };
 
     // =============================================================================
-    // English: Server packet header
+    // Server packet header
     // 한글: 서버 패킷 헤더
     // =============================================================================
 
@@ -61,7 +61,7 @@ namespace Network::Core
     };
 
     // =============================================================================
-    // English: Server Ping/Pong packets
+    // Server Ping/Pong packets
     // 한글: 서버 Ping/Pong 패킷
     // =============================================================================
 
@@ -95,7 +95,7 @@ namespace Network::Core
     };
 
     // =============================================================================
-    // English: DB Save Ping Time packets
+    // DB Save Ping Time packets
     // 한글: DB Ping 시간 저장 패킷
     // =============================================================================
 
@@ -132,7 +132,7 @@ namespace Network::Core
     };
 
     // =============================================================================
-    // English: Generic DB Query packets
+    // Generic DB Query packets
     // 한글: 범용 DB 쿼리 패킷
     // =============================================================================
 
@@ -141,14 +141,15 @@ namespace Network::Core
         static constexpr ServerPacketType PacketId = ServerPacketType::DBQueryReq;
 
         ServerPacketHeader header;
-        uint32_t queryId;        // Query identifier
-        uint16_t queryLength;    // Length of query string
-        char query[512];         // SQL query (null-terminated)
+        uint32_t  queryId;       // requestId = (workerIndex<<24) | seq
+        uint8_t   taskType;      // DBServerTaskType (cast to uint8_t)
+        uint16_t  dataLength;    // bytes used in data[] (not including null terminator)
+        char      data[512];     // JSON payload (null-terminated, dataLength bytes valid)
 
-        PKT_DBQueryReq() : queryId(0), queryLength(0)
+        PKT_DBQueryReq() : queryId(0), taskType(0), dataLength(0)
         {
             header.InitPacket<PKT_DBQueryReq>();
-            query[0] = '\0';
+            data[0] = '\0';
         }
     };
 
@@ -157,20 +158,20 @@ namespace Network::Core
         static constexpr ServerPacketType PacketId = ServerPacketType::DBQueryRes;
 
         ServerPacketHeader header;
-        uint32_t queryId;        // Matching query identifier
-        uint8_t result;          // 0 = success, non-zero = error code
-        uint16_t dataLength;     // Length of result data
-        char data[1024];         // Result data (null-terminated JSON or other format)
+        uint32_t  queryId;       // requestId echo
+        int32_t   result;        // Network::ResultCode cast to int32_t
+        uint16_t  detailLength;  // bytes used in detail[]
+        char      detail[256];   // detail message (null-terminated)
 
-        PKT_DBQueryRes() : queryId(0), result(0), dataLength(0)
+        PKT_DBQueryRes() : queryId(0), result(0), detailLength(0)
         {
             header.InitPacket<PKT_DBQueryRes>();
-            data[0] = '\0';
+            detail[0] = '\0';
         }
     };
 
 } // namespace Network::Core
 
-// English: Restore default packing
+// Restore default packing
 // 한글: 기본 패킹으로 복원
 #pragma pack(pop)
