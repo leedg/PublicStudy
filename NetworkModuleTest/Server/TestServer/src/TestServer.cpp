@@ -1,9 +1,9 @@
-// English: TestServer implementation with separated handlers
+// TestServer implementation with separated handlers
 // Korean: 분리된 핸들러를 가진 TestServer 구현
 
 #include "../include/TestServer.h"
 #include "Network/Core/ServerPacketDefine.h"
-// English: Full IDatabase + DatabaseFactory definitions needed to create the local database instance
+// Full IDatabase + DatabaseFactory definitions needed to create the local database instance
 // 한글: 로컬 DB 인스턴스 생성에 필요한 IDatabase / DatabaseFactory 전체 정의
 #include "Interfaces/IDatabase.h"
 #include "Database/DatabaseFactory.h"
@@ -25,7 +25,7 @@ namespace Network::TestServer
     using namespace Network::Utils;
 
     // =============================================================================
-    // English: TestServer implementation
+    // TestServer implementation
     // Korean: TestServer 구현
     // =============================================================================
 
@@ -46,7 +46,7 @@ namespace Network::TestServer
     }
 
     // =============================================================================
-    // English: DB ping helper (called by timer, replaces DBPingLoop thread)
+    // DB ping helper (called by timer, replaces DBPingLoop thread)
     // 한글: DB 핑 헬퍼 (타이머 호출, DBPingLoop 스레드 대체)
     // =============================================================================
 
@@ -88,7 +88,7 @@ namespace Network::TestServer
         mDbConnectionString = dbConnectionString;
         mEngineType = engineType.empty() ? "auto" : engineType;
 
-        // English: Initialize asynchronous DB task queue FIRST (needed by session factory).
+        // Initialize asynchronous DB task queue FIRST (needed by session factory).
         //          DBTaskQueue routes each task by sessionId % workerCount, so all tasks
         //          for the same session always land on the same worker (FIFO within worker).
         //          Default = DEFAULT_TASK_QUEUE_WORKER_COUNT (1); configurable via CLI -w.
@@ -100,7 +100,7 @@ namespace Network::TestServer
         //       기본값 = DEFAULT_TASK_QUEUE_WORKER_COUNT (1); CLI -w로 재설정 가능.
         //       1 워커: 가장 단순, 친화도 계산 불필요.
         //       N 워커: 처리량 향상; 해시 친화도로 세션별 순서 여전히 보장.
-        // English: Create local database — SQLite when a path is given, Mock otherwise.
+        // Create local database — SQLite when a path is given, Mock otherwise.
         //          The owned instance is injected into DBTaskQueue so it can persist
         //          connect/disconnect/player-data records without a separate DB server.
         // 한글: 로컬 DB 생성 — 경로가 있으면 SQLite, 없으면 Mock.
@@ -134,8 +134,21 @@ namespace Network::TestServer
             return false;
         }
 
+        // Initialize DBServerTaskQueue (routes client requests through TestDBServer)
+        // 한글: DBServerTaskQueue 초기화 (클라이언트 요청을 TestDBServer로 중계)
+        mDBServerTaskQueue = std::make_shared<DBServerTaskQueue>();
+        if (!mDBServerTaskQueue->Initialize(
+                1,   // 1 worker is sufficient for initial deployment
+                [this](const void* data, uint32_t size) -> bool {
+                    return SendDBPacket(data, size);
+                }))
+        {
+            Logger::Error("Failed to initialize DBServerTaskQueue");
+            return false;
+        }
+
 #ifdef _WIN32
-        // English: Initialize DB ping timer queue (one background thread, starts here).
+        // Initialize DB ping timer queue (one background thread, starts here).
         // 한글: DB 핑 타이머 큐 초기화 (백그라운드 스레드 1개, 여기서 시작).
         if (!mTimerQueue.Initialize())
         {
@@ -144,7 +157,7 @@ namespace Network::TestServer
         }
 #endif
 
-        // English: Register per-session recv callback via SessionConfigurator.
+        // Register per-session recv callback via SessionConfigurator.
         //          Called inside CreateSession before PostRecv() so the first recv
         //          completion is guaranteed to see the callback (no race).
         //          ClientPacketHandler is shared (stateless after ctor) and thread-safe.
@@ -165,7 +178,7 @@ namespace Network::TestServer
                 });
         }
 
-        // English: Create and initialize client network engine using selected backend.
+        // Create and initialize client network engine using selected backend.
         //          "auto" keeps platform default selection behavior.
         // Korean: 선택한 백엔드로 클라이언트 네트워크 엔진 생성 및 초기화.
         //         "auto"는 플랫폼 기본 자동 선택 동작을 유지.
@@ -183,7 +196,7 @@ namespace Network::TestServer
             return false;
         }
 
-        // English: Register event callbacks for client connections
+        // Register event callbacks for client connections
         // Korean: 클라이언트 연결에 대한 이벤트 콜백 등록
         mClientEngine->RegisterEventCallback(NetworkEvent::Connected,
             [this](const NetworkEventData& e) { OnClientConnectionEstablished(e); });
@@ -228,7 +241,7 @@ namespace Network::TestServer
         mIsRunning.store(false);
 
 #ifdef _WIN32
-        // English: Wake reconnect loop immediately (if waiting in backoff sleep)
+        // Wake reconnect loop immediately (if waiting in backoff sleep)
         // 한글: 재연결 루프가 백오프 대기 중이면 즉시 깨움
         mDBShutdownCV.notify_all();
 
@@ -238,7 +251,7 @@ namespace Network::TestServer
         }
 #endif
 
-        // English: Record disconnect events for still-connected sessions before
+        // Record disconnect events for still-connected sessions before
         //          shutting down DBTaskQueue so Stop() does not lose terminal records.
         // 한글: Stop() 중 마지막 disconnect 기록이 누락되지 않도록 DBTaskQueue 종료 전에
         //       아직 연결된 세션들의 종료 기록을 먼저 큐잉.
@@ -257,7 +270,7 @@ namespace Network::TestServer
             const std::string shutdownTime(timeStr);
 
             size_t queuedDisconnectCount = 0;
-            // English: Get session snapshot to avoid race condition with session removal
+            // Get session snapshot to avoid race condition with session removal
             // 한글: 세션 제거와의 경합 조건 방지를 위해 스냅샷 사용
             auto allSessions = Core::SessionManager::Instance().GetAllSessions();
             for (auto& session : allSessions)
@@ -278,7 +291,7 @@ namespace Network::TestServer
             }
         }
 
-        // English: Shutdown DB ping timer before disconnecting so the last ping isn't lost.
+        // Shutdown DB ping timer before disconnecting so the last ping isn't lost.
         // 한글: 연결 해제 전 DB 핑 타이머 종료하여 마지막 핑이 누락되지 않도록 함.
 #ifdef _WIN32
         if (mDBPingTimer != 0)
@@ -289,7 +302,7 @@ namespace Network::TestServer
         mTimerQueue.Shutdown();
 #endif
 
-        // English: Step 1 - Flush DB task queue (complete pending tasks while DB connection is still alive)
+        // Step 1 - Flush DB task queue (complete pending tasks while DB connection is still alive)
         // Korean: 1단계 - DB 태스크 큐 드레인 (DB 연결이 살아있는 동안 대기 중인 작업 완료)
         if (mDBTaskQueue)
         {
@@ -300,7 +313,7 @@ namespace Network::TestServer
                         ", Failed: " + std::to_string(mDBTaskQueue->GetFailedCount()));
         }
 
-        // English: Disconnect local database after the queue is fully drained.
+        // Disconnect local database after the queue is fully drained.
         // 한글: 큐가 완전히 드레인된 후 로컬 DB 연결 해제.
         if (mLocalDatabase)
         {
@@ -309,7 +322,7 @@ namespace Network::TestServer
             Logger::Info("TestServer: local database disconnected");
         }
 
-        // English: Step 2 - Disconnect from DB server BEFORE mClientEngine->Stop()
+        // Step 2 - Disconnect from DB server BEFORE mClientEngine->Stop()
         //          mClientEngine->Stop() calls WSACleanup() which invalidates mDBServerSocket.
         //          Closing DB socket after WSACleanup causes WSAECONNRESET(10054) in DBRecvLoop.
         // Korean: 2단계 - mClientEngine->Stop() 전에 DB 서버 연결 해제
@@ -317,7 +330,15 @@ namespace Network::TestServer
         //         WSACleanup 후 DB 소켓 종료 시 DBRecvLoop에서 WSAECONNRESET(10054) 발생.
         DisconnectFromDBServer();
 
-        // English: Step 3 - Stop client network engine (closes IOCP/RIO, calls WSACleanup)
+        // Shutdown DBServerTaskQueue AFTER DBRecvThread is joined (spec §4.6)
+        // 한글: DBRecvThread join 후 DBServerTaskQueue 종료 (스펙 §4.6)
+        if (mDBServerTaskQueue && mDBServerTaskQueue->IsRunning())
+        {
+            Logger::Info("Shutting down DBServerTaskQueue...");
+            mDBServerTaskQueue->Shutdown();
+        }
+
+        // Step 3 - Stop client network engine (closes IOCP/RIO, calls WSACleanup)
         // Korean: 3단계 - 클라이언트 네트워크 엔진 종료 (IOCP/RIO 종료, WSACleanup 호출)
         if (mClientEngine)
         {
@@ -337,7 +358,7 @@ namespace Network::TestServer
         Logger::Info("Connecting to DB server at " + host + ":" + std::to_string(port));
 
 #ifdef _WIN32
-        // English: Store endpoint for reconnect loop
+        // Store endpoint for reconnect loop
         // 한글: 재연결 루프용 엔드포인트 저장
         mDBHost = host;
         mDBPort = port;
@@ -348,7 +369,7 @@ namespace Network::TestServer
             return true;
         }
 
-        // English: Join previous recv thread before reusing (reconnect path).
+        // Join previous recv thread before reusing (reconnect path).
         //          Ping is now handled by TimerQueue — cancel any previous timer.
         // 한글: 재연결 경로에서 재사용 전 이전 recv 스레드 join.
         //       핑은 TimerQueue가 처리 — 이전 타이머 취소.
@@ -359,7 +380,7 @@ namespace Network::TestServer
             mDBPingTimer = 0;
         }
 
-        // English: Initialize Winsock exactly once (thread-safe via call_once)
+        // Initialize Winsock exactly once (thread-safe via call_once)
         // 한글: Winsock을 정확히 한 번 초기화 (call_once로 스레드 안전)
         WSADATA wsaData;
         static std::once_flag sWsaInitFlag;
@@ -373,7 +394,7 @@ namespace Network::TestServer
         });
         if (!wsaOk) return false;
 
-        // English: Create client socket
+        // Create client socket
         // 한글: 클라이언트 소켓 생성
         SOCKET clientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (clientSocket == INVALID_SOCKET)
@@ -383,13 +404,13 @@ namespace Network::TestServer
             return false;
         }
 
-        // English: Set up server address
+        // Set up server address
         // 한글: 서버 주소 설정
         sockaddr_in serverAddr{};
         serverAddr.sin_family = AF_INET;
         serverAddr.sin_port = htons(port);
 
-        // English: Convert host string to address
+        // Convert host string to address
         // 한글: 호스트 문자열을 주소로 변환
         if (inet_pton(AF_INET, host.c_str(), &serverAddr.sin_addr) <= 0)
         {
@@ -398,7 +419,7 @@ namespace Network::TestServer
             return false;
         }
 
-        // English: Connect to DB server
+        // Connect to DB server
         // 한글: DB 서버에 연결
         if (connect(clientSocket, reinterpret_cast<sockaddr*>(&serverAddr), sizeof(serverAddr)) == SOCKET_ERROR)
         {
@@ -408,19 +429,25 @@ namespace Network::TestServer
             return false;
         }
 
-        // English: Reset last error on success
+        // Reset last error on success
         // 한글: 성공 시 마지막 에러 초기화
         mLastDBConnectError.store(0);
 
-        // English: Create and initialize DBServerSession for DB connection
+        // Create and initialize DBServerSession for DB connection
         // 한글: DB 연결을 위한 DBServerSession 생성 및 초기화
         mDBServerSession = std::make_shared<DBServerSession>();
+        // Inject DBServerTaskQueue so PacketHandler can route DBQueryRes responses
+        // 한글: DBQueryRes 응답 라우팅을 위해 DBServerTaskQueue 주입
+        if (mDBServerTaskQueue)
+        {
+            mDBServerSession->GetPacketHandler()->SetTaskQueue(mDBServerTaskQueue.get());
+        }
         mDBServerSession->Initialize(static_cast<uint64_t>(clientSocket), clientSocket);
 
         mDBServerSocket = clientSocket;
         mDBRunning.store(true);
 
-        // English: Start DB recv thread.
+        // Start DB recv thread.
         //          DB ping is now handled by TimerQueue (fires every PING_INTERVAL_MS).
         //          The repeat callback returns mDBRunning so the timer auto-cancels on disconnect.
         // 한글: DB 수신 스레드 시작.
@@ -438,7 +465,7 @@ namespace Network::TestServer
         Logger::Info("Successfully connected to DB server at " + host + ":" + std::to_string(port));
         return true;
 #else
-        // English: Non-Windows platforms not yet supported for client connections
+        // Non-Windows platforms not yet supported for client connections
         // 한글: Windows가 아닌 플랫폼에서는 아직 클라이언트 연결을 지원하지 않음
         Logger::Error("Client connection not implemented for non-Windows platforms");
         return false;
@@ -449,7 +476,7 @@ namespace Network::TestServer
     {
         Logger::Info("Client connected - Connection: " + std::to_string(eventData.connectionId));
 
-        // English: Record connect time asynchronously.
+        // Record connect time asynchronously.
         //          Replaces ClientSession::OnConnected / AsyncRecordConnectTime.
         // 한글: 접속 시간 비동기 기록. ClientSession::OnConnected / AsyncRecordConnectTime 대체.
         if (mDBTaskQueue && mDBTaskQueue->IsRunning())
@@ -472,7 +499,7 @@ namespace Network::TestServer
     {
         Logger::Info("Client disconnected - Connection: " + std::to_string(eventData.connectionId));
 
-        // English: Record disconnect time only during normal operation.
+        // Record disconnect time only during normal operation.
         //          Stop() already records disconnect for all active sessions before
         //          engine teardown, so we skip during shutdown to avoid duplicates.
         // 한글: 정상 운영 중에만 접속 종료 시간 기록.
@@ -510,7 +537,7 @@ namespace Network::TestServer
 
         mDBRunning.store(false);
 
-        // English: Cancel DB ping timer immediately (auto-cancel via return value may lag one interval).
+        // Cancel DB ping timer immediately (auto-cancel via return value may lag one interval).
         // 한글: DB 핑 타이머 즉시 취소 (반환값 기반 자동 취소는 한 주기 지연될 수 있음).
         if (mDBPingTimer != 0)
         {
@@ -518,7 +545,7 @@ namespace Network::TestServer
             mDBPingTimer = 0;
         }
 
-        // English: Wake reconnect loop immediately if waiting in backoff sleep.
+        // Wake reconnect loop immediately if waiting in backoff sleep.
         // 한글: 재연결 루프가 백오프 대기 중이면 즉시 깨움.
         mDBShutdownCV.notify_all();
 
@@ -621,7 +648,7 @@ namespace Network::TestServer
                     mDBRecvOffset += header->size;
                 }
 
-                // English: Compact buffer when offset exceeds half the buffer size
+                // Compact buffer when offset exceeds half the buffer size
                 // 한글: 오프셋이 버퍼 크기의 절반을 초과하면 버퍼 압축
                 if (mDBRecvOffset > 0 && mDBRecvOffset > mDBRecvBuffer.size() / 2)
                 {
@@ -649,7 +676,7 @@ namespace Network::TestServer
 
         mDBRunning.store(false);
 
-        // English: If server is still running and no reconnect is active, start one
+        // If server is still running and no reconnect is active, start one
         // 한글: 서버가 아직 실행 중이고 재연결 스레드가 없으면 시작
         if (mIsRunning.load() && !mDBReconnectRunning.load())
         {
@@ -660,7 +687,7 @@ namespace Network::TestServer
 #endif
     }
 
-    // English: DBPingLoop() removed — DB ping is now handled by mTimerQueue.ScheduleRepeat()
+    // DBPingLoop() removed — DB ping is now handled by mTimerQueue.ScheduleRepeat()
     //          in ConnectToDBServer(). See SendDBPing() for the ping logic.
     // 한글: DBPingLoop() 제거 — DB 핑은 ConnectToDBServer()의 mTimerQueue.ScheduleRepeat()가 담당.
     //       핑 로직은 SendDBPing() 참조.
@@ -668,7 +695,7 @@ namespace Network::TestServer
     void TestServer::DBReconnectLoop()
     {
 #ifdef _WIN32
-        // English: Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
         //          Exception: WSAECONNREFUSED (server shutting down / starting up)
         //          → short fixed 1s interval to catch fast restarts
         // 한글: 지수 백오프: 1초, 2초, 4초, 8초, 16초, 최대 30초
@@ -685,7 +712,7 @@ namespace Network::TestServer
             Logger::Info("DB reconnect attempt #" + std::to_string(attempt) +
                          " in " + std::to_string(delayMs) + "ms...");
 
-            // English: Wait with CV so Stop() can interrupt immediately
+            // Wait with CV so Stop() can interrupt immediately
             // 한글: Stop()이 즉시 중단할 수 있도록 CV로 대기
             {
                 std::unique_lock<std::mutex> lock(mDBShutdownMutex);
@@ -703,7 +730,7 @@ namespace Network::TestServer
                 break;
             }
 
-            // English: Distinguish WSAECONNREFUSED from other errors:
+            // Distinguish WSAECONNREFUSED from other errors:
             //   WSAECONNREFUSED(10061): DB server is shutting down or starting up
             //   → Use short fixed interval (no backoff growth) to catch fast restarts
             //   Other errors: Apply standard exponential backoff
