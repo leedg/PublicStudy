@@ -141,7 +141,7 @@ namespace Network::Core
         static constexpr ServerPacketType PacketId = ServerPacketType::DBQueryReq;
 
         ServerPacketHeader header;
-        uint32_t  queryId;       // requestId = (workerIndex<<24) | seq
+        uint64_t  queryId;       // requestId (KeyGenerator::KeyId: tag|slot|seq48)
         uint8_t   taskType;      // DBServerTaskType (cast to uint8_t)
         uint16_t  dataLength;    // bytes used in data[] (not including null terminator)
         char      data[512];     // JSON payload (null-terminated, dataLength bytes valid)
@@ -158,7 +158,7 @@ namespace Network::Core
         static constexpr ServerPacketType PacketId = ServerPacketType::DBQueryRes;
 
         ServerPacketHeader header;
-        uint32_t  queryId;       // requestId echo
+        uint64_t  queryId;       // requestId echo (KeyGenerator::KeyId)
         int32_t   result;        // Network::ResultCode cast to int32_t
         uint16_t  detailLength;  // bytes used in detail[]
         char      detail[256];   // detail message (null-terminated)
