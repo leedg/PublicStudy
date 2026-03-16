@@ -212,6 +212,63 @@ namespace Network::TestServer
         return true;
     }
 
+    // =============================================================================
+    // RunSelfTest — verifies DBServerTaskQueue check-failure path (no network needed)
+    // 한글: DBServerTaskQueue 체크 실패 경로 검증 (네트워크 불필요)
+    // =============================================================================
+
+    bool TestServer::RunSelfTest()
+    {
+        if (!mDBServerTaskQueue || !mDBServerTaskQueue->IsRunning())
+        {
+            Logger::Error("RunSelfTest: DBServerTaskQueue not initialized");
+            return false;
+        }
+
+        Logger::Info("=== DBServerTaskQueue SelfTest: Check-failure path ===");
+
+        // Test 1: SavePlayerProgress with empty data → must receive InvalidRequest
+        // 한글: data가 비어 있으면 SavePlayerProgress는 InvalidRequest 반환해야 함
+        std::atomic<bool> gotCallback{false};
+        bool              passed{false};
+
+        DBServerTask task;
+        task.type      = DBServerTaskType::SavePlayerProgress;
+        task.sessionId = 9999;   // arbitrary test session
+        task.data      = "";     // empty → CheckTask must reject
+        task.callback  = [&](ResultCode rc, const std::string& msg)
+        {
+            Logger::Info("[SelfTest] Check-fail callback: rc=" +
+                         std::string(Network::ToString(rc)) + " msg=" + msg);
+            passed = (rc == ResultCode::InvalidRequest);
+            gotCallback.store(true);
+        };
+        mDBServerTaskQueue->EnqueueTask(std::move(task));
+
+        // Wait up to 1 s for the worker to process (it's synchronous once picked up)
+        // 한글: 워커가 처리할 때까지 최대 1초 대기
+        for (int i = 0; i < 100 && !gotCallback.load(); ++i)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        if (!gotCallback.load())
+        {
+            Logger::Error("[SelfTest] FAIL: callback not received within 1s");
+            return false;
+        }
+
+        if (!passed)
+        {
+            Logger::Error("[SelfTest] FAIL: expected InvalidRequest, got different ResultCode");
+            return false;
+        }
+
+        Logger::Info("[SelfTest] PASS: empty-data check correctly returns InvalidRequest");
+        Logger::Info("=== DBServerTaskQueue SelfTest complete ===");
+        return true;
+    }
+
     bool TestServer::Start()
     {
         if (!mClientEngine)

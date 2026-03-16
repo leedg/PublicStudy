@@ -51,6 +51,11 @@ namespace Network::TestServer
         // 한글: DB 서버에 연결
         bool ConnectToDBServer(const std::string& host, uint16_t port);
 
+        // Run self-tests for DBServerTaskQueue (check-failure path, no network needed).
+        // Returns true if all assertions pass.
+        // 한글: DBServerTaskQueue 셀프 테스트 (체크 실패 경로, 네트워크 불필요).
+        bool RunSelfTest();
+
     private:
         // Network event handlers for client connections
         // 한글: 클라이언트 연결에 대한 네트워크 이벤트 핸들러
