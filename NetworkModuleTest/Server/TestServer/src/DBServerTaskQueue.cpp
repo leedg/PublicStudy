@@ -4,6 +4,7 @@
 #include "../include/DBServerTaskQueue.h"
 #include "Utils/Logger.h"
 
+#include <cassert>
 #include <cstring>
 
 namespace Network::TestServer
@@ -343,17 +344,11 @@ void DBServerTaskQueue::ProcessTask(size_t workerIndex, DBServerTask task)
     // 한글: 세션 상태 항목 확보.
     SessionState& ss = worker.sessions[task.sessionId];
 
-    if (ss.requestId != 0)
-    {
-        // Collision: another task for this session is already in-flight with the same requestId.
-        // 한글: 동일 requestId로 이미 in-flight인 태스크 존재 — 거부.
-        Logger::Error("DBServerTaskQueue: requestId collision for session " +
-                      std::to_string(task.sessionId));
-        auto cb = std::move(task.callback);
-        if (ss.pending.empty()) worker.sessions.erase(task.sessionId);
-        if (cb) cb(ResultCode::Unknown, "requestId collision");
-        return;
-    }
+    // Invariant: session must be idle here — in-flight case was already handled above.
+    // 한글: 여기서 세션은 반드시 idle — in-flight 케이스는 위에서 이미 처리됨.
+    // (requestId wrap-around collision across sessions is astronomically unlikely at
+    //  16M ops per worker; if it becomes a concern, scan worker.sessions by requestId.)
+    assert(ss.requestId == 0);
 
     // STORE before SEND — response may arrive before Send() returns.
     // 한글: Send 전에 반드시 저장 — Send() 반환 전에 응답이 도착할 수 있음.
