@@ -172,6 +172,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Interface Layer - Database -->
+    <ClInclude Include="Interfaces\ResultCode.h" />
     <ClInclude Include="Interfaces\DatabaseType_enum.h" />
     <ClInclude Include="Interfaces\DatabaseConfig.h" />
     <ClInclude Include="Interfaces\DatabaseException.h" />

@@ -233,6 +233,9 @@
 
   <ItemGroup>
     <!-- Interfaces - DB -->
+    <ClInclude Include="Interfaces\ResultCode.h">
+      <Filter>Interfaces</Filter>
+    </ClInclude>
     <ClInclude Include="Interfaces\DatabaseType_enum.h">
       <Filter>Interfaces</Filter>
     </ClInclude>
