@@ -94,6 +94,15 @@ void ConnectionPool::Shutdown()
 	{
 		std::lock_guard<std::mutex> lock(mMutex);
 
+		// English: Mark as not initialized FIRST, inside the lock, so that any
+		//          concurrent GetConnection() call that passes the mInitialized.load()
+		//          check and then acquires the mutex sees false and bails out before
+		//          operating on the already-cleared mConnections.
+		// 한글: 락 내부에서 먼저 미초기화로 표시 — GetConnection()이
+		//       mInitialized.load() 체크를 통과한 뒤 mutex를 획득해도
+		//       false를 보고 즉시 반환, 이미 클리어된 mConnections를 건드리지 않도록.
+		mInitialized.store(false);
+
 		if (mActiveConnections.load() > 0)
 		{
 			// English: Timed out waiting for connections to be returned.
@@ -118,8 +127,6 @@ void ConnectionPool::Shutdown()
 			mDatabase.reset();
 		}
 	}
-
-	mInitialized.store(false);
 }
 
 std::shared_ptr<IConnection> ConnectionPool::CreateNewConnection()

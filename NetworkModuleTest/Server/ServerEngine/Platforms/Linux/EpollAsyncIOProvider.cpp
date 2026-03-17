@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
+#include <limits>
 #include <unistd.h>
 #include <errno.h>
 
@@ -73,7 +74,25 @@ AsyncIOError EpollAsyncIOProvider::Initialize(size_t queueDepth,
 
 void EpollAsyncIOProvider::Shutdown()
 {
-	if (!mInitialized.load(std::memory_order_acquire))
+	// English: Atomically transition mInitialized from true → false.
+	//          compare_exchange_strong prevents a TOCTOU race: a concurrent
+	//          ProcessCompletions call that passes the mInitialized.load() check
+	//          before this CAS would, in the old two-step pattern, proceed to call
+	//          epoll_wait on a closed fd (EBADF / crash). By setting the flag to
+	//          false in one atomic step, any ProcessCompletions call that loads false
+	//          after the CAS returns early — and any call already past the check will
+	//          at worst call epoll_wait on a fd that is still open (we close it under
+	//          the mutex below), which is safe.
+	// 한글: mInitialized를 true → false로 원자적 전환.
+	//       compare_exchange_strong으로 TOCTOU 경쟁 방지:
+	//       기존 두 단계 패턴(체크 후 락)에서는 ProcessCompletions가 mInitialized.load()
+	//       체크를 통과한 뒤 Shutdown이 fd를 닫으면 epoll_wait(-1)이 EBADF/크래시 유발.
+	//       CAS로 플래그를 원자적으로 false로 설정하면, 이후 ProcessCompletions 호출은
+	//       false를 보고 즉시 반환. 이미 체크를 통과한 호출은 아직 열린 fd에서
+	//       epoll_wait를 호출하므로 안전.
+	bool expected = true;
+	if (!mInitialized.compare_exchange_strong(expected, false,
+	        std::memory_order_acq_rel, std::memory_order_acquire))
 		return;
 
 	std::lock_guard<std::mutex> lock(mMutex);
@@ -88,7 +107,6 @@ void EpollAsyncIOProvider::Shutdown()
 
 	mPendingRecvOps.clear();
 	mPendingSendOps.clear();
-	mInitialized.store(false, std::memory_order_release);
 }
 
 bool EpollAsyncIOProvider::IsInitialized() const
@@ -162,7 +180,30 @@ AsyncIOError EpollAsyncIOProvider::SendAsync(SocketHandle socket,
 	if (socket < 0 || !buffer || size == 0)
 		return AsyncIOError::InvalidParameter;
 
+	// English: Guard against size_t → uint32_t truncation. If size > UINT32_MAX the
+	//          static_cast below wraps silently; the partial-send path then computes
+	//          remaining = mBufferSize - sent which evaluates to ~4 GiB, causing a
+	//          multi-GiB heap allocation and out-of-bounds memcpy.
+	// 한글: size_t → uint32_t 절단 방어. size > UINT32_MAX면 아래 static_cast가
+	//       묵시적으로 wrap; 부분 전송 경로에서 remaining = mBufferSize - sent가
+	//       ~4GiB로 계산되어 수 GiB 힙 할당 및 범위 초과 memcpy 발생.
+	if (size > static_cast<size_t>(std::numeric_limits<uint32_t>::max()))
+	{
+		mLastError = "SendAsync: buffer size exceeds uint32_t max (4 GiB)";
+		return AsyncIOError::InvalidParameter;
+	}
+
 	std::lock_guard<std::mutex> lock(mMutex);
+
+	// English: Reject if a send is already in-flight for this socket. Overwriting
+	//          a pending partial-send would silently drop the unfinished data.
+	// 한글: 동일 소켓에 이미 in-flight send가 있으면 거부.
+	//       대기 중인 부분 전송을 덮어쓰면 미전송 데이터가 소실됨.
+	if (mPendingSendOps.count(socket))
+	{
+		mLastError = "SendAsync: duplicate pending send for socket";
+		return AsyncIOError::OperationFailed;
+	}
 
 	// English: Store pending operation with buffer copy
 	// 한글: 버퍼 복사와 함께 대기 작업 저장
@@ -420,10 +461,35 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			}
 		}
 
-		// English: Handle EPOLLOUT (writable) - execute send then remove EPOLLOUT
-		// 한글: EPOLLOUT (쓰기 가능) 처리 - 송신 실행 후 EPOLLOUT 제거
-		if ((evFlags & EPOLLOUT) && processedCount < static_cast<int>(maxEntries))
+		// English: Handle EPOLLOUT (writable) - execute send then remove EPOLLOUT.
+		//          NOTE: Do NOT gate this block on processedCount < maxEntries directly.
+		//          When both EPOLLIN and EPOLLOUT fire in the same event, the EPOLLIN
+		//          block above may have consumed the last available slot (processedCount
+		//          now equals maxEntries). Skipping EPOLLOUT without re-arming would
+		//          permanently lose the pending send because the top-of-loop re-arm
+		//          already ran for this iteration (it saw the original evFlags before
+		//          EPOLLIN was processed). Instead, check here and re-arm if full.
+		// 한글: EPOLLOUT 처리 시 processedCount < maxEntries로 직접 가드하지 않음.
+		//       EPOLLIN + EPOLLOUT이 동시에 발화할 때 EPOLLIN 블록이 마지막 슬롯을
+		//       소모하면 (processedCount == maxEntries), 가드가 false가 되어 EPOLLOUT을
+		//       건너뜀. 루프 상단 재등록은 이미 이 이터레이션 시작 시 수행됐으므로
+		//       EPOLLOUT 재등록이 누락되어 pending send가 영구 소실됨. 여기서 체크하여
+		//       꽉 찬 경우 재등록 처리.
+		if (evFlags & EPOLLOUT)
 		{
+			if (processedCount >= static_cast<int>(maxEntries))
+			{
+				// English: entries[] full — re-arm with EPOLLOUT preserved so the
+				//          pending send fires in the next ProcessCompletions call.
+				// 한글: entries[] 꽉 참 — EPOLLOUT 보존하여 재등록, 다음
+				//       ProcessCompletions 호출에서 send가 발화하도록 함.
+				struct epoll_event rearmEv;
+				rearmEv.events  = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
+				rearmEv.data.fd = socket;
+				epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &rearmEv);
+			}
+			else
+			{
 			PendingOperation pending;
 			bool found = false;
 			{
@@ -532,7 +598,8 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 				ev.data.fd = socket;
 				epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev);
 			}
-		}
+		} // end else (processedCount < maxEntries)
+		} // end if (evFlags & EPOLLOUT)
 	}
 
 	return processedCount;
