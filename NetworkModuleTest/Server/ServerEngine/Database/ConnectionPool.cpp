@@ -155,6 +155,20 @@ std::shared_ptr<IConnection> ConnectionPool::GetConnection()
 
 	std::unique_lock<std::mutex> lock(mMutex);
 
+	// English: Re-check mInitialized after acquiring the lock. Shutdown() sets it
+	//          to false as its first action inside the same mutex, so a thread that
+	//          passed the pre-lock load() check above can still race with Shutdown().
+	//          Without this re-check, it would proceed to wait_for and then call
+	//          CreateNewConnection() on a nullptr mDatabase — null pointer dereference.
+	// 한글: 락 획득 후 mInitialized 재확인. Shutdown()이 동일 mutex 내부에서
+	//       첫 동작으로 false로 설정하므로, 위의 선락킹 load() 체크를 통과한 스레드가
+	//       Shutdown()과 경쟁할 수 있음. 재확인 없이는 wait_for 진행 후
+	//       nullptr mDatabase에서 CreateNewConnection() 호출 → null 포인터 역참조.
+	if (!mInitialized.load(std::memory_order_relaxed))
+	{
+		throw DatabaseException("Connection pool is shutting down");
+	}
+
 	// English: Wait for available connection or timeout
 	// 한글: 사용 가능한 연결 대기 또는 타임아웃
 	bool acquired = mCondition.wait_for(

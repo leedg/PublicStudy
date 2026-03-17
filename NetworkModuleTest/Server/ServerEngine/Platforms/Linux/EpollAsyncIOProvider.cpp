@@ -424,15 +424,25 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 				{
 					if (errno == EAGAIN || errno == EWOULDBLOCK)
 					{
-						// English: Re-arm EPOLLIN (EPOLLONESHOT was disarmed when the event fired).
-						// 한글: EPOLLIN 재등록 (이벤트 발생으로 EPOLLONESHOT이 비활성화됨).
+						// English: Re-insert into the map BEFORE calling epoll_ctl.
+						//          If epoll_ctl runs first, another worker can receive the
+						//          re-armed event before the map insertion completes and
+						//          find no pending op — silently dropping the recv and
+						//          hanging the session permanently.
+						//          Pattern mirrors RecvAsync: map insertion → then re-arm.
+						// 한글: epoll_ctl 호출 전 먼저 맵에 재삽입.
+						//       epoll_ctl이 먼저 실행되면 다른 워커가 재등록된 이벤트를
+						//       수신했을 때 맵에 op가 없어 recv를 조용히 버리고
+						//       세션이 영구 hang됨. RecvAsync와 동일한 패턴.
+						{
+							std::lock_guard<std::mutex> lock(mMutex);
+							mPendingRecvOps[socket] = std::move(pending);
+							mStats.mPendingRequests++;
+						}
 						struct epoll_event rearmEv;
 						rearmEv.events  = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
 						rearmEv.data.fd = socket;
 						epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &rearmEv);
-						std::lock_guard<std::mutex> lock(mMutex);
-						mPendingRecvOps[socket] = std::move(pending);
-						mStats.mPendingRequests++;
 					}
 					else
 					{

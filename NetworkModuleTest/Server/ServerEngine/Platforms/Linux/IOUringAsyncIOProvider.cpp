@@ -111,7 +111,20 @@ AsyncIOError IOUringAsyncIOProvider::Initialize(size_t queueDepth,
 
 void IOUringAsyncIOProvider::Shutdown()
 {
-	if (!mInitialized.load(std::memory_order_acquire))
+	// English: Atomically transition mInitialized true → false (same rationale as
+	//          EpollAsyncIOProvider::Shutdown — see comment there for full explanation).
+	//          Without the CAS, a concurrent ProcessCompletions that passes the
+	//          mInitialized.load() check could call io_uring_wait_cqe() /
+	//          io_uring_cq_advance() on a ring that has been torn down via
+	//          io_uring_queue_exit() — undefined behaviour.
+	// 한글: mInitialized를 true → false로 원자적 전환
+	//       (EpollAsyncIOProvider::Shutdown과 동일한 이유 — 해당 주석 참고).
+	//       CAS 없이는 ProcessCompletions가 mInitialized.load() 체크를 통과한 후
+	//       io_uring_queue_exit()로 파괴된 링에서 io_uring_wait_cqe() /
+	//       io_uring_cq_advance()를 호출할 수 있음 — 정의되지 않은 동작.
+	bool expected = true;
+	if (!mInitialized.compare_exchange_strong(expected, false,
+	        std::memory_order_acq_rel, std::memory_order_acquire))
 		return;
 
 	std::lock_guard<std::mutex> lock(mMutex);
@@ -131,7 +144,6 @@ void IOUringAsyncIOProvider::Shutdown()
 	// English: Exit the ring
 	// 한글: 링 종료
 	io_uring_queue_exit(&mRing);
-	mInitialized.store(false, std::memory_order_release);
 }
 
 bool IOUringAsyncIOProvider::IsInitialized() const

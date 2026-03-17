@@ -380,9 +380,26 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			{
 				if (errno == EAGAIN || errno == EWOULDBLOCK)
 				{
-					std::lock_guard<std::mutex> lock(mMutex);
-					mPendingRecvOps[socket] = std::move(pending);
-					mStats.mPendingRequests++;
+					// English: Re-insert into the map BEFORE calling kevent() to re-arm.
+					//          EV_ONESHOT was consumed when EVFILT_READ fired — the filter
+					//          is now deleted from the kqueue. Without re-arming here, the
+					//          socket will never fire EVFILT_READ again and the recv hangs.
+					//          Insert first so another worker cannot receive the re-armed
+					//          event and find no pending op in the map.
+					// 한글: kevent() 재등록 전 먼저 맵에 재삽입.
+					//       EV_ONESHOT이 EVFILT_READ 발화 시 소모 — 필터가 kqueue에서 삭제됨.
+					//       여기서 재등록하지 않으면 소켓이 다시 EVFILT_READ를 발화하지 않아
+					//       recv가 영구 hang됨. 먼저 삽입하여 다른 워커가 재등록된 이벤트
+					//       수신 시 맵에 op가 없는 상황을 방지.
+					{
+						std::lock_guard<std::mutex> lock(mMutex);
+						mPendingRecvOps[socket] = std::move(pending);
+						mStats.mPendingRequests++;
+					}
+					struct kevent rearmEv;
+					EV_SET(&rearmEv, socket, EVFILT_READ,
+					       EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, nullptr);
+					kevent(mKqueueFd, &rearmEv, 1, nullptr, 0, nullptr);
 					continue;
 				}
 				osError = errno;
