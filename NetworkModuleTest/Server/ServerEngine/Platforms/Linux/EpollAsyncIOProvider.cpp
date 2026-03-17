@@ -500,73 +500,76 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			}
 			else
 			{
-			PendingOperation pending;
+			// English: Perform send under the lock to eliminate the partial-send race.
+			// Previously the op was erased from mPendingSendOps, lock released, send()
+			// called, then remainder re-inserted. A concurrent SendAsync() could see
+			// count()==0 in that window and insert a new op, which the re-insert then
+			// silently overwrote. By calling send() under the lock and updating the
+			// map entry in-place on partial sends, the socket stays occupied throughout.
+			// Non-blocking sockets return from send() immediately (bounded lock hold).
+			// 한글: 락 내부에서 send()를 수행하여 부분 전송 경쟁 제거.
+			// 기존에는 mPendingSendOps에서 erase 후 락 해제, send(), 재삽입 사이의
+			// 窗에서 concurrent SendAsync()가 새 op를 삽입하면 re-insert가 묵시적으로 덮어씁.
+			// In-place 갱신으로 소켓이 항상 점유됨 상태 유지.
 			bool found = false;
+			bool partialSend = false;
+			int32_t sendResult = 0;
+			OSError sendError = 0;
+			RequestContext sendCtx = 0;
+
 			{
 				std::lock_guard<std::mutex> lock(mMutex);
 				auto it = mPendingSendOps.find(socket);
 				if (it != mPendingSendOps.end())
 				{
-					pending = std::move(it->second);
-					mPendingSendOps.erase(it);
-					mStats.mPendingRequests--;
 					found = true;
+					sendCtx = it->second.mContext;
+
+					ssize_t sent = ::send(socket, it->second.mBuffer,
+					                      it->second.mBufferSize, MSG_NOSIGNAL);
+
+					if (sent >= 0 &&
+					    static_cast<uint32_t>(sent) < it->second.mBufferSize)
+					{
+						// English: Partial send -- update in-place, keep in map.
+						// 한글: 부분 전송 -- in-place 갱신, 맵에 유지.
+						const uint32_t remaining =
+							it->second.mBufferSize - static_cast<uint32_t>(sent);
+						auto remainBuf = std::make_unique<uint8_t[]>(remaining);
+						std::memcpy(remainBuf.get(), it->second.mBuffer + sent, remaining);
+						it->second.mOwnedBuffer = std::move(remainBuf);
+						it->second.mBuffer      = it->second.mOwnedBuffer.get();
+						it->second.mBufferSize  = remaining;
+						partialSend = true;
+					}
+					else
+					{
+						// English: Full send or error -- remove from map.
+						// 한글: 전체 전송 또는 에러 -- 맵에서 제거.
+						if (sent >= 0)
+							sendResult = static_cast<int32_t>(sent);
+						else
+						{
+							sendError  = errno;
+							sendResult = -1;
+						}
+						mPendingSendOps.erase(it);
+						mStats.mPendingRequests--;
+					}
 				}
 			}
 
 			if (found)
 			{
-				// English: Perform the actual send before deciding how to re-arm.
-				//          MSG_NOSIGNAL suppresses SIGPIPE on Linux if the peer closed.
-				//          A non-blocking socket may perform a partial send (returns
-				//          0 < sent < mBufferSize); in that case re-queue the remainder
-				//          and re-arm with EPOLLOUT — do NOT emit a completion entry so
-				//          that the caller sees one atomic completion for the full write.
-				// 한글: 재등록 방식을 결정하기 위해 실제 send를 먼저 수행.
-				//       MSG_NOSIGNAL은 피어가 닫힌 경우 SIGPIPE를 억제함.
-				//       논블로킹 소켓에서 부분 전송(0 < sent < mBufferSize) 가능;
-				//       이 경우 나머지를 재큐하고 EPOLLOUT으로 재등록 — 호출자가
-				//       전체 쓰기에 대한 원자적 완료를 볼 수 있도록 completion entry 미발행.
-				int32_t result = 0;
-				OSError osError = 0;
-				ssize_t sent = ::send(socket, pending.mBuffer, pending.mBufferSize,
-									  MSG_NOSIGNAL);
-
-				if (sent >= 0 &&
-					static_cast<uint32_t>(sent) < pending.mBufferSize)
+				if (partialSend)
 				{
-					// English: Partial send — re-queue the unsent tail and re-arm EPOLLOUT.
-					// 한글: 부분 전송 — 미전송 나머지를 재큐하고 EPOLLOUT 재등록.
-					const uint32_t remaining =
-						pending.mBufferSize - static_cast<uint32_t>(sent);
-					auto remainBuf = std::make_unique<uint8_t[]>(remaining);
-					std::memcpy(remainBuf.get(),
-								pending.mBuffer + sent,
-								remaining);
-
-					PendingOperation remainOp;
-					remainOp.mContext     = pending.mContext;
-					remainOp.mType        = AsyncIOType::Send;
-					remainOp.mSocket      = socket;
-					remainOp.mOwnedBuffer = std::move(remainBuf);
-					remainOp.mBuffer      = remainOp.mOwnedBuffer.get();
-					remainOp.mBufferSize  = remaining;
-
-					{
-						std::lock_guard<std::mutex> lock(mMutex);
-						mPendingSendOps[socket] = std::move(remainOp);
-						mStats.mPendingRequests++;
-					}
-
 					struct epoll_event ev;
 					ev.events  = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
 					ev.data.fd = socket;
 					epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev);
-					continue; // no completion entry for partial send
+					// No completion entry for partial send
 				}
-
-				// English: Full send or real error — re-arm for EPOLLIN only.
-				// 한글: 전체 전송 또는 실제 에러 — EPOLLIN만으로 재등록.
+				else
 				{
 					struct epoll_event ev;
 					ev.events  = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
@@ -578,31 +581,18 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 							"epoll_ctl EPOLL_CTL_MOD (send done) failed: " +
 							std::string(strerror(errno)));
 					}
+					CompletionEntry &entry = entries[processedCount];
+					entry.mContext = sendCtx;
+					entry.mType = AsyncIOType::Send;
+					entry.mResult = sendResult;
+					entry.mOsError = sendError;
+					entry.mCompletionTime = 0;
+					mStats.mTotalCompletions++;
+					processedCount++;
 				}
-
-				if (sent >= 0)
-				{
-					result = static_cast<int32_t>(sent);
-				}
-				else
-				{
-					osError = errno;
-					result = -1;
-				}
-
-				CompletionEntry &entry = entries[processedCount];
-				entry.mContext = pending.mContext;
-				entry.mType = AsyncIOType::Send;
-				entry.mResult = result;
-				entry.mOsError = osError;
-				entry.mCompletionTime = 0;
-				mStats.mTotalCompletions++;
-				processedCount++;
 			}
 			else
 			{
-				// English: No pending send op — re-arm without EPOLLOUT to avoid busy loop.
-				// 한글: 대기 중인 송신 작업 없음 — busy loop 방지를 위해 EPOLLOUT 없이 재등록.
 				struct epoll_event ev;
 				ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
 				ev.data.fd = socket;

@@ -417,103 +417,88 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		}
 		else if (event.filter == EVFILT_WRITE)
 		{
-			PendingOperation pending;
+			// English: Perform send under the lock to eliminate the partial-send race
+			// (same rationale as EpollAsyncIOProvider -- see comment there).
+			// Non-blocking sockets return from send() immediately (bounded lock hold).
 			bool found = false;
+			bool partialSend = false;
+			int32_t sendResult = 0;
+			OSError sendError = 0;
+			RequestContext sendCtx = 0;
+
 			{
 				std::lock_guard<std::mutex> lock(mMutex);
 				auto it = mPendingSendOps.find(socket);
-				if (it != mPendingSendOps.end())
+				if (it == mPendingSendOps.end())
 				{
-					pending = std::move(it->second);
-					mPendingSendOps.erase(it);
-					mStats.mPendingRequests--;
-					found = true;
-				}
-			}
-
-			if (!found)
-			{
-				// English: No pending send — delete EVFILT_WRITE to avoid busy loop.
-				// 한글: 대기 중인 send 없음 — busy loop 방지를 위해 EVFILT_WRITE 삭제.
-				struct kevent delev;
-				EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-				kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
-				continue;
-			}
-
-			// English: Perform the actual send before deciding how to re-arm.
-			//          SO_NOSIGPIPE is set on each accepted socket, suppressing SIGPIPE.
-			//          On a non-blocking socket, send() may return 0 < sent < mBufferSize
-			//          (partial). Re-queue the remainder and re-add EVFILT_WRITE — do NOT
-			//          emit a completion entry so the caller sees one atomic full write.
-			// 한글: 재등록 방식을 결정하기 위해 실제 send를 먼저 수행.
-			//       SO_NOSIGPIPE가 소켓에 설정되어 SIGPIPE를 억제함.
-			//       논블로킹 소켓은 부분 전송(0 < sent < mBufferSize) 가능;
-			//       나머지를 재큐하고 EVFILT_WRITE 재등록 — 원자적 전체 완료를 위해 entry 미발행.
-			{
-				int32_t result = 0;
-				OSError osError = 0;
-				ssize_t sent = ::send(socket, pending.mBuffer, pending.mBufferSize, 0);
-
-				if (sent >= 0 &&
-					static_cast<uint32_t>(sent) < pending.mBufferSize)
-				{
-					// English: Partial send — re-queue the unsent tail, re-add EVFILT_WRITE.
-					// 한글: 부분 전송 — 미전송 나머지를 재큐하고 EVFILT_WRITE 재등록.
-					const uint32_t remaining =
-						pending.mBufferSize - static_cast<uint32_t>(sent);
-					auto remainBuf = std::make_unique<uint8_t[]>(remaining);
-					std::memcpy(remainBuf.get(), pending.mBuffer + sent, remaining);
-
-					PendingOperation remainOp;
-					remainOp.mContext     = pending.mContext;
-					remainOp.mType        = AsyncIOType::Send;
-					remainOp.mSocket      = socket;
-					remainOp.mOwnedBuffer = std::move(remainBuf);
-					remainOp.mBuffer      = remainOp.mOwnedBuffer.get();
-					remainOp.mBufferSize  = remaining;
-
-					{
-						std::lock_guard<std::mutex> lock(mMutex);
-						mPendingSendOps[socket] = std::move(remainOp);
-						mStats.mPendingRequests++;
-					}
-
-					struct kevent writeEv;
-					EV_SET(&writeEv, socket, EVFILT_WRITE,
-						   EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, nullptr);
-					kevent(mKqueueFd, &writeEv, 1, nullptr, 0, nullptr);
-					continue; // no completion entry for partial send
-				}
-
-				// English: Full send or real error — delete EVFILT_WRITE.
-			//          EV_ONESHOT (set in SendAsync and re-arm path) auto-removes the
-			//          filter on first fire; this EV_DELETE is a harmless defensive no-op.
-			// 한글: 전체 전송 또는 실제 에러 — EVFILT_WRITE 삭제.
-			//       EV_ONESHOT(SendAsync 및 재등록 경로에서 설정)이 첫 발화 시 자동으로
-			//       필터를 제거하므로 이 EV_DELETE는 무해한 방어적 no-op.
-				struct kevent delev;
-				EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-				kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
-
-				if (sent >= 0)
-				{
-					result = static_cast<int32_t>(sent);
+					// No pending send -- delete EVFILT_WRITE to avoid busy loop.
+					struct kevent delev;
+					EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+					kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
 				}
 				else
 				{
-					osError = errno;
-					result = -1;
-				}
+					found = true;
+					sendCtx = it->second.mContext;
 
-				CompletionEntry &entry = entries[processedCount];
-				entry.mContext = pending.mContext;
-				entry.mType = AsyncIOType::Send;
-				entry.mResult = result;
-				entry.mOsError = osError;
-				entry.mCompletionTime = 0;
-				mStats.mTotalCompletions++;
-				processedCount++;
+					ssize_t sent = ::send(socket, it->second.mBuffer,
+					                      it->second.mBufferSize, 0);
+
+					if (sent >= 0 &&
+					    static_cast<uint32_t>(sent) < it->second.mBufferSize)
+					{
+						// Partial send -- update in-place, keep in map.
+						const uint32_t remaining =
+							it->second.mBufferSize - static_cast<uint32_t>(sent);
+						auto remainBuf = std::make_unique<uint8_t[]>(remaining);
+						std::memcpy(remainBuf.get(), it->second.mBuffer + sent, remaining);
+						it->second.mOwnedBuffer = std::move(remainBuf);
+						it->second.mBuffer      = it->second.mOwnedBuffer.get();
+						it->second.mBufferSize  = remaining;
+						partialSend = true;
+					}
+					else
+					{
+						// Full send or error -- remove from map.
+						if (sent >= 0)
+							sendResult = static_cast<int32_t>(sent);
+						else
+						{
+							sendError  = errno;
+							sendResult = -1;
+						}
+						mPendingSendOps.erase(it);
+						mStats.mPendingRequests--;
+					}
+				}
+			}
+
+			if (found)
+			{
+				if (partialSend)
+				{
+					struct kevent writeEv;
+					EV_SET(&writeEv, socket, EVFILT_WRITE,
+					       EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, nullptr);
+					kevent(mKqueueFd, &writeEv, 1, nullptr, 0, nullptr);
+					// No completion entry for partial send
+				}
+				else
+				{
+					// Full send or error -- EV_ONESHOT already auto-removed; EV_DELETE is no-op.
+					struct kevent delev;
+					EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+					kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
+
+					CompletionEntry &entry = entries[processedCount];
+					entry.mContext = sendCtx;
+					entry.mType = AsyncIOType::Send;
+					entry.mResult = sendResult;
+					entry.mOsError = sendError;
+					entry.mCompletionTime = 0;
+					mStats.mTotalCompletions++;
+					processedCount++;
+				}
 			}
 		}
 	}
