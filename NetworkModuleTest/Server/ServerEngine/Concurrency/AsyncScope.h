@@ -8,6 +8,8 @@
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
+#include <cstdlib>
 #include <functional>
 #include <mutex>
 #include <utility>
@@ -51,10 +53,24 @@ class AsyncScope
 	{
 		// English: Precondition: mInFlight MUST be 0. Call WaitForDrain(-1) before Reset().
 		//          Violating this corrupts the in-flight counter of the reused scope.
+		//          Debug builds: assert fires immediately for fast diagnosis in the debugger.
+		//          Release builds: explicit abort — corruption is not recoverable, and
+		//          silently continuing would cause hard-to-diagnose memory safety bugs.
 		// 한글: 선행 조건: mInFlight가 반드시 0이어야 함. Reset() 전 WaitForDrain(-1) 필수.
 		//       위반 시 재사용 스코프의 in-flight 카운터 오염.
-		assert(mInFlight.load(std::memory_order_acquire) == 0 &&
+		//       디버그: assert가 즉시 발동하여 디버거에서 빠른 진단 가능.
+		//       릴리즈: 오염은 복구 불가 — 조용히 계속하면 진단 어려운 메모리 안전성 버그 발생.
+		const size_t inFlight = mInFlight.load(std::memory_order_acquire);
+		assert(inFlight == 0 &&
 		       "AsyncScope::Reset() called while tasks are in-flight");
+		if (inFlight != 0)
+		{
+			std::fprintf(stderr,
+			    "[AsyncScope::Reset] FATAL: in-flight count is %zu (expected 0). "
+			    "Ensure WaitForDrain(-1) is called before Reset().\n",
+			    inFlight);
+			std::abort();
+		}
 		mCancelled.store(false, std::memory_order_release);
 	}
 

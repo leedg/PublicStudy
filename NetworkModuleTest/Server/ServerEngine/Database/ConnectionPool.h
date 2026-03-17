@@ -93,7 +93,7 @@ class ConnectionPool : public IConnectionPool
 	DatabaseConfig mConfig;
 	std::unique_ptr<IDatabase> mDatabase;
 	std::vector<PooledConnection> mConnections;
-	std::mutex mMutex;
+	mutable std::mutex mMutex;
 	std::condition_variable mCondition;
 	std::atomic<bool> mInitialized;
 	std::atomic<size_t> mActiveConnections;

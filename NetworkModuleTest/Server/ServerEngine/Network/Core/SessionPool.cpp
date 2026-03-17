@@ -57,6 +57,20 @@ void SessionPool::Shutdown()
 
     mInitialized = false;
 
+    // English: Warn if active sessions still exist — callers must ensure all sessions
+    //          are released before Shutdown(). ReleaseInternal() guards against accessing
+    //          destroyed slots, but logging here aids diagnosis of lifecycle bugs.
+    // 한글: 활성 세션이 남아 있으면 경고 — 호출자는 Shutdown() 전에 모든 세션을
+    //       반납해야 함. ReleaseInternal()이 파괴된 슬롯 접근을 방어하지만,
+    //       여기서 로그를 남겨 생명주기 버그 진단을 돕는다.
+    const size_t active = mActiveCount.load(std::memory_order_relaxed);
+    if (active > 0)
+    {
+        Utils::Logger::Warn("SessionPool::Shutdown: " + std::to_string(active) +
+                            " session(s) still active — potential use-after-free if "
+                            "callers retain references after Shutdown()");
+    }
+
     std::lock_guard<std::mutex> lock(mFreeListMutex);
     mFreeList.clear();
     mSlots.reset();

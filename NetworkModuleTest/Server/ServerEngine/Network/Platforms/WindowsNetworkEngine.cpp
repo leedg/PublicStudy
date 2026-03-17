@@ -230,6 +230,23 @@ void WindowsNetworkEngine::AcceptLoop()
 			Utils::Logger::Error("Failed to queue recv - Session " +
 				std::to_string(session->GetId()) + ": " +
 				std::string(mProvider->GetLastError()));
+
+			// English: Dispatch Disconnected to balance the Connected event already in the
+			//          logic dispatcher queue. Both use the same key (sessionId), so
+			//          KeyedDispatcher's FIFO guarantee ensures Connected runs before
+			//          Disconnected. The session shared_ptr keeps the object alive until
+			//          the lambda completes.
+			// 한글: 이미 로직 디스패처 큐에 있는 Connected 이벤트에 대응하는
+			//       Disconnected 이벤트 디스패치. 동일 키(sessionId)를 사용하므로
+			//       KeyedDispatcher의 FIFO 보장에 의해 Connected 먼저 실행.
+			//       람다가 완료될 때까지 세션 shared_ptr이 객체를 살아있게 유지.
+			auto disconnSession = session;
+			mLogicDispatcher.Dispatch(disconnSession->GetId(),
+				[this, disconnSession]()
+				{
+					FireEvent(Core::NetworkEvent::Disconnected, disconnSession->GetId());
+				});
+
 			Core::SessionManager::Instance().RemoveSession(session);
 			continue;
 		}

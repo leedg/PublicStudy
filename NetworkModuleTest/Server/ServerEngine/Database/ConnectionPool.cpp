@@ -84,12 +84,33 @@ void ConnectionPool::Shutdown()
 	// English: Close all connections and disconnect database under a single lock.
 	//          Call ClearLocked() (not Clear()) to avoid re-locking the non-recursive
 	//          mutex — re-locking std::mutex is undefined behaviour (typically deadlocks).
+	//          If the 5-second wait timed out and in-use connections remain,
+	//          force-close them to prevent resource leaks on Disconnect().
 	// 한글: 단일 락 아래 모든 연결 닫기 및 데이터베이스 연결 해제.
 	//       비재귀 mutex 재락킹(UB, 통상 데드락)을 피하기 위해
 	//       Clear() 대신 ClearLocked() 호출.
+	//       5초 대기가 타임아웃되어 in-use 연결이 남아 있으면,
+	//       리소스 누수 방지를 위해 강제 종료.
 	{
 		std::lock_guard<std::mutex> lock(mMutex);
-		ClearLocked();
+
+		if (mActiveConnections.load() > 0)
+		{
+			// English: Timed out waiting for connections to be returned.
+			//          Force-close all remaining connections regardless of in-use state.
+			// 한글: 연결 반환 대기 타임아웃.
+			//       in-use 여부와 무관하게 남은 모든 연결을 강제 종료.
+			for (auto &pooled : mConnections)
+			{
+				pooled.mConnection->Close();
+			}
+			mConnections.clear();
+			mActiveConnections.store(0);
+		}
+		else
+		{
+			ClearLocked();
+		}
 
 		if (mDatabase)
 		{
@@ -234,7 +255,7 @@ size_t ConnectionPool::GetActiveConnections() const
 
 size_t ConnectionPool::GetAvailableConnections() const
 {
-	std::lock_guard<std::mutex> lock(const_cast<std::mutex &>(mMutex));
+	std::lock_guard<std::mutex> lock(mMutex);
 	size_t available = 0;
 	for (const auto &pooled : mConnections)
 	{
@@ -270,7 +291,7 @@ void ConnectionPool::SetIdleTimeout(int seconds)
 
 size_t ConnectionPool::GetTotalConnections() const
 {
-	std::lock_guard<std::mutex> lock(const_cast<std::mutex &>(mMutex));
+	std::lock_guard<std::mutex> lock(mMutex);
 	return mConnections.size();
 }
 
