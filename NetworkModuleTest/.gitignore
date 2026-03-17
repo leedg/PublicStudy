@@ -67,3 +67,6 @@ crash_logs/
 
 # Git worktrees
 .worktrees/
+
+# Temp / delete staging
+Doc/Reports/delete/
