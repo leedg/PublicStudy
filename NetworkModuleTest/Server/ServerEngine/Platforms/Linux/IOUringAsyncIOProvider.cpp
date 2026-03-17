@@ -42,7 +42,7 @@ IOUringAsyncIOProvider::~IOUringAsyncIOProvider() { Shutdown(); }
 AsyncIOError IOUringAsyncIOProvider::Initialize(size_t queueDepth,
 												size_t maxConcurrent)
 {
-	if (mInitialized)
+	if (mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::AlreadyInitialized;
 
 	mMaxConcurrentOps = maxConcurrent;
@@ -105,13 +105,13 @@ AsyncIOError IOUringAsyncIOProvider::Initialize(size_t queueDepth,
 	mInfo.mSupportsBatching = true;
 	mInfo.mSupportsZeroCopy = mSupportsFixedBuffers;
 
-	mInitialized = true;
+	mInitialized.store(true, std::memory_order_release);
 	return AsyncIOError::Success;
 }
 
 void IOUringAsyncIOProvider::Shutdown()
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return;
 
 	std::lock_guard<std::mutex> lock(mMutex);
@@ -131,10 +131,13 @@ void IOUringAsyncIOProvider::Shutdown()
 	// English: Exit the ring
 	// 한글: 링 종료
 	io_uring_queue_exit(&mRing);
-	mInitialized = false;
+	mInitialized.store(false, std::memory_order_release);
 }
 
-bool IOUringAsyncIOProvider::IsInitialized() const { return mInitialized; }
+bool IOUringAsyncIOProvider::IsInitialized() const
+{
+	return mInitialized.load(std::memory_order_acquire);
+}
 
 // =============================================================================
 // English: Socket Association
@@ -148,7 +151,7 @@ AsyncIOError IOUringAsyncIOProvider::AssociateSocket(SocketHandle socket,
 	// 한글: io_uring은 명시적 소켓 연결이 필요하지 않음
 	// io_uring operates on file descriptors directly via SQE submissions,
 	// no prior registration needed (unlike IOCP/epoll).
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 
 	return AsyncIOError::Success;
@@ -161,7 +164,7 @@ AsyncIOError IOUringAsyncIOProvider::AssociateSocket(SocketHandle socket,
 
 int64_t IOUringAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 {
-	if (!mInitialized || !ptr || size == 0)
+	if (!mInitialized.load(std::memory_order_acquire) || !ptr || size == 0)
 		return -1;
 
 	std::lock_guard<std::mutex> lock(mMutex);
@@ -180,7 +183,7 @@ int64_t IOUringAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 
 AsyncIOError IOUringAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 
 	std::lock_guard<std::mutex> lock(mMutex);
@@ -203,7 +206,7 @@ AsyncIOError IOUringAsyncIOProvider::SendAsync(SocketHandle socket,
 												   RequestContext context,
 												   uint32_t flags)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)
 		return AsyncIOError::InvalidParameter;
@@ -272,7 +275,7 @@ AsyncIOError IOUringAsyncIOProvider::RecvAsync(SocketHandle socket,
 												   RequestContext context,
 												   uint32_t flags)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)
 		return AsyncIOError::InvalidParameter;
@@ -337,7 +340,7 @@ AsyncIOError IOUringAsyncIOProvider::FlushRequests()
 {
 	// English: Submit all SQ entries to kernel
 	// 한글: 모든 SQ 항목을 커널에 제출
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 
 	return SubmitRing() ? AsyncIOError::Success : AsyncIOError::OperationFailed;
@@ -389,6 +392,14 @@ int IOUringAsyncIOProvider::ProcessCompletionQueue(CompletionEntry *entries,
 													   size_t maxEntries)
 {
 	int processedCount = 0;
+	// English: Track the total number of CQEs actually consumed from the ring —
+	//          distinct from processedCount which only counts entries with valid pending
+	//          ops. Stale CQEs (opKey not found, e.g. from a rolled-back SendAsync) must
+	//          also be consumed to prevent them from clogging the CQ on every call.
+	// 한글: 링에서 실제 소비된 CQE 총수 추적 —
+	//       유효한 pending op가 있는 항목만 세는 processedCount와 다름.
+	//       스테일 CQE (opKey 미발견, 예: 롤백된 SendAsync)도 소비해야 CQ 누적 방지.
+	unsigned cqesConsumed = 0;
 	unsigned head;
 	struct io_uring_cqe *cqe;
 
@@ -396,6 +407,11 @@ int IOUringAsyncIOProvider::ProcessCompletionQueue(CompletionEntry *entries,
 	{
 		if (static_cast<size_t>(processedCount) >= maxEntries)
 			break;
+
+		// English: Count this CQE as consumed before the break check above would skip it.
+		//          Placed after the break so we don't count the one that triggered break.
+		// 한글: break 이전 CQE는 모두 소비됨으로 카운트. break를 유발한 항목은 미카운트.
+		cqesConsumed++;
 
 		uint64_t opKey = cqe->user_data;
 		int res = cqe->res;
@@ -436,11 +452,16 @@ int IOUringAsyncIOProvider::ProcessCompletionQueue(CompletionEntry *entries,
 			mStats.mTotalCompletions++;
 			processedCount++;
 		}
+		// English: Stale CQE (opKey not in mPendingOps): counted in cqesConsumed but
+		//          not in processedCount. io_uring_cq_advance must use cqesConsumed so
+		//          the stale entry is actually removed from the ring.
+		// 한글: 스테일 CQE (opKey 미발견): cqesConsumed에는 포함, processedCount는 제외.
+		//       io_uring_cq_advance는 cqesConsumed를 사용해야 스테일 항목이 링에서 제거됨.
 	}
 
-	if (processedCount > 0)
+	if (cqesConsumed > 0)
 	{
-		io_uring_cq_advance(&mRing, static_cast<unsigned>(processedCount));
+		io_uring_cq_advance(&mRing, cqesConsumed);
 	}
 
 	return processedCount;

@@ -6,6 +6,7 @@
 #include "AsyncIOProvider.h"
 
 #ifdef __linux__
+#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -135,7 +136,7 @@ class EpollAsyncIOProvider : public AsyncIOProvider
 		mLastError; // English: Last error message / 한글: 마지막 에러 메시지
 	size_t
 		mMaxConcurrentOps; // English: Max concurrent ops / 한글: 최대 동시 작업
-	bool mInitialized;     // English: Initialization flag / 한글: 초기화 플래그
+	std::atomic<bool> mInitialized; // English: Initialization flag (atomic for cross-thread visibility) / 한글: 초기화 플래그 (크로스-스레드 가시성을 위한 atomic)
 };
 
 } // namespace Linux

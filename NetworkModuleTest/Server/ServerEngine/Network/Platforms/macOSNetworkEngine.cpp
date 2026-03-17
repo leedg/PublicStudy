@@ -200,6 +200,25 @@ void macOSNetworkEngine::AcceptLoop()
 			fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK);
 		}
 
+		// English: Suppress SIGPIPE on this socket. On macOS, writing to a closed
+		//          remote socket raises SIGPIPE which kills the process by default.
+		//          SO_NOSIGPIPE makes send() return EPIPE instead of raising the signal.
+		//          (MSG_NOSIGNAL is Linux-only and not available on macOS.)
+		// 한글: 소켓의 SIGPIPE 억제. macOS에서 원격이 닫힌 소켓에 쓰면 기본적으로
+		//       SIGPIPE 시그널이 발생하여 프로세스가 종료됨.
+		//       SO_NOSIGPIPE는 시그널 대신 send()가 EPIPE를 반환하도록 함.
+		//       (MSG_NOSIGNAL은 Linux 전용이므로 macOS에서 사용 불가.)
+		{
+			int nosigpipe = 1;
+			if (setsockopt(clientSocket, SOL_SOCKET, SO_NOSIGPIPE,
+						   &nosigpipe, sizeof(nosigpipe)) < 0)
+			{
+				Utils::Logger::Warn("Failed to set SO_NOSIGPIPE on socket " +
+									std::to_string(clientSocket) + ": " +
+									std::string(strerror(errno)));
+			}
+		}
+
 		// English: Create session
 		// 한글: 세션 생성
 		Core::SessionRef session =
@@ -261,11 +280,23 @@ void macOSNetworkEngine::AcceptLoop()
 		{
 			Utils::Logger::Error("Failed to queue recv - Session " +
 								 std::to_string(session->GetId()));
+
+			// English: Connected event was already dispatched above — dispatch Disconnected
+			//          to balance it before removing the session.
+			// 한글: 위에서 Connected 이벤트가 이미 dispatch됐으므로 세션 제거 전에
+			//       Disconnected를 dispatch하여 쌍을 맞춤.
+			auto disconnSession = session;
+			mLogicDispatcher.Dispatch(disconnSession->GetId(),
+				[this, disconnSession]()
+				{
+					FireEvent(Core::NetworkEvent::Disconnected, disconnSession->GetId());
+				});
+
 			Core::SessionManager::Instance().RemoveSession(session);
-			// English: Do NOT call close(clientSocket) — same rationale as above:
-			//          RemoveSession → session->Close() already closes the fd.
-			// 한글: close(clientSocket) 호출 금지 — 위와 동일한 이유:
-			//       RemoveSession → session->Close()가 이미 fd를 닫음.
+			// English: Do NOT call close(clientSocket) — RemoveSession → session->Close()
+			//          already closes the fd.
+			// 한글: close(clientSocket) 호출 금지 — RemoveSession → session->Close()가
+			//       이미 fd를 닫음.
 			continue;
 		}
 

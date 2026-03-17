@@ -37,7 +37,7 @@ KqueueAsyncIOProvider::~KqueueAsyncIOProvider() { Shutdown(); }
 AsyncIOError KqueueAsyncIOProvider::Initialize(size_t queueDepth,
 												   size_t maxConcurrent)
 {
-	if (mInitialized)
+	if (mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::AlreadyInitialized;
 
 	// English: Create kqueue file descriptor
@@ -61,13 +61,13 @@ AsyncIOError KqueueAsyncIOProvider::Initialize(size_t queueDepth,
 	mInfo.mSupportsBatching = false;
 	mInfo.mSupportsZeroCopy = false;
 
-	mInitialized = true;
+	mInitialized.store(true, std::memory_order_release);
 	return AsyncIOError::Success;
 }
 
 void KqueueAsyncIOProvider::Shutdown()
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return;
 
 	std::lock_guard<std::mutex> lock(mMutex);
@@ -83,10 +83,13 @@ void KqueueAsyncIOProvider::Shutdown()
 	mPendingRecvOps.clear();
 	mPendingSendOps.clear();
 	mRegisteredSockets.clear();
-	mInitialized = false;
+	mInitialized.store(false, std::memory_order_release);
 }
 
-bool KqueueAsyncIOProvider::IsInitialized() const { return mInitialized; }
+bool KqueueAsyncIOProvider::IsInitialized() const
+{
+	return mInitialized.load(std::memory_order_acquire);
+}
 
 // =============================================================================
 // English: Socket Association
@@ -96,7 +99,7 @@ bool KqueueAsyncIOProvider::IsInitialized() const { return mInitialized; }
 AsyncIOError KqueueAsyncIOProvider::AssociateSocket(SocketHandle socket,
 													RequestContext context)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 
 	// English: Register socket with kqueue for read/write events
@@ -140,7 +143,7 @@ AsyncIOError KqueueAsyncIOProvider::SendAsync(SocketHandle socket,
 												  RequestContext context,
 												  uint32_t flags)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)
 		return AsyncIOError::InvalidParameter;
@@ -176,7 +179,7 @@ AsyncIOError KqueueAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 												  RequestContext context,
 												  uint32_t flags)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)
 		return AsyncIOError::InvalidParameter;
@@ -195,6 +198,26 @@ AsyncIOError KqueueAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
 
+	// English: Re-add EVFILT_READ with EV_ONESHOT so only one worker is woken per event.
+	//          EV_ONESHOT deletes the filter after it fires; we re-add it here each time
+	//          RecvAsync is called (initial setup and after each completed recv).
+	// 한글: 이벤트당 워커 하나만 깨우기 위해 EV_ONESHOT으로 EVFILT_READ 재등록.
+	//       EV_ONESHOT은 발생 후 필터를 삭제하므로 RecvAsync 호출 시마다 재등록함.
+	{
+		struct kevent kev;
+		EV_SET(&kev, socket, EVFILT_READ, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, nullptr);
+		if (kevent(mKqueueFd, &kev, 1, nullptr, 0, nullptr) < 0)
+		{
+			Utils::Logger::Error(
+				"KqueueAsyncIOProvider::RecvAsync - kevent EV_ADD | EV_ONESHOT failed: " +
+				std::string(strerror(errno)));
+			mPendingRecvOps.erase(socket);
+			mStats.mTotalRequests--;
+			mStats.mPendingRequests--;
+			return AsyncIOError::OperationFailed;
+		}
+	}
+
 	return AsyncIOError::Success;
 }
 
@@ -202,7 +225,7 @@ AsyncIOError KqueueAsyncIOProvider::FlushRequests()
 {
 	// English: kqueue doesn't support batch processing (no-op)
 	// 한글: kqueue는 배치 처리를 지원하지 않음 (no-op)
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 
 	return AsyncIOError::Success;
@@ -216,7 +239,7 @@ AsyncIOError KqueueAsyncIOProvider::FlushRequests()
 int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 												  size_t maxEntries, int timeoutMs)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return static_cast<int>(AsyncIOError::NotInitialized);
 	if (!entries || maxEntries == 0 || mKqueueFd < 0)
 		return static_cast<int>(AsyncIOError::InvalidParameter);
@@ -389,12 +412,18 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 
 bool KqueueAsyncIOProvider::RegisterSocketEvents(SocketHandle socket)
 {
-	// English: Register for read events only; EVFILT_WRITE added dynamically on SendAsync
-	// 한글: 읽기 이벤트만 등록; EVFILT_WRITE는 SendAsync 시 동적으로 추가
-	struct kevent ev;
-	EV_SET(&ev, socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, nullptr);
-
-	return kevent(mKqueueFd, &ev, 1, nullptr, 0, nullptr) >= 0;
+	// English: Register the socket with kqueue for error/EOF detection only.
+	//          EVFILT_READ is added (with EV_ONESHOT) in RecvAsync each time a recv
+	//          is queued, so it is not added here. EVFILT_WRITE is added dynamically
+	//          in SendAsync. This avoids a race between AssociateSocket and RecvAsync
+	//          where a spurious EV_ONESHOT fire could permanently silence EVFILT_READ.
+	// 한글: 소켓을 에러/EOF 감지 전용으로 kqueue에 등록.
+	//       EVFILT_READ는 RecvAsync에서 recv 큐잉 시마다 EV_ONESHOT으로 추가하므로
+	//       여기서는 추가하지 않음. EVFILT_WRITE는 SendAsync에서 동적으로 추가.
+	//       AssociateSocket과 RecvAsync 사이의 경쟁으로 EV_ONESHOT이 조기 발화하여
+	//       EVFILT_READ가 영구적으로 침묵하는 경쟁 조건을 방지.
+	(void)socket; // registration deferred to RecvAsync
+	return true;
 }
 
 bool KqueueAsyncIOProvider::UnregisterSocketEvents(SocketHandle socket)

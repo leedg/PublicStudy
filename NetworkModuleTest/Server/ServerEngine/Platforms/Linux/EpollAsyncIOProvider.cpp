@@ -43,7 +43,7 @@ EpollAsyncIOProvider::~EpollAsyncIOProvider()
 AsyncIOError EpollAsyncIOProvider::Initialize(size_t queueDepth,
 												  size_t maxConcurrent)
 {
-	if (mInitialized)
+	if (mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::AlreadyInitialized;
 
 	// English: Create epoll file descriptor with close-on-exec
@@ -67,13 +67,13 @@ AsyncIOError EpollAsyncIOProvider::Initialize(size_t queueDepth,
 	mInfo.mSupportsBatching = false;
 	mInfo.mSupportsZeroCopy = false;
 
-	mInitialized = true;
+	mInitialized.store(true, std::memory_order_release);
 	return AsyncIOError::Success;
 }
 
 void EpollAsyncIOProvider::Shutdown()
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return;
 
 	std::lock_guard<std::mutex> lock(mMutex);
@@ -88,10 +88,13 @@ void EpollAsyncIOProvider::Shutdown()
 
 	mPendingRecvOps.clear();
 	mPendingSendOps.clear();
-	mInitialized = false;
+	mInitialized.store(false, std::memory_order_release);
 }
 
-bool EpollAsyncIOProvider::IsInitialized() const { return mInitialized; }
+bool EpollAsyncIOProvider::IsInitialized() const
+{
+	return mInitialized.load(std::memory_order_acquire);
+}
 
 // =============================================================================
 // English: Socket Association
@@ -101,13 +104,18 @@ bool EpollAsyncIOProvider::IsInitialized() const { return mInitialized; }
 AsyncIOError EpollAsyncIOProvider::AssociateSocket(SocketHandle socket,
 												   RequestContext context)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 
-	// English: Register socket with epoll for read + error events
-	// 한글: 소켓을 epoll에 읽기 + 에러 이벤트로 등록
+	// English: Register socket with epoll for read + error events.
+	//          EPOLLONESHOT ensures only one worker thread is woken per event,
+	//          eliminating thundering herd when multiple workers share one epoll fd.
+	//          The socket must be re-armed after each event via EPOLL_CTL_MOD.
+	// 한글: 소켓을 epoll에 읽기 + 에러 이벤트로 등록.
+	//       EPOLLONESHOT으로 이벤트당 워커 하나만 깨워 thundering herd 방지.
+	//       이벤트 발생 후 EPOLL_CTL_MOD로 재등록 필요.
 	struct epoll_event ev;
-	ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+	ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
 	ev.data.fd = socket;
 
 	if (epoll_ctl(mEpollFd, EPOLL_CTL_ADD, socket, &ev) < 0)
@@ -149,7 +157,7 @@ AsyncIOError EpollAsyncIOProvider::SendAsync(SocketHandle socket,
 											 RequestContext context,
 											 uint32_t flags)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)
 		return AsyncIOError::InvalidParameter;
@@ -171,10 +179,10 @@ AsyncIOError EpollAsyncIOProvider::SendAsync(SocketHandle socket,
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
 
-	// English: Dynamically add EPOLLOUT so we get notified when socket is writable
-	// 한글: 소켓이 쓰기 가능할 때 알림을 받기 위해 EPOLLOUT 동적 추가
+	// English: Re-arm socket with EPOLLOUT added (EPOLLONESHOT requires explicit re-arm).
+	// 한글: EPOLLOUT 추가하여 소켓 재등록 (EPOLLONESHOT이므로 명시적 재등록 필요).
 	struct epoll_event ev;
-	ev.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+	ev.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
 	ev.data.fd = socket;
 	if (epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev) < 0)
 	{
@@ -192,7 +200,7 @@ AsyncIOError EpollAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 											 RequestContext context,
 											 uint32_t flags)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)
 		return AsyncIOError::InvalidParameter;
@@ -213,6 +221,29 @@ AsyncIOError EpollAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
 
+	// English: Re-arm socket for EPOLLIN (EPOLLONESHOT disarms it after each event fires).
+	//          Called on initial setup and after each completed recv, so EPOLL_CTL_MOD
+	//          is always correct: if already armed, this refreshes the interest; if
+	//          disarmed (fired), this re-enables it. If data arrived between AssociateSocket
+	//          and here, the kernel will fire again immediately once re-armed.
+	// 한글: EPOLLIN을 위해 소켓 재등록 (EPOLLONESHOT이 이벤트 발생 후 소켓을 비활성화함).
+	//       초기 설정 및 recv 완료 후 항상 호출되므로 EPOLL_CTL_MOD가 항상 올바름.
+	{
+		struct epoll_event ev;
+		ev.events  = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
+		ev.data.fd = socket;
+		if (epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev) < 0)
+		{
+			Utils::Logger::Error(
+				"EpollAsyncIOProvider::RecvAsync - epoll_ctl EPOLL_CTL_MOD failed: " +
+				std::string(strerror(errno)));
+			mPendingRecvOps.erase(socket);
+			mStats.mTotalRequests--;
+			mStats.mPendingRequests--;
+			return AsyncIOError::OperationFailed;
+		}
+	}
+
 	return AsyncIOError::Success;
 }
 
@@ -220,7 +251,7 @@ AsyncIOError EpollAsyncIOProvider::FlushRequests()
 {
 	// English: epoll doesn't support batch processing (no-op)
 	// 한글: epoll은 배치 처리를 지원하지 않음 (no-op)
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 
 	return AsyncIOError::Success;
@@ -234,7 +265,7 @@ AsyncIOError EpollAsyncIOProvider::FlushRequests()
 int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 											 size_t maxEntries, int timeoutMs)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return static_cast<int>(AsyncIOError::NotInitialized);
 	if (!entries || maxEntries == 0 || mEpollFd < 0)
 		return static_cast<int>(AsyncIOError::InvalidParameter);
@@ -248,7 +279,11 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 
 	if (numEvents < 0)
 	{
-		mLastError = "epoll_wait failed";
+		// English: EINTR means a signal interrupted the wait — not a real error, retry.
+		// 한글: EINTR은 시그널에 의한 중단 — 실제 에러가 아니므로 0을 반환하여 재시도.
+		if (errno == EINTR)
+			return 0;
+		mLastError = "epoll_wait failed: " + std::string(strerror(errno));
 		return static_cast<int>(AsyncIOError::OperationFailed);
 	}
 
@@ -330,6 +365,12 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 				{
 					if (errno == EAGAIN || errno == EWOULDBLOCK)
 					{
+						// English: Re-arm EPOLLIN (EPOLLONESHOT was disarmed when the event fired).
+						// 한글: EPOLLIN 재등록 (이벤트 발생으로 EPOLLONESHOT이 비활성화됨).
+						struct epoll_event rearmEv;
+						rearmEv.events  = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
+						rearmEv.data.fd = socket;
+						epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &rearmEv);
 						std::lock_guard<std::mutex> lock(mMutex);
 						mPendingRecvOps[socket] = std::move(pending);
 						mStats.mPendingRequests++;
@@ -381,10 +422,12 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 
 			if (found)
 			{
-				// English: Remove EPOLLOUT after consuming send op
-				// 한글: 송신 작업 소비 후 EPOLLOUT 제거
+				// English: Re-arm socket without EPOLLOUT after consuming send op.
+				//          EPOLLONESHOT fires only once; re-arm restores EPOLLIN watching.
+				// 한글: 송신 작업 소비 후 EPOLLOUT 없이 소켓 재등록.
+				//       EPOLLONESHOT은 1회만 발생; 재등록으로 EPOLLIN 감시 복구.
 				struct epoll_event ev;
-				ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+				ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
 				ev.data.fd = socket;
 				if (epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev) < 0)
 				{
@@ -415,10 +458,10 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			}
 			else
 			{
-				// English: No pending send op - remove EPOLLOUT to avoid busy loop
-				// 한글: 대기 중인 송신 작업 없음 - busy loop 방지를 위해 EPOLLOUT 제거
+				// English: No pending send op — re-arm without EPOLLOUT to avoid busy loop.
+				// 한글: 대기 중인 송신 작업 없음 — busy loop 방지를 위해 EPOLLOUT 없이 재등록.
 				struct epoll_event ev;
-				ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+				ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
 				ev.data.fd = socket;
 				epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev);
 			}

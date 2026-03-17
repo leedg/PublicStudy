@@ -6,7 +6,9 @@
 #include "LinuxNetworkEngine.h"
 #include "../../Utils/Logger.h"
 #include "../../Platforms/Linux/EpollAsyncIOProvider.h"
+#if defined(HAVE_IO_URING) || defined(HAVE_LIBURING)
 #include "../../Platforms/Linux/IOUringAsyncIOProvider.h"
+#endif
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -35,8 +37,12 @@ LinuxNetworkEngine::~LinuxNetworkEngine()
 
 bool LinuxNetworkEngine::InitializePlatform()
 {
-	// English: Create AsyncIOProvider based on mode
-	// 한글: 모드에 따라 AsyncIOProvider 생성
+	// English: Create AsyncIOProvider based on mode.
+	//          io_uring is only available when HAVE_IO_URING / HAVE_LIBURING is defined
+	//          by the build system (CMake find_library). Without it, fall back to epoll.
+	// 한글: 모드에 따라 AsyncIOProvider 생성.
+	//       io_uring은 빌드 시스템(CMake find_library)이 HAVE_IO_URING / HAVE_LIBURING를
+	//       정의한 경우에만 사용 가능. 미정의 시 epoll로 폴백.
 	if (mMode == Mode::Epoll)
 	{
 		mProvider = std::make_shared<AsyncIO::Linux::EpollAsyncIOProvider>();
@@ -44,8 +50,17 @@ bool LinuxNetworkEngine::InitializePlatform()
 	}
 	else // IOUring
 	{
+#if defined(HAVE_IO_URING) || defined(HAVE_LIBURING)
 		mProvider = std::make_shared<AsyncIO::Linux::IOUringAsyncIOProvider>();
 		Utils::Logger::Info("Using io_uring backend");
+#else
+		// English: io_uring not available at compile time — fall back to epoll.
+		// 한글: 컴파일 타임에 io_uring 미지원 — epoll로 폴백.
+		Utils::Logger::Warn("io_uring not available (HAVE_LIBURING not defined), falling back to epoll");
+		mMode     = Mode::Epoll;
+		mProvider = std::make_shared<AsyncIO::Linux::EpollAsyncIOProvider>();
+		Utils::Logger::Info("Using epoll backend");
+#endif
 	}
 
 	// English: Initialize provider
@@ -277,11 +292,23 @@ void LinuxNetworkEngine::AcceptLoop()
 	{
 		Utils::Logger::Error("Failed to queue recv - Session " +
 							 std::to_string(session->GetId()));
+
+		// English: Connected event was already dispatched above — dispatch Disconnected
+		//          to balance it before removing the session.
+		// 한글: 위에서 Connected 이벤트가 이미 dispatch됐으므로 세션 제거 전에
+		//       Disconnected를 dispatch하여 쌍을 맞춤.
+		auto disconnSession = session;
+		mLogicDispatcher.Dispatch(disconnSession->GetId(),
+			[this, disconnSession]()
+			{
+				FireEvent(Core::NetworkEvent::Disconnected, disconnSession->GetId());
+			});
+
 		Core::SessionManager::Instance().RemoveSession(session);
-			// English: Session owns the socket; pool deleter calls Close() — do NOT
-			//          close(clientSocket) here.
-			// 한글: 세션이 소켓을 소유하므로 풀 deleter가 Close()를 호출한다.
-			continue;
+		// English: Session owns the socket; pool deleter calls Close() — do NOT
+		//          close(clientSocket) here.
+		// 한글: 세션이 소켓을 소유하므로 풀 deleter가 Close()를 호출한다.
+		continue;
 	}
 
 		// English: Log connection
