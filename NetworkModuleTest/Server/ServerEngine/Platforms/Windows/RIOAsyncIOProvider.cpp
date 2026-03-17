@@ -313,6 +313,20 @@ int64_t RIOAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 		return -1;
 	}
 
+	// English: RIORegisterBuffer takes DWORD (uint32_t-range) length, and the stored
+	//          mBufferSize is also uint32_t. Silently truncating size_t → DWORD/uint32_t
+	//          would register a smaller region than intended, leading to out-of-bounds
+	//          RIO operations. Reject buffers that exceed the 32-bit limit explicitly.
+	// 한글: RIORegisterBuffer는 DWORD(uint32_t 범위) 길이를 받고, 저장되는
+	//       mBufferSize도 uint32_t다. size_t → DWORD를 묵시적으로 절단하면
+	//       의도보다 작은 영역이 등록되어 범위 초과 RIO 작업이 발생한다.
+	//       32비트 한계를 초과하는 버퍼는 명시적으로 거부한다.
+	if (size > static_cast<size_t>(MAXDWORD))
+	{
+		mLastError = "RegisterBuffer: size exceeds DWORD max (4 GiB)";
+		return -1;
+	}
+
 	RIO_BUFFERID rioBufferId = mPfnRIORegisterBuffer(
 		const_cast<PCHAR>(reinterpret_cast<const char *>(ptr)),
 		static_cast<DWORD>(size));

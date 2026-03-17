@@ -370,35 +370,86 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 				}
 			}
 
-			// English: Remove EVFILT_WRITE after consuming send op (or if none found)
-			// 한글: 송신 작업 소비 후 (또는 없을 경우) EVFILT_WRITE 제거
-			struct kevent delev;
-			EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-			kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
-
-			if (!found) continue;
-
-			int32_t result = 0;
-			OSError osError = 0;
-			ssize_t sent = ::send(socket, pending.mBuffer, pending.mBufferSize, 0);
-			if (sent >= 0)
+			if (!found)
 			{
-				result = static_cast<int32_t>(sent);
-			}
-			else
-			{
-				osError = errno;
-				result = -1;
+				// English: No pending send — delete EVFILT_WRITE to avoid busy loop.
+				// 한글: 대기 중인 send 없음 — busy loop 방지를 위해 EVFILT_WRITE 삭제.
+				struct kevent delev;
+				EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+				kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
+				continue;
 			}
 
-			CompletionEntry &entry = entries[processedCount];
-			entry.mContext = pending.mContext;
-			entry.mType = AsyncIOType::Send;
-			entry.mResult = result;
-			entry.mOsError = osError;
-			entry.mCompletionTime = 0;
-			mStats.mTotalCompletions++;
-			processedCount++;
+			// English: Perform the actual send before deciding how to re-arm.
+			//          SO_NOSIGPIPE is set on each accepted socket, suppressing SIGPIPE.
+			//          On a non-blocking socket, send() may return 0 < sent < mBufferSize
+			//          (partial). Re-queue the remainder and re-add EVFILT_WRITE — do NOT
+			//          emit a completion entry so the caller sees one atomic full write.
+			// 한글: 재등록 방식을 결정하기 위해 실제 send를 먼저 수행.
+			//       SO_NOSIGPIPE가 소켓에 설정되어 SIGPIPE를 억제함.
+			//       논블로킹 소켓은 부분 전송(0 < sent < mBufferSize) 가능;
+			//       나머지를 재큐하고 EVFILT_WRITE 재등록 — 원자적 전체 완료를 위해 entry 미발행.
+			{
+				int32_t result = 0;
+				OSError osError = 0;
+				ssize_t sent = ::send(socket, pending.mBuffer, pending.mBufferSize, 0);
+
+				if (sent >= 0 &&
+					static_cast<uint32_t>(sent) < pending.mBufferSize)
+				{
+					// English: Partial send — re-queue the unsent tail, re-add EVFILT_WRITE.
+					// 한글: 부분 전송 — 미전송 나머지를 재큐하고 EVFILT_WRITE 재등록.
+					const uint32_t remaining =
+						pending.mBufferSize - static_cast<uint32_t>(sent);
+					auto remainBuf = std::make_unique<uint8_t[]>(remaining);
+					std::memcpy(remainBuf.get(), pending.mBuffer + sent, remaining);
+
+					PendingOperation remainOp;
+					remainOp.mContext     = pending.mContext;
+					remainOp.mType        = AsyncIOType::Send;
+					remainOp.mSocket      = socket;
+					remainOp.mOwnedBuffer = std::move(remainBuf);
+					remainOp.mBuffer      = remainOp.mOwnedBuffer.get();
+					remainOp.mBufferSize  = remaining;
+
+					{
+						std::lock_guard<std::mutex> lock(mMutex);
+						mPendingSendOps[socket] = std::move(remainOp);
+						mStats.mPendingRequests++;
+					}
+
+					struct kevent writeEv;
+					EV_SET(&writeEv, socket, EVFILT_WRITE,
+						   EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, nullptr);
+					kevent(mKqueueFd, &writeEv, 1, nullptr, 0, nullptr);
+					continue; // no completion entry for partial send
+				}
+
+				// English: Full send or real error — delete EVFILT_WRITE.
+				// 한글: 전체 전송 또는 실제 에러 — EVFILT_WRITE 삭제.
+				struct kevent delev;
+				EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+				kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
+
+				if (sent >= 0)
+				{
+					result = static_cast<int32_t>(sent);
+				}
+				else
+				{
+					osError = errno;
+					result = -1;
+				}
+
+				CompletionEntry &entry = entries[processedCount];
+				entry.mContext = pending.mContext;
+				entry.mType = AsyncIOType::Send;
+				entry.mResult = result;
+				entry.mOsError = osError;
+				entry.mCompletionTime = 0;
+				mStats.mTotalCompletions++;
+				processedCount++;
+			}
 		}
 	}
 

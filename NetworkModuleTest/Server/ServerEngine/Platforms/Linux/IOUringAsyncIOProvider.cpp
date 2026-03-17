@@ -354,7 +354,7 @@ AsyncIOError IOUringAsyncIOProvider::FlushRequests()
 int IOUringAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 												   size_t maxEntries, int timeoutMs)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return static_cast<int>(AsyncIOError::NotInitialized);
 	if (!entries || maxEntries == 0)
 		return static_cast<int>(AsyncIOError::InvalidParameter);

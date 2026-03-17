@@ -292,11 +292,29 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 
 	int processedCount = 0;
 
-	for (int i = 0;
-		 i < numEvents && processedCount < static_cast<int>(maxEntries); ++i)
+	for (int i = 0; i < numEvents; ++i)
 	{
 		SocketHandle socket = events[i].data.fd;
 		uint32_t evFlags = events[i].events;
+
+		// English: If the entries array is full, re-arm this socket so it fires
+		//          again in the next ProcessCompletions call. Preserve EPOLLOUT in
+		//          the re-arm if the original event included it (a pending send op
+		//          exists) so the send is not permanently lost.
+		// 한글: entries 배열이 꽉 찬 경우, 소켓을 재등록하여 다음 ProcessCompletions
+		//       호출 시 재발화하도록 한다. 원본 이벤트에 EPOLLOUT이 있으면 (pending
+		//       send 존재) 재등록 시 포함하여 send가 영구 소실되지 않도록 한다.
+		if (processedCount >= static_cast<int>(maxEntries))
+		{
+			uint32_t rearmEvents = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
+			if (evFlags & EPOLLOUT)
+				rearmEvents |= EPOLLOUT;
+			struct epoll_event rearmEv;
+			rearmEv.events  = rearmEvents;
+			rearmEv.data.fd = socket;
+			epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &rearmEv);
+			continue;
+		}
 
 		// English: Handle error / hangup events
 		// 한글: 에러 / 연결 끊김 이벤트 처리
@@ -422,21 +440,70 @@ int EpollAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 
 			if (found)
 			{
-				// English: Re-arm socket without EPOLLOUT after consuming send op.
-				//          EPOLLONESHOT fires only once; re-arm restores EPOLLIN watching.
-				// 한글: 송신 작업 소비 후 EPOLLOUT 없이 소켓 재등록.
-				//       EPOLLONESHOT은 1회만 발생; 재등록으로 EPOLLIN 감시 복구.
-				struct epoll_event ev;
-				ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
-				ev.data.fd = socket;
-				if (epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev) < 0)
-				{
-					Utils::Logger::Error("EpollAsyncIOProvider::ProcessCompletions - epoll_ctl EPOLL_CTL_MOD (found) failed: " + std::string(strerror(errno)));
-				}
-
+				// English: Perform the actual send before deciding how to re-arm.
+				//          MSG_NOSIGNAL suppresses SIGPIPE on Linux if the peer closed.
+				//          A non-blocking socket may perform a partial send (returns
+				//          0 < sent < mBufferSize); in that case re-queue the remainder
+				//          and re-arm with EPOLLOUT — do NOT emit a completion entry so
+				//          that the caller sees one atomic completion for the full write.
+				// 한글: 재등록 방식을 결정하기 위해 실제 send를 먼저 수행.
+				//       MSG_NOSIGNAL은 피어가 닫힌 경우 SIGPIPE를 억제함.
+				//       논블로킹 소켓에서 부분 전송(0 < sent < mBufferSize) 가능;
+				//       이 경우 나머지를 재큐하고 EPOLLOUT으로 재등록 — 호출자가
+				//       전체 쓰기에 대한 원자적 완료를 볼 수 있도록 completion entry 미발행.
 				int32_t result = 0;
 				OSError osError = 0;
-				ssize_t sent = ::send(socket, pending.mBuffer, pending.mBufferSize, 0);
+				ssize_t sent = ::send(socket, pending.mBuffer, pending.mBufferSize,
+									  MSG_NOSIGNAL);
+
+				if (sent >= 0 &&
+					static_cast<uint32_t>(sent) < pending.mBufferSize)
+				{
+					// English: Partial send — re-queue the unsent tail and re-arm EPOLLOUT.
+					// 한글: 부분 전송 — 미전송 나머지를 재큐하고 EPOLLOUT 재등록.
+					const uint32_t remaining =
+						pending.mBufferSize - static_cast<uint32_t>(sent);
+					auto remainBuf = std::make_unique<uint8_t[]>(remaining);
+					std::memcpy(remainBuf.get(),
+								pending.mBuffer + sent,
+								remaining);
+
+					PendingOperation remainOp;
+					remainOp.mContext     = pending.mContext;
+					remainOp.mType        = AsyncIOType::Send;
+					remainOp.mSocket      = socket;
+					remainOp.mOwnedBuffer = std::move(remainBuf);
+					remainOp.mBuffer      = remainOp.mOwnedBuffer.get();
+					remainOp.mBufferSize  = remaining;
+
+					{
+						std::lock_guard<std::mutex> lock(mMutex);
+						mPendingSendOps[socket] = std::move(remainOp);
+						mStats.mPendingRequests++;
+					}
+
+					struct epoll_event ev;
+					ev.events  = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
+					ev.data.fd = socket;
+					epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev);
+					continue; // no completion entry for partial send
+				}
+
+				// English: Full send or real error — re-arm for EPOLLIN only.
+				// 한글: 전체 전송 또는 실제 에러 — EPOLLIN만으로 재등록.
+				{
+					struct epoll_event ev;
+					ev.events  = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP | EPOLLONESHOT;
+					ev.data.fd = socket;
+					if (epoll_ctl(mEpollFd, EPOLL_CTL_MOD, socket, &ev) < 0)
+					{
+						Utils::Logger::Error(
+							"EpollAsyncIOProvider::ProcessCompletions - "
+							"epoll_ctl EPOLL_CTL_MOD (send done) failed: " +
+							std::string(strerror(errno)));
+					}
+				}
+
 				if (sent >= 0)
 				{
 					result = static_cast<int32_t>(sent);

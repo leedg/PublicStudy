@@ -170,7 +170,7 @@ class IocpAsyncIOProvider : public AsyncIOProvider
 	size_t mMaxConcurrentOps; // English: Max concurrent ops / 한글: 최대 동시
 								  // 작업 수
 	std::atomic<bool> mInitialized;
-	std::atomic<bool> mShuttingDown{false}; // English: Initialization flag / 한글: 초기화 플래그
+	std::atomic<bool> mShuttingDown{false}; // English: Shutdown flag — set before CloseHandle to block ProcessCompletions / 한글: 종료 플래그 — CloseHandle 전 설정하여 ProcessCompletions 차단
 };
 
 } // namespace Windows

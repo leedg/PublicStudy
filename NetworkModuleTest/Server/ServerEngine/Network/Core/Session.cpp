@@ -238,7 +238,17 @@ void Session::WaitForPendingTasks()
 
 Session::SendResult Session::Send(const void *data, uint32_t size)
 {
-	if (!IsConnected() || data == nullptr || size == 0)
+	// English: Validate arguments first — returning NotConnected for null/zero-size
+	//          is semantically wrong and could cause callers to erroneously close a
+	//          live session. Use InvalidArgument for bad input, NotConnected for state.
+	// 한글: 인수를 먼저 검증 — null/크기0에 NotConnected를 반환하면 호출자가
+	//       활성 세션을 잘못 닫을 수 있음. 잘못된 입력엔 InvalidArgument,
+	//       상태 오류엔 NotConnected를 사용해야 함.
+	if (data == nullptr || size == 0)
+	{
+		return SendResult::InvalidArgument;
+	}
+	if (!IsConnected())
 	{
 		return SendResult::NotConnected;
 	}
