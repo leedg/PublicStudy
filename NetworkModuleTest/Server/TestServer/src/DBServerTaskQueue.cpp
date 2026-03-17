@@ -238,16 +238,27 @@ void DBServerTaskQueue::WorkerThreadFunc(size_t workerIndex)
 
     while (mIsRunning.load())
     {
-        // Wait for any item in either queue.
-        // 한글: 어느 큐에든 항목이 생길 때까지 대기.
+        // English: Wake periodically to check for timed-out in-flight requests.
+        //          wait_for with kTimeoutCheckIntervalMs ensures we don't wait
+        //          indefinitely when no work arrives but a request has timed out.
+        // 한글: in-flight 타임아웃 확인을 위해 주기적으로 깨어남.
+        //       작업이 없어도 kTimeoutCheckIntervalMs 후에 깨어나
+        //       타임아웃된 요청을 처리할 수 있음.
         {
             std::unique_lock<std::mutex> lock(worker.mutex);
-            worker.cv.wait(lock, [&] {
-                return !worker.taskQueue.empty() ||
-                       !worker.responseQueue.empty() ||
-                       !mIsRunning.load();
-            });
+            worker.cv.wait_for(lock,
+                std::chrono::milliseconds(kTimeoutCheckIntervalMs),
+                [&] {
+                    return !worker.taskQueue.empty() ||
+                           !worker.responseQueue.empty() ||
+                           !mIsRunning.load();
+                });
         }
+
+        // Check for timed-out in-flight requests.
+        // sessions is worker-exclusive — no mutex needed here.
+        // 한글: 타임아웃된 in-flight 요청 확인. sessions는 워커 전용 — mutex 불필요.
+        CheckTimeouts(workerIndex);
 
         // Drain all pending responses first (prioritize responses over new tasks).
         // 한글: 응답 큐를 먼저 소진 (새 태스크보다 응답 우선).
@@ -266,25 +277,24 @@ void DBServerTaskQueue::WorkerThreadFunc(size_t workerIndex)
             HandleResponse(workerIndex, resp);
         }
 
-        // Process one task from the task queue.
-        // 한글: 태스크 큐에서 하나 처리.
+        // Drain all available tasks from the task queue (symmetric with response drain).
+        // Responses are already prioritized (processed above) before we reach here.
+        // 한글: 태스크 큐의 모든 항목 처리 (응답 drain과 대칭).
+        //       응답은 이미 위에서 우선 처리된 이후이므로 순서 역전 없음.
+        while (mIsRunning.load())
         {
             DBServerTask task;
-            bool hasTask = false;
             {
                 std::lock_guard<std::mutex> lock(worker.mutex);
-                if (!worker.taskQueue.empty())
+                if (worker.taskQueue.empty())
                 {
-                    task    = std::move(worker.taskQueue.front());
-                    worker.taskQueue.pop();
-                    hasTask = true;
+                    break;
                 }
+                task = std::move(worker.taskQueue.front());
+                worker.taskQueue.pop();
             }
-            if (hasTask)
-            {
-                mPendingCount.fetch_sub(1, std::memory_order_relaxed);
-                ProcessTask(workerIndex, std::move(task));
-            }
+            mPendingCount.fetch_sub(1, std::memory_order_relaxed);
+            ProcessTask(workerIndex, std::move(task));
         }
     }
 
@@ -350,8 +360,10 @@ void DBServerTaskQueue::ProcessTask(size_t workerIndex, DBServerTask task)
 
     // STORE before SEND — response may arrive before Send() returns.
     // 한글: Send 전에 반드시 저장 — Send() 반환 전에 응답이 도착할 수 있음.
-    ss.requestId = requestId;
-    ss.callback  = std::move(task.callback);
+    ss.requestId       = requestId;
+    ss.callback        = std::move(task.callback);
+    ss.inflightDeadline = std::chrono::steady_clock::now() +
+                          std::chrono::milliseconds(kRequestTimeoutMs);
 
     // Build and send PKT_DBQueryReq.
     // 한글: PKT_DBQueryReq 패킷 조성 후 전송.
@@ -489,6 +501,73 @@ void DBServerTaskQueue::ShutdownDrain(size_t workerIndex)
     }
 
     mPendingCount.store(0, std::memory_order_relaxed);
+}
+
+// =============================================================================
+// CheckTimeouts — worker-thread only
+// 한글: 워커 스레드 전용
+// =============================================================================
+
+void DBServerTaskQueue::CheckTimeouts(size_t workerIndex)
+{
+    WorkerData& worker = *mWorkers[workerIndex];
+    const auto now = std::chrono::steady_clock::now();
+
+    // English: Collect timed-out session IDs first to avoid modifying the map
+    //          while iterating over it (ProcessTask may insert new entries).
+    // 한글: 반복 중 맵 수정(ProcessTask에서 항목 삽입 가능)을 피하기 위해
+    //       타임아웃 세션 ID를 먼저 수집.
+    std::vector<ConnectionId> timedOut;
+    for (const auto& [sessionId, ss] : worker.sessions)
+    {
+        if (ss.requestId != 0 && now >= ss.inflightDeadline)
+        {
+            timedOut.push_back(sessionId);
+        }
+    }
+
+    for (ConnectionId sessionId : timedOut)
+    {
+        auto it = worker.sessions.find(sessionId);
+        if (it == worker.sessions.end())
+        {
+            continue; // Already resolved by a response that arrived just now.
+        }
+        SessionState& ss = it->second;
+        if (ss.requestId == 0)
+        {
+            continue; // Response arrived between collection and processing.
+        }
+
+        Logger::Warn("DBServerTaskQueue worker[" + std::to_string(workerIndex) +
+                     "]: requestId " + std::to_string(ss.requestId) +
+                     " timed out for session " + std::to_string(sessionId));
+
+        // Invoke callback with Timeout, then clear in-flight state.
+        // 한글: Timeout 콜백 호출 후 in-flight 상태 초기화.
+        auto cb      = std::move(ss.callback);
+        ss.requestId = 0;
+        ss.callback  = nullptr;
+
+        if (cb) cb(ResultCode::DBServerTimeout, "DB request timed out");
+
+        // Process next pending task or clean up idle entry — same as HandleResponse.
+        // 한글: 다음 pending 처리 또는 idle 항목 정리 — HandleResponse와 동일 패턴.
+        if (!ss.pending.empty())
+        {
+            DBServerTask nextTask = std::move(ss.pending.front());
+            ss.pending.pop();
+            // Note: ProcessTask may modify worker.sessions (erase + insert),
+            // which invalidates 'it'. Do not access 'it' after this call.
+            // 한글: ProcessTask가 worker.sessions를 수정할 수 있어 'it'가 무효화될 수 있음.
+            //       이 호출 후 'it' 접근 금지.
+            ProcessTask(workerIndex, std::move(nextTask));
+        }
+        else
+        {
+            worker.sessions.erase(it);
+        }
+    }
 }
 
 // =============================================================================

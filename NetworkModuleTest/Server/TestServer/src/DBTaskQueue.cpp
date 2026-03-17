@@ -640,6 +640,18 @@ void DBTaskQueue::WalWritePending(const DBTask& task, uint64_t seq)
              << "|" << seq
              << "|" << escapedData
              << "\n";
+    // English: flush() moves data to the OS buffer but does NOT guarantee disk
+    //          durability (power failure can still lose the record).
+    //          For full crash safety, an OS-level sync (FlushFileBuffers on Windows,
+    //          fdatasync on POSIX) is required after flush().
+    //          TODO: refactor mWalFile from std::ofstream to a native handle so
+    //          FlushFileBuffers / fdatasync can be called directly.
+    // 한글: flush()는 데이터를 OS 버퍼로 이동하지만 디스크 내구성을 보장하지 않음
+    //       (전원 장애 시 레코드 손실 가능).
+    //       완전한 크래시 안전성을 위해 flush() 이후 OS 수준 sync
+    //       (Windows: FlushFileBuffers, POSIX: fdatasync)가 필요함.
+    //       TODO: mWalFile을 std::ofstream에서 네이티브 핸들로 리팩터링하여
+    //       FlushFileBuffers / fdatasync 직접 호출 가능하게 개선 필요.
     mWalFile.flush();
 }
 
@@ -660,7 +672,7 @@ void DBTaskQueue::WalWriteDone(uint64_t seq)
 
     // D|<seq>
     mWalFile << "D|" << seq << "\n";
-    mWalFile.flush();
+    mWalFile.flush(); // OS-level sync limitation — see WalWritePending comment above.
 }
 
 void DBTaskQueue::WalRecover()
@@ -742,8 +754,12 @@ void DBTaskQueue::WalRecover()
                 entry.sessionId = sessionId;
                 entry.data      = data;
 
-                // Higher-seq entry wins if both files have the same seq.
-                // 한글: 동일 seq가 양 파일에 존재하면 높은 seq(신규 파일) 우선.
+                // Primary WAL is parsed first; emplace is first-insert-wins, so the
+                // primary entry takes precedence when both files share the same seq.
+                // Backup is parsed second and fills gaps (seqs absent in the primary).
+                // 한글: 기본 WAL을 먼저 파싱; emplace는 최초 삽입 우선이므로
+                //       동일 seq가 양 파일에 존재하면 기본 WAL 항목이 우선.
+                //       백업은 두 번째 파싱하여 기본 WAL에 없는 seq를 보완함.
                 pendingMap.emplace(seq, std::move(entry));
             }
             else if (status == "D")
