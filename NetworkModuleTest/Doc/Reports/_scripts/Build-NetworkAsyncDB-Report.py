@@ -443,7 +443,7 @@ def section_overview(doc: Document):
     image(doc, "01-architecture-overview.png",
           caption="전체 아키텍처 개요 — INetworkEngine · AsyncIOProvider · 스레드 역할 분리")
     image_drawio(doc, "diag_arch.png",
-                 caption="아키텍처 계층 구조 (draw.io)", style=DRAWIO_STYLE)
+                 caption="아키텍처 계층 구조", style=DRAWIO_STYLE)
 
     h2(doc, "1.1 3계층 설계 요약")
     make_table(doc,
@@ -508,7 +508,7 @@ def section_network(doc: Document):
     image(doc, "03-client-lifecycle-sequence.png",
           caption="클라이언트 생명주기 시퀀스 — 접속 수락 → 핸드셰이크 → ping/pong → 종료")
     image_drawio(doc, "diag_seq.png",
-                 caption="연결 수립 시퀀스 (draw.io)", style=DRAWIO_STYLE)
+                 caption="연결 수립 시퀀스", style=DRAWIO_STYLE)
 
     h2(doc, "2.3 Session 구조")
     body(doc, (
@@ -613,7 +613,7 @@ def section_async(doc: Document):
     image(doc, "04-async-db-flow-sequence.png",
           caption="비동기 DB 처리 흐름 시퀀스 — 로직 스레드 → DBTaskQueue → DB 기록")
     image_drawio(doc, "diag_async_1_dispatch.png",
-                 caption="I/O 완료 → 워커 배정 흐름 (draw.io)", style=DRAWIO_STYLE)
+                 caption="I/O 완료 → 워커 배정 흐름", style=DRAWIO_STYLE)
 
     h2(doc, "3.1 스레드 역할 분리")
     make_table(doc,
@@ -677,9 +677,9 @@ def section_async(doc: Document):
     )
 
     image_drawio(doc, "diag_async_2_keyed.png",
-                 caption="KeyedDispatcher 세션 라우팅 (draw.io)", style=DRAWIO_STYLE)
+                 caption="KeyedDispatcher 세션 라우팅", style=DRAWIO_STYLE)
     image_drawio(doc, "diag_async_3_execqueue.png",
-                 caption="ExecutionQueue — Mutex 단일 백엔드 (draw.io)", style=DRAWIO_STYLE)
+                 caption="ExecutionQueue — Mutex 단일 백엔드", style=DRAWIO_STYLE)
 
     h2(doc, "3.4 OrderedTaskQueue — DBServer 키 순서 보장")
     body(doc, (
@@ -722,7 +722,7 @@ def section_db(doc: Document):
     ))
 
     image_drawio(doc, "diag_db.png",
-                 caption="DB 처리 계층 — WAL · Factory · 비동기 큐 (draw.io)", style=DRAWIO_STYLE)
+                 caption="DB 처리 계층 — WAL · Factory · 비동기 큐", style=DRAWIO_STYLE)
 
     h2(doc, "4.1 IDatabase 추상화 계층")
     make_table(doc,
