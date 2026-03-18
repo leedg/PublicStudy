@@ -45,13 +45,10 @@ FONT_CODE = "Consolas"
 # draw.io 다이어그램 스타일 — "orig" | "B" | "C"
 # main()에서 CLI 인수로 오버라이드 가능: python Build-NetworkAsyncDB-Report.py [출력.docx] [orig|B|C]
 DRAWIO_STYLE = "orig"
-# 기존 다이어그램 (ExecutiveSummary/assets/)
-ASSETS_EXEC = Path(__file__).parent.parent / "ExecutiveSummary" / "assets"
-# draw.io 내보낸 다이어그램 원본 (assets/)
+# 기존 다이어그램 (ExecutiveSummary/assets/)  — Reports/../ExecutiveSummary/assets
+ASSETS_EXEC = Path(__file__).parent.parent.parent / "ExecutiveSummary" / "assets"
+# draw.io 내보낸 다이어그램 원본 (assets/)    — NetworkAsyncDBReport/assets
 ASSETS_NEW  = Path(__file__).parent.parent / "assets"
-# B/C 스타일 draw.io PNG (draw.io 앱에서 내보낸 후 사용)
-ASSETS_B    = Path(__file__).parent.parent / "assets_B"
-ASSETS_C    = Path(__file__).parent.parent / "assets_C"
 
 
 # ── XML 유틸리티 ──────────────────────────────────────────────────────────────
@@ -332,9 +329,8 @@ def image(doc: Document, filename: str, caption: str = None,
 
 def image_drawio(doc: Document, filename: str, caption: str = None,
                  width: float = 6.2, style: str = "orig"):
-    """draw.io PNG 삽입 — style: 'orig'(assets/), 'B'(assets_B/), 'C'(assets_C/)"""
-    dir_map = {"orig": ASSETS_NEW, "B": ASSETS_B, "C": ASSETS_C}
-    assets_dir = dir_map.get(style, ASSETS_NEW)
+    """draw.io PNG 삽입 — assets/ 폴더에서 로드"""
+    assets_dir = ASSETS_NEW
     path = assets_dir / filename
     if not path.exists():
         body(doc, f"[draw.io 이미지 없음: {filename} (style={style})]",
