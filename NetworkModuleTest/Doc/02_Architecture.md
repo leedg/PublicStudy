@@ -68,7 +68,7 @@ NetworkModuleTest/
 - `KeyedDispatcher`: key affinity 기반 직렬화
 - `AsyncScope`: 세션 종료 시 예약된 작업 억제
 - `TimerQueue`: 반복/지연 작업의 단일 워커 스케줄링
-- `Session::SendResult`: `Ok/QueueFull/NotConnected`로 백프레셔 상태 명시
+- `Session::SendResult`: `Ok/QueueFull/NotConnected/InvalidArgument`로 백프레셔 상태 명시
 - `NetworkEventBus`: 채널 구독 기반 이벤트 브로드캐스트 인터페이스
 
 ## 8. 현재 주의 사항

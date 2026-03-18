@@ -5,18 +5,22 @@
 ### 1.1 TestServer
 
 - `-p <port>`: 서버 포트 (기본: Windows `19010`, Linux/macOS `9000`)
-- `-d <path>`: 로컬 DB 경로 (지정 시 SQLite, 미지정 시 Mock)
+- `-d <connstr>`: DB 연결 문자열 (SQLite 경로 포함; 미지정 시 Mock DB 사용)
 - `--db`: 원격 DB 서버 연결 시도 (기본: Windows `127.0.0.1:18002`, Linux/macOS `127.0.0.1:8001`)
 - `--db-host <addr>`: 원격 DB 서버 주소
 - `--db-port <port>`: 원격 DB 서버 포트
+- `--engine <name>`: 네트워크 엔진 선택 (기본: `auto`; 가능값: `iocp`, `rio`, `epoll`, `io_uring`, `kqueue`)
+- `-w <count>`: DB 태스크 큐 워커 스레드 수 (기본: `1`)
 - `-l <level>`: `DEBUG|INFO|WARN|ERROR`
-- `-h, --help`: 도움말
+- `--self-test`: DBServerTaskQueue 셀프 테스트 후 종료
+- `-h`: 도움말
 
 ### 1.2 TestDBServer
 
 - `-p <port>`: 서버 포트 (기본: Windows `18002`, Linux/macOS `8001`)
+- `-w <count>`: DB 워커 스레드 수 (기본: `4`)
 - `-l <level>`: `DEBUG|INFO|WARN|ERROR`
-- `-h, --help`: 도움말
+- `-h`: 도움말
 
 참고
 - `run_*.ps1` 실행 스크립트는 기본 포트 충돌 시 자동으로 다음 빈 포트를 사용합니다.
@@ -47,8 +51,8 @@
   - 권장값: `"auto"`
   - 플랫폼별 명시값: `iocp/rio`, `epoll/io_uring`, `kqueue`
 
-주의
-- 헤더 기본 인자(`"asyncio"`)와 팩토리 구현 기대값(`auto/default/...`)이 불일치하므로, 호출 시 `"auto"`를 명시하는 것을 권장합니다.
+참고
+- 헤더 기본 인자는 `"auto"` (헤더·팩토리 일치). 플랫폼 자동 감지: Windows→RIO/IOCP, Linux 5.1+→io_uring, 그 외→epoll/kqueue.
 
 ### 2.3 Session 전송 결과
 
@@ -56,13 +60,14 @@
   - `Ok`: 큐 등록 성공
   - `QueueFull`: 백프레셔/풀 소진
   - `NotConnected`: 연결 상태 아님
+  - `InvalidArgument`: 패킷 크기 초과 또는 null 포인터 (재시도 불필요)
 
 ### 2.4 TimerQueue (`Concurrency/TimerQueue.h`)
 
 - `Initialize()`
-- `ScheduleOnce(callback, delayMs)`
-- `ScheduleRepeat(callback, intervalMs)`
-- `Cancel(handle)`
+- `ScheduleOnce(callback, delayMs)` → `TimerHandle`
+- `ScheduleRepeat(callback, intervalMs)` → `TimerHandle` — callback은 `bool` 반환 (`true`=재등록, `false`=자동해제)
+- `Cancel(handle)` → `bool`
 - `Shutdown()`
 
 ### 2.5 NetworkEventBus (`Network/Core/NetworkEventBus.h`)
