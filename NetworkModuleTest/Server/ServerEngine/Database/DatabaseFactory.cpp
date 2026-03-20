@@ -25,17 +25,9 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateDatabase(DatabaseType type)
 	{
 #ifdef _WIN32
 	case DatabaseType::ODBC:
-		return CreateODBCDatabase();
-#endif
-#ifdef _WIN32
 	case DatabaseType::MySQL:
-		return CreateODBCDatabase();
-#endif
-#ifdef _WIN32
 	case DatabaseType::PostgreSQL:
 		return CreateODBCDatabase();
-#endif
-#ifdef _WIN32
 	case DatabaseType::OLEDB:
 		return CreateOLEDBDatabase();
 #endif

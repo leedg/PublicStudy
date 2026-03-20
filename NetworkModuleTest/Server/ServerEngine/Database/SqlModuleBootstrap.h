@@ -64,8 +64,7 @@ inline bool IsDuplicateKeyError(const DatabaseException& exception)
 {
     const std::string message = ToLowerCopy(exception.what());
     return message.find("duplicate") != std::string::npos ||
-           message.find("unique constraint failed") != std::string::npos ||
-           message.find("primary key") != std::string::npos;
+           message.find("unique constraint failed") != std::string::npos;
 }
 
 inline bool IsTableAlreadyExistsError(const DatabaseException& exception)

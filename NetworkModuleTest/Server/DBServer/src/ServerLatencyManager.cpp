@@ -115,7 +115,15 @@ namespace Network::DBServer
 
         if (mInitialized.load(std::memory_order_acquire))
         {
-            EnsureTables();
+            try
+            {
+                EnsureTables();
+            }
+            catch (const std::exception& e)
+            {
+                Logger::Error("ServerLatencyManager bootstrap failed on SetDatabase: " +
+                              std::string(e.what()));
+            }
         }
     }
 
