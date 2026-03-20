@@ -13,6 +13,21 @@ namespace Database
 {
 
 // =============================================================================
+// English: SQL dialect enumeration
+// ?쒓?: SQL dialect ?닿굅??
+// =============================================================================
+
+enum class SqlDialect
+{
+	Auto,
+	Generic,
+	SQLite,
+	MySQL,
+	PostgreSQL,
+	SQLServer
+};
+
+// =============================================================================
 // English: DatabaseConfig structure
 // 한글: DatabaseConfig 구조체
 // =============================================================================
@@ -30,6 +45,17 @@ struct DatabaseConfig
 	// English: Database type
 	// 한글: 데이터베이스 타입
 	DatabaseType mType = DatabaseType::ODBC;
+
+	// English: Optional SQL dialect hint for script selection when the backend
+	//          type is generic (for example ODBC/OLEDB via DSN).
+	//          Use MySQL / SQLite / PostgreSQL / SQLServer to force DB/TABLE,
+	//          DB/SP, and DB/RAW variant resolution without changing the actual
+	//          transport backend.
+	// ?쒓?: 諛깆뿏?쒓? ODBC/OLEDB DSN泥섎읆 踰붿슜 ?곗씠?곕쿋?댁뒪 ??낆씪 ???ъ슜?섎뒗
+	//       SQL ?앺겕由쏀듃 dialect hint.
+	//       ?ㅼ젣 ?곌껐 諛깆뿏?쒕? 諛붽씀吏 ?딆?怨? DB/TABLE, DB/SP, DB/RAW
+	//       variant ?좏깮留?媛뺤젣?섍린 ?꾪빐 dialect瑜??ㅼ젙?쒕떎.
+	SqlDialect mSqlDialectHint = SqlDialect::Auto;
 
 	// English: Connection timeout in seconds
 	// 한글: 연결 타임아웃 (초)
@@ -66,13 +92,57 @@ struct DatabaseConfig
 	// Example ODBC (PostgreSQL):
 	//   Driver={PostgreSQL Unicode};Server=localhost;Port=5432;
 	//   Database=mydb;UID=postgres;PWD=secret;
+	SqlDialect ResolveSqlDialect() const
+	{
+		if (mSqlDialectHint != SqlDialect::Auto)
+		{
+			return mSqlDialectHint;
+		}
+
+		switch (mType)
+		{
+		case DatabaseType::SQLite:
+			return SqlDialect::SQLite;
+
+		case DatabaseType::MySQL:
+			return SqlDialect::MySQL;
+
+		case DatabaseType::PostgreSQL:
+			return SqlDialect::PostgreSQL;
+
+		case DatabaseType::OLEDB:
+			return SqlDialect::SQLServer;
+
+		default:
+			return SqlDialect::Generic;
+		}
+	}
+
 	std::string BuildODBCConnectionString() const
 	{
 		std::ostringstream ss;
-		ss << "Server=" << mHost << "," << mPort << ";"
-		   << "Database=" << mDatabase << ";"
-		   << "UID=" << mUser << ";"
-		   << "PWD=" << mPassword << ";";
+		switch (ResolveSqlDialect())
+		{
+		case SqlDialect::MySQL:
+		case SqlDialect::PostgreSQL:
+			ss << "Server=" << mHost << ";"
+			   << "Port=" << mPort << ";"
+			   << "Database=" << mDatabase << ";"
+			   << "UID=" << mUser << ";"
+			   << "PWD=" << mPassword << ";";
+			break;
+
+		case SqlDialect::SQLite:
+			ss << "Database=" << mDatabase << ";";
+			break;
+
+		default:
+			ss << "Server=" << mHost << "," << mPort << ";"
+			   << "Database=" << mDatabase << ";"
+			   << "UID=" << mUser << ";"
+			   << "PWD=" << mPassword << ";";
+			break;
+		}
 		return ss.str();
 	}
 

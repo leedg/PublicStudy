@@ -11,10 +11,14 @@
 #include <fstream>
 #include <map>
 #include <sstream>
+#include <utility>
 #include <vector>
 
 // IDatabase interface always available for runtime injection
 // 한글: 런타임 주입을 위해 IDatabase 인터페이스는 항상 포함
+#include "../include/TestServerSqlSpec.h"
+#include "Database/SqlModuleBootstrap.h"
+#include "Database/SqlScriptRunner.h"
 #include "Interfaces/IDatabase.h"
 #include "Interfaces/IStatement.h"
 
@@ -26,6 +30,29 @@ namespace Network::TestServer
 {
 
 using namespace Network::Utils;
+
+namespace
+{
+    constexpr const char* kSqlModuleName = "TestServer";
+
+    template <typename Binder = std::nullptr_t>
+    bool ExecuteModuleScript(Network::Database::IDatabase& database,
+                             const char* relativePath,
+                             Binder&& binder = nullptr)
+    {
+        return Network::Database::SqlScriptRunner::Execute(
+            database, kSqlModuleName, relativePath, std::forward<Binder>(binder));
+    }
+
+    template <typename Binder = std::nullptr_t>
+    int ExecuteModuleScriptUpdate(Network::Database::IDatabase& database,
+                                  const char* relativePath,
+                                  Binder&& binder = nullptr)
+    {
+        return Network::Database::SqlScriptRunner::ExecuteUpdate(
+            database, kSqlModuleName, relativePath, std::forward<Binder>(binder));
+    }
+}
 
 // =============================================================================
 // DBTaskQueue implementation
@@ -73,40 +100,21 @@ bool DBTaskQueue::Initialize(size_t workerThreadCount,
 
     if (mDatabase != nullptr && mDatabase->IsConnected())
     {
-        static const char* kCreateTableSQLs[] = {
-            "CREATE TABLE IF NOT EXISTS SessionConnectLog ("
-            "  id          INTEGER PRIMARY KEY AUTOINCREMENT,"
-            "  session_id  INTEGER NOT NULL,"
-            "  connect_time TEXT NOT NULL"
-            ")",
-            "CREATE TABLE IF NOT EXISTS SessionDisconnectLog ("
-            "  id             INTEGER PRIMARY KEY AUTOINCREMENT,"
-            "  session_id     INTEGER NOT NULL,"
-            "  disconnect_time TEXT NOT NULL"
-            ")",
-            "CREATE TABLE IF NOT EXISTS PlayerData ("
-            "  session_id INTEGER PRIMARY KEY,"
-            "  data       TEXT"
-            ")"
-        };
-
-        for (const char* sql : kCreateTableSQLs)
+        try
         {
-            try
-            {
-                auto stmt = mDatabase->CreateStatement();
-                stmt->SetQuery(sql);
-                stmt->Execute();
-            }
-            catch (const std::exception& e)
-            {
-                Logger::Warn("DBTaskQueue: Failed to create table: " +
-                             std::string(e.what()));
-            }
+            const bool bootstrapped =
+                Network::Database::SqlModuleBootstrap::BootstrapModuleIfNeeded(
+                    *mDatabase,
+                    Network::TestServer::GetTestServerSqlModuleSpec());
+            Logger::Info(bootstrapped
+                             ? "DBTaskQueue: initial SQL bootstrap completed"
+                             : "DBTaskQueue: SQL manifest verified");
         }
-
-        Logger::Info("DBTaskQueue: DB tables ensured (SessionConnectLog, "
-                     "SessionDisconnectLog, PlayerData)");
+        catch (const std::exception& e)
+        {
+            Logger::Error("DBTaskQueue bootstrap failed: " + std::string(e.what()));
+            return false;
+        }
     }
 
     // Start workers BEFORE WAL recovery so EnqueueTask() accepts recovered tasks
@@ -482,12 +490,15 @@ bool DBTaskQueue::HandleRecordConnectTime(const DBTask& task, std::string& resul
     {
         try
         {
-            auto stmt = mDatabase->CreateStatement();
-            stmt->SetQuery("INSERT INTO SessionConnectLog (session_id, connect_time) VALUES (?, ?)");
-            stmt->BindParameter(1, static_cast<long long>(task.sessionId));
-            stmt->BindParameter(2, task.data);
-            stmt->ExecuteUpdate();
-            Logger::Info("DB INSERT SessionConnectLog - Session: " +
+            ExecuteModuleScriptUpdate(
+                *mDatabase,
+                "SP/SP_InsertSessionConnectLog.sql",
+                [&](Network::Database::IStatement& stmt)
+                {
+                    stmt.BindParameter(1, static_cast<long long>(task.sessionId));
+                    stmt.BindParameter(2, task.data);
+                });
+            Logger::Info("DB INSERT T_SessionConnectLog - Session: " +
                          std::to_string(task.sessionId) + " at " + task.data);
             result = "Connect time recorded to DB";
             return true;
@@ -520,12 +531,15 @@ bool DBTaskQueue::HandleRecordDisconnectTime(const DBTask& task, std::string& re
     {
         try
         {
-            auto stmt = mDatabase->CreateStatement();
-            stmt->SetQuery("INSERT INTO SessionDisconnectLog (session_id, disconnect_time) VALUES (?, ?)");
-            stmt->BindParameter(1, static_cast<long long>(task.sessionId));
-            stmt->BindParameter(2, task.data);
-            stmt->ExecuteUpdate();
-            Logger::Info("DB INSERT SessionDisconnectLog - Session: " +
+            ExecuteModuleScriptUpdate(
+                *mDatabase,
+                "SP/SP_InsertSessionDisconnectLog.sql",
+                [&](Network::Database::IStatement& stmt)
+                {
+                    stmt.BindParameter(1, static_cast<long long>(task.sessionId));
+                    stmt.BindParameter(2, task.data);
+                });
+            Logger::Info("DB INSERT T_SessionDisconnectLog - Session: " +
                          std::to_string(task.sessionId) + " at " + task.data);
             result = "Disconnect time recorded to DB";
             return true;
@@ -556,15 +570,18 @@ bool DBTaskQueue::HandleUpdatePlayerData(const DBTask& task, std::string& result
     {
         try
         {
-            auto stmt = mDatabase->CreateStatement();
 
             // Upsert — insert or replace player data
             // 한글: Upsert — 플레이어 데이터 삽입 또는 교체
-            stmt->SetQuery("INSERT OR REPLACE INTO PlayerData (session_id, data) VALUES (?, ?)");
-            stmt->BindParameter(1, static_cast<long long>(task.sessionId));
-            stmt->BindParameter(2, task.data);
-            stmt->ExecuteUpdate();
-            Logger::Info("DB UPSERT PlayerData - Session: " + std::to_string(task.sessionId));
+            ExecuteModuleScriptUpdate(
+                *mDatabase,
+                "SP/SP_UpsertPlayerData.sql",
+                [&](Network::Database::IStatement& stmt)
+                {
+                    stmt.BindParameter(1, static_cast<long long>(task.sessionId));
+                    stmt.BindParameter(2, task.data);
+                });
+            Logger::Info("DB UPSERT T_PlayerData - Session: " + std::to_string(task.sessionId));
             result = "Player data updated to DB";
             return true;
         }

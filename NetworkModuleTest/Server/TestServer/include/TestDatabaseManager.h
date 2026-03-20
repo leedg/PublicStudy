@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../ServerEngine/Interfaces/DatabaseConfig.h"
 #include "../../ServerEngine/Database/ConnectionPool.h"
 #include "../../ServerEngine/Interfaces/IConnectionPool.h"
 #include <memory>
@@ -33,10 +34,23 @@ class TestServerDatabaseManager
 	 * "DSN=GameDB;UID=user;PWD=pass")
 	 * @param maxConnectionPoolSize Maximum number of concurrent database
 	 * connections
+	 * @param sqlDialectHint Optional SQL dialect hint for DB/TABLE, DB/SP, and
+	 * DB/RAW variant selection when the connection string is a DSN or a generic
+	 * ODBC string. Leave as Auto to infer from the raw connection string when
+	 * possible.
 	 * @return true if connection pool initialized successfully
 	 */
 	bool InitializeConnectionPool(const std::string &odbcConnectionString,
-								  int maxConnectionPoolSize = 10);
+								  int maxConnectionPoolSize = 10,
+								  Network::Database::SqlDialect sqlDialectHint =
+									  Network::Database::SqlDialect::Auto);
+
+	/**
+	 * Backward-compatible overload for callers that still pass DatabaseType.
+	 */
+	bool InitializeConnectionPool(const std::string &odbcConnectionString,
+								  int maxConnectionPoolSize,
+								  Network::Database::DatabaseType sqlDialectHint);
 
 	/**
 	 * Gracefully shutdown database connections and cleanup resources
@@ -93,8 +107,16 @@ class TestServerDatabaseManager
 	 */
 	bool ExecuteCustomSqlQuery(const std::string &sqlQuery);
 
+	/**
+	 * Execute a simple non-parameterized SQL file loaded from DB/RAW
+	 * @param relativePath Relative path under DB/ (for example RAW/RQ_Test.sql)
+	 * @return true if query executed without errors
+	 */
+	bool ExecuteCustomSqlFile(const std::string &relativePath);
+
   private:
 	std::unique_ptr<Network::Database::ConnectionPool> mDatabaseConnectionPool;
+	Network::Database::DatabaseConfig mDatabaseConfig;
 	bool mIsInitialized;
 };
 

@@ -1,0 +1,8 @@
+﻿鍮뚮뱶 ?ㅼ젙:
+  RootDir       = E:\MyGitHub\PublicStudy4\NetworkModuleTest
+  Configuration = Debug
+  Platform      = x64
+MSBuild 경로: C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe
+빌드 대상: E:\MyGitHub\PublicStudy4\NetworkModuleTest\NetworkModuleTest.sln
+빌드 설정: Configuration=Debug / Platform=x64
+鍮뚮뱶 ?꾨즺

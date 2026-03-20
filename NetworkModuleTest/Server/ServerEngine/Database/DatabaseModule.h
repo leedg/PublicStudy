@@ -14,6 +14,8 @@
  * - Thread-safe connection pool
  * - RAII-based resource management
  * - Exception-based error handling
+ * - SQL file execution helpers for DB/TABLE and DB/SP scripts
+ * - Raw SQL execution helpers for ad-hoc diagnostics and tests
  *
  * Usage Example:
  *
@@ -50,6 +52,12 @@
  *     // ... use statement
  *     // Connection automatically returned when scope ends
  * }
+ *
+ * // File-based SQL (default path for production logic)
+ * SqlScriptRunner::ExecuteUpdate(*db, "TestServer", "SP/SP_UpsertUserProfile.sql", ...);
+ *
+ * // Raw SQL (kept for simple tests and urgent diagnostics)
+ * SqlScriptRunner::ExecuteRaw(*db, "UPDATE T_Users SET username='debug' WHERE user_id=1");
  */
 
 // Core interfaces
@@ -69,6 +77,8 @@
 #include "ODBCDatabase.h"
 #include "OLEDBDatabase.h"
 #endif
+#include "SqlModuleBootstrap.h"
+#include "SqlScriptRunner.h"
 #include "SQLiteDatabase.h"
 
 // Factory and utilities
