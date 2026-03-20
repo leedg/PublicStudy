@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS T_UserLogins (
+    id         BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT NOT NULL,
+    username   VARCHAR(255) NOT NULL,
+    login_time DATETIME NOT NULL
+);

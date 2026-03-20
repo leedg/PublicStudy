@@ -1,0 +1,46 @@
+﻿Run Date: 2026-03-20 13:38:11 +09:00
+Repo: E:\MyGitHub\PublicStudy4\NetworkModuleTest
+Branch: codex/sp-file-db-processing
+Commit: 74e49e41c7a968b249f468227aeb6389c921ed79
+User: eastroad
+Admin: True
+
+ODBC Drivers:
+
+Driver da Microsoft para arquivos texto (*.txt; *.csv) 32-bit  
+Driver do Microsoft Access (*.mdb)                     32-bit  
+Driver do Microsoft dBase (*.dbf)                      32-bit  
+Driver do Microsoft Excel(*.xls)                       32-bit  
+Driver do Microsoft Paradox (*.db )                    32-bit  
+Microsoft Access Driver (*.mdb)                        32-bit  
+Microsoft Access-Treiber (*.mdb)                       32-bit  
+Microsoft dBase Driver (*.dbf)                         32-bit  
+Microsoft dBase-Treiber (*.dbf)                        32-bit  
+Microsoft Excel Driver (*.xls)                         32-bit  
+Microsoft Excel-Treiber (*.xls)                        32-bit  
+Microsoft ODBC for Oracle                              32-bit  
+Microsoft Paradox Driver (*.db )                       32-bit  
+Microsoft Paradox-Treiber (*.db )                      32-bit  
+Microsoft Text Driver (*.txt; *.csv)                   32-bit  
+Microsoft Text-Treiber (*.txt; *.csv)                  32-bit  
+SQL Server                                             32-bit  
+ODBC Driver 17 for SQL Server                          32-bit  
+ODBC Driver 18 for SQL Server                          32-bit  
+SQL Server Native Client 11.0                          32-bit  
+SQL Server                                             64-bit  
+MySQL ODBC 8.0 ANSI Driver                             64-bit  
+MySQL ODBC 8.0 Unicode Driver                          64-bit  
+ODBC Driver 17 for SQL Server                          64-bit  
+ODBC Driver 18 for SQL Server                          64-bit  
+SQL Server Native Client 11.0                          64-bit  
+Microsoft Access Driver (*.mdb, *.accdb)               64-bit  
+Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb) 64-bit  
+Microsoft Access Text Driver (*.txt, *.csv)            64-bit  
+Microsoft Access dBASE Driver (*.dbf, *.ndx, *.mdx)    64-bit  
+PostgreSQL ANSI(x64)                                   64-bit  
+PostgreSQL ANSI                                        64-bit  
+PostgreSQL Unicode(x64)                                64-bit  
+PostgreSQL Unicode                                     64-bit  
+
+
+

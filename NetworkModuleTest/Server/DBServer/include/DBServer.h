@@ -13,7 +13,7 @@ namespace Network { namespace Database { class IDatabase; } }
 
 // English: DatabaseType for local config
 // 한글: 로컬 config용 DatabaseType
-#include "../ServerEngine/Interfaces/DatabaseType_enum.h"
+#include "../ServerEngine/Interfaces/DatabaseConfig.h"
 #include "../ServerEngine/Utils/NetworkTypes.h"
 #include "../ServerEngine/Network/Core/AsyncIOProvider.h"
 #include "../ServerEngine/Tests/Protocols/MessageHandler.h"
@@ -36,6 +36,9 @@ using Protocols::ConnectionId;
 
 class DBServer
 {
+  private:
+	struct DatabaseConfig;
+
   public:
 	// English: Constructor
 	// ???: ??밴쉐??
@@ -98,6 +101,27 @@ class DBServer
 							   const std::string &username,
 							   const std::string &password);
 
+	/**
+	 * English: Set the backend type for the next DB connection attempt
+	 * ?쒓?: ?ㅼ쓬 DB ?곌껐 ?쒕룄?먯꽌 ?ъ슜???곌껐 諛깆뿏?쒕? ?ㅼ젙
+	 * @param type Database backend type
+	 */
+	void SetDatabaseType(Network::Database::DatabaseType type);
+
+	void SetDatabaseSqlDialectHint(
+		Network::Database::SqlDialect sqlDialectHint);
+
+	/**
+	 * English: Set a fully-qualified connection string (DSN / Driver based)
+	 * ?쒓?: DSN / Driver 湲곕컲 ?꾩껜 ?곌껐 臾몄옄??ㅼ젙
+	 * @param type Database backend type
+	 * @param connectionString Full connection string
+	 */
+	void SetDatabaseConnectionString(Network::Database::DatabaseType type,
+										 const std::string &connectionString,
+										 Network::Database::SqlDialect sqlDialectHint =
+											 Network::Database::SqlDialect::Auto);
+
   private:
 	// =====================================================================
 	// English: Network event handlers
@@ -155,6 +179,12 @@ class DBServer
 	bool ConnectToDatabase();
 
 	/**
+	 * English: Build a runtime connection string from the current DB config
+	 * ?쒓?: ?꾩옱 DB ?ㅼ젙?쇰줈遺??런??꾩엫 ?곌껐 臾몄옄??앹꽦
+	 */
+	static std::string BuildConnectionString(const DatabaseConfig &config);
+
+	/**
 	 * English: Disconnect from database
 	 * ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ?怨뚭퍙 ??곸젫
 	 */
@@ -195,9 +225,12 @@ class DBServer
 		std::string database = "networkdb";
 		std::string username = "postgres";
 		std::string password = "password";
+		std::string connectionString;
 		// English: Default to Mock so the server works out-of-the-box without an external DB
 		// 한글: 외부 DB 없이 바로 동작하도록 기본값을 Mock으로 설정
 		Network::Database::DatabaseType type = Network::Database::DatabaseType::Mock;
+		Network::Database::SqlDialect sqlDialectHint =
+			Network::Database::SqlDialect::Auto;
 	} mDbConfig;
 
 	// English: Owned database instance (created by ConnectToDatabase)

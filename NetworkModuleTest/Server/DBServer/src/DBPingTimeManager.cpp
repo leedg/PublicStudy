@@ -40,7 +40,7 @@ namespace Network::DBServer
         // English: Create table if not exists (placeholder)
         // 한글: 테이블이 없으면 생성 (공백)
         std::string createTableQuery = R"(
-            CREATE TABLE IF NOT EXISTS PingTimeLog (
+            CREATE TABLE IF NOT EXISTS T_PingTimeLog (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ServerId INTEGER NOT NULL,
                 ServerName VARCHAR(32),
@@ -88,7 +88,7 @@ namespace Network::DBServer
         // English: Build INSERT query
         // 한글: INSERT 쿼리 작성
         std::ostringstream query;
-        query << "INSERT INTO PingTimeLog (ServerId, ServerName, PingTimestamp, PingTimeGMT) VALUES ("
+        query << "INSERT INTO T_PingTimeLog (ServerId, ServerName, PingTimestamp, PingTimeGMT) VALUES ("
               << serverId << ", '"
               << serverName << "', "
               << timestamp << ", '"
@@ -128,7 +128,7 @@ namespace Network::DBServer
         // English: Build SELECT query
         // 한글: SELECT 쿼리 작성
         std::ostringstream query;
-        query << "SELECT PingTimestamp FROM PingTimeLog WHERE ServerId = "
+        query << "SELECT PingTimestamp FROM T_PingTimeLog WHERE ServerId = "
               << serverId
               << " ORDER BY Id DESC LIMIT 1";
 
@@ -150,7 +150,7 @@ namespace Network::DBServer
 
         // English: Convert to GMT tm structure
         // 한글: GMT tm 구조체로 변환
-        std::tm gmtTime;
+        std::tm gmtTime{};
 #ifdef _WIN32
         gmtime_s(&gmtTime, &seconds);
 #else

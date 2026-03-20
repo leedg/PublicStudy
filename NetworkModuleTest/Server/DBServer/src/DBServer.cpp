@@ -11,6 +11,7 @@
 // 한글: ConnectToDatabase를 위한 IDatabase / DatabaseFactory 전체 정의 필요
 #include "../../ServerEngine/Interfaces/IDatabase.h"
 #include "../../ServerEngine/Database/DatabaseFactory.h"
+#include "../../ServerEngine/Database/SqlScriptRunner.h"
 // 한글: AsyncIOProvider 정의는 ServerEngine 경로의 헤더로 통일한다.
 
 using namespace Network::AsyncIO;
@@ -20,6 +21,73 @@ namespace Network
 {
 namespace DBServer
 {
+namespace
+{
+bool LooksLikeConnectionString(const std::string& value)
+{
+    return value.find('=') != std::string::npos &&
+           value.find(';') != std::string::npos;
+}
+} // namespace
+
+std::string DBServer::BuildConnectionString(const DatabaseConfig& config)
+{
+    using Network::Database::DatabaseException;
+    using Network::Database::DatabaseType;
+
+    if (!config.connectionString.empty())
+    {
+        return config.connectionString;
+    }
+
+    if (LooksLikeConnectionString(config.host))
+    {
+        return config.host;
+    }
+
+    if (config.type == DatabaseType::SQLite)
+    {
+        return config.database;
+    }
+
+    if (config.type == DatabaseType::ODBC || config.type == DatabaseType::OLEDB ||
+        config.type == DatabaseType::MySQL ||
+        config.type == DatabaseType::PostgreSQL)
+    {
+        Network::Database::DatabaseConfig dbConfig;
+        dbConfig.mType = (config.type == DatabaseType::OLEDB)
+                             ? DatabaseType::OLEDB
+                             : DatabaseType::ODBC;
+        dbConfig.mSqlDialectHint = config.sqlDialectHint;
+        if (dbConfig.mSqlDialectHint == Network::Database::SqlDialect::Auto)
+        {
+            if (config.type == DatabaseType::MySQL)
+            {
+                dbConfig.mSqlDialectHint = Network::Database::SqlDialect::MySQL;
+            }
+            else if (config.type == DatabaseType::PostgreSQL)
+            {
+                dbConfig.mSqlDialectHint =
+                    Network::Database::SqlDialect::PostgreSQL;
+            }
+            else if (config.type == DatabaseType::OLEDB)
+            {
+                dbConfig.mSqlDialectHint = Network::Database::SqlDialect::SQLServer;
+            }
+        }
+        dbConfig.mHost = config.host;
+        dbConfig.mPort = config.port;
+        dbConfig.mDatabase = config.database;
+        dbConfig.mUser = config.username;
+        dbConfig.mPassword = config.password;
+        return (dbConfig.mType == DatabaseType::OLEDB)
+                   ? dbConfig.BuildOLEDBConnectionString()
+                   : dbConfig.BuildODBCConnectionString();
+    }
+
+    throw DatabaseException(
+        "DBServer requires SetDatabaseConnectionString() for this backend type");
+}
 // =============================================================================
 // English: Constructor and Destructor
 // ???: ??밴쉐??獄????늾??
@@ -160,6 +228,28 @@ void DBServer::SetDatabaseConfig(const std::string &host, uint16_t port,
     mDbConfig.database = database;
     mDbConfig.username = username;
     mDbConfig.password = password;
+    mDbConfig.connectionString.clear();
+}
+
+void DBServer::SetDatabaseType(Network::Database::DatabaseType type)
+{
+    mDbConfig.type = type;
+}
+
+void DBServer::SetDatabaseSqlDialectHint(
+    Network::Database::SqlDialect sqlDialectHint)
+{
+    mDbConfig.sqlDialectHint = sqlDialectHint;
+}
+
+void DBServer::SetDatabaseConnectionString(
+    Network::Database::DatabaseType type,
+    const std::string &connectionString,
+    Network::Database::SqlDialect sqlDialectHint)
+{
+    mDbConfig.type = type;
+    mDbConfig.connectionString = connectionString;
+    mDbConfig.sqlDialectHint = sqlDialectHint;
 }
 
 // =============================================================================
@@ -260,7 +350,21 @@ bool DBServer::ConnectToDatabase()
             // 한글: Mock 외 백엔드를 위한 연결 문자열 구성
             Network::Database::DatabaseConfig dbConfig;
             dbConfig.mType = mDbConfig.type;
-            dbConfig.mConnectionString = mDbConfig.database; // SQLite uses file path
+            dbConfig.mConnectionString = BuildConnectionString(mDbConfig);
+            if (mDbConfig.sqlDialectHint != Network::Database::SqlDialect::Auto)
+            {
+                dbConfig.mSqlDialectHint = mDbConfig.sqlDialectHint;
+            }
+            else if (mDbConfig.type == DatabaseType::OLEDB)
+            {
+                dbConfig.mSqlDialectHint = Network::Database::SqlDialect::SQLServer;
+            }
+            else
+            {
+                dbConfig.mSqlDialectHint =
+                    Network::Database::SqlScriptRunner::InferSqlDialectHint(
+                        dbConfig.mConnectionString);
+            }
             mDatabase->Connect(dbConfig);
         }
         else
