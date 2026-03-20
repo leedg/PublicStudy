@@ -33,7 +33,8 @@ $ErrorActionPreference = 'Stop'
 
 $projectDir = Split-Path -Parent $PSScriptRoot
 $vcxproj    = Join-Path $projectDir 'DBModuleTest.vcxproj'
-$exePath    = Join-Path $projectDir "x64\$Config\DBModuleTest.exe"
+$binDir     = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path "x64\$Config"
+$exePath    = Join-Path $binDir "DBModuleTest.exe"
 
 # ── MSBuild 탐색 ──────────────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ function Invoke-Build {
     $target = if ($Clean) { 'Rebuild' } else { 'Build' }
     & $msbuild $vcxproj /p:Configuration=$Config /p:Platform=x64 /t:$target /m /nologo /verbosity:minimal
     if ($LASTEXITCODE -ne 0) { throw "빌드 실패 (exit $LASTEXITCODE)" }
-    Write-Host "[BUILD] 완료: $exePath"
+    Write-Host "[BUILD] 완료: $binDir"
 }
 
 # ── 단일 백엔드 비대화형 실행 ─────────────────────────────────────────────
