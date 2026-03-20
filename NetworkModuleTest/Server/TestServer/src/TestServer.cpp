@@ -91,15 +91,14 @@ namespace Network::TestServer
         // Initialize asynchronous DB task queue FIRST (needed by session factory).
         //          DBTaskQueue routes each task by sessionId % workerCount, so all tasks
         //          for the same session always land on the same worker (FIFO within worker).
-        //          Default = DEFAULT_TASK_QUEUE_WORKER_COUNT (1); configurable via CLI -w.
-        //          1 worker: simplest deployment, no affinity math needed.
+        //          Default = DEFAULT_TASK_QUEUE_WORKER_COUNT (3); configurable via CLI -w.
+        //          3 workers: balanced throughput with session-affinity ordering guaranteed.
         //          N workers: higher throughput; per-session ordering still guaranteed by hash affinity.
         // 한글: 비동기 DB 작업 큐를 먼저 초기화 (세션 팩토리에서 필요).
         //       DBTaskQueue는 sessionId % workerCount로 라우팅하므로 동일 세션 작업은
         //       항상 같은 워커에 배정됨 (워커 내 FIFO 보장).
-        //       기본값 = DEFAULT_TASK_QUEUE_WORKER_COUNT (1); CLI -w로 재설정 가능.
-        //       1 워커: 가장 단순, 친화도 계산 불필요.
-        //       N 워커: 처리량 향상; 해시 친화도로 세션별 순서 여전히 보장.
+        //       기본값 = DEFAULT_TASK_QUEUE_WORKER_COUNT (3); CLI -w로 재설정 가능.
+        //       3 워커: 세션 친화도 순서 보장을 유지하면서 균형 잡힌 처리량 제공.
         // Create local database — SQLite when a path is given, Mock otherwise.
         //          The owned instance is injected into DBTaskQueue so it can persist
         //          connect/disconnect/player-data records without a separate DB server.
