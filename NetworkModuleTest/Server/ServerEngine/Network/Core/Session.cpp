@@ -220,7 +220,18 @@ void Session::Close()
 	//       비풀 세션은 ~AsyncScope()가 드레인을 담당함.
 	mAsyncScope.Cancel();
 
-	Utils::Logger::Info("Session closed - ID: " + std::to_string(mId));
+	// English: Skip log for preallocated pool slots that were never assigned (mId == 0).
+	//          On shutdown, SessionPool destroys ~1000 idle slots via mSlots.reset(),
+	//          each triggering ~Session() -> Close(). Logging all of them produces
+	//          ~1000 "Session closed - ID: 0" lines that obscure real shutdown logs.
+	// 한글: 한 번도 할당되지 않은 사전예약 풀 슬롯은 로그 생략 (mId == 0).
+	//       종료 시 SessionPool이 mSlots.reset()으로 슬롯을 파괴하고
+	//       ~Session() → Close()가 연쇄 호출됨. 전부 로그하면 실제 종료 로그가
+	//       다수의 "Session closed - ID: 0"에 가려짐.
+	if (mId != 0)
+	{
+		Utils::Logger::Info("Session closed - ID: " + std::to_string(mId));
+	}
 }
 
 void Session::WaitForPendingTasks()
