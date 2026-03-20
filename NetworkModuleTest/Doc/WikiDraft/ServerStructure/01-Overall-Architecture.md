@@ -29,7 +29,7 @@ flowchart LR
         Session[Core::Session]
         SessionCfg[SessionConfigurator<br/>SetOnRecv]
         EventFlow[Connected / Disconnected<br/>event handlers]
-        DBQueue[DBTaskQueue<br/>workerCount=1 now<br/>per-worker queues internally]
+        DBQueue[DBTaskQueue<br/>workerCount=3 default<br/>per-worker queues internally]
         LocalDB[Local DB<br/>Mock or SQLite]
         TimerQ[TimerQueue<br/>DB ping scheduler]
         DBSocket[DB socket + recv thread]
@@ -57,14 +57,14 @@ flowchart LR
 1. 세션 객체는 현재 `SessionPool`의 `Core::Session`으로 생성된다.
 2. recv 콜백은 `SetSessionConfigurator()`가 `SetOnRecv()`로 붙인다.
 3. 접속/종료 DB 기록은 `TestServer` 이벤트 핸들러가 `DBTaskQueue`에 enqueue 한다.
-4. `DBTaskQueue`는 내부적으로 워커별 독립 큐를 가지지만, 현재 `TestServer` 설정은 workerCount=1 이다.
+4. `DBTaskQueue`는 내부적으로 워커별 독립 큐를 가지며, 기본 설정은 workerCount=3 이다 (CLI `-w`로 재설정 가능).
 5. DB 서버 ping은 `DBPingLoop`가 아니라 `TimerQueue::ScheduleRepeat()`로 구동된다.
 
 ## 개발 체크
 
 1. 문서에 "세션 팩토리로 `ClientSession` 생성"이라고 쓰지 않는다.
 2. 문서에 `DBTaskQueue`를 "단일 공유 큐"로 고정 설명하지 않는다.
-3. 현재 설정값(workerCount=1)과 구현 구조(워커별 독립 큐)는 분리해서 적는다.
+3. 기본 설정값(workerCount=3)과 구현 구조(워커별 독립 큐)는 분리해서 적는다.
 4. ping 반복 경로는 `TimerQueue` 기준으로 설명한다.
 
 ## 운영 체크
@@ -80,4 +80,4 @@ flowchart LR
 - `Server/ServerEngine/Network/Core/SessionPool.cpp`
 - `Server/TestServer/src/DBTaskQueue.cpp`
 
-검증일: 2026-03-15
+검증일: 2026-03-20

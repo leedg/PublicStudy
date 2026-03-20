@@ -99,12 +99,12 @@ $wikiShutdownLines = Get-Content $wikiShutdownPath -Encoding utf8
 $wikiReconnectLines = Get-Content $wikiReconnectPath -Encoding utf8
 
 # 1) DBTaskQueue worker count policy
-$lineInitOneWorker = Get-LineNumber -Lines $cppLines -Pattern "mDBTaskQueue->Initialize\(1,\s*""db_tasks\.wal"""
-Assert-Check ($lineInitOneWorker -gt 0) "DBTaskQueue initialized with worker count = 1"
+$lineInitWorker = Get-LineNumber -Lines $cppLines -Pattern "mDBTaskQueue->Initialize\(dbWorkerCount,\s*""db_tasks\.wal"""
+Assert-Check ($lineInitWorker -gt 0) "DBTaskQueue initialized with dbWorkerCount variable"
 
-# 2) Weak pointer injection policy
-$lineWeakCapture = Get-LineNumber -Lines $cppLines -Pattern "std::weak_ptr<DBTaskQueue>\s+weakQueue\s*=\s*mDBTaskQueue;"
-Assert-Check ($lineWeakCapture -gt 0) "Session factory captures weak_ptr<DBTaskQueue>"
+# 2) DBTaskQueue safe-access guard policy
+$lineIsRunningGuard = Get-LineNumber -Lines $cppLines -Pattern "mDBTaskQueue->IsRunning\(\)"
+Assert-Check ($lineIsRunningGuard -gt 0) "DBTaskQueue accessed via IsRunning() guard before use"
 
 $headerText = [string]::Join("`n", $headerLines)
 Assert-Check ($headerText -match "weak_ptr") "Header comments mention weak_ptr injection"
@@ -141,7 +141,7 @@ $wikiShutdownText = [string]::Join("`n", $wikiShutdownLines)
 $wikiReconnectText = [string]::Join("`n", $wikiReconnectLines)
 
 Assert-Check ($wikiHomeText -match "DBTaskQueue") "Wiki Home mentions DBTaskQueue policy"
-Assert-Check ($wikiArchitectureText -match "worker=1") "Wiki Architecture page shows worker=1 in structure"
+Assert-Check ($wikiArchitectureText -match "workerCount=3") "Wiki Architecture page shows workerCount=3 in structure"
 Assert-Check ($wikiShutdownText -match "DBTaskQueue") "Wiki Shutdown page includes DBTaskQueue ordering"
 Assert-Check ($wikiShutdownText -match "DisconnectFromDBServer") "Wiki Shutdown page includes DB disconnect step"
 Assert-Check ($wikiReconnectText -match "WSAECONNREFUSED") "Wiki Reconnect page includes CONNREFUSED rule"
