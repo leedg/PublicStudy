@@ -10,13 +10,19 @@ namespace Network { namespace Database { class IDatabase; } }
 #include "Utils/NetworkUtils.h"
 #include <atomic>
 #include <condition_variable>
-#include <fstream>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <string>
 #include <thread>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 namespace Network::TestServer
 {
@@ -180,7 +186,22 @@ namespace Network::TestServer
         // WAL crash-recovery members
         // 한글: WAL 크래시 복구 멤버
         std::string                     mWalPath;       // WAL 파일 경로
-        std::ofstream                   mWalFile;       // 추가 전용 스트림
+
+        // English: Native file handle for the WAL append stream.
+        //          Using a native handle allows FlushFileBuffers (Windows) /
+        //          fdatasync (POSIX) to be called after every write, guaranteeing
+        //          that the record reaches durable storage before we acknowledge
+        //          the task. std::ofstream only flushes to the OS buffer.
+        // 한글: WAL 추가 스트림용 네이티브 파일 핸들.
+        //       네이티브 핸들을 사용하면 매 쓰기 후 FlushFileBuffers (Windows) /
+        //       fdatasync (POSIX)를 호출할 수 있어, 작업을 확인하기 전에
+        //       레코드가 영구 저장소에 기록됨을 보장합니다.
+        //       std::ofstream은 OS 버퍼까지만 flush합니다.
+#ifdef _WIN32
+        HANDLE                          mWalHandle = INVALID_HANDLE_VALUE;
+#else
+        int                             mWalFd = -1;
+#endif
         mutable std::mutex              mWalMutex;      // WAL 파일 쓰기 직렬화
         // Injected database (non-owning); nullptr = log-only mode
         // 한글: 주입된 데이터베이스 (non-owning); nullptr이면 로그만 출력

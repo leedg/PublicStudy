@@ -8,7 +8,8 @@
 
 #include <chrono>
 #include <cstdio>
-#include <fstream>
+#include <cstring>
+#include <fstream>   // std::ifstream used in WalRecover
 #include <map>
 #include <sstream>
 #include <utility>
@@ -220,6 +221,27 @@ void DBTaskQueue::Shutdown()
     }
 
     mQueueSize.store(0, std::memory_order_relaxed);
+
+    // English: Close the WAL file handle so all pending OS write-back is
+    //          flushed and the file descriptor is released cleanly.
+    // 한글: WAL 파일 핸들을 닫아 OS 쓰기 버퍼가 모두 플러시되고
+    //       파일 디스크립터가 깔끔하게 해제되도록 합니다.
+    {
+        std::lock_guard<std::mutex> walLock(mWalMutex);
+#ifdef _WIN32
+        if (mWalHandle != INVALID_HANDLE_VALUE)
+        {
+            CloseHandle(mWalHandle);
+            mWalHandle = INVALID_HANDLE_VALUE;
+        }
+#else
+        if (mWalFd != -1)
+        {
+            close(mWalFd);
+            mWalFd = -1;
+        }
+#endif
+    }
 
     Logger::Info("DBTaskQueue shutdown complete - Processed: " +
                  std::to_string(mProcessedCount.load()) +
@@ -619,12 +641,41 @@ bool DBTaskQueue::EnsureWalOpen()
 {
     // Caller MUST hold mWalMutex before calling this function.
     // 한글: 이 함수를 호출하기 전에 mWalMutex를 보유하고 있어야 합니다.
-    if (mWalFile.is_open())
-    {
+#ifdef _WIN32
+    if (mWalHandle != INVALID_HANDLE_VALUE)
         return true;
-    }
-    mWalFile.open(mWalPath, std::ios::app | std::ios::out);
-    return mWalFile.is_open();
+
+    // English: Open/create the WAL file for append-only writes.
+    //          OPEN_ALWAYS creates the file if it does not exist, or opens it
+    //          if it already does — preserving any existing WAL records.
+    // 한글: 추가 전용 쓰기를 위해 WAL 파일을 열거나 생성합니다.
+    //       OPEN_ALWAYS는 파일이 없으면 생성하고, 있으면 기존 WAL 레코드를
+    //       보존한 채로 열어줍니다.
+    mWalHandle = CreateFileA(
+        mWalPath.c_str(),
+        GENERIC_WRITE,
+        FILE_SHARE_READ,   // allow concurrent readers during recovery
+        nullptr,
+        OPEN_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr);
+
+    if (mWalHandle == INVALID_HANDLE_VALUE)
+        return false;
+
+    // English: Seek to end so writes append after existing content.
+    // 한글: 기존 내용 뒤에 추가하기 위해 끝으로 이동.
+    SetFilePointer(mWalHandle, 0, nullptr, FILE_END);
+    return true;
+#else
+    if (mWalFd != -1)
+        return true;
+
+    // English: O_APPEND ensures every write atomically seeks to end.
+    // 한글: O_APPEND는 모든 쓰기가 원자적으로 끝으로 이동함을 보장합니다.
+    mWalFd = open(mWalPath.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
+    return mWalFd != -1;
+#endif
 }
 
 void DBTaskQueue::WalWritePending(const DBTask& task, uint64_t seq)
@@ -652,24 +703,39 @@ void DBTaskQueue::WalWritePending(const DBTask& task, uint64_t seq)
     }
 
     // P|<type>|<sessionId>|<seq>|<data>
-    mWalFile << "P|" << static_cast<int>(task.type)
-             << "|" << task.sessionId
-             << "|" << seq
-             << "|" << escapedData
-             << "\n";
-    // English: flush() moves data to the OS buffer but does NOT guarantee disk
-    //          durability (power failure can still lose the record).
-    //          For full crash safety, an OS-level sync (FlushFileBuffers on Windows,
-    //          fdatasync on POSIX) is required after flush().
-    //          TODO: refactor mWalFile from std::ofstream to a native handle so
-    //          FlushFileBuffers / fdatasync can be called directly.
-    // 한글: flush()는 데이터를 OS 버퍼로 이동하지만 디스크 내구성을 보장하지 않음
-    //       (전원 장애 시 레코드 손실 가능).
-    //       완전한 크래시 안전성을 위해 flush() 이후 OS 수준 sync
-    //       (Windows: FlushFileBuffers, POSIX: fdatasync)가 필요함.
-    //       TODO: mWalFile을 std::ofstream에서 네이티브 핸들로 리팩터링하여
-    //       FlushFileBuffers / fdatasync 직접 호출 가능하게 개선 필요.
-    mWalFile.flush();
+    std::ostringstream oss;
+    oss << "P|" << static_cast<int>(task.type)
+        << "|" << task.sessionId
+        << "|" << seq
+        << "|" << escapedData
+        << "\n";
+    const std::string line = oss.str();
+
+    // English: Write via native handle then call OS-level sync so the record
+    //          is durable on disk before we return.  This protects against power
+    //          failure between write() and a later fsync — any pending record
+    //          that made it here will be recovered by WalRecover() on restart.
+    // 한글: 네이티브 핸들로 쓰기 후 OS 수준 sync를 호출하여 반환 전에
+    //       레코드가 디스크에 영구 저장되도록 합니다.  write()와 이후 fsync 사이
+    //       전원 장애가 발생해도, 여기까지 도달한 pending 레코드는
+    //       재시작 시 WalRecover()로 복구됩니다.
+#ifdef _WIN32
+    {
+        DWORD written = 0;
+        WriteFile(mWalHandle, line.c_str(), static_cast<DWORD>(line.size()), &written, nullptr);
+        FlushFileBuffers(mWalHandle);
+    }
+#else
+    {
+        const ssize_t written = write(mWalFd, line.c_str(), line.size());
+        (void)written;  // failure logged via EnsureWalOpen return value
+#  if defined(__APPLE__)
+        fcntl(mWalFd, F_FULLFSYNC);   // macOS: fdatasync is not guaranteed durable
+#  else
+        fdatasync(mWalFd);
+#  endif
+    }
+#endif
 }
 
 void DBTaskQueue::WalWriteDone(uint64_t seq)
@@ -688,8 +754,25 @@ void DBTaskQueue::WalWriteDone(uint64_t seq)
     }
 
     // D|<seq>
-    mWalFile << "D|" << seq << "\n";
-    mWalFile.flush(); // OS-level sync limitation — see WalWritePending comment above.
+    const std::string line = "D|" + std::to_string(seq) + "\n";
+
+#ifdef _WIN32
+    {
+        DWORD written = 0;
+        WriteFile(mWalHandle, line.c_str(), static_cast<DWORD>(line.size()), &written, nullptr);
+        FlushFileBuffers(mWalHandle);
+    }
+#else
+    {
+        const ssize_t written = write(mWalFd, line.c_str(), line.size());
+        (void)written;
+#  if defined(__APPLE__)
+        fcntl(mWalFd, F_FULLFSYNC);
+#  else
+        fdatasync(mWalFd);
+#  endif
+    }
+#endif
 }
 
 void DBTaskQueue::WalRecover()

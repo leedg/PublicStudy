@@ -2,7 +2,6 @@
 // 한글: MessageHandler 구현
 
 #include "MessageHandler.h"
-// #include "ping.pb.h"  // TODO: Generate Protocol Buffer files
 #include <algorithm>
 #include <chrono>
 #include <cstring>

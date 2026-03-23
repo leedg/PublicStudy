@@ -46,7 +46,25 @@
       "Bash(\"E:/MyGitHub/PublicStudy/NetworkModuleTest/Doc/Reports/assets_B/README.md\":*)",
       "Bash(\"E:/MyGitHub/PublicStudy/NetworkModuleTest/Doc/Reports/assets_C/README.md\":*)",
       "Bash(grep -l 'virtual.*= 0' Server/**/*.h)",
-      "Bash(powershell.exe -Command \"& ''C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Professional\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe'' ''E:\\\\MyGitHub\\\\PublicStudy\\\\NetworkModuleTest\\\\NetworkModuleTest.sln'' /p:Configuration=Debug /p:Platform=x64 /m /nologo 2>&1 | Select-Object -Last 30\")"
+      "Bash(powershell.exe -Command \"& ''C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Professional\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe'' ''E:\\\\MyGitHub\\\\PublicStudy\\\\NetworkModuleTest\\\\NetworkModuleTest.sln'' /p:Configuration=Debug /p:Platform=x64 /m /nologo 2>&1 | Select-Object -Last 30\")",
+      "Bash(find E:MyGitHubPublicStudyNetworkModuleTest -name diag_async.png -o -name diag_async*)",
+      "Bash(find E:MyGitHubPublicStudyNetworkModuleTestDocReports -type f \\\\\\(-name *.py -o -name *.md -o -name *.docx \\\\\\))",
+      "Bash(python Fix-ReviewCorrections.py)",
+      "Bash(python Build-NetworkAsyncDB-Report.py)",
+      "Bash(ls -la \"E:/MyGitHub/PublicStudy/NetworkModuleTest/Doc/Reports/NetworkAsyncDBReport/~\"*)",
+      "Bash(python Build-NetworkAsyncDB-Report.py \"../_tmp_report.docx\")",
+      "Bash(cat:*)",
+      "Bash(ls -la *.drawio)",
+      "Bash(python3)",
+      "Bash(ls -la ExecutiveSummary/assets/*.png)",
+      "Bash(cp ExecutiveSummary/assets/01-architecture-overview.png NetworkAsyncDBReport/assets/diag_overview.png)",
+      "Bash(cp ExecutiveSummary/assets/02-session-uml.png NetworkAsyncDBReport/assets/diag_session_uml.png)",
+      "Bash(cp ExecutiveSummary/assets/03-client-lifecycle-sequence.png NetworkAsyncDBReport/assets/diag_client_lifecycle.png)",
+      "Bash(cp ExecutiveSummary/assets/05-graceful-shutdown-sequence.png NetworkAsyncDBReport/assets/diag_shutdown.png)",
+      "Bash(cp ExecutiveSummary/assets/06-db-reconnect-sequence.png NetworkAsyncDBReport/assets/diag_reconnect.png)",
+      "Bash(ls -la NetworkAsyncDBReport/assets/diag_*.png)",
+      "Bash(ls -la \"E:/MyGitHub/PublicStudy/NetworkModuleTest/Doc/Reports/NetworkAsyncDBReport/diagrams/Sec05\"*)",
+      "Bash(ls \"E:/MyGitHub/PublicStudy/NetworkModuleTest/Doc/Reports/NetworkAsyncDBReport/assets/\"diag_*.png)"
     ]
   }
 }

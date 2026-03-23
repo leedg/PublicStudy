@@ -27,7 +27,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "Network_Async_DB_Report_2026-02-26.md"
+SOURCE = ROOT / "NetworkAsyncDBReport" / "Network_Async_DB_Report.md"
 
 
 def load_source() -> tuple[str, dict[str, str]]:

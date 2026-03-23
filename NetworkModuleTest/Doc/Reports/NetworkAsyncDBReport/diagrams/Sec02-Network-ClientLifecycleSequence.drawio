@@ -1,0 +1,212 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="Page-1" id="client-lifecycle-03">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="Client Lifecycle Sequence Diagram" style="fillColor=#1E3A5C;strokeColor=none;fontColor=#FFFFFF;fontSize=16;fontStyle=1;html=1;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1600" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Actor Headers ===== -->
+        <mxCell id="h1" value="&lt;b&gt;TestClient&lt;/b&gt;" style="rounded=1;arcSize=23;whiteSpace=wrap;html=1;fillColor=#718096;strokeColor=none;fontColor=#FFFFFF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="120" height="38" as="geometry"/>
+        </mxCell>
+        <mxCell id="h2" value="&lt;b&gt;PlatformEngine&lt;/b&gt;" style="rounded=1;arcSize=23;whiteSpace=wrap;html=1;fillColor=#1E3A5C;strokeColor=none;fontColor=#FFFFFF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="230" y="70" width="130" height="38" as="geometry"/>
+        </mxCell>
+        <mxCell id="h3" value="&lt;b&gt;SessionManager&lt;/b&gt;" style="rounded=1;arcSize=23;whiteSpace=wrap;html=1;fillColor=#2E6DA4;strokeColor=none;fontColor=#FFFFFF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="430" y="70" width="130" height="38" as="geometry"/>
+        </mxCell>
+        <mxCell id="h4" value="&lt;b&gt;ClientSession&lt;/b&gt;" style="rounded=1;arcSize=23;whiteSpace=wrap;html=1;fillColor=#276749;strokeColor=none;fontColor=#FFFFFF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="70" width="130" height="38" as="geometry"/>
+        </mxCell>
+        <mxCell id="h5" value="&lt;b&gt;ClientPacket&lt;br/&gt;Handler&lt;/b&gt;" style="rounded=1;arcSize=23;whiteSpace=wrap;html=1;fillColor=#4A90C4;strokeColor=none;fontColor=#FFFFFF;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="830" y="70" width="120" height="38" as="geometry"/>
+        </mxCell>
+        <mxCell id="h6" value="&lt;b&gt;DBTaskQueue&lt;/b&gt;" style="rounded=1;arcSize=23;whiteSpace=wrap;html=1;fillColor=#B8860B;strokeColor=none;fontColor=#FFFFFF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="70" width="120" height="38" as="geometry"/>
+        </mxCell>
+        <mxCell id="h7" value="&lt;b&gt;Local DB&lt;/b&gt;" style="rounded=1;arcSize=23;whiteSpace=wrap;html=1;fillColor=#8B4513;strokeColor=none;fontColor=#FFFFFF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="70" width="120" height="38" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Lifelines ===== -->
+        <mxCell id="l1" value="" style="endArrow=none;strokeColor=#CBD5E0;strokeWidth=1;dashed=1;dashPattern=8 8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="100" y="108" as="sourcePoint"/><mxPoint x="100" y="1100" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="l2" value="" style="endArrow=none;strokeColor=#CBD5E0;strokeWidth=1;dashed=1;dashPattern=8 8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="295" y="108" as="sourcePoint"/><mxPoint x="295" y="1100" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="l3" value="" style="endArrow=none;strokeColor=#CBD5E0;strokeWidth=1;dashed=1;dashPattern=8 8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="495" y="108" as="sourcePoint"/><mxPoint x="495" y="1100" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="l4" value="" style="endArrow=none;strokeColor=#CBD5E0;strokeWidth=1;dashed=1;dashPattern=8 8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="695" y="108" as="sourcePoint"/><mxPoint x="695" y="1100" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="l5" value="" style="endArrow=none;strokeColor=#CBD5E0;strokeWidth=1;dashed=1;dashPattern=8 8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="890" y="108" as="sourcePoint"/><mxPoint x="890" y="1100" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="l6" value="" style="endArrow=none;strokeColor=#CBD5E0;strokeWidth=1;dashed=1;dashPattern=8 8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1090" y="108" as="sourcePoint"/><mxPoint x="1090" y="1100" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="l7" value="" style="endArrow=none;strokeColor=#CBD5E0;strokeWidth=1;dashed=1;dashPattern=8 8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1290" y="108" as="sourcePoint"/><mxPoint x="1290" y="1100" as="targetPoint"/></mxGeometry>
+        </mxCell>
+
+        <!-- ===== Phase: Connection Setup ===== -->
+        <mxCell id="phase1" value="Connection Setup" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;fillColor=#D6EAFF;strokeColor=#2E6DA4;strokeWidth=1.5;fontColor=#1E3A5C;fontStyle=1;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="130" width="120" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- 1. TestClient -> PlatformEngine: TCP connect -->
+        <mxCell id="s1a" value="" style="endArrow=block;endFill=1;strokeColor=#4A5568;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="100" y="150" as="sourcePoint"/><mxPoint x="295" y="150" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s1t" value="1. TCP connect" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#4A5568;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="130" y="132" width="130" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 2. PlatformEngine -> SessionManager: CreateSession(socket) -->
+        <mxCell id="s2a" value="" style="endArrow=block;endFill=1;strokeColor=#4A5568;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="295" y="190" as="sourcePoint"/><mxPoint x="495" y="190" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s2t" value="2. CreateSession(socket)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#4A5568;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="320" y="172" width="150" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 3. SessionManager -> PlatformEngine: SessionRef (return) -->
+        <mxCell id="s3a" value="" style="endArrow=block;endFill=1;strokeColor=#718096;strokeWidth=1.8;dashed=1;dashPattern=8 8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="495" y="230" as="sourcePoint"/><mxPoint x="295" y="230" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s3t" value="3. SessionRef (return)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#718096;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="320" y="212" width="150" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 4. PlatformEngine -> ClientSession: OnConnected() via logic thread -->
+        <mxCell id="s4a" value="" style="endArrow=block;endFill=1;strokeColor=#276749;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="295" y="270" as="sourcePoint"/><mxPoint x="695" y="270" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s4t" value="4. OnConnected() via logic thread" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#276749;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="370" y="252" width="220" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 5. ClientSession -> DBTaskQueue: RecordConnectTime(sessionId, timestamp) -->
+        <mxCell id="s5a" value="" style="endArrow=block;endFill=1;strokeColor=#B8860B;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="695" y="310" as="sourcePoint"/><mxPoint x="1090" y="310" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s5t" value="5. RecordConnectTime(sessionId, timestamp)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#B8860B;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="770" y="292" width="270" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 6. DBTaskQueue -> Local DB: immediate return -->
+        <mxCell id="s6a" value="" style="endArrow=block;endFill=1;strokeColor=#8B4513;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1090" y="350" as="sourcePoint"/><mxPoint x="1290" y="350" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s6t" value="6. immediate return" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#8B4513;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="332" width="150" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Phase: Packet Flow ===== -->
+        <mxCell id="phase2" value="Packet Flow" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;fillColor=#FEFCBF;strokeColor=#B8860B;strokeWidth=1.5;fontColor=#744210;fontStyle=1;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="390" width="120" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- 7. TestClient -> PlatformEngine: PKT_SessionConnectReq -->
+        <mxCell id="s7a" value="" style="endArrow=block;endFill=1;strokeColor=#4A5568;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="100" y="410" as="sourcePoint"/><mxPoint x="295" y="410" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s7t" value="7. PKT_SessionConnectReq" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#4A5568;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="110" y="392" width="170" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 8. PlatformEngine -> ClientSession: ProcessRawRecv(...) -->
+        <mxCell id="s8a" value="" style="endArrow=block;endFill=1;strokeColor=#4A5568;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="295" y="450" as="sourcePoint"/><mxPoint x="695" y="450" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s8t" value="8. ProcessRawRecv(...)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#4A5568;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="432" width="170" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 9. ClientSession -> ClientPacketHandler: ProcessPacket(...) -->
+        <mxCell id="s9a" value="" style="endArrow=block;endFill=1;strokeColor=#4A90C4;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="695" y="490" as="sourcePoint"/><mxPoint x="890" y="490" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s9t" value="9. ProcessPacket(...)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#4A90C4;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="720" y="472" width="150" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 10. ClientPacketHandler: build SessionConnectRes (self) -->
+        <mxCell id="s10box" value="10. build SessionConnectRes" style="rounded=1;arcSize=20;whiteSpace=wrap;html=1;fillColor=#FEFCBF;strokeColor=#B8860B;strokeWidth=1;fontColor=#744210;fontSize=9;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="830" y="520" width="180" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- 11. ClientSession -> TestClient: PKT_SessionConnectRes -->
+        <mxCell id="s11a" value="" style="endArrow=block;endFill=1;strokeColor=#276749;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="695" y="575" as="sourcePoint"/><mxPoint x="100" y="575" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s11t" value="11. PKT_SessionConnectRes" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#276749;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="280" y="557" width="180" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Phase: Ping/Pong ===== -->
+        <mxCell id="phase3" value="Ping / Pong" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;fillColor=#F0FFF4;strokeColor=#276749;strokeWidth=1.5;fontColor=#276749;fontStyle=1;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="615" width="120" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- 12. TestClient -> PlatformEngine: PKT_PingReq -->
+        <mxCell id="s12a" value="" style="endArrow=block;endFill=1;strokeColor=#4A5568;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="100" y="630" as="sourcePoint"/><mxPoint x="295" y="630" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s12t" value="12. PKT_PingReq" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#4A5568;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="120" y="612" width="150" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 13. PlatformEngine -> ClientSession: ProcessRawRecv(...) -->
+        <mxCell id="s13a" value="" style="endArrow=block;endFill=1;strokeColor=#4A5568;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="295" y="670" as="sourcePoint"/><mxPoint x="695" y="670" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s13t" value="13. ProcessRawRecv(...)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#4A5568;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="652" width="170" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 14. ClientSession -> ClientPacketHandler: HandlePingRequest(...) -->
+        <mxCell id="s14a" value="" style="endArrow=block;endFill=1;strokeColor=#4A90C4;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="695" y="710" as="sourcePoint"/><mxPoint x="890" y="710" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s14t" value="14. HandlePingRequest(...)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#4A90C4;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="720" y="692" width="150" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 15. ClientPacketHandler -> TestClient: PKT_PongRes -->
+        <mxCell id="s15a" value="" style="endArrow=block;endFill=1;strokeColor=#276749;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="890" y="750" as="sourcePoint"/><mxPoint x="100" y="750" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s15t" value="15. PKT_PongRes" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#276749;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="370" y="732" width="150" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== Phase: Async DB Write ===== -->
+        <mxCell id="phase4" value="Async DB Write" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;fillColor=#FFF5EB;strokeColor=#B8860B;strokeWidth=1.5;fontColor=#744210;fontStyle=1;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="800" width="120" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- 16. DBTaskQueue -> Local DB: INSERT SessionConnectLog -->
+        <mxCell id="s16a" value="" style="endArrow=block;endFill=1;strokeColor=#8B4513;strokeWidth=1.8;html=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="1090" y="820" as="sourcePoint"/><mxPoint x="1290" y="820" as="targetPoint"/></mxGeometry>
+        </mxCell>
+        <mxCell id="s16t" value="16. INSERT SessionConnectLog" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#8B4513;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="802" width="180" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Note: async write happens later -->
+        <mxCell id="note1" value="Note: DB write is&#xa;dequeued asynchronously&#xa;after connect flow completes" style="shape=note;whiteSpace=wrap;html=0;backgroundOutline=1;size=15;fillColor=#FEFCBF;strokeColor=#B8860B;fontColor=#744210;fontSize=9;align=left;spacingLeft=6;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="790" width="170" height="60" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

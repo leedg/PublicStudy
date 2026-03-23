@@ -1,600 +1,278 @@
-﻿# Network / Async / DB 처리 구조 분석 보고서
+# Network / Async / DB 처리 구조 분석 보고서
 
 - 최초 작성: 2026-02-26
-- 최종 업데이트: 2026-03-02
+- 최종 업데이트: 2026-03-23
 - 기준 리포지토리: `NetworkModuleTest`
 - 분석 기준: `ServerEngine`, `TestServer`, `DBServer` 실제 구현 코드
 - 목적: 네트워크 처리, 비동기 처리, DB 처리의 현재 구조와 데이터 흐름을 코드 기준으로 정리
 
-## 변경 이력
+---
 
-| 날짜 | 내용 |
-|------|------|
-| 2026-03-10 | 섹션 11 신규 추가 — 동기화·락·비동기 핵심 메커니즘 (락 구조 총람, memory ordering, AsyncScope 생명주기, KeyedDispatcher, ExecutionQueue). Mermaid 다이어그램 4개 추가. 코드 주석 3건 수정 (Session.cpp:456 한글 누락, ThreadPool.h:141 들여쓰기, ExecutionQueue.h:545 영문 누락). |
-| 2026-03-02 | 비동기 로직 고도화 A~E, Linux Docker 통합 테스트 인프라, AsyncScope 풀 재사용 버그 수정 추가 |
-| 2026-03-01 | Core/Memory 버퍼 모듈, 핑퐁 검증 페이로드, SessionFactory 제거, KeyedDispatcher 도입 |
-| 2026-02-28 | RIO slab pool (WSA 10055 수정), MAX_CONNECTIONS=1000 |
-| 2026-02-26 | 초기 작성 |
+## 1. 개요
 
-## 최신 업데이트 (2026-03-02) — 비동기 로직 고도화 + Linux 검증
+이 보고서는 NetworkModuleTest 프로젝트의 네트워크 처리 구조, 비동기 처리 구조, DB 처리 구조를 코드 수준에서 정리한다. 멀티플랫폼으로서 아키텍처의 각 계층이 어떻게 협력하고, 데이터가 어떤 경로로 흐르며, 비동기·논블로킹 설계가 어떻게 적용되어 있는지를 중심으로 기술한다.
 
-### 비동기 로직 고도화 (A~E)
+![전체 아키텍처 개요 — INetworkEngine · AsyncIOProvider · 스레드 역할 분리](assets/diag_overview.png)
 
-| 항목 | 파일 | 내용 |
-|------|------|------|
-| A. KeyedDispatcher | `Concurrency/KeyedDispatcher.h` | `mLogicThreadPool` 교체. key-affinity로 세션 직렬화 보장, `Session::mRecvMutex` 제거 |
-| B. TimerQueue | `Concurrency/TimerQueue.h/.cpp` | min-heap 기반 단발/반복 타이머. DB ping 루프를 `ScheduleRepeat`으로 대체 |
-| C. AsyncScope | `Concurrency/AsyncScope.h` | `Session::mAsyncScope` 추가. `Close()` 시 Cancel, `Reset()` 추가 (풀 재사용 버그 수정) |
-| D. Send 백프레셔 | `Network/Core/Session.h/.cpp` | `Send()` → `SendResult` 반환 (Ok/QueueFull/NotConnected) |
-| E. NetworkEventBus | `Network/Core/NetworkEventBus.h/.cpp` | 싱글턴 이벤트 버스. 다중 구독자 동시 수신 |
+▲ 전체 아키텍처 개요 — INetworkEngine · AsyncIOProvider · 스레드 역할 분리
 
-### AsyncScope 풀 재사용 버그 수정
+![아키텍처 계층 구조](assets/diag_arch.png)
 
-- **증상**: io_uring 백엔드에서만 `SessionConnectRes` 미수신 (EAGAIN 반복)
-- **원인**: `Session::Reset()`에서 `mAsyncScope.Reset()` 호출 누락 → 재사용 세션의 `mCancelled=true` 잔존
-- **결과**: 재사용 세션의 모든 AsyncScope 태스크가 silently skip → 서버가 응답 전송 불가
-- **수정**: `AsyncScope::Reset()` 신규 메서드 + `Session::Reset()` 호출 추가
+▲ 아키텍처 계층 구조
 
-### Linux Docker 통합 테스트 (`test_linux/`)
+### 1.1 3계층 설계 요약
 
-- Ubuntu 22.04 + gcc-12 + liburing 컨테이너에서 3-tier(dbserver → server → client) 구성
-- epoll / io_uring 양 백엔드 모두 **PASS** 확인 (kernel 6.6.87.2-WSL2, 10 clients, 5 pings)
-- 결과 로그: `Doc/Performance/Logs/20260302_191739_linux/`
+| 계층 | 핵심 컴포넌트 | 역할 요약 |
+|------|---------------|-----------|
+| 네트워크 | `INetworkEngine` `BaseNetworkEngine` `AsyncIOProvider` | 플랫폼별 I/O 완료 처리, 세션 생성·관리, 송수신 비동기 제공 |
+| 비동기 처리 | `ThreadPool` `KeyedDispatcher` `DBTaskQueue` `OrderedTaskQueue` | 로직 워커 스레드 풀, 세션 키 친화도 라우팅, 논블로킹 DB 오프로딩 |
+| DB 처리 | `IDatabase` `SQLiteDatabase / MockDatabase` `ServerLatencyManager` | 교체 가능한 DB 추상화, 로컬 SQLite / 테스트 Mock, DBServer 지연 시간 기록 |
 
-## 1. 요약
+### 1.2 플랫폼별 I/O 백엔드
 
-이 프로젝트는 `INetworkEngine`(상위 추상화)와 `AsyncIOProvider`(하위 플랫폼 백엔드)로 분리된 2계층 구조를 사용한다.
+| 플랫폼 | 1순위 백엔드 | 폴백 백엔드 | 비고 |
+|--------|-------------|------------|------|
+| Windows | RIO (Registered I/O) | IOCP | WSA 10055 방지를 위한 Slab 풀 |
+| Linux | io_uring | epoll | kernel 5.1+ 필요 |
+| macOS | kqueue | — | 단일 백엔드 |
 
-- 네트워크 처리: 플랫폼별 엔진(Windows/Linux/macOS)이 수락/완료 이벤트를 처리하고, 공통 로직은 `BaseNetworkEngine`이 담당
-- 비동기 처리: I/O 워커 스레드 + 로직 스레드풀 + DB 전용 작업큐(`DBTaskQueue`, `OrderedTaskQueue`)로 역할 분리
-- DB 처리: `IDatabase` 추상화 위에 `SQLite/Mock/ODBC` 구현을 두고, TestServer는 비동기 큐 기반으로 DB 작업을 오프로딩
+---
 
-핵심 특징:
+## 2. 네트워크 처리 구조
 
-- Windows: RIO 우선, 실패 시 IOCP 폴백
-- Linux: io_uring 우선, 실패 시 epoll 폴백
-- macOS: kqueue
-- TestServer의 접속/종료 DB 기록은 이벤트 핸들러 -> `DBTaskQueue` 경로로 비동기 처리
-- 종료 시 `DBTaskQueue` 드레인 -> DB 해제 -> 네트워크 종료 순서로 graceful shutdown 수행
+네트워크 계층은 `INetworkEngine` 인터페이스와 `AsyncIOProvider` 플랫폼 추상화의 2계층으로 분리된다. 공통 동작(세션 관리, 이벤트 콜백, 통계)은 `BaseNetworkEngine`이 담당하고, 플랫폼 특화 동작(소켓 accept, completion 처리)은 각 플랫폼 구현체가 담당한다.
 
-## 2. 분석 범위
+### 2.1 계층 구조
 
-### 2.1 네트워크 엔진
+| 컴포넌트 | 역할 | 주요 코드 포인트 |
+|----------|------|----------------|
+| `INetworkEngine` | 외부 API 인터페이스 `Initialize / Start / Stop` `SendData / CloseConnection` | `Network/Core/NetworkEngine.h:72` |
+| `BaseNetworkEngine` | 공통 구현: 세션 조회·제거, 이벤트 콜백 등록, 통계 집계 | `Network/Core/BaseNetworkEngine.cpp:28` |
+| `AsyncIOProvider` | 플랫폼 I/O 추상화 `RecvAsync / SendAsync` `AssociateSocket` | `Network/Core/AsyncIOProvider.cpp:74` |
+| Platform Engine | 소켓 accept 루프, Completion 처리 (Windows / Linux / macOS) | `Network/Platforms/WindowsNetworkEngine.cpp:128` |
 
-- `Server/ServerEngine/Network/Core/NetworkEngine.h`
-- `Server/ServerEngine/Network/Core/BaseNetworkEngine.h`
-- `Server/ServerEngine/Network/Core/BaseNetworkEngine.cpp`
-- `Server/ServerEngine/Network/Core/NetworkEngineFactory.cpp`
-- `Server/ServerEngine/Network/Core/AsyncIOProvider.h`
-- `Server/ServerEngine/Network/Core/AsyncIOProvider.cpp`
-- `Server/ServerEngine/Network/Platforms/WindowsNetworkEngine.cpp`
-- `Server/ServerEngine/Network/Platforms/LinuxNetworkEngine.cpp`
-- `Server/ServerEngine/Network/Platforms/macOSNetworkEngine.cpp`
-- `Server/ServerEngine/Network/Core/Session.h`
-- `Server/ServerEngine/Network/Core/Session.cpp`
-- `Server/ServerEngine/Network/Core/SessionManager.cpp`
+### 2.2 연결 수립 → 세션 생성 흐름
 
-### 2.2 TestServer (게임 서버)
-
-- `Server/TestServer/src/TestServer.cpp`
-- `Server/TestServer/src/ClientSession.cpp`
-- `Server/TestServer/src/ClientPacketHandler.cpp`
-- `Server/TestServer/src/DBTaskQueue.cpp`
-- `Server/TestServer/src/DBServerPacketHandler.cpp`
-- `Server/TestServer/main.cpp`
-
-### 2.3 DBServer
-
-- `Server/DBServer/src/TestDBServer.cpp`
-- `Server/DBServer/src/ServerPacketHandler.cpp`
-- `Server/DBServer/src/OrderedTaskQueue.cpp`
-- `Server/DBServer/src/ServerLatencyManager.cpp`
-- `Server/DBServer/main.cpp`
-- 참고(대체/실험 경로): `Server/DBServer/src/DBServer.cpp`
-
-## 3. 네트워크 처리 구조
-
-## 3.1 계층 구조
-
-`INetworkEngine`가 외부 API를 정의하고(`Initialize/Start/Stop/SendData/CloseConnection`), `BaseNetworkEngine`이 공통 동작을 구현한다.
-
-- 공통: 세션 조회/제거, 이벤트 콜백 등록, 통계 집계
-- 플랫폼 특화: 소켓 생성, accept 루프, completion 처리
-
-코드 포인트:
-
-- 인터페이스: `Server/ServerEngine/Network/Core/NetworkEngine.h:72`
-- 공통 구현: `Server/ServerEngine/Network/Core/BaseNetworkEngine.cpp:28`
-
-## 3.2 플랫폼 백엔드 선택
-
-엔진 팩토리(`CreateNetworkEngine("auto")`)와 AsyncIO 팩토리가 폴백 체인을 제공한다.
-
-- Windows: RIO -> IOCP
-  - `Server/ServerEngine/Network/Core/NetworkEngineFactory.cpp:24`
-  - `Server/ServerEngine/Network/Core/AsyncIOProvider.cpp:74`
-- Linux: io_uring -> epoll
-  - `Server/ServerEngine/Network/Core/NetworkEngineFactory.cpp:58`
-  - `Server/ServerEngine/Network/Core/AsyncIOProvider.cpp:104`
-- macOS: kqueue
-  - `Server/ServerEngine/Network/Core/NetworkEngineFactory.cpp:105`
-
-## 3.3 연결 수립부터 세션 생성까지
-
-플랫폼 엔진 `AcceptLoop()` 공통 흐름:
+플랫폼 `AcceptLoop()`에서 새 연결을 처리하는 공통 흐름은 아래와 같다.
 
 1. `accept()`로 소켓 수락
-2. `SessionManager::CreateSession()`로 세션 생성
-3. `AsyncIOProvider::AssociateSocket()`으로 백엔드 연동
-4. 로직 스레드풀에서 `OnConnected` + `Connected 이벤트` 실행
-5. 첫 `Recv` 등록
+2. `SessionManager::CreateSession()`으로 세션 객체 생성
+3. `AsyncIOProvider::AssociateSocket()`으로 I/O 백엔드 연동
+4. 로직 스레드풀에서 `OnConnected + Connected` 이벤트 비동기 실행
+5. 첫 번째 Recv 등록 (수신 루프 시작)
 
-Windows 기준 코드:
+![클라이언트 생명주기 시퀀스 — 접속 수락 → 핸드셰이크 → ping/pong → 종료](assets/diag_client_lifecycle.png)
 
-- accept 루프: `Server/ServerEngine/Network/Platforms/WindowsNetworkEngine.cpp:128`
-- 소켓 associate: `.../WindowsNetworkEngine.cpp:167`
-- 연결 이벤트 비동기 실행: `.../WindowsNetworkEngine.cpp:188`
+▲ 클라이언트 생명주기 시퀀스 — 접속 수락 → 핸드셰이크 → ping/pong → 종료
 
-## 3.4 수신 처리와 패킷 재조립
+![연결 수립 시퀀스](assets/diag_seq.png)
 
-수신 완료 처리(`ProcessCompletions`)에서 `Recv` 완료를 `BaseNetworkEngine::ProcessRecvCompletion()`으로 전달한다.
+▲ 연결 수립 시퀀스
 
-- 데이터는 로직 스레드풀로 전달된 후 `Session::ProcessRawRecv()` 실행
-- `ProcessRawRecv()`는 TCP 스트림을 `PacketHeader(size,id)` 기준으로 재조립
-- 유효하지 않은 크기/오버플로우 탐지 시 세션 종료
+### 2.3 Session 구조
 
-코드 포인트:
+`Session`은 네트워크 계층의 핵심 단위다. 연결 상태, 송수신 큐, `AsyncScope`를 하나의 객체로 관리하며, 동기화는 역할별로 분리된 프리미티브가 담당한다.
 
-- completion 처리: `Server/ServerEngine/Network/Platforms/WindowsNetworkEngine.cpp:233`
-- 공통 recv 완료: `Server/ServerEngine/Network/Core/BaseNetworkEngine.cpp:255`
-- TCP 재조립: `Server/ServerEngine/Network/Core/Session.cpp:445`
+![Session UML — 주요 멤버 변수 및 동기화 프리미티브 구조](assets/diag_session_uml.png)
 
-## 3.5 송신 처리
+▲ Session UML — 주요 멤버 변수 및 동기화 프리미티브 구조
 
-송신 경로는 플랫폼별로 나뉜다.
+| 동기화 프리미티브 | 보호 대상 | 설계 포인트 |
+|------------------|----------|------------|
+| `mSendMutex` (mutex) | `mSendQueue · mAsyncProvider` | 락 내 `shared_ptr` 스냅샷만 복사 후 즉시 해제, 실제 I/O 호출은 락 외부에서 수행 |
+| `mState` (atomic, acq_rel) | 연결 상태 enum | `exchange`로 `Close()` TOCTOU 이중 닫기 방지 |
+| `mSocket` (atomic, acq_rel) | 소켓 핸들 | Close/Send 간 race 방지 |
+| `mIsSending` (atomic CAS) | 이중 전송 방지 | `compare_exchange_strong(false→true)` 한 스레드만 `PostSend()` 진입 보장 |
+| `mSendQueueSize` (atomic) | 큐 크기 fast-path 조회 | relaxed read (부정확해도 됨), release store |
 
-- Windows + RIO: `Session::Send()`에서 provider `SendAsync()` 직행
-- 그 외(WSASend/epoll/kqueue): `mSendQueue`에 enqueue 후 `PostSend()`로 비동기 송신
+### 2.4 수신 처리와 패킷 재조립
 
-`Session`은 `mSendQueueSize`(atomic)와 `mIsSending`(CAS)로 락 경쟁을 줄이고 중복 송신을 방지한다.
+수신 완료 이벤트는 `ProcessCompletions()`에서 감지되어 `BaseNetworkEngine::ProcessRecvCompletion()`으로 전달된다. 이후 로직 스레드풀로 넘겨진 `Session::ProcessRawRecv()`에서 TCP 스트림을 재조립한다.
 
-코드 포인트:
+- `PacketHeader(size, id)` 기준으로 완전한 패킷이 조립될 때까지 버퍼 누적
+- 유효하지 않은 크기 또는 오버플로우 탐지 시 세션 즉시 종료
+- POSIX 경로: `RecvAsync()`를 직접 구동 (`PostRecv()` 미사용)
 
-- 송신 진입: `Server/ServerEngine/Network/Core/Session.cpp:155`
-- 큐 플러시/CAS: `.../Session.cpp:248`
-- 실제 PostSend: `.../Session.cpp:261`
+`Session.cpp:445` — TCP 스트림 재조립 진입점
+`BaseNetworkEngine.cpp:255` — 수신 완료 공통 처리
 
-## 3.6 이벤트 스레드 일관성
+### 2.5 송신 처리
 
-`OnDisconnected`는 `CloseConnection()` 경로와 recv 오류 경로 모두 로직 스레드풀로 전달되어 실행된다. 즉, 콜백 호출 스레드가 일관되게 유지된다.
+`Session::Send()`는 `SendResult`를 반환해 호출자에게 백프레셔 피드백을 제공한다. `mIsSending` CAS와 `mSendQueueSize` atomic으로 불필요한 락 경쟁과 이중 전송을 방지한다.
 
-코드 포인트:
+| SendResult 값 | 의미 | 호출자 조치 |
+|---------------|------|------------|
+| `Ok` | 전송 성공 (큐잉 또는 즉시 전송) | 없음 |
+| `QueueFull` | 큐 백프레셔 임계값 초과 | 잠시 후 재시도 또는 세션 종료 |
+| `NotConnected` | 세션 미연결 | 재시도 금지 |
+| `InvalidArgument` | null 또는 최대 크기 초과 패킷 | 재시도 금지 — 호출 측 버그 |
 
-- `CloseConnection` 경로: `Server/ServerEngine/Network/Core/BaseNetworkEngine.cpp:155`
-- recv 오류 경로: `.../BaseNetworkEngine.cpp:264`
+> **참고:** `bytesSent <= 0`인 송신 완료는 `DataSent` 이벤트를 발생시키지 않고 `ProcessErrorCompletion()`으로 라우팅하여 세션을 정상 종료한다. (`BaseNetworkEngine.cpp:ProcessSendCompletion`)
 
-## 4. 비동기 처리 구조
+> **참고:** 이벤트 스레드 일관성: `OnDisconnected`는 `CloseConnection()` 경로와 recv 오류 경로 모두 로직 스레드풀로 전달되어 실행된다. 콜백 호출 스레드가 일관하게 유지된다.
 
-## 4.1 공통 스레드풀/큐
+### 2.6 에러 처리 통합 (ProcessErrorCompletion)
 
-- `ThreadPool`은 내부적으로 `SafeQueue`를 사용
-- `Submit()` 시 큐가 가득 차면 작업 드롭 후 경고 로그
-- 워커에서 예외를 삼켜 프로세스 전체 실패를 방지
+3개 플랫폼(Windows/Linux/macOS) 에러 완료 경로를 단일 헬퍼로 통합했다. Send/Recv 방향 구분, `AsyncScope` 경유 disconnect, 방향별 통계 집계를 모든 플랫폼에서 일관되게 처리한다.
 
-코드 포인트:
+| 항목 | 내용 |
+|------|------|
+| 함수 시그니처 | `ProcessErrorCompletion(SessionRef, AsyncIOType, OSError)` |
+| 방향별 카운터 | `AsyncIOType::Send` → `mTotalSendErrors++` / `AsyncIOType::Recv` → `mTotalRecvErrors++` / `Statistics::totalErrors = sendErrors + recvErrors` |
+| 예상 종료 판별 | `WSAECONNRESET / WSAESHUTDOWN / EPIPE / ECONNRESET / osError==0` → `Logger::Warn` (정상 종료) / 그 외 → `Logger::Error` (비정상) |
+| disconnect 경로 | `ProcessRecvCompletion(session, 0, nullptr)` 경유 → `AsyncScope` 경유 `OnDisconnected` — 모든 플랫폼 동일 |
+| 코드 포인트 | `BaseNetworkEngine.cpp:ProcessErrorCompletion` |
 
-- `Server/ServerEngine/Utils/ThreadPool.h:22`
-- `Server/ServerEngine/Utils/SafeQueue.h:18`
+---
 
-## 4.2 TestServer의 DBTaskQueue (논블로킹 DB)
+## 3. 비동기 처리 구조
 
-현재 기본 경로에서 `TestServer`는 연결 이벤트를 직접 받아 `DBTaskQueue`에 작업을 enqueue한다.
+비동기 처리는 I/O 완료 스레드(플랫폼 엔진)와 로직 스레드풀(`KeyedDispatcher`)의 역할 분리를 기반으로 한다. DB 작업은 별도의 논블로킹 큐(`DBTaskQueue`, `OrderedTaskQueue`)로 오프로딩하여 로직 스레드 지연을 최소화한다.
 
-- `OnClientConnectionEstablished` -> `RecordConnectTime`
-- `OnClientConnectionClosed` -> `RecordDisconnectTime`
-- `Stop()` -> active session snapshot -> `RecordDisconnectTime`
+![I/O 완료 → 워커 배정 흐름](assets/diag_async_1_dispatch.png)
 
-코드 포인트:
+▲ I/O 완료 → 워커 배정 흐름
 
-- 이벤트 핸들러: `Server/TestServer/src/TestServer.cpp:449`, `:472`
-- 큐 enqueue / 라우팅: `Server/TestServer/src/DBTaskQueue.cpp:347`, `:385`
-- 워커 실행: `.../DBTaskQueue.cpp:536`
+### 3.1 스레드 역할 분리
 
-중요 설계:
+| 스레드 종류 | 주체 | 역할 |
+|------------|------|------|
+| I/O 완료 스레드 | 플랫폼 엔진 (Windows/Linux/macOS) | accept / recv / send 완료 감지, 로직 스레드풀로 패킷 전달 |
+| 로직 워커 스레드 | `KeyedDispatcher` | 패킷 처리 · `OnConnected` · `OnDisconnected`, 세션 키 친화도 라우팅 (FIFO 순서 보장) |
+| DB 워커 스레드 (TestServer) | `DBTaskQueue` 기본 1개, `-w` 플래그로 설정 (`DEFAULT_TASK_QUEUE_WORKER_COUNT`) | 논블로킹 DB I/O 실행, WAL 영속성 보장, `sessionId % workerCount` 해시 친화도 |
+| DB 워커 스레드 (DBServer) | `OrderedTaskQueue` 기본 4개, `-w` 플래그로 설정 (`DEFAULT_DB_WORKER_COUNT`) | serverId 단위 순서 보장, `KeyedDispatcher` 래핑 |
+| 재연결 스레드 | TestServer `DBReconnectLoop` | DB 서버 끊김 시 지수 백오프 재시도, `Stop()` 신호 시 즉시 종료 |
 
-- 현재 런타임 설정은 `Initialize(1, ...)`
-- 구현 자체는 워커별 독립 큐 + `sessionId % workerCount` 라우팅으로 같은 세션 순서를 보장
+> **핵심:** `KeyedDispatcher`는 `sessionId % workerCount`로 항상 같은 워커에 작업을 배분한다. 워커 큐 FIFO와 결합해 세션별 패킷 처리 순서를 보장하며, `Session::mRecvMutex`가 불필요해진다.
 
-코드 포인트:
+### 3.2 DBTaskQueue — 논블로킹 DB 오프로딩 (TestServer)
 
-- 워커 구조 / 라우팅: `Server/TestServer/include/DBTaskQueue.h:70`, `:154`
-- TestServer 현재 설정값: `Server/TestServer/src/TestServer.cpp:131`
+`TestServer`는 접속/해제 시점을 직접 DB에 기록하지 않고 `DBTaskQueue`에 enqueue한다. DB I/O 지연이 로직 워커를 블로킹하지 않는다. 워커 수는 CLI `-w` 플래그로 설정 가능하며 기본값은 1(`DEFAULT_TASK_QUEUE_WORKER_COUNT`)이다.
 
-## 4.3 WAL 기반 복구
+- `OnClientConnectionEstablished` → `RecordConnectTime`
+- `OnClientConnectionClosed` → `RecordDisconnectTime`
+- `sessionId % workerCount` 해시 친화도 — 워커 수와 무관하게 세션별 순서 보장
+- 1 워커: 가장 단순, 친화도 계산 불필요
+- N 워커: 처리량 향상, 세션별 순서는 해시 친화도로 여전히 보장
 
-`DBTaskQueue`는 WAL(`db_tasks.wal`)로 크래시 복구를 지원한다.
+> **핵심:** 워커 수를 바꿔도 순서는 깨지지 않는다. 재시작 시 worker count 변경이 안전하다.
 
-- enqueue 전 `P|...`(pending) 기록
-- 성공 처리 후 `D|seq` 기록
-- 재시작 시 WAL(+백업 `.bak`)을 병합 파싱해 미완료 작업만 재큐잉
+`TestServer.cpp:OnClientConnectionEstablished` — 비동기 기록 진입점
+`DBTaskQueue.cpp:EnqueueTask` — 작업 enqueue
+`DBTaskQueue.cpp:WorkerThreadFunc` — 워커 실행 루프
+`NetworkTypes.h:DEFAULT_TASK_QUEUE_WORKER_COUNT` — 기본 워커 수 상수
 
-코드 포인트:
+### 3.3 KeyedDispatcher — 세션 라우팅
 
-- pending/done 기록: `Server/TestServer/src/DBTaskQueue.cpp:538`, `:574`
-- 복구 로직: `.../DBTaskQueue.cpp:597`
+`KeyedDispatcher`는 `session_id % workerCount` 해시를 이용해 동일 세션의 모든 작업을 항상 같은 Logic Worker 스레드로 라우팅한다. 이를 통해 세션 단위 FIFO 순서가 락 없이 보장되고, `Session::mRecvMutex`를 제거할 수 있다.
 
-## 4.4 OrderedTaskQueue (DBServer)
+| 항목 | 내용 |
+|------|------|
+| 배정 공식 | `worker_idx = session_id % workerCount` 결정론적 — 같은 세션은 항상 같은 워커 |
+| `Dispatch()` | `shared_lock(mWorkersMutex)` — 다수 I/O 스레드가 동시에 배정 가능 |
+| `Shutdown()` | `exclusive_lock(mWorkersMutex)` — 신규 배정 차단 → 남은 작업 완전 드레인 |
+| `ExecutionQueue<T>` | 워커당 1개, FIFO 순서 보장 `Push() / Pop()`, `BackpressurePolicy` (`RejectNewest / Block`) |
+| `mRecvMutex` 제거 | 같은 세션 recv가 항상 같은 워커 → 동시 접근 구조적 불가능 |
 
-`TestDBServer`는 serverId 단위 순서 보장을 위해 `OrderedTaskQueue`를 사용한다.
+> **핵심:** `Dispatch()`와 `Shutdown()`은 `mWorkersMutex` 공유·독점 잠금 쌍으로 안전하게 공존한다. `Shutdown()` 진입 즉시 신규 dispatch가 차단되므로 in-flight 작업 유실 없이 종료된다.
 
-- 내부적으로 `KeyedDispatcher` 사용
-- 같은 key(serverId)는 같은 worker queue로 라우팅
-- worker FIFO로 key 단위 순서 보장
+`Concurrency/KeyedDispatcher.h` — Dispatch / Shutdown 구현
+`Concurrency/ExecutionQueue.h` — Push / Pop / BackpressurePolicy
 
-코드 포인트:
+![KeyedDispatcher — 세션 친화 라우팅 (session_id % workerCount)](assets/diag_async_2_keyed.png)
 
-- facade: `Server/DBServer/src/OrderedTaskQueue.cpp:29`
-- keyed dispatch: `.../OrderedTaskQueue.cpp:109`
-- dispatcher 구현: `Server/ServerEngine/Concurrency/KeyedDispatcher.h:30`
+▲ KeyedDispatcher — 세션 친화 라우팅 (session_id % workerCount)
 
-## 4.5 DB 서버 재연결 비동기 루프 (TestServer)
+### 3.4 OrderedTaskQueue — DBServer 키 순서 보장
 
-Windows 경로에서 TestServer는 DB 연결 끊김 시 재연결 스레드를 실행한다.
+`TestDBServer`는 `serverId` 단위 작업 순서 보장을 위해 `OrderedTaskQueue`를 사용한다. 내부적으로 `KeyedDispatcher`를 래핑하여 같은 key(`serverId`)를 항상 같은 워커로 라우팅한다. 워커 수는 CLI `-w` 플래그로 설정 가능하며 기본값은 4(`DEFAULT_DB_WORKER_COUNT`)이다.
 
-- 기본 지수 백오프: 1s -> 2s -> 4s ... max 30s
-- 예외: `WSAECONNREFUSED(10061)`은 1초 고정 간격 재시도
-- `condition_variable`로 `Stop()` 시 즉시 깨어나도록 설계
+- facade: `OrderedTaskQueue.cpp:Initialize()`
+- keyed dispatch: `OrderedTaskQueue.cpp:EnqueueTask()`
+- dispatcher 구현: `Concurrency/KeyedDispatcher.h`
 
-코드 포인트:
+`NetworkTypes.h:DEFAULT_DB_WORKER_COUNT` — 기본 워커 수 상수 (기본값 4)
+`DBServer/main.cpp:-w 옵션` — 런타임 워커 수 설정
 
-- 재연결 루프: `Server/TestServer/src/TestServer.cpp:583`
-- 에러 구분: `.../TestServer.cpp:629`
+---
 
-## 5. DB 처리 구조
+## 4. DB 처리 구조
 
-## 5.1 공통 DB 추상화 계층
+DB 레이어는 `IDatabase / IStatement` 인터페이스 기반으로 구현체를 교체 가능하게 설계되어 있다. `TestServer`는 로컬 SQLite/Mock DB를 `DBTaskQueue`로 비동기 접근하고, `TestDBServer`는 네트워크로 수신한 요청을 `OrderedTaskQueue`를 통해 처리한다.
 
-DB 레이어는 `IDatabase` / `IStatement` 인터페이스 기반으로 구현체를 교체 가능하게 설계되어 있다.
+![DB 처리 계층](assets/diag_db.png)
 
-- 구현체: `MockDatabase`, `SQLiteDatabase`, `ODBCDatabase`, `OLEDBDatabase`
-- 생성: `DatabaseFactory::CreateDatabase()`
+▲ DB 처리 계층
 
-코드 포인트:
+**IDatabase 추상화 계층**
 
-- 인터페이스: `Server/ServerEngine/Interfaces/IDatabase.h:29`
-- 팩토리: `Server/ServerEngine/Database/DatabaseFactory.cpp:19`
+| 구현체 | 용도 | 코드 포인트 |
+|--------|------|------------|
+| `MockDatabase` | 단위 테스트 / DB 없는 환경 | `ServerEngine/Database/` |
+| `SQLiteDatabase` | 로컬 파일 DB (TestServer) | `ServerEngine/Database/` |
+| `ODBCDatabase` | ODBC 지원 DB | `ServerEngine/Database/` |
+| `OLEDBDatabase` | Windows OLE DB | `ServerEngine/Database/` |
 
-## 5.2 TestServer 로컬 DB 경로
+`IDatabase.h:29` — 인터페이스 정의
+`DatabaseFactory.cpp:19` — 팩토리 생성 진입점
 
-`TestServer::Initialize()`에서 로컬 DB를 선택한다.
+### 4.1 TestServer 로컬 DB 경로
 
-- `dbConnectionString` 비어있음: `MockDatabase`
-- 값 있음: `SQLiteDatabase` + 해당 파일 경로
+`TestServer::Initialize()`에서 설정 값에 따라 DB 구현체를 선택한다.
 
-선택된 DB 인스턴스를 `DBTaskQueue`에 주입하고, 큐에서 아래 테이블을 보장한다.
+| 설정 | 선택된 DB | 비고 |
+|------|----------|------|
+| `dbConnectionString` 비어 있음 | `MockDatabase` | DB 없이 메모리 로그만 |
+| `dbConnectionString` 값 있음 | `SQLiteDatabase` | 해당 파일 경로 사용 |
 
-- `SessionConnectLog`
-- `SessionDisconnectLog`
-- `PlayerData`
+선택된 DB 인스턴스를 `DBTaskQueue`에 주입하고, 큐에서 아래 테이블 존재를 보장한다.
 
-코드 포인트:
+- `SessionConnectLog` — 접속 시각 기록
+- `SessionDisconnectLog` — 해제 시각 기록
+- `PlayerData` — 플레이어 정보
 
-- DB 선택/주입: `Server/TestServer/src/TestServer.cpp:81`
-- 큐 테이블 보장: `Server/TestServer/src/DBTaskQueue.cpp:73`
+`TestServer.cpp:81` — DB 선택 및 주입
+`DBTaskQueue.cpp:73` — 테이블 보장 (`CREATE TABLE IF NOT EXISTS`)
 
-## 5.3 TestDBServer DB 관련 처리
+### 4.2 TestDBServer DB 처리
 
-`TestDBServer`는 `ServerPacketHandler` + `ServerLatencyManager` + `OrderedTaskQueue` 조합으로 동작한다.
+`TestDBServer`는 `ServerPacketHandler + ServerLatencyManager + OrderedTaskQueue` 조합으로 동작한다.
 
-- `ServerPingReq` 수신 시 RTT 계산 후 `RecordLatency`
-- `DBSavePingTimeReq` 수신 시 `SavePingTime` 실행 후 응답 패킷 전송
+| 패킷 | 처리 흐름 | 코드 포인트 |
+|------|----------|------------|
+| `ServerPingReq` | RTT 계산 → `RecordLatency` (메모리) | `ServerPacketHandler.cpp:116` |
+| `DBSavePingTimeReq` | `SavePingTime` 실행 → 응답 패킷 전송 | `ServerPacketHandler.cpp:196` |
 
-코드 포인트:
+---
 
-- 핸들러 라우팅: `Server/DBServer/src/ServerPacketHandler.cpp:40`
-- RTT 기록: `.../ServerPacketHandler.cpp:116`
-- ping 저장: `.../ServerPacketHandler.cpp:196`
+## 5. 주요 참조 파일
 
-현재 상태(중요):
+### 네트워크 계층
 
-- `TestDBServer` 경로에는 `ServerLatencyManager::SetDatabase()` 주입 코드가 없음
-- `ServerLatencyManager::ExecuteQuery()`는 DB 미주입 시 true 반환(log-only)
-
-즉, 현재 기본 실행 경로에서는 메모리 통계/로그 중심이며, 영구 저장은 DB 주입이 연결되어야 활성화된다.
-
-코드 포인트:
-
-- TestDBServer 초기화: `Server/DBServer/src/TestDBServer.cpp:68`
-- DB 미주입 시 log-only: `Server/DBServer/src/ServerLatencyManager.cpp:331`
-
-## 5.4 대체/실험 경로: DBServer.cpp
-
-`DBServer.cpp` 구현은 별도 AsyncIO/Protocol 처리 경로를 가지며, 여기서는 `ConnectToDatabase()`에서 `mLatencyManager->SetDatabase()`를 수행한다.
-
-코드 포인트:
-
-- DB 연결/주입: `Server/DBServer/src/DBServer.cpp:246`, `:281`
-
-실행 엔트리(`Server/DBServer/main.cpp`)는 현재 `TestDBServer`를 사용하므로, 운영 경로와 실험 경로를 문서에서 구분해 보는 것이 안전하다.
-
-## 6. 엔드투엔드 흐름
-
-## 6.1 Client -> TestServer
-
-1. 클라이언트 TCP 접속
-2. 엔진 accept 후 Session 생성/associate
-3. `SessionManager::CreateSession()`이 `Core::Session`을 생성/초기화
-4. `SetSessionConfigurator()`가 recv 콜백을 부착
-5. `NetworkEvent::Connected` -> `OnClientConnectionEstablished()` -> DBTaskQueue enqueue
-6. 클라이언트 `SessionConnectReq` 처리 후 `SessionConnectRes` 반환
-7. 주기적 PingReq/PongRes
-
-관련 코드:
-
-- accept / CreateSession: `Server/ServerEngine/Network/Platforms/WindowsNetworkEngine.cpp:128`, `:175`
-- session configurator: `Server/ServerEngine/Network/Core/SessionManager.h:48`
-- 접속 기록 enqueue: `Server/TestServer/src/TestServer.cpp:449`
-- 핸드셰이크 처리: `Server/TestServer/src/ClientPacketHandler.cpp:102`
-
-## 6.2 TestServer <-> TestDBServer
-
-1. TestServer가 `ConnectToDBServer()`로 별도 소켓 연결(Windows)
-2. `TimerQueue::ScheduleRepeat()`가 `SendDBPing()`을 주기 호출
-3. TestDBServer가 `ServerPongRes` 응답
-4. 주기적으로 `PKT_DBSavePingTimeReq` 전송/응답
-5. 끊김 시 `DBReconnectLoop` 재시도
-
-관련 코드:
-
-- 연결/스레드 시작: `Server/TestServer/src/TestServer.cpp:336`
-- ping 스케줄링: `.../TestServer.cpp:430`
-- DBServer 패킷 처리: `Server/DBServer/src/ServerPacketHandler.cpp:116`
-
-## 7. Graceful Shutdown 순서
-
-## 7.1 TestServer
-
-`Stop()`에서 아래 순서를 지킨다.
-
-1. DB 재연결 루프 깨움 및 join
-2. 연결 중 세션의 disconnect 기록 enqueue
-3. `DBTaskQueue->Shutdown()`으로 큐 드레인
-4. 로컬 DB disconnect
-5. DB 서버 소켓 disconnect
-6. 클라이언트 엔진 stop
-
-코드 포인트:
-
-- 전체 순서: `Server/TestServer/src/TestServer.cpp:165`
-
-## 7.2 TestDBServer
-
-1. 네트워크 엔진 stop
-2. OrderedTaskQueue shutdown(남은 작업 처리)
-3. ServerLatencyManager shutdown
-
-코드 포인트:
-
-- `Server/DBServer/src/TestDBServer.cpp:160`
-
-## 8. 현재 상태 진단
-
-## 8.1 강점
-
-- 네트워크/로직/DB 비동기 경로 분리 명확
-- 플랫폼 폴백 체인과 공통 추상화 정리됨
-- `DBTaskQueue` WAL 복구로 종료/크래시 안정성 강화
-- 재연결 정책(ECONNREFUSED 분리)으로 운영 복원력 확보
-
-## 8.2 유의점
-
-- `TestServer`의 DB 서버 소켓 경로는 Windows 전용 (`#ifdef _WIN32`)
-- `TestDBServer` 기본 경로는 현재 DB 주입 없음 -> 영구 DB 저장은 비활성(log-only)
-- TestDBServer 기본 포트(코드 기본 8001)와 실행 스크립트 포트(문서/스크립트에서 8002 사용 가능) 혼동 위험
-
-## 9. 개선 제안
-
-1. `TestDBServer`에도 설정 기반 DB 주입(`SetDatabase`) 경로를 main 옵션으로 연결
-2. TestServer의 DB 서버 연결 경로를 플랫폼 공통 소켓/AsyncIO 경로로 통합
-3. 운영 문서에 "기본 실행 경로(TestDBServer) vs 실험 경로(DBServer.cpp)"를 명시
-4. 포트 기본값(8001/8002) 정책을 코드/스크립트/문서에서 단일화
-
-## 10. 부록: 주요 참조 파일
-
+- `Server/ServerEngine/Network/Core/NetworkEngine.h`
 - `Server/ServerEngine/Network/Core/BaseNetworkEngine.cpp`
+- `Server/ServerEngine/Network/Core/AsyncIOProvider.cpp`
+- `Server/ServerEngine/Network/Core/Session.h`
 - `Server/ServerEngine/Network/Core/Session.cpp`
 - `Server/ServerEngine/Network/Platforms/WindowsNetworkEngine.cpp`
 - `Server/ServerEngine/Network/Platforms/LinuxNetworkEngine.cpp`
-- `Server/TestServer/src/TestServer.cpp`
-- `Server/TestServer/src/ClientSession.cpp`
+
+### 비동기
+
+- `Server/ServerEngine/Utils/NetworkTypes.h` — `DEFAULT_DB_WORKER_COUNT / DEFAULT_TASK_QUEUE_WORKER_COUNT`
+- `Server/ServerEngine/Utils/ThreadPool.h`
+- `Server/ServerEngine/Concurrency/KeyedDispatcher.h`
+- `Server/ServerEngine/Concurrency/AsyncScope.h`
 - `Server/TestServer/src/DBTaskQueue.cpp`
-- `Server/TestServer/src/ClientPacketHandler.cpp`
+- `Server/DBServer/src/OrderedTaskQueue.cpp`
+
+### DB 계층
+
+- `Server/ServerEngine/Interfaces/IDatabase.h`
+- `Server/ServerEngine/Database/DatabaseFactory.cpp`
 - `Server/DBServer/src/TestDBServer.cpp`
 - `Server/DBServer/src/ServerPacketHandler.cpp`
-- `Server/DBServer/src/OrderedTaskQueue.cpp`
 - `Server/DBServer/src/ServerLatencyManager.cpp`
-- `Server/DBServer/src/DBServer.cpp` (대체/실험 경로)
-
----
-
-## 11. 동기화·락·비동기 핵심 메커니즘
-
-이 섹션은 ServerEngine에서 사용하는 모든 동기화 프리미티브의 역할, 보호 대상, memory ordering 선택 근거를 코드 기준으로 정리한다.
-
----
-
-### 11.1 락 구조 총람
-
-ServerEngine이 사용하는 동기화 프리미티브는 크게 세 종류다: **mutex**, **shared_mutex**, **atomic**. 각 프리미티브는 단일 책임으로 설계되어 있으며 락 중첩(lock nesting)이 없어 데드락 위험이 없다.
-
-![락 구조 전체 맵](assets/07-lock-structure.png)
-
-**Mutex 계층 상세**
-
-| 뮤텍스 | 위치 | 보호 대상 | 설계 포인트 |
-|--------|------|---------|------------|
-| `mSendMutex` | `Session` | `mSendQueue`, `mAsyncProvider` | 락 내에서 `shared_ptr` 스냅샷만 복사 후 즉시 해제, 실제 I/O 호출은 락 외부에서 수행 |
-| `mCallbackMutex` | `BaseNetworkEngine` | `mCallbacks` 이벤트 맵 | 이벤트 등록·해제 시만 짧게 획득 |
-| `mDrainMutex` | `AsyncScope` | `WaitForDrain` 조건 대기 | `notify_all`은 mutex 보유 없이 호출해 불필요한 경합 방지 |
-| `mMutex` | `TimerQueue` | `mHeap`, `mCancelledHandles` | min-heap 수정 + 취소 집합 관리 |
-| `mMutexQueueMutex` | `ExecutionQueue` | `mMutexQueue` (Mutex 백엔드) | |
-| `mWaitMutex` | `ExecutionQueue` | `mNotEmptyCV`, `mNotFullLFCV` | |
-
-**shared_mutex**
-
-| 뮤텍스 | 위치 | 설계 포인트 |
-|--------|------|------------|
-| `mWorkersMutex` | `KeyedDispatcher` | `Dispatch()`: shared lock (다수 I/O 워커 동시 접근), `Shutdown()`: exclusive lock (mWorkers 해제) |
-
-**LockProfiling 지원**
-
-`NET_LOCK_GUARD(mutex)` / `NET_UNIQUE_LOCK(mutex)` 매크로를 사용하면 `NET_LOCK_PROFILING` 빌드 플래그 하나로 모든 락의 **대기 시간(waitNs)**과 **보유 시간(holdNs)**을 프로파일링할 수 있다. 비활성화 시 표준 `std::lock_guard`/`std::unique_lock`으로 zero-overhead 컴파일된다.
-
-코드 포인트: `Server/ServerEngine/Utils/LockProfiling.h:26`
-
----
-
-### 11.2 Memory Ordering 패턴
-
-C++ atomic의 memory order는 컴파일러/CPU 재배치를 제어한다. ServerEngine에서 사용하는 패턴을 아래 표로 정리한다.
-
-| 순서 | 의미 | ServerEngine 사용 사례 |
-|------|------|----------------------|
-| `relaxed` | 재배치 허용, 원자성만 보장 | `mPingSequence` (단순 카운터), `mSendQueueSize` fast-path read (부정확해도 되는 경우) |
-| `acquire` | 이 load 이후 메모리 접근이 앞으로 이동 불가 | `mState`, `mSocket`, `mCancelled`, `mInFlight` load — 직전 release write 값을 반드시 봐야 할 때 |
-| `release` | 이 store 이전 메모리 쓰기가 뒤로 이동 불가 | `mState`, `mSocket` store, sequence store in BoundedLockFreeQueue — 이후 acquire load에 보임을 보장 |
-| `acq_rel` | acquire + release 동시 적용 | `exchange`, `fetch_sub`, `compare_exchange_strong` — 읽기+쓰기가 한 번에 이루어지는 RMW 연산 |
-
-**핵심 패턴: CAS 기반 이중 전송 방지 (`mIsSending`)**
-
-`Session::FlushSendQueue()`는 `compare_exchange_strong(false → true)`로 한 번에 하나의 스레드만 `PostSend()`를 실행하도록 보장한다. 전송 완료 후 `mIsSending.store(false, release)`로 해제하고, TOCTOU 방어를 위해 직후 `mSendQueueSize`를 재확인한다.
-
-코드 포인트: `Server/ServerEngine/Network/Core/Session.cpp:306`
-
----
-
-### 11.3 AsyncScope 생명주기
-
-`AsyncScope`는 Session 당 하나씩 존재하며, 로직 스레드풀에 디스패치된 람다가 Session 소멸 후에도 실행되는 문제를 방지한다.
-
-![AsyncScope 생명주기 상태 다이어그램](assets/08-async-scope-lifecycle.png)
-
-**주요 전이**
-
-| 상태 | 진입 조건 | 동작 |
-|------|---------|------|
-| **Active** | 생성 (`mCancelled=false`) | `Submit()` 호출 시 in-flight 카운터 증가 후 람다 큐잉 |
-| **Cancelled** | `Cancel()` (`mCancelled=true, release`) | 이후 `Submit()` 호출은 fast-path에서 즉시 `EndTask()` (람다 큐잉 불가) |
-| **Drained** | `WaitForDrain()` — `mInFlight == 0` 확인 | `AsyncScope` RAII 소멸자가 자동으로 `Cancel() + WaitForDrain()` 호출 |
-| **Reset** | `Session::Reset()` 경로 (풀 재사용) | `mCancelled=false`로 복귀. **precondition**: `mInFlight == 0` |
-
-**풀 재사용 버그 방지**
-
-`Session::Reset()` 호출 시 반드시 `mAsyncScope.Reset()`을 함께 호출해야 한다. 누락 시 재사용 세션의 `mCancelled=true`가 잔존하여 모든 recv 람다가 silently skip되고 서버 응답이 불가능해진다.
-
-코드 포인트: `Server/ServerEngine/Concurrency/AsyncScope.h:46`
-
----
-
-### 11.4 KeyedDispatcher — 키 친화도 라우팅
-
-`KeyedDispatcher`는 `sessionId`를 key로 사용해 동일 세션의 모든 로직 작업을 항상 같은 워커 스레드로 라우팅한다. 워커 큐의 FIFO 특성과 결합해 세션 단위 순서를 보장한다.
-
-![KeyedDispatcher 라우팅 흐름](assets/09-keyed-dispatcher-routing.png)
-
-**설계 포인트**
-
-- `Dispatch()`: `shared_lock(mWorkersMutex)` 획득 후 `key % workerCount`로 워커 인덱스 결정 — `Shutdown()`의 `mWorkers.clear()`와 TOCTOU 없이 안전하게 공존
-- 결과: `Session::mRecvMutex` 제거 가능 (동일 세션 → 동일 워커 → 순차 실행 보장)
-- 결과: `Session::ProcessRawRecv()`에서 락 없는 누적 버퍼 접근 가능
-
-코드 포인트: `Server/ServerEngine/Concurrency/KeyedDispatcher.h:144`
-
----
-
-### 11.5 ExecutionQueue — 이중 백엔드 (Mutex / Lock-Free)
-
-`ExecutionQueue<T>`는 `KeyedDispatcher`의 워커 큐로 사용되며 두 가지 백엔드를 지원한다.
-
-![ExecutionQueue 이중 백엔드 구조](assets/10-execution-queue-backends.png)
-
-**백엔드 비교**
-
-| 항목 | Mutex 백엔드 | Lock-Free 백엔드 |
-|------|-------------|-----------------|
-| 자료구조 | `std::queue<T>` + `mMutexQueueMutex` | `BoundedLockFreeQueue<T>` (링 버퍼) |
-| 크기 제한 | 선택적 (0 = 무제한) | 필수 (기본값 1024, 2의 거듭제곱으로 보정) |
-| 백프레셔 정책 | `RejectNewest` 또는 `Block` | `RejectNewest` 또는 `Block` (spin-wait + CV) |
-| `mSize` 정확도 | 정확 | ±1 근사 (fetch_add/TryEnqueue 비원자) — 모니터링 전용 |
-
-**BoundedLockFreeQueue 링 버퍼 설계**
-
-각 슬롯(`Cell`)은 `sequence` atomic을 가지며, `enqueuePos` / `dequeuePos`와의 차이로 슬롯 상태를 판별한다.
-
-- `diff == 0`: 슬롯이 비어있음, CAS로 enqueue 위치 선점
-- `diff < 0` (enqueue 시): 큐가 가득 참
-- `diff < 0` (dequeue 시): 큐가 비어있음
-
-슬롯은 `alignas(64)` 정렬로 false sharing을 방지한다.
-
-코드 포인트: `Server/ServerEngine/Concurrency/BoundedLockFreeQueue.h:60`
-
----
-
-## 12. 업데이트 이력 (보고서 작성 이후)
-
-### 11.1 2026-02-28 — RIO slab pool 도입 (WSA 10055 수정)
-
-**문제**: `RIOAsyncIOProvider`가 소켓 연결마다 `RIORegisterBuffer`를 호출하여
-Windows Non-Paged Pool을 소진 → 1000 클라이언트에서 WSA 10055 (`ENOBUFS`) 발생
-
-**변경 내용**:
-
-| 파일 | 변경 내용 |
-|------|-----------|
-| `RIOAsyncIOProvider.h/.cpp` | per-I/O 등록 폐지, `Initialize()`에서 recv·send 2개 slab 사전 등록 (VirtualAlloc + RIORegisterBuffer 각 1회) |
-| `NetworkTypes.h` | `MAX_CONNECTIONS = 1000` (10000 → 1000) |
-| `WindowsNetworkEngine.cpp` | CQ 깊이 = `effectiveMax * 2 + 64` 동적 계산 |
-
-**결과**: 1000/1000 연결 PASS, 오류 0 (x64 Release, 퍼포먼스 테스트 2회 확인)
-
----
-
-### 11.2 2026-03-01 — 메모리 풀 3단계 추가 최적화
-
-**배경**: RIO slab pool 도입 이후 남아있던 IOCP 경로 및 공용 풀 비효율 3곳 개선
-
-#### 변경 1: AsyncBufferPool O(1) 프리리스트
-
-**파일**: `Platforms/AsyncBufferPool.h/.cpp`
-
-- 기존: `Acquire()` / `Release()` 모두 O(n) 선형 탐색
-- 변경: `vector<size_t> mFreeIndices` 스택(O(1) pop/push) + `unordered_map<int64_t,size_t> mBufferIdToIndex`(O(1) 조회)
-
-#### 변경 2: Session::ProcessRawRecv 배치 버퍼
-
-**파일**: `Network/Core/Session.cpp`
-
-- 기존: 완성 패킷마다 `vector<char>` 생성 → N 패킷 = N 힙 alloc
-- 변경: 단일 패킷 패스트패스 (0 alloc) + 일반 경로 배치 평탄 버퍼 (1 alloc)
-
-#### 변경 3: SendBufferPool (IOCP 전송 버퍼 풀)
-
-**파일**: `Network/Core/SendBufferPool.h/.cpp` (신규)
-
-- 기존 IOCP Send 경로: `vector<char>` per-send 힙 alloc + 2회 memcpy
-- 변경: 풀 슬롯 Acquire(O(1)) → 1회 memcpy → wsaBuf 포인터 직접 설정(zero-copy WSASend)
-
-#### 퍼포먼스 테스트 결과 (2026-03-01)
-
-`run_perf_test.ps1 -Phase all -RampClients @(10,100,500,1000) -SustainSec 30 -BinMode Release`
-
-| 단계 | 목표 | 실제 | 오류 | Server WS | 판정 |
-|------|------|------|------|-----------|------|
-| 10   | 10   | 10   | 0    | 178.9 MB  | **PASS** |
-| 100  | 100  | 100  | 0    | 180.6 MB  | **PASS** |
-| 500  | 500  | 500  | 0    | 188 MB    | **PASS** |
-| 1000 | 1000 | 1000 | 0    | 193.7 MB  | **PASS** |
-
-> 상세 로그: `Doc/Performance/Logs/20260301_111832/`
-> 누적 이력: `Doc/Performance/Logs/PERF_HISTORY.md`
+- `Server/DBServer/src/DBServer.cpp` — 실험 경로
+- `Server/TestServer/src/TestServer.cpp`
+- `Server/TestServer/src/ClientSession.cpp`

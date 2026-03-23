@@ -8,6 +8,29 @@ Build-NetworkAsyncDB-Report.py
 
 사전 요구사항:
     pip install python-docx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+diagrams/ drawio 원본  →  assets/ PNG (보고서에 삽입되는 파일)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Sec01-Overview-ArchitectureLayers.drawio       → diag_arch.png
+  └ PIL 재작성(_scripts/Fix-ReviewCorrections.py draw_arch)
+Sec01-Overview-SystemFlowChart.drawio          → diag_overview.png
+  └ draw.io 수동 내보내기
+Sec02-Network-ClientLifecycleSequence.drawio   → diag_client_lifecycle.png
+  └ draw.io 수동 내보내기
+Sec02-Network-ConnectionEstablishmentSequence.drawio → diag_seq.png
+  └ SVG+Chrome 렌더(Fix-ReviewCorrections.py render_seq)
+Sec02-Network-SessionUML.drawio                → diag_session_uml.png
+  └ draw.io 수동 내보내기
+Sec03-Async-IOCompletionDispatchFlow.drawio    → diag_async_1_dispatch.png
+  └ PIL(Fix-ReviewCorrections.py draw_dispatch), H=600
+Sec03.3-AsyncWAL-KeyedDispatcherSessionRouting.drawio → diag_async_2_keyed.png
+  └ PIL(Fix-ReviewCorrections.py draw_keyed), H=620
+Sec04-DB-ProcessingLayerWALFactoryQueue.drawio → diag_db.png
+  └ draw.io 수동 내보내기
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PNG 재생성:  python _scripts/Fix-ReviewCorrections.py
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 from pathlib import Path
@@ -138,114 +161,142 @@ def setup_document() -> Document:
     sec.bottom_margin = Cm(2.0)
 
     style_cfg = [
-        ("Normal",      10.5),
-        ("Heading 1",   15),
-        ("Heading 2",   13),
-        ("Heading 3",   11.5),
-        ("List Bullet", 10.5),
-        ("List Number", 10.5),
+        ("Normal",      10.5, None,       False),
+        ("List Bullet", 10.5, None,       False),
+        ("List Number", 10.5, None,       False),
     ]
-    for name, sz in style_cfg:
+    for name, sz, color, bold in style_cfg:
         s = doc.styles[name]
         s.font.name = FONT
         s.font.size = Pt(sz)
+        s.font.bold = bold
+        if color:
+            s.font.color.rgb = color
         try:
             s._element.rPr.rFonts.set(qn("w:eastAsia"), FONT)
         except Exception:
             pass
+
+    # ── Heading 스타일: Word TOC 자동 인식용 ─────────────────────────────
+    # h1/h2/h3 함수가 이 스타일을 사용하므로 Word의 자동 목차가 작동한다.
+    heading_cfg = [
+        ("Heading 1", 15,   C_TITLE_BG,  True),
+        ("Heading 2", 13,   C_BLUE_DARK, True),
+        ("Heading 3", 11.5, C_PURPLE,    True),
+    ]
+    for name, sz, color, bold in heading_cfg:
+        s = doc.styles[name]
+        s.font.name  = FONT
+        s.font.size  = Pt(sz)
+        s.font.bold  = bold
+        s.font.color.rgb = color
+        # 번호 매기기 제거 (Word 기본 Heading 스타일은 번호 있음)
+        try:
+            pPr = s._element.get_or_add_pPr()
+            numPr = pPr.find(qn("w:numPr"))
+            if numPr is not None:
+                pPr.remove(numPr)
+        except Exception:
+            pass
+        try:
+            s._element.rPr.rFonts.set(qn("w:eastAsia"), FONT)
+        except Exception:
+            pass
+
+    # ── 문서 열기 시 필드 자동 업데이트 (TOC 갱신 포함) ─────────────────────
+    settings_el = doc.settings.element
+    update_fields = OxmlElement("w:updateFields")
+    update_fields.set(qn("w:val"), "true")
+    settings_el.append(update_fields)
+
     return doc
 
 
 # ── 타이틀 페이지 ─────────────────────────────────────────────────────────────
 def build_title_page(doc: Document):
-    def _shade(text="", align=WD_ALIGN_PARAGRAPH.LEFT,
-               before=0, after=0, indent=0,
-               bold=False, italic=False, fsize=None, fcolor=None, bg=C_TITLE_BG):
+    def _blank(n: int = 1):
+        for _ in range(n):
+            p = doc.add_paragraph(style="Normal")
+            p.paragraph_format.space_before = Pt(0)
+            p.paragraph_format.space_after  = Pt(0)
+
+    # ── 상단 여백 ─────────────────────────────────────────────────────────
+    _blank(5)
+
+    # ── 메인 타이틀 (색상 없음, 굵은 텍스트만) ────────────────────────────
+    for line in ("네트워크, 비동기처리, DB처리",):
         p = doc.add_paragraph(style="Normal")
-        shade_para(p, bg)
-        p.alignment = align
-        p.paragraph_format.space_before = Pt(before)
-        p.paragraph_format.space_after  = Pt(after)
-        if indent:
-            p.paragraph_format.left_indent = Cm(indent)
-        if text:
-            add_run(p, text, bold=bold, italic=italic, size=fsize, color=fcolor)
-        return p
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after  = Pt(6)
+        add_run(p, line, bold=True, size=28, color=C_BLACK)
 
-    # 상단 여백
-    for _ in range(3):
-        _shade()
+    # ── 중간 여백 ─────────────────────────────────────────────────────────
+    _blank(18)
 
-    # 악센트 가로선
-    accent = _shade(before=2, after=2, bg=C_TITLE_STRIP)
-    p_bdr = accent._p.get_or_add_pPr()
-    shd_b = OxmlElement("w:shd")
-    shd_b.set(qn("w:val"), "clear"); shd_b.set(qn("w:color"), "auto")
-    shd_b.set(qn("w:fill"), _rgb_hex(C_TITLE_STRIP))
-    p_bdr.append(shd_b)
-
-    # 메인 타이틀
-    _shade("네트워크 · 비동기 처리 · DB 처리",
-           align=WD_ALIGN_PARAGRAPH.CENTER, before=30, after=4,
-           bold=True, fsize=26, fcolor=C_WHITE)
-    _shade("구조 분석 보고서",
-           align=WD_ALIGN_PARAGRAPH.CENTER, before=0, after=20,
-           bold=True, fsize=26, fcolor=C_WHITE)
-
-    # 부제
-    _shade("NetworkModuleTest — ServerEngine · TestServer · DBServer 구현 기반",
-           align=WD_ALIGN_PARAGRAPH.CENTER, before=0, after=30,
-           italic=True, fsize=13,
-           fcolor=RGBColor(0xBB, 0xDE, 0xFB))
-
-    # 구분선
-    _shade(before=0, after=16, bg=RGBColor(0x42, 0x86, 0xC5))
-
-    # 메타 정보
-    meta = [
-        ("기준 리포지토리", "NetworkModuleTest"),
-        ("분석 대상",      "ServerEngine / TestServer / DBServer"),
-        ("작성일",         "2026-03-15"),
-        ("버전",           "1.4"),
-    ]
-    for label, value in meta:
-        p = _shade(before=0, after=4, indent=4)
-        add_run(p, f"{label}:  ", bold=True, size=11,
-                color=RGBColor(0x90, 0xCA, 0xF9))
-        add_run(p, value, size=11, color=C_WHITE)
-
-    # 하단 여백
-    for _ in range(5):
-        _shade()
+    # ── 이름 (우측 하단) ──────────────────────────────────────────────────
+    p_name = doc.add_paragraph(style="Normal")
+    p_name.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    p_name.paragraph_format.space_before = Pt(0)
+    p_name.paragraph_format.space_after  = Pt(0)
+    add_run(p_name, "이름 : 이동길", bold=False, size=12, color=C_BLACK)
 
     doc.add_page_break()
 
 
 # ── 본문 빌딩 블록 ────────────────────────────────────────────────────────────
 def h1(doc: Document, text: str):
-    p = doc.add_paragraph(style="Normal")
+    # Word "Heading 1" 스타일 사용 → 자동 목차(TOC) 인식
+    p = doc.add_paragraph(style="Heading 1")
     shade_para(p, RGBColor(0xE8, 0xEA, 0xF6))
     add_left_border(p, color_hex="0D47A1", sz=20)
     p.paragraph_format.left_indent  = Cm(0.4)
     p.paragraph_format.space_before = Pt(18)
     p.paragraph_format.space_after  = Pt(6)
-    add_run(p, text, bold=True, size=15, color=C_TITLE_BG)
+    # 스타일에서 색상/폰트를 이미 설정했으므로 run의 명시적 override 없이 텍스트만 추가
+    run = p.add_run(text)
+    run.font.name = FONT
+    run.font.bold = True
+    run.font.size = Pt(15)
+    run.font.color.rgb = C_TITLE_BG
+    try:
+        run._element.rPr.rFonts.set(qn("w:eastAsia"), FONT)
+    except Exception:
+        pass
 
 
 def h2(doc: Document, text: str):
-    p = doc.add_paragraph(style="Normal")
+    # Word "Heading 2" 스타일 사용 → 자동 목차(TOC) 인식
+    p = doc.add_paragraph(style="Heading 2")
     add_left_border(p, color_hex="1565C0", sz=12)
     p.paragraph_format.left_indent  = Cm(0.3)
     p.paragraph_format.space_before = Pt(12)
     p.paragraph_format.space_after  = Pt(4)
-    add_run(p, text, bold=True, size=13, color=C_BLUE_DARK)
+    run = p.add_run(text)
+    run.font.name = FONT
+    run.font.bold = True
+    run.font.size = Pt(13)
+    run.font.color.rgb = C_BLUE_DARK
+    try:
+        run._element.rPr.rFonts.set(qn("w:eastAsia"), FONT)
+    except Exception:
+        pass
 
 
 def h3(doc: Document, text: str):
-    p = doc.add_paragraph(style="Normal")
+    # Word "Heading 3" 스타일 사용 → 자동 목차(TOC) 인식
+    p = doc.add_paragraph(style="Heading 3")
     p.paragraph_format.space_before = Pt(8)
     p.paragraph_format.space_after  = Pt(3)
-    add_run(p, text, bold=True, size=11.5, color=C_PURPLE)
+    run = p.add_run(text)
+    run.font.name = FONT
+    run.font.bold = True
+    run.font.size = Pt(11.5)
+    run.font.color.rgb = C_PURPLE
+    try:
+        run._element.rPr.rFonts.set(qn("w:eastAsia"), FONT)
+    except Exception:
+        pass
 
 
 def body(doc: Document, text: str, size: float = 10.5,
@@ -392,12 +443,60 @@ def divider(doc: Document):
     add_bottom_border(p, color_hex="CCCCCC", sz=4)
 
 
+# ── 목차 (Word 자동 목차 필드) ────────────────────────────────────────────────
+def section_toc(doc: Document):
+    # h1() 대신 직접 단락 추가 — 목차 제목 자체는 TOC에 포함되지 않도록
+    p_title = doc.add_paragraph(style="Normal")
+    shade_para(p_title, RGBColor(0xE8, 0xEA, 0xF6))
+    add_left_border(p_title, color_hex="0D47A1", sz=20)
+    p_title.paragraph_format.left_indent  = Cm(0.4)
+    p_title.paragraph_format.space_before = Pt(18)
+    p_title.paragraph_format.space_after  = Pt(12)
+    add_run(p_title, "목차", bold=True, size=15, color=C_TITLE_BG)
+
+    # ── Word TOC 필드 삽입 ────────────────────────────────────────────────
+    # OOXML 표준: fldChar(begin) / instrText / fldChar(separate) / fldChar(end)
+    # 각각 별도 <w:r> 에 담아야 Word가 필드로 인식한다.
+    # Heading 1~2 기준 자동 목차. Word에서 열면 "필드 업데이트" 프롬프트가 나오면 [업데이트] 클릭.
+    # 또는 Ctrl+A → F9 로 수동 업데이트 가능.
+    p_toc = doc.add_paragraph(style="Normal")
+    p_toc.paragraph_format.space_before = Pt(4)
+    p_toc.paragraph_format.space_after  = Pt(4)
+
+    def _add_fld_char(para, type_: str):
+        """fldChar 전용 run — 각각 독립 <w:r> 필요"""
+        r = para.add_run()
+        fc = OxmlElement("w:fldChar")
+        fc.set(qn("w:fldCharType"), type_)
+        r._r.append(fc)
+
+    def _add_instr(para, text: str):
+        """instrText 전용 run"""
+        r = para.add_run()
+        instr = OxmlElement("w:instrText")
+        instr.set(qn("xml:space"), "preserve")
+        # \o "1-2" : Heading 1~2 포함  \h : 하이퍼링크  \z : 웹 레이아웃 숨김  \u : 스타일 사용
+        instr.text = text
+        r._r.append(instr)
+
+    _add_fld_char(p_toc, "begin")
+    _add_instr(p_toc, ' TOC \\o "1-2" \\h \\z \\u ')
+    _add_fld_char(p_toc, "separate")
+    _add_fld_char(p_toc, "end")
+
+    doc.add_paragraph()   # 목차 아래 여백
+    doc.add_page_break()
+
+
 # ── 변경 이력 ─────────────────────────────────────────────────────────────────
 def section_changelog(doc: Document):
     h1(doc, "변경 이력")
     make_table(doc,
         ["날짜", "주요 변경 내용"],
         [
+            ["2026-03-19",
+             "말풍선(callout) 다이어그램 제거, 표지 레이아웃 개선(제목·이름 간격),\n"
+             "2페이지 목차 추가, 3페이지부터 본문 시작으로 구조 재편"],
             ["2026-03-15",
              "단순화(v1.4): ExecutionQueue lock-free 백엔드 제거, BoundedLockFreeQueue 삭제,\n"
              "mutex 단일 백엔드로 통일 (533→157줄). draw.io 다이어그램 전면 갱신,\n"
@@ -424,6 +523,7 @@ def section_changelog(doc: Document):
         col_widths_cm=[3.0, 15.0]
     )
     divider(doc)
+    doc.add_page_break()
 
 
 # ── 섹션 1: 개요 ──────────────────────────────────────────────────────────────
@@ -436,8 +536,9 @@ def section_overview(doc: Document):
         "비동기·논블로킹 설계가 어떻게 적용되어 있는지를 중심으로 기술한다."
     ))
 
-    image(doc, "01-architecture-overview.png",
-          caption="전체 아키텍처 개요 — INetworkEngine · AsyncIOProvider · 스레드 역할 분리")
+    image_drawio(doc, "diag_overview.png",
+                 caption="전체 아키텍처 개요 — INetworkEngine · AsyncIOProvider · 스레드 역할 분리",
+                 style=DRAWIO_STYLE)
     image_drawio(doc, "diag_arch.png",
                  caption="아키텍처 계층 구조", style=DRAWIO_STYLE)
 
@@ -501,8 +602,9 @@ def section_network(doc: Document):
     numbered(doc, "로직 스레드풀에서 OnConnected + Connected 이벤트 비동기 실행")
     numbered(doc, "첫 번째 Recv 등록 (수신 루프 시작)")
 
-    image(doc, "03-client-lifecycle-sequence.png",
-          caption="클라이언트 생명주기 시퀀스 — 접속 수락 → 핸드셰이크 → ping/pong → 종료")
+    image_drawio(doc, "diag_client_lifecycle.png",
+                 caption="클라이언트 생명주기 시퀀스 — 접속 수락 → 핸드셰이크 → ping/pong → 종료",
+                 style=DRAWIO_STYLE)
     image_drawio(doc, "diag_seq.png",
                  caption="연결 수립 시퀀스", style=DRAWIO_STYLE)
 
@@ -511,8 +613,9 @@ def section_network(doc: Document):
         "Session은 네트워크 계층의 핵심 단위다. 연결 상태, 송수신 큐, AsyncScope를 "
         "하나의 객체로 관리하며, 동기화는 역할별로 분리된 프리미티브가 담당한다."
     ))
-    image(doc, "02-session-uml.png",
-          caption="Session UML — 주요 멤버 변수 및 동기화 프리미티브 구조")
+    image_drawio(doc, "diag_session_uml.png",
+                 caption="Session UML — 주요 멤버 변수 및 동기화 프리미티브 구조",
+                 style=DRAWIO_STYLE)
 
     make_table(doc,
         ["동기화 프리미티브", "보호 대상", "설계 포인트"],
@@ -606,8 +709,6 @@ def section_async(doc: Document):
         "오프로딩하여 로직 스레드 지연을 최소화한다."
     ))
 
-    image(doc, "04-async-db-flow-sequence.png",
-          caption="비동기 DB 처리 흐름 시퀀스 — 로직 스레드 → DBTaskQueue → DB 기록")
     image_drawio(doc, "diag_async_1_dispatch.png",
                  caption="I/O 완료 → 워커 배정 흐름", style=DRAWIO_STYLE)
 
@@ -649,7 +750,7 @@ def section_async(doc: Document):
     bullet(doc, "1 워커: 가장 단순, 친화도 계산 불필요")
     bullet(doc, "N 워커: 처리량 향상, 세션별 순서는 해시 친화도로 여전히 보장")
     callout(doc,
-        "워커 수를 바꿔도 순서는 깨지지 않는다. WAL 복구도 seq 순 정렬 재인큐이므로 "
+        "워커 수를 바꿔도 순서는 깨지지 않는다. "
         "재시작 시 worker count 변경이 안전하다.",
         style="tip")
     code_ref(doc, "TestServer.cpp:OnClientConnectionEstablished", "비동기 기록 진입점")
@@ -657,25 +758,34 @@ def section_async(doc: Document):
     code_ref(doc, "DBTaskQueue.cpp:WorkerThreadFunc", "워커 실행 루프")
     code_ref(doc, "NetworkTypes.h:DEFAULT_TASK_QUEUE_WORKER_COUNT", "기본 워커 수 상수")
 
-    h2(doc, "3.3 WAL 기반 크래시 복구")
+    h2(doc, "3.3 KeyedDispatcher — 세션 친화 라우팅")
     body(doc, (
-        "DBTaskQueue는 WAL(db_tasks.wal)을 사용해 프로세스 크래시 후에도 미완료 작업을 복구한다."
+        "KeyedDispatcher는 session_id % workerCount 해시를 이용해 동일 세션의 모든 작업을 "
+        "항상 같은 Logic Worker 스레드로 라우팅한다. "
+        "이를 통해 세션 단위 FIFO 순서가 락 없이 보장되고, "
+        "Session::mRecvMutex를 제거할 수 있다."
     ))
     make_table(doc,
-        ["단계", "WAL 기록", "코드 포인트"],
+        ["항목", "내용"],
         [
-            ["작업 enqueue",   "'P|...' (pending) 기록",  "DBTaskQueue.cpp:538"],
-            ["작업 완료",      "'D|seq' (done) 기록",     "DBTaskQueue.cpp:574"],
-            ["프로세스 재시작", "WAL + .bak 병합 파싱\n미완료(P에서 D 없음) 작업만 재큐잉",
-             "DBTaskQueue.cpp:597"],
+            ["배정 공식",     "worker_idx = session_id % workerCount\n결정론적 — 같은 세션은 항상 같은 워커"],
+            ["Dispatch()",   "shared_lock(mWorkersMutex)\n다수 I/O 스레드가 동시에 배정 가능"],
+            ["Shutdown()",   "exclusive_lock(mWorkersMutex)\n신규 배정 차단 → 남은 작업 완전 드레인"],
+            ["ExecutionQueue<T>", "워커당 1개, FIFO 순서 보장\nPush() / Pop(), BackpressurePolicy (RejectNewest / Block)"],
+            ["mRecvMutex 제거", "같은 세션 recv가 항상 같은 워커 → 동시 접근 구조적 불가능"],
         ],
-        col_widths_cm=[3.0, 7.0, 8.0]
+        col_widths_cm=[4.5, 13.5]
     )
+    callout(doc, (
+        "Dispatch()와 Shutdown()은 mWorkersMutex 공유·독점 잠금 쌍으로 안전하게 공존한다. "
+        "Shutdown() 진입 즉시 신규 dispatch가 차단되므로 in-flight 작업 유실 없이 종료된다."
+    ), style="tip")
+    code_ref(doc, "Concurrency/KeyedDispatcher.h", "Dispatch / Shutdown 구현")
+    code_ref(doc, "Concurrency/ExecutionQueue.h", "Push / Pop / BackpressurePolicy")
 
     image_drawio(doc, "diag_async_2_keyed.png",
-                 caption="KeyedDispatcher 세션 라우팅", style=DRAWIO_STYLE)
-    image_drawio(doc, "diag_async_3_execqueue.png",
-                 caption="ExecutionQueue — Mutex 단일 백엔드", style=DRAWIO_STYLE)
+                 caption="KeyedDispatcher — 세션 친화 라우팅 (session_id % workerCount)",
+                 style=DRAWIO_STYLE)
 
     h2(doc, "3.4 OrderedTaskQueue — DBServer 키 순서 보장")
     body(doc, (
@@ -703,8 +813,6 @@ def section_async(doc: Document):
     code_ref(doc, "TestServer.cpp:583", "재연결 루프 진입점")
     code_ref(doc, "TestServer.cpp:629", "오류 종류별 분기")
 
-    image(doc, "06-db-reconnect-sequence.png",
-          caption="DB 서버 재연결 시퀀스 — 끊김 감지 → 백오프 재시도 → 재연결 성공")
     divider(doc)
 
 
@@ -812,9 +920,6 @@ def section_e2e(doc: Document):
     body(doc, "종료 순서는 DB 안전성을 보장하기 위해 명시적으로 정의되어 있다.")
 
     h3(doc, "TestServer 종료 순서")
-    image(doc, "05-graceful-shutdown-sequence.png",
-          caption="Graceful Shutdown 시퀀스 — TestServer 종료 순서 및 DBTaskQueue 드레인")
-
     make_table(doc,
         ["순서", "동작", "코드 포인트"],
         [
@@ -854,7 +959,6 @@ def section_assessment(doc: Document):
     h2(doc, "6.1 강점")
     bullet(doc, "네트워크 / 로직 / DB 비동기 경로 분리가 명확하며 역할 간 경계가 코드 레벨에서 강제됨")
     bullet(doc, "플랫폼 폴백 체인(RIO→IOCP, io_uring→epoll)으로 최적 백엔드 자동 선택")
-    bullet(doc, "DBTaskQueue WAL 복구로 크래시 후 데이터 손실 방지")
     bullet(doc, "재연결 정책(ECONNREFUSED 분리, 지수 백오프)으로 운영 복원력 확보")
     bullet(doc, "KeyedDispatcher 도입으로 mRecvMutex 제거 — 세션 단위 순서 보장과 경쟁 감소 동시 달성")
     bullet(doc, "ProcessErrorCompletion 단일 헬퍼로 3-플랫폼 에러 처리 통합 — Send/Recv 방향 구분, 통계 분리")
@@ -928,9 +1032,9 @@ def main():
 
     print(f"[Build] 보고서 생성 중: {out_path}  (draw.io style={DRAWIO_STYLE})")
     doc = setup_document()
-    build_title_page(doc)
-    section_changelog(doc)
-    section_overview(doc)
+    build_title_page(doc)          # 1페이지: 표지
+    section_toc(doc)               # 2페이지: 목차 (+ 페이지 브레이크)
+    section_overview(doc)          # 3페이지~: 본문 시작
     section_network(doc)
     section_async(doc)
     section_db(doc)
