@@ -1,5 +1,4 @@
-// English: DB Ping Time Manager implementation
-// 한글: DB Ping 시간 관리자 구현
+// DB Ping 시간 관리자 구현 (DEPRECATED — 기능이 ServerLatencyManager에 통합됨)
 
 #include "../include/DBPingTimeManager.h"
 #include <iostream>
@@ -33,12 +32,6 @@ namespace Network::DBServer
 
         std::cout << "Initializing DBPingTimeManager..." << std::endl;
 
-        // English: TODO - Initialize actual database connection here
-        // 한글: TODO - 여기에 실제 데이터베이스 연결 초기화
-        // For now, just simulate initialization
-
-        // English: Create table if not exists (placeholder)
-        // 한글: 테이블이 없으면 생성 (공백)
         std::string createTableQuery = R"(
             CREATE TABLE IF NOT EXISTS T_PingTimeLog (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,7 +43,7 @@ namespace Network::DBServer
             )
         )";
 
-        // ExecuteQuery(createTableQuery); // Placeholder call
+        // ExecuteQuery(createTableQuery);
 
         mInitialized.store(true, std::memory_order_release);
         std::cout << "DBPingTimeManager initialized successfully" << std::endl;
@@ -63,9 +56,6 @@ namespace Network::DBServer
             return;
 
         std::cout << "Shutting down DBPingTimeManager..." << std::endl;
-
-        // English: TODO - Close database connection here
-        // 한글: TODO - 여기에 데이터베이스 연결 종료
 
         mInitialized.store(false, std::memory_order_release);
         std::cout << "DBPingTimeManager shut down" << std::endl;
@@ -81,12 +71,8 @@ namespace Network::DBServer
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // English: Format timestamp as GMT string
-        // 한글: 타임스탬프를 GMT 문자열로 포맷
         std::string gmtTimeStr = FormatTimestamp(timestamp);
 
-        // English: Build INSERT query
-        // 한글: INSERT 쿼리 작성
         std::ostringstream query;
         query << "INSERT INTO T_PingTimeLog (ServerId, ServerName, PingTimestamp, PingTimeGMT) VALUES ("
               << serverId << ", '"
@@ -99,8 +85,6 @@ namespace Network::DBServer
                   << ", Timestamp: " << timestamp
                   << ", GMT: " << gmtTimeStr << std::endl;
 
-        // English: Execute query (placeholder - actual DB call would go here)
-        // 한글: 쿼리 실행 (공백 - 실제 DB 호출은 여기에)
         bool result = ExecuteQuery(query.str());
 
         if (result)
@@ -125,8 +109,6 @@ namespace Network::DBServer
 
         std::lock_guard<std::mutex> lock(mMutex);
 
-        // English: Build SELECT query
-        // 한글: SELECT 쿼리 작성
         std::ostringstream query;
         query << "SELECT PingTimestamp FROM T_PingTimeLog WHERE ServerId = "
               << serverId
@@ -134,22 +116,13 @@ namespace Network::DBServer
 
         std::cout << "Querying last ping time for ServerId: " << serverId << std::endl;
 
-        // English: Execute query and retrieve result (placeholder)
-        // 한글: 쿼리 실행 및 결과 조회 (공백)
-        // In real implementation, execute query and parse result
-        // For now, return 0 as placeholder
-
-        return 0;  // Placeholder return
+        return 0;
     }
 
     std::string DBPingTimeManager::FormatTimestamp(uint64_t timestamp)
     {
-        // English: Convert milliseconds to seconds for time_t
-        // 한글: 밀리초를 time_t용 초로 변환
         time_t seconds = static_cast<time_t>(timestamp / 1000);
 
-        // English: Convert to GMT tm structure
-        // 한글: GMT tm 구조체로 변환
         std::tm gmtTime{};
 #ifdef _WIN32
         gmtime_s(&gmtTime, &seconds);
@@ -157,8 +130,6 @@ namespace Network::DBServer
         gmtime_r(&seconds, &gmtTime);
 #endif
 
-        // English: Format as ISO 8601 GMT string
-        // 한글: ISO 8601 GMT 문자열로 포맷
         std::ostringstream oss;
         oss << std::put_time(&gmtTime, "%Y-%m-%d %H:%M:%S");
         oss << " GMT";
@@ -168,18 +139,13 @@ namespace Network::DBServer
 
     bool DBPingTimeManager::ExecuteQuery(const std::string& query)
     {
-        // English: Placeholder for actual database query execution
-        // 한글: 실제 데이터베이스 쿼리 실행을 위한 공백
-
         std::cout << "[DB Query Placeholder] " << query << std::endl;
 
-        // TODO: Implement actual database query execution
-        // Example:
+        // TODO: 실제 DB 쿼리 실행 구현 필요
         // if (mDbConnection) {
         //     return sqlite3_exec(mDbConnection, query.c_str(), nullptr, nullptr, nullptr) == SQLITE_OK;
         // }
 
-        // For now, simulate success
         return true;
     }
 

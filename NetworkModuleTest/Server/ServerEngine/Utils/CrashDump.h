@@ -1,9 +1,23 @@
-// English: Crash dump utility — Windows SEH / signal handler that writes
-//          .dmp (mini + full) and .crash (text callstack) on unhandled exception.
-//          Self-contained: no external project dependencies.
-// 한글: 크래시 덤프 유틸리티 — 미처리 예외 발생 시 .dmp(mini+full)과
-//       .crash(텍스트 콜스택) 파일을 기록하는 Windows SEH/시그널 핸들러.
-//       외부 프로젝트 의존성 없이 독립적으로 동작.
+// 크래시 덤프 유틸리티 (Windows 전용).
+//
+// 동작 원리:
+//   SetUnhandledExceptionFilter()로 SEH 미처리 예외를 가로채고,
+//   충돌 발생 시 다음 두 종류의 파일을 생성한다:
+//     - <exe>.<날짜>_mini.dmp : MiniDumpWriteDump (MiniDumpWithDataSegs 등)
+//     - <exe>.<날짜>_full.dmp : MiniDumpWithFullMemory (전체 메모리 포함)
+//     - <exe>.<날짜>.crash    : 텍스트 콜스택 (레지스터 + StackWalk64)
+//
+//   덤프 작업은 새 스레드에서 실행된다 — EXCEPTION_STACK_OVERFLOW 시
+//   충돌 스레드의 스택을 재사용하면 2차 크래시가 발생하므로 분리가 필수.
+//
+//   SIGABRT/SIGFPE/SIGILL/SIGSEGV 및 순수 가상 호출/잘못된 매개변수도
+//   SEH 필터를 경유하도록 핸들러를 등록한다.
+//
+// 사용법:
+//   스레드 생성 전 main() 시작 직후에 한 번만 호출한다.
+//   CrashDump::Initialize("./dumps/");
+//
+// 외부 의존성: 없음 (DbgHelp.lib, Psapi.lib는 #pragma comment로 자동 링크)
 #pragma once
 
 #ifdef _WIN32
@@ -20,60 +34,47 @@ namespace Network::Utils
 class CrashDump
 {
 public:
-	// English: Call once at startup (before spawning threads).
-	//          dumpDir: directory for output files, e.g. "./dumps/"
-	//                   nullptr or "" → current directory.
-	// 한글: 스레드 생성 전 startup 시 1회 호출.
-	//       dumpDir: 출력 파일 저장 디렉토리 (nullptr/"" → 현재 디렉토리)
+	// 스레드 생성 전 startup 시 1회 호출.
+	// dumpDir: 출력 파일 저장 디렉토리 (nullptr 또는 "" → 현재 디렉토리)
 	static void Initialize(const char* dumpDir = nullptr);
 
 private:
-	// English: SEH unhandled-exception filter — entry point
-	// 한글: SEH 미처리 예외 필터 — 진입점
+	// SEH 미처리 예외 필터 — 최초 진입점.
+	// 재진입 방지를 위해 즉시 noop 필터로 교체한 뒤 덤프 스레드를 생성한다.
 	static LONG WINAPI ExceptionFilter(EXCEPTION_POINTERS* exceptionInfo);
 
-	// English: Noop filter — installed after first exception to prevent re-entry
-	// 한글: 재진입 방지용 noop 필터
+	// 덤프 작업 중 다른 스레드가 충돌했을 때 무한 대기시키는 noop 필터.
 	static LONG WINAPI ExceptionFilterNoop(EXCEPTION_POINTERS* exceptionInfo);
 
-	// English: Actual dump work runs in a separate thread
-	//          (avoids stack-overflow issues on the crashed thread's stack)
-	// 한글: 실제 덤프 작업은 별도 스레드에서 실행
-	//       (충돌 스레드 스택의 스택 오버플로 문제 방지)
+	// 실제 덤프 작업 (별도 스레드에서 실행).
 	static DWORD WINAPI ExceptionProc(void* arg);
 
-	// English: Write mini/full .dmp file via MiniDumpWriteDump
-	// 한글: MiniDumpWriteDump로 .dmp 파일 작성
+	// MiniDumpWriteDump로 .dmp 파일 생성.
 	static DWORD WriteMiniDump(EXCEPTION_POINTERS* exceptionInfo,
 	                           const char*          dumpName,
 	                           MINIDUMP_TYPE        dumpType);
 
-	// English: Write registers + StackWalk64 callstack to wofstream
-	// 한글: 레지스터 + StackWalk64 콜스택을 wofstream에 기록
+	// 레지스터 값과 StackWalk64 콜스택을 wofstream에 기록.
 	static void WriteCallStack(std::wofstream& outFile,
 	                           HANDLE          threadHandle,
 	                           CONTEXT*        context,
 	                           bool            isCrashed);
 
-	// English: Suspend / resume all threads except the caller
-	// 한글: 호출자 스레드를 제외한 모든 스레드 일시 중단 / 재개
+	// 일관된 콜스택 수집을 위해 호출자 스레드를 제외한 모든 스레드를 일시 중단/재개.
 	static void SuspendOtherThreads();
 	static void ResumeOtherThreads();
 
-	// English: Map exception code to readable string
-	// 한글: 예외 코드를 가독성 있는 문자열로 변환
+	// Windows 예외 코드를 가독성 있는 문자열로 변환 (예: EXCEPTION_ACCESS_VIOLATION).
 	static const char* ExceptionCodeToString(DWORD code);
 
-	// English: Extract file name (strip directory path)
-	// 한글: 파일명만 추출 (디렉토리 경로 제거)
+	// 전체 경로에서 파일명만 추출.
 	static void GetBaseFileName(const char* fullPath, char* outName, size_t outSize);
 
-	// English: Dump output directory (set by Initialize)
-	// 한글: 덤프 출력 디렉토리 (Initialize에서 설정)
+	// Initialize()에서 설정한 덤프 출력 디렉토리.
 	inline static char sDumpDir[MAX_PATH] = {};
 
-	// English: Suspended thread handles collected in SuspendOtherThreads
-	// 한글: SuspendOtherThreads에서 수집된 일시 중단된 스레드 핸들
+	// SuspendOtherThreads()에서 수집한 일시 중단된 스레드 핸들 목록.
+	// 최대 2048개 스레드까지 추적한다.
 	inline static HANDLE sSuspendedHandles[2048] = {};
 	inline static DWORD  sSuspendedCount         = 0;
 };

@@ -1,4 +1,4 @@
-// English: Windows RIO AsyncIOProvider implementation
+// Windows RIO AsyncIOProvider 구현
 
 #ifdef _WIN32
 
@@ -247,9 +247,8 @@ AsyncIOError RIOAsyncIOProvider::GetOrCreateRequestQueue(
 		return AsyncIOError::Success;
 	}
 
-	// English: Per-socket queue limits must fit the shared CQ capacity.
-	// Keep these small because this engine posts at most one recv and one send
-	// per socket at a time.
+	// 소켓별 큐 한도는 공유 CQ 용량에 맞아야 한다.
+	// 이 엔진은 소켓당 최대 1개 recv + 1개 send만 동시 발행하므로 각각 1로 충분하다.
 	const ULONG maxOutstandingReceive = 1;
 	const ULONG maxOutstandingSend = 1;
 	RIO_RQ requestQueue = mPfnRIOCreateRequestQueue(
@@ -313,14 +312,9 @@ int64_t RIOAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 		return -1;
 	}
 
-	// English: RIORegisterBuffer takes DWORD (uint32_t-range) length, and the stored
-	//          mBufferSize is also uint32_t. Silently truncating size_t → DWORD/uint32_t
-	//          would register a smaller region than intended, leading to out-of-bounds
-	//          RIO operations. Reject buffers that exceed the 32-bit limit explicitly.
-	// 한글: RIORegisterBuffer는 DWORD(uint32_t 범위) 길이를 받고, 저장되는
-	//       mBufferSize도 uint32_t다. size_t → DWORD를 묵시적으로 절단하면
-	//       의도보다 작은 영역이 등록되어 범위 초과 RIO 작업이 발생한다.
-	//       32비트 한계를 초과하는 버퍼는 명시적으로 거부한다.
+	// RIORegisterBuffer는 DWORD(uint32_t 범위) 길이를 받고, 저장되는 mBufferSize도 uint32_t다.
+	// size_t → DWORD 묵시적 절단 시 의도보다 작은 영역이 등록되어 범위 초과 RIO 작업이 발생한다.
+	// 32비트 한계를 초과하는 버퍼는 명시적으로 거부한다.
 	if (size > static_cast<size_t>(MAXDWORD))
 	{
 		mLastError = "RegisterBuffer: size exceeds DWORD max (4 GiB)";

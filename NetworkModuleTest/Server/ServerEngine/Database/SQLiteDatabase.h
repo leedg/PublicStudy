@@ -1,12 +1,13 @@
 #pragma once
 
-// English: SQLite implementation of database interfaces
-//          Compile with HAVE_SQLITE3 defined (and link sqlite3) for full support.
-//          Without HAVE_SQLITE3 a stub class that throws on Connect() is provided
-//          so the rest of the build remains unchanged.
-// 한글: 데이터베이스 인터페이스의 SQLite 구현
-//       HAVE_SQLITE3 정의 시 (및 sqlite3 링크 시) 전체 지원.
-//       HAVE_SQLITE3 없으면 Connect()에서 예외를 던지는 스텁 클래스 제공.
+// 데이터베이스 인터페이스의 SQLite 구현.
+// SQLite는 외부 서버 없이 단일 파일로 동작하므로 로컬 캐시나
+// 설정 저장용 경량 DB로 적합하다.
+//
+// 빌드 조건:
+//   - HAVE_SQLITE3 정의 + sqlite3 링크: 완전 구현 사용
+//   - HAVE_SQLITE3 미정의: Connect() 호출 시 DatabaseException을 던지는 스텁 클래스 제공.
+//     스텁이 있으므로 HAVE_SQLITE3 없이도 나머지 빌드에 영향을 주지 않는다.
 
 #include "../Interfaces/DatabaseConfig.h"
 #include "../Interfaces/DatabaseException.h"
@@ -30,27 +31,24 @@ namespace Database
 
 #ifdef HAVE_SQLITE3
 
-// English: Forward declarations
-// 한글: 전방 선언
+// 전방 선언
 class SQLiteConnection;
 class SQLiteStatement;
 class SQLiteResultSet;
 
 // =============================================================================
-// English: SQLiteResultSet — wraps sqlite3_stmt result iteration
-// 한글: SQLiteResultSet — sqlite3_stmt 결과 이터레이션 래퍼
+// SQLiteResultSet — sqlite3_stmt를 래핑하는 결과 집합.
+// Close() 시 sqlite3_finalize()로 stmt를 해제한다.
 // =============================================================================
 
 class SQLiteResultSet : public IResultSet
 {
   public:
-	// English: Takes ownership of the prepared statement
-	// 한글: 준비된 구문의 소유권 획득
+	// stmt 소유권을 이전받는다. Close()/소멸자에서 sqlite3_finalize() 호출.
 	explicit SQLiteResultSet(sqlite3_stmt *stmt);
 	virtual ~SQLiteResultSet();
 
-	// English: IResultSet interface (name overloads inherited from IResultSet default impl)
-	// 한글: IResultSet 인터페이스 (이름 오버로드는 IResultSet 기본 구현 상속)
+	// IResultSet 인터페이스 (이름 오버로드는 IResultSet 기본 구현 상속)
 	bool Next() override;
 	bool IsNull(size_t columnIndex) override;
 	std::string GetString(size_t columnIndex) override;
@@ -70,14 +68,15 @@ class SQLiteResultSet : public IResultSet
   private:
 	sqlite3_stmt *mStmt;
 	bool mDone;
-	bool mHasData; // English: true only while a SQLITE_ROW has been returned by Next()
-	               // 한글: Next()가 SQLITE_ROW를 반환한 동안만 true
+	// Next()가 SQLITE_ROW를 반환한 동안만 true.
+	// Get*() 호출 전에 반드시 true여야 한다 (sqlite3_column_* 호출 조건).
+	bool mHasData;
 	std::vector<std::string> mColumnNames;
 };
 
 // =============================================================================
-// English: SQLiteStatement — prepares and executes SQL against a sqlite3 handle
-// 한글: SQLiteStatement — sqlite3 핸들에 대해 SQL 준비 및 실행
+// SQLiteStatement — sqlite3 핸들을 대상으로 SQL을 준비·실행.
+// SetTimeout()은 SQLite에 statement 단위 timeout이 없으므로 no-op.
 // =============================================================================
 
 class SQLiteStatement : public IStatement
@@ -87,7 +86,7 @@ class SQLiteStatement : public IStatement
 	virtual ~SQLiteStatement();
 
 	void SetQuery(const std::string &query) override;
-	void SetTimeout([[maybe_unused]] int seconds) override {} // SQLite has no statement timeout
+	void SetTimeout([[maybe_unused]] int seconds) override {} // SQLite에는 statement 단위 timeout 없음
 
 	void BindParameter(size_t index, const std::string &value) override;
 	void BindParameter(size_t index, int value) override;
@@ -100,8 +99,7 @@ class SQLiteStatement : public IStatement
 	int ExecuteUpdate() override;
 	bool Execute() override;
 
-	// English: AddBatch — snapshot current params; ExecuteBatch — run each set in a loop
-	// 한글: AddBatch — 현재 파라미터 스냅샷; ExecuteBatch — 각 파라미터 세트 루프 실행
+	// AddBatch — 현재 파라미터 스냅샷; ExecuteBatch — 각 파라미터 셋을 루프 실행
 	void AddBatch() override;
 	std::vector<int> ExecuteBatch() override;
 
@@ -109,8 +107,7 @@ class SQLiteStatement : public IStatement
 	void Close() override;
 
   private:
-	// English: Parameter variant (mirrors sqlite3 bind types)
-	// 한글: 파라미터 타입 변형 (sqlite3 bind 타입 대응)
+	// sqlite3 bind 타입에 대응하는 파라미터 변형
 	enum class ParamType
 	{
 		Text,
@@ -132,9 +129,8 @@ class SQLiteStatement : public IStatement
 	void BindAll(sqlite3_stmt *stmt, const std::vector<Param> &params);
 	void CheckRC(int rc, const char *op) const;
 
-	// English: Build and store a numeric Param slot. Floating-point types go to realVal;
-	//          integer types (int, long long) go to int64Val via implicit promotion.
-	// 한글: 숫자 Param 슬롯 생성/저장. 부동소수점은 realVal, 정수형은 int64Val에 저장.
+	// 숫자 타입 Param 슬롯 생성/저장.
+	// 부동소수점(float, double)은 realVal, 정수형(int, long long)은 int64Val에 저장.
 	template<ParamType TypeTag, typename T>
 	void SetNumParam(size_t index, T value)
 	{
@@ -147,15 +143,15 @@ class SQLiteStatement : public IStatement
 
   private:
 	sqlite3 *mDb;
-	sqlite3_stmt *mStmt; // kept for single-execute path
+	sqlite3_stmt *mStmt; // 단일 실행 경로용 — ExecuteQuery에서 SQLiteResultSet으로 소유권 이전
 	std::string mQuery;
 	std::vector<Param> mCurrentParams;
 	std::vector<std::vector<Param>> mBatchParams;
 };
 
 // =============================================================================
-// English: SQLiteConnection — non-owning reference to a shared sqlite3 handle
-// 한글: SQLiteConnection — 공유 sqlite3 핸들에 대한 non-owning 참조
+// SQLiteConnection — 공유 sqlite3 핸들에 대한 non-owning 참조.
+// SQLiteDatabase가 sqlite3 핸들을 소유하며, 이 클래스는 빌려 쓴다.
 // =============================================================================
 
 class SQLiteConnection : public IConnection
@@ -189,8 +185,12 @@ class SQLiteConnection : public IConnection
 };
 
 // =============================================================================
-// English: SQLiteDatabase — opens/closes a SQLite database file
-// 한글: SQLiteDatabase — SQLite 데이터베이스 파일 열기/닫기
+// SQLiteDatabase — SQLite 파일을 열고 닫는 IDatabase 구현.
+//
+// WAL(Write-Ahead Logging) 모드를 활성화하는 이유:
+//   기본 journal 모드(DELETE)는 쓰기 시 전체 DB 파일에 배타 잠금을 걸어
+//   읽기도 블록된다. WAL 모드에서는 쓰기와 읽기가 병렬로 동작하므로
+//   ConnectionPool을 통해 여러 SQLiteConnection이 동시에 사용될 때 성능이 향상된다.
 // =============================================================================
 
 class SQLiteDatabase : public IDatabase
@@ -199,8 +199,9 @@ class SQLiteDatabase : public IDatabase
 	SQLiteDatabase();
 	virtual ~SQLiteDatabase();
 
-	// English: config.mConnectionString is used as the SQLite file path
-	// 한글: config.mConnectionString을 SQLite 파일 경로로 사용
+	// config.mConnectionString을 SQLite 파일 경로로 사용.
+	// ":memory:" 지정 시 인메모리 DB로 동작.
+	// 연결 성공 후 WAL 모드를 자동으로 활성화한다.
 	void Connect(const DatabaseConfig &config) override;
 	void Disconnect() override;
 	bool IsConnected() const override;
@@ -227,8 +228,9 @@ class SQLiteDatabase : public IDatabase
 #else // !HAVE_SQLITE3
 
 // =============================================================================
-// English: SQLiteDatabase stub — throws DatabaseException on Connect()
-// 한글: SQLiteDatabase 스텁 — Connect() 호출 시 DatabaseException 발생
+// SQLiteDatabase 스텁 — HAVE_SQLITE3 미정의 시 사용.
+// Connect() 호출 시 DatabaseException을 발생시킨다.
+// 이 스텁 덕분에 HAVE_SQLITE3 없이도 나머지 빌드에 영향을 주지 않는다.
 // =============================================================================
 
 class SQLiteDatabase : public IDatabase

@@ -1,18 +1,14 @@
-// English: Database Server implementation
-// ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ??뺤쒔 ?닌뗭겱
-
-
+// 데이터베이스 서버 구현
 
 #include <chrono>
 #include <cstring>
 #include <iostream>
 #include "../include/DBServer.h"
-// English: Full IDatabase + DatabaseFactory definitions needed for ConnectToDatabase
-// 한글: ConnectToDatabase를 위한 IDatabase / DatabaseFactory 전체 정의 필요
+// ConnectToDatabase를 위한 IDatabase / DatabaseFactory 전체 정의 필요
 #include "../../ServerEngine/Interfaces/IDatabase.h"
 #include "../../ServerEngine/Database/DatabaseFactory.h"
 #include "../../ServerEngine/Database/SqlScriptRunner.h"
-// 한글: AsyncIOProvider 정의는 ServerEngine 경로의 헤더로 통일한다.
+// AsyncIOProvider 정의는 ServerEngine 경로의 헤더로 통일한다.
 
 using namespace Network::AsyncIO;
 using namespace Network::Protocols;
@@ -89,8 +85,7 @@ std::string DBServer::BuildConnectionString(const DatabaseConfig& config)
         "DBServer requires SetDatabaseConnectionString() for this backend type");
 }
 // =============================================================================
-// English: Constructor and Destructor
-// ???: ??밴쉐??獄????늾??
+// 생성자 / 소멸자
 // =============================================================================
 
 DBServer::DBServer()
@@ -108,8 +103,7 @@ DBServer::~DBServer()
 }
 
 // =============================================================================
-// English: Lifecycle management
-// ???: ??몄구雅뚯눊由??온??
+// 생명주기 관리
 // =============================================================================
 
 bool DBServer::Initialize(uint16_t port, size_t maxConnections)
@@ -143,10 +137,8 @@ bool DBServer::Initialize(uint16_t port, size_t maxConnections)
     // Create message handler
     mMessageHandler = std::make_unique<MessageHandler>();
     mPingPongHandler = std::make_unique<PingPongHandler>();
-    // English: Unified latency manager (RTT stats + ping time persistence)
-    //          Replaces the separate DBPingTimeManager that was used here.
-    // 한글: 통합 레이턴시 관리자 (RTT 통계 + 핑 시간 저장)
-    //       이전에 사용하던 별도 DBPingTimeManager를 대체.
+    // 통합 레이턴시 관리자 (RTT 통계 + 핑 시간 저장)
+    // 이전에 사용하던 별도 DBPingTimeManager를 대체.
     mLatencyManager = std::make_unique<ServerLatencyManager>();
     mLatencyManager->Initialize();
 
@@ -253,8 +245,7 @@ void DBServer::SetDatabaseConnectionString(
 }
 
 // =============================================================================
-// English: Network event handlers
-// ???: ??쎈뱜??곌쾿 ??源???紐껊굶??
+// 네트워크 이벤트 핸들러
 // =============================================================================
 
 void DBServer::OnConnectionEstablished(ConnectionId connectionId)
@@ -295,8 +286,7 @@ void DBServer::OnPingMessage(const Message &message)
         return;
     }
 
-    // English: Record ping time via unified latency manager
-    // 한글: 통합 레이턴시 관리자로 핑 시간 기록 (GMT 기준)
+    // 통합 레이턴시 관리자로 핑 시간 기록 (GMT 기준)
     if (mLatencyManager && mLatencyManager->IsInitialized())
     {
         mLatencyManager->SavePingTime(
@@ -324,13 +314,12 @@ void DBServer::OnPongMessage(const Message &message)
         mPingPongHandler->GetLastPongPingTimestamp(),
         mPingPongHandler->GetLastPongTimestamp());
 
-    // 한글: TestServer로부터 받은 Pong 응답의 RTT를 로그로 남긴다.
+    // TestServer로부터 받은 Pong 응답의 RTT를 로그로 남긴다.
     std::cout << "Pong message processed - RTT: " << rtt << " ms" << std::endl;
 }
 
 // =============================================================================
-// English: Database operations
-// ???: ?怨쀬뵠?怨뺤퓢??곷뮞 ?臾믩씜
+// 데이터베이스 작업
 // =============================================================================
 
 bool DBServer::ConnectToDatabase()
@@ -346,8 +335,7 @@ bool DBServer::ConnectToDatabase()
 
         if (mDbConfig.type != DatabaseType::Mock)
         {
-            // English: Build a connection string for non-mock backends
-            // 한글: Mock 외 백엔드를 위한 연결 문자열 구성
+            // Mock 외 백엔드를 위한 연결 문자열 구성
             Network::Database::DatabaseConfig dbConfig;
             dbConfig.mType = mDbConfig.type;
             dbConfig.mConnectionString = BuildConnectionString(mDbConfig);
@@ -369,8 +357,7 @@ bool DBServer::ConnectToDatabase()
         }
         else
         {
-            // English: MockDatabase — just call Connect() with a default config
-            // 한글: MockDatabase — 기본 config로 Connect() 호출
+            // MockDatabase — 기본 config로 Connect() 호출
             Network::Database::DatabaseConfig dbConfig;
             dbConfig.mType = DatabaseType::Mock;
             mDatabase->Connect(dbConfig);
@@ -378,8 +365,7 @@ bool DBServer::ConnectToDatabase()
 
         std::cout << "Database connected successfully" << std::endl;
 
-        // English: Inject DB into latency manager so it can persist to tables
-        // 한글: 레이턴시 관리자에 DB 주입하여 테이블 저장 활성화
+        // 레이턴시 관리자에 DB 주입하여 테이블 저장 활성화
         if (mLatencyManager)
         {
             mLatencyManager->SetDatabase(mDatabase.get());
@@ -399,8 +385,7 @@ void DBServer::DisconnectFromDatabase()
 {
     if (mDatabase)
     {
-        // English: Remove DB reference from latency manager before disconnecting
-        // 한글: 연결 해제 전 레이턴시 관리자에서 DB 참조 제거
+        // 연결 해제 전 레이턴시 관리자에서 DB 참조 제거
         if (mLatencyManager)
         {
             mLatencyManager->SetDatabase(nullptr);
@@ -420,8 +405,7 @@ std::string DBServer::ExecuteQuery(const std::string &query)
 }
 
 // =============================================================================
-// English: Private methods
-// ???: ??쑨?у첎?筌롫뗄???
+// 내부 메서드
 // =============================================================================
 
 void DBServer::WorkerThread()

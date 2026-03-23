@@ -1,15 +1,21 @@
 #pragma once
 
-// English: Windows-specific NetworkEngine implementation
-// 한글: Windows 전용 NetworkEngine 구현
+// Windows 전용 NetworkEngine 구현.
 //
-// Supports two modes:
-// - IOCP: Standard I/O Completion Port (all Windows versions)
-// - RIO: Registered I/O (Windows 8+, high performance)
+// 두 가지 I/O 백엔드를 지원한다:
+// - IOCP: 모든 Windows 버전에서 동작하는 표준 I/O 완료 포트.
+//         WSASend/WSARecv + OVERLAPPED 구조를 사용하며,
+//         IocpAsyncIOProvider가 내부적으로 사전 할당 없이 동적 버퍼를 관리한다.
+// - RIO : Windows 8+ 전용 고성능 Registered I/O.
+//         VirtualAlloc으로 할당한 슬랩 메모리를 RIORegisterBuffer로 한 번만 등록하고
+//         이후 I/O마다 재등록 없이 재사용한다.
+//         WSA 10055 (WSAENOBUFS) — 커널 non-paged pool 소진 — 오류는 대부분 IOCP에서
+//         per-op 버퍼 고정(pin)이 중첩될 때 발생한다. RIO의 사전 등록 슬랩 풀은
+//         이 오류를 원천적으로 방지한다.
 //
-// 두 가지 모드 지원:
-// - IOCP: 표준 I/O 완료 포트 (모든 Windows 버전)
-// - RIO: 등록 I/O (Windows 8+, 고성능)
+// 선택 기준:
+//   - Windows 7 이하 또는 호환성 우선   → IOCP
+//   - Windows 8+ + 고처리량 / 저지연 요구 → RIO
 
 #ifdef _WIN32
 
@@ -20,36 +26,22 @@
 namespace Network::Platforms
 {
 
-// =============================================================================
-// English: Windows NetworkEngine
-// 한글: Windows NetworkEngine
-// =============================================================================
-
 class WindowsNetworkEngine : public Core::BaseNetworkEngine
 {
   public:
-	// English: I/O backend mode
-	// 한글: I/O 백엔드 모드
+	// I/O 백엔드 모드
 	enum class Mode
 	{
-		IOCP, // English: Standard IOCP / 한글: 표준 IOCP
-		RIO   // English: Registered I/O / 한글: 등록 I/O
+		IOCP, // 표준 I/O 완료 포트 (모든 Windows)
+		RIO   // Registered I/O (Windows 8+, 고성능)
 	};
 
-	/**
-	 * English: Constructor
-	 * 한글: 생성자
-	 * @param mode I/O backend mode (IOCP or RIO)
-	 */
+	// @param mode  사용할 I/O 백엔드. 기본값 IOCP.
 	explicit WindowsNetworkEngine(Mode mode = Mode::IOCP);
 	virtual ~WindowsNetworkEngine();
 
   protected:
-	// =====================================================================
-	// English: Platform-specific implementation
-	// 한글: 플랫폼별 구현
-	// =====================================================================
-
+	// 플랫폼별 구현 (BaseNetworkEngine 순수 가상 재정의)
 	bool InitializePlatform() override;
 	void ShutdownPlatform() override;
 	bool StartPlatformIO() override;
@@ -58,38 +50,26 @@ class WindowsNetworkEngine : public Core::BaseNetworkEngine
 	void ProcessCompletions() override;
 
   private:
-	// English: Initialize Winsock
-	// 한글: Winsock 초기화
+	// WSAStartup(2.2) 호출 및 Winsock 초기화
 	bool InitializeWinsock();
 
-	// English: Create listen socket
-	// 한글: Listen 소켓 생성
+	// listen 소켓 생성 및 바인드.
+	// RIO 모드에서는 WSA_FLAG_REGISTERED_IO 플래그 추가.
 	bool CreateListenSocket();
 
-	// English: Worker thread function
-	// 한글: 워커 스레드 함수
+	// 완료 처리 루프 (WorkerThread 내부에서 반복 호출)
 	void WorkerThread();
 
   private:
-	// English: I/O mode
-	// 한글: I/O 모드
-	Mode mMode;
+	Mode   mMode;        // IOCP 또는 RIO
+	SOCKET mListenSocket; // INVALID_SOCKET = 미초기화
 
-	// English: Listen socket
-	// 한글: Listen 소켓
-	SOCKET mListenSocket;
-
-	// English: Accept loop backoff (ms) - member to avoid static variable bug
-	// 한글: Accept 루프 백오프 (ms) - static 변수 버그 방지를 위한 멤버 변수
+	// Accept 루프에서 연속 오류 발생 시 지수 백오프용 대기 시간(ms).
+	// static 변수 대신 멤버 변수로 유지하여 재진입/복수 인스턴스 버그를 방지한다.
 	int mAcceptBackoffMs;
 
-	// English: Accept thread
-	// 한글: Accept 스레드
-	std::thread mAcceptThread;
-
-	// English: Worker threads (for completion processing)
-	// 한글: 워커 스레드 (완료 처리용)
-	std::vector<std::thread> mWorkerThreads;
+	std::thread              mAcceptThread;  // 단일 accept 전담 스레드
+	std::vector<std::thread> mWorkerThreads; // 완료 처리 워커 (hardware_concurrency개)
 };
 
 } // namespace Network::Platforms

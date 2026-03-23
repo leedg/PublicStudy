@@ -1,5 +1,4 @@
-// English: DatabaseFactory implementation
-// 한글: DatabaseFactory 구현
+// DatabaseFactory 구현
 
 #include "DatabaseFactory.h"
 #include "../Interfaces/DatabaseException.h"
@@ -120,8 +119,7 @@ BuildOLEDBConnectionString(const std::map<std::string, std::string> &params)
 	return connStr;
 }
 
-// English: Template specializations for parameter binding
-// 한글: 파라미터 바인딩용 템플릿 특수화
+// Utils::BindParameterSafe 템플릿 특수화 — IStatement::BindParameter 오버로드로 위임
 template <>
 void BindParameterSafe<std::string>(IStatement *pStmt, size_t index,
 									const std::string &value)

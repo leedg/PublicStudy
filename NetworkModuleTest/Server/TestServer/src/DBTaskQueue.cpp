@@ -1,5 +1,4 @@
-// Asynchronous DB task queue implementation
-// 한글: 비동기 DB 작업 큐 구현
+// 비동기 DB 작업 큐 구현
 
 #include "../include/DBTaskQueue.h"
 
@@ -15,8 +14,7 @@
 #include <utility>
 #include <vector>
 
-// IDatabase interface always available for runtime injection
-// 한글: 런타임 주입을 위해 IDatabase 인터페이스는 항상 포함
+// 런타임 주입을 위해 IDatabase 인터페이스는 항상 포함
 #include "../include/TestServerSqlSpec.h"
 #include "Database/SqlModuleBootstrap.h"
 #include "Database/SqlScriptRunner.h"
@@ -56,8 +54,7 @@ namespace
 }
 
 // =============================================================================
-// DBTaskQueue implementation
-// 한글: DBTaskQueue 구현
+// DBTaskQueue 구현
 // =============================================================================
 
 DBTaskQueue::DBTaskQueue()
@@ -95,8 +92,7 @@ bool DBTaskQueue::Initialize(size_t workerThreadCount,
     // 한글: 멀티워커 안전: sessionId % workerCount로 각 세션을 전용 워커에 배정.
     //       워커당 단일 스레드 FIFO로 세션별 순서 및 직렬 DB 처리 보장.
 
-    // Store injected database reference and create tables if DB available
-    // 한글: 주입된 데이터베이스 저장 및 DB 사용 가능 시 테이블 생성
+    // 주입된 데이터베이스 참조 저장 및 DB 연결 시 테이블 생성
     mDatabase = db;
 
     if (mDatabase != nullptr && mDatabase->IsConnected())
@@ -118,12 +114,10 @@ bool DBTaskQueue::Initialize(size_t workerThreadCount,
         }
     }
 
-    // Start workers BEFORE WAL recovery so EnqueueTask() accepts recovered tasks
-    // 한글: WAL 복구 전에 워커 시작 - EnqueueTask()가 복구된 태스크를 받을 수 있도록
+    // WAL 복구 전에 워커 시작 — EnqueueTask()가 복구된 태스크를 받을 수 있도록
     mIsRunning.store(true);
 
-    // Create per-worker data structures first, then start threads.
-    // 한글: 워커별 데이터 구조체를 먼저 생성한 뒤 스레드 시작.
+    // 워커별 데이터 구조체를 먼저 생성한 뒤 스레드 시작
     for (size_t i = 0; i < workerThreadCount; ++i)
     {
         mWorkers.push_back(std::make_unique<WorkerData>());
@@ -134,8 +128,7 @@ bool DBTaskQueue::Initialize(size_t workerThreadCount,
         mWorkers[i]->thread = std::thread(&DBTaskQueue::WorkerThreadFunc, this, i);
     }
 
-    // Set WAL path and re-enqueue tasks from previous crash (if any)
-    // 한글: WAL 경로 설정 및 이전 크래시 미완료 태스크 복구 재인큐
+    // WAL 경로 설정 및 이전 크래시 미완료 태스크 복구 재인큐
     mWalPath = walPath;
     WalRecover();
 
@@ -152,19 +145,16 @@ void DBTaskQueue::Shutdown()
 
     Logger::Info("Shutting down DBTaskQueue...");
 
-    // Signal all worker threads to stop
-    // 한글: 모든 워커 스레드에 중지 신호 전송
+    // 모든 워커 스레드에 중지 신호 전송
     mIsRunning.store(false);
 
-    // Wake up every per-worker CV so threads can exit their wait loop.
-    // 한글: 각 워커의 CV를 깨워 wait 루프를 탈출하도록 함.
+    // 각 워커의 CV를 깨워 wait 루프를 탈출하도록 함
     for (auto& worker : mWorkers)
     {
         worker->cv.notify_all();
     }
 
-    // Wait for all worker threads to finish.
-    // 한글: 모든 워커 스레드가 종료될 때까지 대기.
+    // 모든 워커 스레드가 종료될 때까지 대기
     for (auto& worker : mWorkers)
     {
         if (worker->thread.joinable())
@@ -173,10 +163,7 @@ void DBTaskQueue::Shutdown()
         }
     }
 
-    // Drain remaining tasks from all per-worker queues.
-    //          All workers joined; drain without lock.
-    // 한글: 모든 워커별 큐에 남은 작업을 처리합니다.
-    //       모든 워커 join 완료 — 락 없이 drain.
+    // 모든 워커 join 완료 후 남은 작업 drain — 락 없이 실행
     for (auto& worker : mWorkers)
     {
         std::vector<DBTask> drainTasks;
@@ -193,16 +180,14 @@ void DBTaskQueue::Shutdown()
                          " remaining tasks before shutdown");
         }
 
-        // Execute drained tasks outside of lock.
-        // 한글: 수집된 작업을 락 밖에서 실행.
+        // 수집된 작업을 락 밖에서 실행
         for (auto& task : drainTasks)
         {
             try
             {
                 const bool success = ProcessTask(task);
 
-                // Keep WAL semantics identical to worker path.
-                // 한글: 워커 경로와 동일한 WAL 의미 유지.
+                // 워커 경로와 동일한 WAL 의미 유지
                 if (success && task.walSeq != 0)
                 {
                     WalWriteDone(task.walSeq);
@@ -222,10 +207,7 @@ void DBTaskQueue::Shutdown()
 
     mQueueSize.store(0, std::memory_order_relaxed);
 
-    // English: Close the WAL file handle so all pending OS write-back is
-    //          flushed and the file descriptor is released cleanly.
-    // 한글: WAL 파일 핸들을 닫아 OS 쓰기 버퍼가 모두 플러시되고
-    //       파일 디스크립터가 깔끔하게 해제되도록 합니다.
+    // WAL 파일 핸들을 닫아 OS 쓰기 버퍼가 모두 플러시되고 파일 디스크립터를 해제
     {
         std::lock_guard<std::mutex> walLock(mWalMutex);
 #ifdef _WIN32
@@ -262,8 +244,7 @@ void DBTaskQueue::EnqueueTask(DBTask&& task)
         return;
     }
 
-    // WAL - record pending task before queueing (crash-safe)
-    // 한글: WAL - 큐에 넣기 전에 대기 태스크 기록 (크래시 안전)
+    // WAL — 큐에 넣기 전에 대기 태스크 기록 (크래시 안전)
     if (task.walSeq == 0) // 새로운/복구 태스크 모두 신규 WAL 시퀀스로 기록
     {
         task.walSeq = WalNextSeq();
@@ -284,14 +265,12 @@ void DBTaskQueue::EnqueueTask(DBTask&& task)
     {
         std::lock_guard<std::mutex> lock(worker.mutex);
 
-        // Re-check under queue lock to close the Shutdown() race window.
-        // 한글: Shutdown()와 경쟁하는 구간을 차단하기 위해 락 안에서 재검증
+        // Shutdown()와 경쟁하는 구간을 차단하기 위해 락 안에서 재검증
         if (mIsRunning.load(std::memory_order_acquire))
         {
             worker.taskQueue.push(std::move(task));
 
-            // Increment global queue size counter (lock-free GetQueueSize)
-            // 한글: 글로벌 큐 크기 카운터 증가 (lock-free GetQueueSize 가능)
+            // 글로벌 큐 크기 카운터 증가 (lock-free GetQueueSize 가능)
             mQueueSize.fetch_add(1, std::memory_order_relaxed);
             accepted = true;
         }
@@ -342,8 +321,7 @@ void DBTaskQueue::EnqueueTask(DBTask&& task)
 
 void DBTaskQueue::RecordConnectTime(ConnectionId sessionId, const std::string& timestamp)
 {
-    // Non-blocking enqueue with move semantics
-    // 한글: 이동 의미론을 사용한 논블로킹 큐잉
+    // 이동 의미론을 사용한 논블로킹 enqueue
     EnqueueTask(DBTask(DBTaskType::RecordConnectTime, sessionId, timestamp));
     Logger::Debug("Enqueued RecordConnectTime task for Session: " +
                   std::to_string(sessionId));
@@ -351,8 +329,7 @@ void DBTaskQueue::RecordConnectTime(ConnectionId sessionId, const std::string& t
 
 void DBTaskQueue::RecordDisconnectTime(ConnectionId sessionId, const std::string& timestamp)
 {
-    // Move temporary DBTask object (avoid copy)
-    // 한글: 임시 DBTask 객체를 이동 (복사 방지)
+    // 임시 DBTask 객체를 이동 (복사 방지)
     EnqueueTask(DBTask(DBTaskType::RecordDisconnectTime, sessionId, timestamp));
     Logger::Debug("Enqueued RecordDisconnectTime task for Session: " +
                   std::to_string(sessionId));
@@ -361,8 +338,7 @@ void DBTaskQueue::RecordDisconnectTime(ConnectionId sessionId, const std::string
 void DBTaskQueue::UpdatePlayerData(ConnectionId sessionId, const std::string& jsonData,
                                    std::function<void(bool, const std::string&)> callback)
 {
-    // Move temporary DBTask object with callback
-    // 한글: 콜백과 함께 임시 DBTask 객체 이동
+    // 콜백과 함께 임시 DBTask 객체 이동
     EnqueueTask(DBTask(DBTaskType::UpdatePlayerData, sessionId, jsonData, callback));
     Logger::Debug("Enqueued UpdatePlayerData task for Session: " +
                   std::to_string(sessionId));
@@ -370,12 +346,8 @@ void DBTaskQueue::UpdatePlayerData(ConnectionId sessionId, const std::string& js
 
 size_t DBTaskQueue::GetQueueSize() const
 {
-    // Lock-free queue size query (optimization)
-    // 한글: Lock-free 큐 크기 조회 (최적화)
-    // Performance: Atomic load is ~10-100x faster than mutex acquisition
-    // 성능: Atomic load는 mutex 획득보다 약 10-100배 빠름
-    // Note: May be slightly inaccurate due to concurrent operations, but acceptable for statistics
-    // 참고: 동시 작업으로 인해 약간 부정확할 수 있지만 통계용으로는 충분함
+    // lock-free 큐 크기 조회 — atomic load를 사용하므로 mutex 없이 통계 조회 가능.
+    // 동시 작업으로 인해 순간적으로 부정확할 수 있지만 통계 목적으로는 충분하다.
     return mQueueSize.load(std::memory_order_relaxed);
 }
 
@@ -410,8 +382,7 @@ void DBTaskQueue::WorkerThreadFunc(size_t workerIndex)
                 task = std::move(worker.taskQueue.front());
                 worker.taskQueue.pop();
 
-                // Decrement global queue size counter.
-                // 한글: 글로벌 큐 크기 카운터 감소.
+                // 글로벌 큐 크기 카운터 감소
                 mQueueSize.fetch_sub(1, std::memory_order_relaxed);
                 hasTask = true;
             }
@@ -428,8 +399,7 @@ void DBTaskQueue::WorkerThreadFunc(size_t workerIndex)
         {
             const bool success = ProcessTask(task);
 
-            // WAL - mark task as done after successful processing.
-            // 한글: WAL - 처리 완료 후 태스크 완료 마킹.
+            // WAL — 처리 완료 후 태스크 완료 마킹
             if (success && task.walSeq != 0)
             {
                 WalWriteDone(task.walSeq);
@@ -484,8 +454,7 @@ bool DBTaskQueue::ProcessTask(const DBTask& task)
         Logger::Error("DB task exception: " + result);
     }
 
-    // Invoke callback if provided
-    // 한글: 콜백이 제공된 경우 호출
+    // 콜백이 제공된 경우 호출
     if (task.callback)
     {
         task.callback(success, result);
@@ -533,8 +502,7 @@ bool DBTaskQueue::HandleRecordConnectTime(const DBTask& task, std::string& resul
         }
     }
 
-    // Fallback — log only (no DB connected)
-    // 한글: Fallback — DB 미연결 시 로그만 출력
+    // Fallback — DB 미연결 시 로그만 출력
     Logger::Info("Session " + std::to_string(task.sessionId) + " connected at " + task.data);
     result = "Connect time logged (no DB)";
     return true;
@@ -645,12 +613,9 @@ bool DBTaskQueue::EnsureWalOpen()
     if (mWalHandle != INVALID_HANDLE_VALUE)
         return true;
 
-    // English: Open/create the WAL file for append-only writes.
-    //          OPEN_ALWAYS creates the file if it does not exist, or opens it
-    //          if it already does — preserving any existing WAL records.
-    // 한글: 추가 전용 쓰기를 위해 WAL 파일을 열거나 생성합니다.
-    //       OPEN_ALWAYS는 파일이 없으면 생성하고, 있으면 기존 WAL 레코드를
-    //       보존한 채로 열어줍니다.
+    // 추가 전용 쓰기를 위해 WAL 파일을 열거나 생성합니다.
+    // OPEN_ALWAYS는 파일이 없으면 생성하고, 있으면 기존 WAL 레코드를
+    // 보존한 채로 열어줍니다.
     mWalHandle = CreateFileA(
         mWalPath.c_str(),
         GENERIC_WRITE,
@@ -663,16 +628,14 @@ bool DBTaskQueue::EnsureWalOpen()
     if (mWalHandle == INVALID_HANDLE_VALUE)
         return false;
 
-    // English: Seek to end so writes append after existing content.
-    // 한글: 기존 내용 뒤에 추가하기 위해 끝으로 이동.
+    // 기존 내용 뒤에 추가하기 위해 끝으로 이동.
     SetFilePointer(mWalHandle, 0, nullptr, FILE_END);
     return true;
 #else
     if (mWalFd != -1)
         return true;
 
-    // English: O_APPEND ensures every write atomically seeks to end.
-    // 한글: O_APPEND는 모든 쓰기가 원자적으로 끝으로 이동함을 보장합니다.
+    // O_APPEND는 모든 쓰기가 원자적으로 끝으로 이동함을 보장합니다.
     mWalFd = open(mWalPath.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
     return mWalFd != -1;
 #endif
@@ -711,14 +674,10 @@ void DBTaskQueue::WalWritePending(const DBTask& task, uint64_t seq)
         << "\n";
     const std::string line = oss.str();
 
-    // English: Write via native handle then call OS-level sync so the record
-    //          is durable on disk before we return.  This protects against power
-    //          failure between write() and a later fsync — any pending record
-    //          that made it here will be recovered by WalRecover() on restart.
-    // 한글: 네이티브 핸들로 쓰기 후 OS 수준 sync를 호출하여 반환 전에
-    //       레코드가 디스크에 영구 저장되도록 합니다.  write()와 이후 fsync 사이
-    //       전원 장애가 발생해도, 여기까지 도달한 pending 레코드는
-    //       재시작 시 WalRecover()로 복구됩니다.
+    // 네이티브 핸들로 쓰기 후 OS 수준 sync를 호출하여 반환 전에
+    // 레코드가 디스크에 영구 저장되도록 합니다. write()와 이후 fsync 사이
+    // 전원 장애가 발생해도, 여기까지 도달한 pending 레코드는
+    // 재시작 시 WalRecover()로 복구됩니다.
 #ifdef _WIN32
     {
         DWORD written = 0;

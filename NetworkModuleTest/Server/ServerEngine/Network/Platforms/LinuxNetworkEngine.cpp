@@ -1,5 +1,4 @@
-// English: Linux NetworkEngine implementation
-// 한글: Linux NetworkEngine 구현
+// Linux NetworkEngine 구현
 
 #ifdef __linux__
 
@@ -31,18 +30,14 @@ LinuxNetworkEngine::~LinuxNetworkEngine()
 }
 
 // =============================================================================
-// English: Platform-specific implementation
-// 한글: 플랫폼별 구현
+// 플랫폼별 구현 (BaseNetworkEngine 순수 가상 재정의)
 // =============================================================================
 
 bool LinuxNetworkEngine::InitializePlatform()
 {
-	// English: Create AsyncIOProvider based on mode.
-	//          io_uring is only available when HAVE_IO_URING / HAVE_LIBURING is defined
-	//          by the build system (CMake find_library). Without it, fall back to epoll.
-	// 한글: 모드에 따라 AsyncIOProvider 생성.
-	//       io_uring은 빌드 시스템(CMake find_library)이 HAVE_IO_URING / HAVE_LIBURING를
-	//       정의한 경우에만 사용 가능. 미정의 시 epoll로 폴백.
+	// 모드에 따라 AsyncIOProvider를 생성한다.
+	// IOUring 선택 시: 빌드 시스템(CMake)이 HAVE_IO_URING 또는 HAVE_LIBURING를 정의한
+	// 경우에만 사용 가능하며, 정의되지 않았거나 런타임 초기화 실패 시 epoll로 폴백.
 	if (mMode == Mode::Epoll)
 	{
 		mProvider = std::make_shared<AsyncIO::Linux::EpollAsyncIOProvider>();
@@ -54,8 +49,7 @@ bool LinuxNetworkEngine::InitializePlatform()
 		mProvider = std::make_shared<AsyncIO::Linux::IOUringAsyncIOProvider>();
 		Utils::Logger::Info("Using io_uring backend");
 #else
-		// English: io_uring not available at compile time — fall back to epoll.
-		// 한글: 컴파일 타임에 io_uring 미지원 — epoll로 폴백.
+		// 컴파일 타임에 io_uring 미지원 (HAVE_LIBURING 미정의) — epoll로 폴백.
 		Utils::Logger::Warn("io_uring not available (HAVE_LIBURING not defined), falling back to epoll");
 		mMode     = Mode::Epoll;
 		mProvider = std::make_shared<AsyncIO::Linux::EpollAsyncIOProvider>();
@@ -63,8 +57,7 @@ bool LinuxNetworkEngine::InitializePlatform()
 #endif
 	}
 
-	// English: Initialize provider
-	// 한글: Provider 초기화
+	// AsyncIOProvider 초기화
 	auto error = mProvider->Initialize(
 		1024,                         // Queue depth
 		mMaxConnections > 0 ? static_cast<size_t>(mMaxConnections) : 128 // Max concurrent
@@ -91,8 +84,7 @@ bool LinuxNetworkEngine::InitializePlatform()
 		}
 	}
 
-	// English: Create listen socket
-	// 한글: Listen 소켓 생성
+	// listen 소켓 생성
 	if (!CreateListenSocket())
 	{
 		return false;
@@ -103,16 +95,14 @@ bool LinuxNetworkEngine::InitializePlatform()
 
 void LinuxNetworkEngine::ShutdownPlatform()
 {
-	// English: Close listen socket
-	// 한글: Listen 소켓 닫기
+	// listen 소켓 닫기
 	if (mListenSocket != -1)
 	{
 		close(mListenSocket);
 		mListenSocket = -1;
 	}
 
-	// English: Shutdown provider
-	// 한글: Provider 종료
+	// AsyncIOProvider 종료
 	if (mProvider)
 	{
 		mProvider->Shutdown();
@@ -123,8 +113,7 @@ void LinuxNetworkEngine::ShutdownPlatform()
 
 bool LinuxNetworkEngine::StartPlatformIO()
 {
-	// English: Start worker threads for completion processing
-	// 한글: 완료 처리를 위한 워커 스레드 시작
+	// 완료 처리 워커 스레드 시작 (hardware_concurrency개)
 	uint32_t workerCount = std::thread::hardware_concurrency();
 	if (workerCount == 0)
 	{
@@ -136,8 +125,7 @@ bool LinuxNetworkEngine::StartPlatformIO()
 		mWorkerThreads.emplace_back([this]() { this->WorkerThread(); });
 	}
 
-	// English: Start accept thread
-	// 한글: Accept 스레드 시작
+	// accept 전담 스레드 시작
 	mAcceptThread = std::thread([this]() { this->AcceptLoop(); });
 
 	Utils::Logger::Info("Started " + std::to_string(workerCount) +
@@ -147,8 +135,7 @@ bool LinuxNetworkEngine::StartPlatformIO()
 
 void LinuxNetworkEngine::StopPlatformIO()
 {
-	// English: Stop accept thread
-	// 한글: Accept 스레드 중지
+	// listen 소켓을 닫아 accept 스레드를 종료한다
 	if (mListenSocket != -1)
 	{
 		close(mListenSocket);
@@ -160,8 +147,7 @@ void LinuxNetworkEngine::StopPlatformIO()
 		mAcceptThread.join();
 	}
 
-	// English: Stop worker threads (they check mRunning flag)
-	// 한글: 워커 스레드 중지 (mRunning 플래그 확인)
+	// 워커 스레드 종료 (mRunning 플래그를 모니터링하다가 루프 탈출)
 	for (auto &thread : mWorkerThreads)
 	{
 		if (thread.joinable())
@@ -183,8 +169,7 @@ void LinuxNetworkEngine::AcceptLoop()
 
 	while (mRunning)
 	{
-		// English: Accept incoming connection
-		// 한글: 들어오는 연결 수락
+		// 연결 수락
 		int clientSocket = accept(
 			mListenSocket,
 			reinterpret_cast<sockaddr *>(&clientAddr),
@@ -194,23 +179,20 @@ void LinuxNetworkEngine::AcceptLoop()
 		{
 			if (errno == EINTR || errno == EBADF)
 			{
-				// English: Socket closed (shutdown signal)
-				// 한글: 소켓 닫힘 (종료 신호)
+				// 소켓이 닫힌 상태 — Shutdown() 신호
 				break;
 			}
 
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
 			{
-				// English: Non-blocking listen socket — no connection pending; yield briefly.
-				// 한글: 논블로킹 listen 소켓에서 대기 중인 연결 없음 — 오류가 아니므로 로그 없이 짧게 양보.
+				// 논블로킹 listen 소켓에서 대기 중인 연결이 없음 — 오류가 아니므로 짧게 양보.
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				continue;
 			}
 
 			if (errno == EMFILE || errno == ENFILE || errno == ENOMEM)
 			{
-				// English: System resource exhaustion — back off longer before retrying.
-				// 한글: 시스템 리소스 고갈 시 더 길게 대기 후 재시도한다.
+				// 시스템 리소스 고갈(EMFILE/ENFILE/ENOMEM) — 더 길게 대기 후 재시도.
 				Utils::Logger::Error("Accept resource exhaustion (" +
 									 std::string(strerror(errno)) +
 									 ") - sleeping 5 s");
@@ -220,27 +202,23 @@ void LinuxNetworkEngine::AcceptLoop()
 
 			Utils::Logger::Error("Accept failed: " + std::string(strerror(errno)));
 
-			// English: Exponential backoff on error (member var, not static)
-			// 한글: 에러 시 지수 백오프 (static 대신 멤버 변수 사용)
+			// 에러 시 지수 백오프 (static 대신 멤버 변수로 재진입/복수 인스턴스 버그 방지)
 			std::this_thread::sleep_for(std::chrono::milliseconds(mAcceptBackoffMs));
 			mAcceptBackoffMs = (std::min)(mAcceptBackoffMs * 2, 1000);
 			continue;
 		}
 
-		// English: Reset backoff on success
-		// 한글: 성공 시 백오프 리셋
+		// 연결 수락 성공 — 백오프 초기화
 		mAcceptBackoffMs = 10;
 
-		// English: Set socket to non-blocking mode
-		// 한글: 소켓을 논블로킹 모드로 설정
+		// 클라이언트 소켓을 논블로킹 모드로 설정 (epoll/io_uring 등록 전에 수행)
 		int flags = fcntl(clientSocket, F_GETFL, 0);
 		if (flags != -1)
 		{
 			fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK);
 		}
 
-		// English: Create session
-		// 한글: 세션 생성
+		// 세션 생성
 		Core::SessionRef session =
 			Core::SessionManager::Instance().CreateSession(clientSocket);
 		if (!session)
@@ -249,8 +227,7 @@ void LinuxNetworkEngine::AcceptLoop()
 			continue;
 		}
 
-		// English: Associate client socket with async I/O provider (epoll/io_uring)
-		// 한글: 클라이언트 소켓을 비동기 I/O 프로바이더에 연결 (epoll/io_uring)
+		// 클라이언트 소켓을 비동기 I/O 프로바이더(epoll/io_uring)에 등록
 		auto assocResult = mProvider->AssociateSocket(
 			clientSocket,
 			static_cast<AsyncIO::RequestContext>(session->GetId()));
@@ -261,23 +238,18 @@ void LinuxNetworkEngine::AcceptLoop()
 				std::to_string(session->GetId()) + ": " +
 				std::string(mProvider->GetLastError()));
 			Core::SessionManager::Instance().RemoveSession(session);
-			// English: Session::Close() called by pool deleter on last ref drop —
-			//          do NOT close(clientSocket) here (double-close / fd-recycle risk).
-			// 한글: 마지막 참조 소멸 시 풀 deleter가 Session::Close()를 호출하므로
-			//       여기서 close(clientSocket)를 호출하면 이중 닫기 / fd 재사용 경합 발생.
+			// Session이 소켓을 소유하므로 RemoveSession → pool deleter가 Close()를 호출한다.
+			// 여기서 close(clientSocket)를 직접 호출하면 이중 닫기 / fd 재사용 경합이 발생한다.
 			continue;
 		}
 
-		// English: Set async provider so session can queue sends via EPOLLOUT
-		// 한글: EPOLLOUT을 통해 세션이 송신을 큐에 넣을 수 있도록 async 공급자 설정
+		// 세션에 async 프로바이더를 연결하여 EPOLLOUT 경유 송신 큐잉을 활성화
 		session->SetAsyncProvider(mProvider);
 
-		// English: Update stats (atomic)
-		// 한글: 통계 업데이트 (atomic)
+		// 연결 수 통계 업데이트 (memory_order_relaxed)
 		mTotalConnections.fetch_add(1, std::memory_order_relaxed);
 
-		// English: Fire Connected event asynchronously on logic thread
-		// 한글: 로직 스레드에서 비동기로 Connected 이벤트 발생
+		// KeyedDispatcher를 통해 Connected 이벤트를 로직 스레드에 비동기 디스패치
 		auto sessionCopy = session;
 		mLogicDispatcher.Dispatch(sessionCopy->GetId(),
 			[this, sessionCopy]()
@@ -286,17 +258,13 @@ void LinuxNetworkEngine::AcceptLoop()
 				FireEvent(Core::NetworkEvent::Connected, sessionCopy->GetId());
 			});
 
-	// English: Start receiving on this session
-	// 한글: 이 세션에서 수신 시작
+	// 세션의 recv 작업 등록 시작
 	if (!QueueRecv(session))
 	{
 		Utils::Logger::Error("Failed to queue recv - Session " +
 							 std::to_string(session->GetId()));
 
-		// English: Connected event was already dispatched above — dispatch Disconnected
-		//          to balance it before removing the session.
-		// 한글: 위에서 Connected 이벤트가 이미 dispatch됐으므로 세션 제거 전에
-		//       Disconnected를 dispatch하여 쌍을 맞춤.
+		// Connected가 이미 dispatch됐으므로 세션 제거 전에 Disconnected를 dispatch하여 쌍을 맞춘다.
 		auto disconnSession = session;
 		mLogicDispatcher.Dispatch(disconnSession->GetId(),
 			[this, disconnSession]()
@@ -305,14 +273,11 @@ void LinuxNetworkEngine::AcceptLoop()
 			});
 
 		Core::SessionManager::Instance().RemoveSession(session);
-		// English: Session owns the socket; pool deleter calls Close() — do NOT
-		//          close(clientSocket) here.
-		// 한글: 세션이 소켓을 소유하므로 풀 deleter가 Close()를 호출한다.
+		// 세션이 소켓을 소유하므로 pool deleter가 Close()를 호출한다 — close() 직접 호출 금지.
 		continue;
 	}
 
-		// English: Log connection
-		// 한글: 연결 로깅
+		// 연결 정보 로깅
 		char clientIP[INET_ADDRSTRLEN];
 		inet_ntop(AF_INET, &clientAddr.sin_addr, clientIP, sizeof(clientIP));
 		Utils::Logger::Info("Client connected - IP: " + std::string(clientIP) +
@@ -325,22 +290,19 @@ void LinuxNetworkEngine::AcceptLoop()
 
 void LinuxNetworkEngine::ProcessCompletions()
 {
-	// English: Process completions from AsyncIOProvider
-	// 한글: AsyncIOProvider로부터 완료 처리
+	// AsyncIOProvider로부터 I/O 완료 이벤트를 수집하여 처리
 	AsyncIO::CompletionEntry entries[64];
 	int count = mProvider->ProcessCompletions(entries, 64, 100);
 
 	if (count < 0)
 	{
-		// English: Error occurred
-		// 한글: 에러 발생
+		// ProcessCompletions 자체 에러
 		Utils::Logger::Error("ProcessCompletions failed: " +
 							 std::string(mProvider->GetLastError()));
 		return;
 	}
 
-	// English: No completions - provider already waited with timeout, just return
-	// 한글: 완료 없음 - 프로바이더가 이미 타임아웃으로 대기했으므로 바로 리턴
+	// 완료 없음 — 프로바이더가 이미 timeoutMs만큼 대기한 후 반환한 것이므로 바로 리턴
 	if (count == 0)
 	{
 		return;
@@ -350,57 +312,39 @@ void LinuxNetworkEngine::ProcessCompletions()
 	{
 		auto &entry = entries[i];
 
-		// English: Get session from context (ConnectionId stored in context)
-		// 한글: 컨텍스트에서 세션 가져오기 (ConnectionId가 컨텍스트에 저장됨)
+		// 완료 엔트리의 context(= ConnectionId)로 세션을 조회
 		Utils::ConnectionId connId = static_cast<Utils::ConnectionId>(entry.mContext);
 		auto session = Core::SessionManager::Instance().GetSession(connId);
 
 		if (!session)
 		{
-			// English: Session no longer exists
-			// 한글: 세션이 더 이상 존재하지 않음
+			// 세션이 이미 제거됨 — 완료 이벤트 무시
 			continue;
 		}
 
-		// English: Check for errors
-		// 한글: 에러 확인
+		// I/O 에러 또는 연결 종료 확인
 		if (entry.mOsError != 0 || entry.mResult <= 0)
 		{
-			// English: Dispatch through ProcessErrorCompletion — increments the correct
-			//          per-direction error counter (Send vs Recv) and routes disconnect
-			//          via session->mAsyncScope, preventing double-event if Close() was
-			//          already called from a concurrent path.
-			//          Previous code used mLogicDispatcher.Dispatch() directly, bypassing
-			//          AsyncScope and losing type distinction for stats.
-			// 한글: ProcessErrorCompletion을 통해 처리 — 올바른 방향별 에러 카운터
-			//       (Send vs Recv)를 증가시키고, session->mAsyncScope 경유로 disconnect를
-			//       라우팅하여 이중 이벤트 방지.
-			//       기존 코드는 mLogicDispatcher.Dispatch()를 직접 호출해 AsyncScope를
-			//       우회하고 통계 타입 구분이 불가했음.
+			// ProcessErrorCompletion을 통해 처리:
+			//   - Send / Recv 방향별 에러 카운터를 올바르게 증가시킨다.
+			//   - session->mAsyncScope 경유로 disconnect를 라우팅하여
+			//     다른 경로에서 Close()가 이미 호출된 경우 이중 이벤트를 방지한다.
 			ProcessErrorCompletion(session, entry.mType, entry.mOsError);
 			continue;
 		}
 
-		// English: Process based on I/O type
-		// 한글: I/O 타입에 따라 처리
+		// I/O 타입에 따라 처리
 		switch (entry.mType)
 		{
 		case AsyncIO::AsyncIOType::Recv:
 		{
-			// English: Get received data from session's recv buffer
-			// 한글: 세션의 수신 버퍼에서 받은 데이터 가져오기
+			// 세션의 recv 버퍼에서 수신 데이터를 가져온다
 			const char *recvBuffer = session->GetRecvBuffer();
 			ProcessRecvCompletion(session, entry.mResult, recvBuffer);
 
-			// English: Guard: only re-queue recv if the session is still connected.
-			//          A concurrent Send-error on another worker may have already
-			//          called Close() on this session's socket between ProcessRecvCompletion
-			//          and here. Calling QueueRecv on a closed fd risks registering
-			//          epoll/io_uring interest on a recycled file descriptor.
-			// 한글: 가드: 세션이 여전히 연결 상태일 때만 recv 재등록.
-			//       다른 워커에서 동시에 발생한 송신 에러가 이미 Close()를 호출하여
-			//       소켓이 닫혔을 수 있음. 닫힌 fd에 QueueRecv를 호출하면
-			//       재사용된 파일 디스크립터에 epoll/io_uring 관심이 등록될 위험.
+			// 가드: 세션이 여전히 연결 상태일 때만 recv 재등록.
+			// 다른 워커의 송신 에러가 이미 Close()를 호출하여 소켓이 닫혔을 수 있으며,
+			// 닫힌 fd에 QueueRecv를 호출하면 재사용된 fd에 epoll/io_uring이 등록될 위험이 있다.
 			if (session->IsConnected() && !QueueRecv(session))
 			{
 				ProcessErrorCompletion(session, AsyncIO::AsyncIOType::Recv, 0);
@@ -426,8 +370,7 @@ void LinuxNetworkEngine::WorkerThread()
 
 	while (mRunning)
 	{
-		// English: Process completions in loop
-		// 한글: 루프에서 완료 처리
+		// 완료 처리 루프
 		ProcessCompletions();
 	}
 
@@ -457,14 +400,12 @@ bool LinuxNetworkEngine::QueueRecv(const Core::SessionRef &session)
 }
 
 // =============================================================================
-// English: Private helper methods
-// 한글: Private 헬퍼 메서드
+// Private 헬퍼 메서드
 // =============================================================================
 
 bool LinuxNetworkEngine::CreateListenSocket()
 {
-	// English: Create socket
-	// 한글: 소켓 생성
+	// 논블로킹 TCP 소켓 생성 (SOCK_NONBLOCK 플래그로 한 번에 논블로킹 설정)
 	mListenSocket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
 
 	if (mListenSocket < 0)
@@ -474,8 +415,7 @@ bool LinuxNetworkEngine::CreateListenSocket()
 		return false;
 	}
 
-	// English: Set socket options
-	// 한글: 소켓 옵션 설정
+	// SO_REUSEADDR 설정 (서버 재시작 시 EADDRINUSE 시간 단축)
 	int reuseAddr = 1;
 	if (setsockopt(mListenSocket, SOL_SOCKET, SO_REUSEADDR,
 				   &reuseAddr, sizeof(reuseAddr)) < 0)
@@ -483,8 +423,7 @@ bool LinuxNetworkEngine::CreateListenSocket()
 		Utils::Logger::Warn("Failed to set SO_REUSEADDR");
 	}
 
-	// English: Bind socket
-	// 한글: 소켓 바인드
+	// 소켓을 포트에 바인드
 	sockaddr_in serverAddr;
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_addr.s_addr = INADDR_ANY;
@@ -500,8 +439,7 @@ bool LinuxNetworkEngine::CreateListenSocket()
 		return false;
 	}
 
-	// English: Listen for connections
-	// 한글: 연결 대기
+	// listen 시작 (SOMAXCONN 백로그 큐)
 	if (listen(mListenSocket, SOMAXCONN) < 0)
 	{
 		Utils::Logger::Error("Listen failed: " +

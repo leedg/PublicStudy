@@ -1,5 +1,4 @@
-// English: TestDBServer implementation
-// Korean: TestDBServer 구현
+// TestDBServer 구현
 
 #include "../include/TestDBServer.h"
 #include <iostream>
@@ -10,8 +9,7 @@ namespace Network::DBServer
     using namespace Network::Utils;
 
     // =============================================================================
-    // English: DBSession implementation
-    // Korean: DBSession 구현
+    // DBSession 구현
     // =============================================================================
 
     DBSession::DBSession()
@@ -47,8 +45,7 @@ namespace Network::DBServer
     }
 
     // =============================================================================
-    // English: TestDBServer implementation
-    // Korean: TestDBServer 구현
+    // TestDBServer 구현
     // =============================================================================
 
     TestDBServer::TestDBServer()
@@ -69,12 +66,9 @@ namespace Network::DBServer
     {
         mPort = port;
 
-        // English: Initialize unified latency manager.
-        //          Handles both RTT statistics and ping time persistence —
-        //          the former DBPingTimeManager is now merged into this class.
-        // Korean: 통합 레이턴시 관리자 초기화.
-        //         RTT 통계와 핑 시간 저장을 모두 담당 —
-        //         이전의 DBPingTimeManager가 이 클래스에 통합됨.
+        // 통합 레이턴시 관리자 초기화.
+        // RTT 통계와 핑 시간 저장을 모두 담당 —
+        // 이전의 DBPingTimeManager가 이 클래스에 통합됨.
         mLatencyManager = std::make_unique<ServerLatencyManager>();
         if (!mLatencyManager->Initialize())
         {
@@ -82,12 +76,9 @@ namespace Network::DBServer
             return false;
         }
 
-        // English: Initialize ordered task queue with the configured worker count.
-        //          Uses serverId-based hash affinity for per-server ordering guarantee.
-        //          Configurable via CLI (-w flag); default = DEFAULT_DB_WORKER_COUNT.
-        // Korean: 설정된 워커 수로 순서 보장 작업 큐 초기화.
-        //         서버별 순서 보장을 위해 serverId 기반 해시 친화도 사용.
-        //         CLI(-w 플래그)로 재설정 가능; 기본값 = DEFAULT_DB_WORKER_COUNT.
+        // 설정된 워커 수로 순서 보장 작업 큐 초기화.
+        // 서버별 순서 보장을 위해 serverId 기반 해시 친화도 사용.
+        // CLI(-w 플래그)로 재설정 가능; 기본값 = DEFAULT_DB_WORKER_COUNT.
         mOrderedTaskQueue = std::make_unique<OrderedTaskQueue>();
         if (!mOrderedTaskQueue->Initialize(dbWorkerCount))
         {
@@ -95,15 +86,12 @@ namespace Network::DBServer
             return false;
         }
 
-        // English: Initialize packet handler — only two dependencies now (DBPingTimeManager merged)
-        // Korean: 패킷 핸들러 초기화 — 이제 의존성이 두 개 (DBPingTimeManager 통합)
+        // 패킷 핸들러 초기화 — 이제 의존성이 두 개 (DBPingTimeManager 통합)
         mPacketHandler = std::make_unique<ServerPacketHandler>();
         mPacketHandler->Initialize(mLatencyManager.get(),
                                    mOrderedTaskQueue.get());
 
-        // English: Register per-session recv callback via SetSessionConfigurator.
-        //          Replaces the removed SessionFactory pattern.
-        // Korean: SetSessionConfigurator로 세션별 recv 콜백 등록. 제거된 SessionFactory 패턴 대체.
+        // SetSessionConfigurator로 세션별 recv 콜백 등록. 제거된 SessionFactory 패턴 대체.
         {
             ServerPacketHandler* handlerPtr = mPacketHandler.get();
             Core::SessionManager::Instance().SetSessionConfigurator(
@@ -117,8 +105,7 @@ namespace Network::DBServer
                 });
         }
 
-        // English: Create and initialize network engine using factory (auto-detect best backend)
-        // Korean: 팩토리를 사용하여 네트워크 엔진 생성 및 초기화 (최적 백엔드 자동 감지)
+        // 팩토리를 사용하여 네트워크 엔진 생성 및 초기화 (최적 백엔드 자동 감지)
         mEngine = CreateNetworkEngine("auto");
         if (!mEngine)
         {
@@ -133,8 +120,7 @@ namespace Network::DBServer
             return false;
         }
 
-        // English: Register event callbacks
-        // Korean: 이벤트 콜백 등록
+        // 이벤트 콜백 등록
         mEngine->RegisterEventCallback(NetworkEvent::Connected,
             [this](const NetworkEventData& e) { OnConnectionEstablished(e); });
 
@@ -176,15 +162,13 @@ namespace Network::DBServer
 
         mIsRunning.store(false);
 
-        // English: Stop accepting new connections first
-        // Korean: 새로운 연결 수락을 먼저 중지
+        // 새로운 연결 수락을 먼저 중지
         if (mEngine)
         {
             mEngine->Stop();
         }
 
-        // English: Shutdown ordered task queue (drains remaining tasks before stopping)
-        // Korean: 순서 보장 작업 큐 종료 (남은 작업을 처리한 후 중지)
+        // 순서 보장 작업 큐 종료 (남은 작업을 처리한 후 중지)
         if (mOrderedTaskQueue)
         {
             Logger::Info("Shutting down ordered task queue...");
@@ -194,8 +178,7 @@ namespace Network::DBServer
                         ", Processed: " + std::to_string(mOrderedTaskQueue->GetTotalProcessedCount()));
         }
 
-        // English: Shutdown unified latency manager (covers both RTT stats and ping time)
-        // Korean: 통합 레이턴시 관리자 종료 (RTT 통계와 핑 시간 모두 포함)
+        // 통합 레이턴시 관리자 종료 (RTT 통계와 핑 시간 모두 포함)
         if (mLatencyManager)
         {
             mLatencyManager->Shutdown();

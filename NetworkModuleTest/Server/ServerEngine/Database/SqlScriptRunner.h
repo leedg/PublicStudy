@@ -1,5 +1,15 @@
 #pragma once
 
+// SQL 스크립트 파일을 로드하고 실행하는 유틸리티 네임스페이스.
+//
+// 주요 기능:
+//   - 스크립트 파일 경로를 모듈명과 상대 경로로부터 해석 (최대 6단계 부모 디렉터리 탐색).
+//   - DatabaseConfig의 mType 또는 연결 문자열에서 SQL 방언(SQLite/MySQL/PostgreSQL/SQLServer)을
+//     자동 감지하여 방언별 하위 디렉터리의 스크립트를 우선 탐색한다.
+//   - PrepareStatement / Execute / ExecuteUpdate / ExecuteQuery 계열 함수는
+//     IDatabase, IConnection 등 GetConfig()를 가진 모든 객체를 StatementOwner로 받는다.
+//   - UTF-8 BOM(0xEF 0xBB 0xBF) 자동 제거 후 스크립트 텍스트를 반환한다.
+
 #include "../Interfaces/DatabaseConfig.h"
 #include "../Interfaces/DatabaseException.h"
 #include "../Interfaces/IStatement.h"

@@ -1,5 +1,4 @@
-// English: TestDatabaseManager implementation
-// ?쒓?: TestDatabaseManager 援ы쁽
+// TestDatabaseManager 구현
 
 #include "../include/TestDatabaseManager.h"
 #include "../include/TestServerSqlSpec.h"

@@ -1,4 +1,4 @@
-// English: NetworkEngine factory implementation
+// NetworkEngine 팩토리 구현
 
 #include "NetworkEngine.h"
 #include "PlatformDetect.h"
@@ -15,14 +15,13 @@ namespace Network::Core
 {
 
 // =============================================================================
-// English: Factory function
+// 팩토리 함수
 // =============================================================================
 
 std::unique_ptr<INetworkEngine>
 CreateNetworkEngine(const std::string &engineType)
 {
 #ifdef _WIN32
-	// English: Windows platform
 	if (engineType == "auto" || engineType == "default" || engineType.empty())
 	{
 		if (Network::AsyncIO::Platform::IsWindowsRIOSupported())
@@ -56,19 +55,16 @@ CreateNetworkEngine(const std::string &engineType)
 	}
 
 #elif defined(__linux__)
-	// English: Linux platform
 	if (engineType == "auto" || engineType == "default" || engineType.empty())
 	{
-		// English: Auto-detect best backend for Linux
-
-		// English: Try io_uring first (Linux 5.1+)
+		// Linux 최적 백엔드 자동 감지
+		// io_uring은 Linux 5.1+에서만 사용 가능 (커널 버전 파싱)
 		struct utsname unameData;
 		if (uname(&unameData) == 0)
 		{
 			int major = 0, minor = 0;
 			sscanf(unameData.release, "%d.%d", &major, &minor);
 
-			// Linux 5.1+ supports io_uring
 			if (major > 5 || (major == 5 && minor >= 1))
 			{
 				Utils::Logger::Info(
@@ -78,7 +74,7 @@ CreateNetworkEngine(const std::string &engineType)
 			}
 		}
 
-		// English: Fallback to epoll
+		// epoll 폴백
 		Utils::Logger::Info("Using epoll backend (auto)");
 		return std::make_unique<Platforms::LinuxNetworkEngine>(
 			Platforms::LinuxNetworkEngine::Mode::Epoll);
@@ -103,7 +99,6 @@ CreateNetworkEngine(const std::string &engineType)
 	}
 
 #elif defined(__APPLE__)
-	// English: macOS platform
 	if (engineType == "auto" || engineType == "default" || engineType.empty() ||
 		engineType == "kqueue")
 	{
@@ -124,7 +119,7 @@ CreateNetworkEngine(const std::string &engineType)
 }
 
 // =============================================================================
-// English: Get available engine types
+// 사용 가능한 엔진 타입 목록 조회
 // =============================================================================
 
 std::vector<std::string> GetAvailableEngineTypes()

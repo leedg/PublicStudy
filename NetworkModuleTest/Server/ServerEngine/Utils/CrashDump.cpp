@@ -1,15 +1,15 @@
-// English: CrashDump implementation
-// 한글: CrashDump 구현
+// CrashDump 구현
 //
-// Ported from RAON ServerEngine/Exception with RAON-specific dependencies removed:
-//   - NaverWorks messaging            → removed
-//   - GThreadManager / GLockStackManager / GMemoryManager → removed
-//   - TL_* thread-local variables     → removed (replaced with CONTEXT from EXCEPTION_POINTERS)
-//   - ExceptionThreadManager class    → replaced with CreateToolhelp32Snapshot loop
-//   - NOCRASH flags                   → always write dump
-//   - SystemInfo                      → replaced with GetVersionEx / RtlGetVersion
-//   - WorkerThread::InitTLS           → removed
-//   - CRASH_INLINE macro              → signal handlers call RaiseException directly
+// 이식 출처: RAON ServerEngine/Exception
+// RAON 전용 의존성을 제거하고 표준 Win32 API만 사용하도록 재작성:
+//   - NaverWorks 메시징                           → 제거
+//   - GThreadManager / GLockStackManager / GMemoryManager → 제거
+//   - TL_* 스레드 로컬 변수                       → 제거 (EXCEPTION_POINTERS의 CONTEXT로 대체)
+//   - ExceptionThreadManager 클래스               → CreateToolhelp32Snapshot 루프로 대체
+//   - NOCRASH 플래그                              → 항상 덤프 작성
+//   - SystemInfo                                  → GetVersionEx / RtlGetVersion으로 대체
+//   - WorkerThread::InitTLS                       → 제거
+//   - CRASH_INLINE 매크로                         → 시그널 핸들러가 RaiseException을 직접 호출
 
 #ifdef _WIN32
 
@@ -29,7 +29,7 @@
 
 #include "CrashDump.h"
 
-// Link against DbgHelp and Psapi at compile time
+// DbgHelp와 Psapi를 컴파일 타임에 자동 링크
 #pragma comment(lib, "DbgHelp.lib")
 #pragma comment(lib, "Psapi.lib")
 
@@ -37,18 +37,15 @@ namespace Network::Utils
 {
 
 // ============================================================
-// Internal helpers (file scope)
+// 파일 스코프 내부 헬퍼
 // ============================================================
 
 namespace
 {
 
-// English: Raise a structured exception so the SEH filter fires from a signal handler
-// 한글: 시그널 핸들러에서 SEH 필터가 발동하도록 구조적 예외 발생
+// 시그널 핸들러에서 SEH 필터가 발동하도록 null 역참조로 ACCESS_VIOLATION을 유발.
 [[noreturn]] void TriggerCrash()
 {
-	// English: Dereference null — causes ACCESS_VIOLATION which goes through SEH
-	// 한글: 널 역참조 → ACCESS_VIOLATION으로 SEH 필터 경유
 	volatile int* null = nullptr;
 	*null              = 0;
 	__assume(false);
@@ -75,14 +72,12 @@ struct ExceptionData
 
 void CrashDump::Initialize(const char* dumpDir)
 {
-	// English: Store dump directory
-	// 한글: 덤프 디렉토리 저장
+	// 덤프 출력 디렉토리 저장
 	if (dumpDir && dumpDir[0] != '\0')
 	{
 		strncpy_s(sDumpDir, dumpDir, _TRUNCATE);
 
-		// English: Ensure trailing slash
-		// 한글: 경로 끝에 슬래시 확보
+		// 경로 끝에 슬래시 보장
 		size_t len = strnlen_s(sDumpDir, MAX_PATH);
 		if (len > 0 && sDumpDir[len - 1] != '\\' && sDumpDir[len - 1] != '/')
 		{
@@ -93,8 +88,7 @@ void CrashDump::Initialize(const char* dumpDir)
 			}
 		}
 
-		// English: Create directory if it does not exist
-		// 한글: 디렉토리가 없으면 생성
+		// 디렉토리가 없으면 생성
 		CreateDirectoryA(sDumpDir, nullptr);
 	}
 	else
@@ -102,8 +96,7 @@ void CrashDump::Initialize(const char* dumpDir)
 		sDumpDir[0] = '\0';
 	}
 
-	// English: Load debug symbols from the executable's directory
-	// 한글: 실행 파일 디렉토리에서 디버그 심볼 로드
+	// 실행 파일 디렉토리에서 디버그 심볼 로드 (소스 파일/라인 정보 포함)
 	{
 		HANDLE hProcess = GetCurrentProcess();
 		DWORD  symOpts  = SymGetOptions();
@@ -124,20 +117,16 @@ void CrashDump::Initialize(const char* dumpDir)
 		}
 	}
 
-	// English: Install SEH unhandled exception filter
-	// 한글: SEH 미처리 예외 필터 설치
+	// SEH 미처리 예외 필터 설치
 	SetUnhandledExceptionFilter(ExceptionFilter);
 
-	// English: Install signal handlers (SIGABRT, SIGFPE, SIGILL, SIGSEGV, SIGTERM)
-	//          so C runtime aborts also go through our crash handler
-	// 한글: 시그널 핸들러 등록 (C 런타임 abort도 크래시 핸들러 경유)
+	// C 런타임 abort도 크래시 핸들러를 경유하도록 시그널 핸들러 등록
 	signal(SIGABRT, SignalHandler);
 	signal(SIGFPE,  SignalHandler);
 	signal(SIGILL,  SignalHandler);
 	signal(SIGSEGV, SignalHandler);
 
-	// English: Handle pure virtual call and invalid parameter — both trigger crash
-	// 한글: 순수 가상 호출 및 잘못된 매개변수 처리 — 모두 크래시 유발
+	// 순수 가상 호출 및 잘못된 매개변수도 크래시로 처리
 	_set_purecall_handler([]() { TriggerCrash(); });
 	_set_invalid_parameter_handler(
 	    [](const wchar_t*, const wchar_t*, const wchar_t*, unsigned int, uintptr_t)
@@ -145,30 +134,26 @@ void CrashDump::Initialize(const char* dumpDir)
 }
 
 // ============================================================
-// SEH filter
+// SEH 필터
 // ============================================================
 
 LONG WINAPI CrashDump::ExceptionFilter(EXCEPTION_POINTERS* exceptionInfo)
 {
-	// English: Replace filter with noop immediately to prevent re-entry from
-	//          other threads that crash while we are writing the dump
-	// 한글: 덤프 작성 중 다른 스레드 충돌로 인한 재진입 방지를 위해 즉시 noop 교체
+	// 덤프 작성 도중 다른 스레드의 충돌로 인한 재진입을 방지하기 위해
+	// 즉시 noop 필터로 교체한다.
 	SetUnhandledExceptionFilter(ExceptionFilterNoop);
 
 	static std::atomic<int> sCount{0};
 	if (++sCount != 1)
 	{
-		// English: Another thread crashed concurrently — suspend and wait
-		// 한글: 다른 스레드가 동시에 충돌 — 일시 중단하고 대기
+		// 다른 스레드가 동시에 충돌 — 주 덤프 스레드가 끝날 때까지 무한 대기
 		SuspendThread(GetCurrentThread());
 		Sleep(INFINITE);
 		return EXCEPTION_EXECUTE_HANDLER;
 	}
 
-	// English: Run the actual dump work in a fresh thread so we have a clean stack
-	//          (necessary for EXCEPTION_STACK_OVERFLOW on the crashed thread)
-	// 한글: 깨끗한 스택을 위해 새 스레드에서 덤프 작업 실행
-	//       (충돌 스레드의 EXCEPTION_STACK_OVERFLOW 처리에 필수)
+	// 깨끗한 스택을 확보하기 위해 새 스레드에서 덤프 작업을 실행한다.
+	// (충돌 스레드에서 EXCEPTION_STACK_OVERFLOW 발생 시 스택 재사용 불가)
 	ExceptionData data;
 	data.mExceptionInfo = exceptionInfo;
 
@@ -187,7 +172,7 @@ LONG WINAPI CrashDump::ExceptionFilterNoop([[maybe_unused]] EXCEPTION_POINTERS* 
 }
 
 // ============================================================
-// Dump work (runs in separate thread)
+// 덤프 작업 (별도 스레드에서 실행)
 // ============================================================
 
 DWORD WINAPI CrashDump::ExceptionProc(void* arg)
@@ -195,12 +180,10 @@ DWORD WINAPI CrashDump::ExceptionProc(void* arg)
 	ExceptionData*      data          = static_cast<ExceptionData*>(arg);
 	EXCEPTION_POINTERS* exceptionInfo = data->mExceptionInfo;
 
-	// English: Suspend all other threads to get consistent callstacks
-	// 한글: 일관된 콜스택 수집을 위해 다른 모든 스레드 일시 중단
+	// 일관된 콜스택 수집을 위해 다른 모든 스레드를 일시 중단
 	SuspendOtherThreads();
 
-	// English: Build timestamped base file name
-	// 한글: 타임스탬프가 포함된 기본 파일명 생성
+	// 타임스탬프가 포함된 기본 파일명 생성
 	SYSTEMTIME st;
 	GetLocalTime(&st);
 
@@ -221,8 +204,7 @@ DWORD WINAPI CrashDump::ExceptionProc(void* arg)
 	    st.wYear, st.wMonth, st.wDay,
 	    st.wHour, st.wMinute, st.wSecond);
 
-	// English: Write mini and full .dmp files
-	// 한글: mini 및 full .dmp 파일 작성
+	// mini/full .dmp 파일 생성
 	char miniDumpName[kMaxOut];
 	char fullDumpName[kMaxOut];
 	sprintf_s(miniDumpName, "%s_mini.dmp", outBase);
@@ -235,8 +217,7 @@ DWORD WINAPI CrashDump::ExceptionProc(void* arg)
 	bool fullOk = (WriteMiniDump(exceptionInfo, fullDumpName,
 	                              MiniDumpWithFullMemory) == ERROR_SUCCESS);
 
-	// English: Write human-readable .crash file (registers + callstack)
-	// 한글: 읽기 쉬운 .crash 파일 작성 (레지스터 + 콜스택)
+	// 사람이 읽을 수 있는 .crash 파일 작성 (레지스터 + 콜스택)
 	char crashName[kMaxOut];
 	sprintf_s(crashName, "%s.crash", outBase);
 
@@ -285,8 +266,7 @@ DWORD WINAPI CrashDump::ExceptionProc(void* arg)
 	outFile << L"\n";
 	outFile.flush();
 
-	// English: Dump the crashed thread's callstack
-	// 한글: 충돌 스레드 콜스택 덤프
+	// 충돌 스레드 콜스택 기록
 	if (exceptionInfo && exceptionInfo->ContextRecord)
 	{
 		WriteCallStack(outFile, GetCurrentThread(),
@@ -304,7 +284,7 @@ DWORD WINAPI CrashDump::ExceptionProc(void* arg)
 }
 
 // ============================================================
-// MiniDump writer
+// MiniDump 작성
 // ============================================================
 
 DWORD CrashDump::WriteMiniDump(EXCEPTION_POINTERS* exceptionInfo,
@@ -343,7 +323,7 @@ DWORD CrashDump::WriteMiniDump(EXCEPTION_POINTERS* exceptionInfo,
 }
 
 // ============================================================
-// Callstack writer
+// 콜스택 기록
 // ============================================================
 
 void CrashDump::WriteCallStack(std::wofstream& outFile,
@@ -358,8 +338,7 @@ void CrashDump::WriteCallStack(std::wofstream& outFile,
 	          GetThreadId(threadHandle), isCrashed ? "[CRASHED]" : "");
 	outFile << buf << L"\n\n";
 
-	// English: Registers
-	// 한글: 레지스터
+	// 레지스터 덤프
 	outFile << L"*-- Registers --*\n";
 	sprintf_s(buf,
 	          "RAX=%016I64x  RBX=%016I64x  RCX=%016I64x  RDX=%016I64x  RSI=%016I64x",
@@ -379,8 +358,7 @@ void CrashDump::WriteCallStack(std::wofstream& outFile,
 	outFile << buf << L"\n\n";
 	outFile.flush();
 
-	// English: Stack walk
-	// 한글: 스택 워크
+	// StackWalk64로 콜스택 추적
 	outFile << L"*-- Stack Back Trace --*\n";
 	outFile << L"Program Counter  Stack Pointer    Return Address   "
 	           L"Param0           Param1           Param2           Param3           "
@@ -394,8 +372,7 @@ void CrashDump::WriteCallStack(std::wofstream& outFile,
 	sf.AddrFrame.Offset = context->Rbp;
 	sf.AddrFrame.Mode   = AddrModeFlat;
 
-	// English: Make a copy of context because StackWalk64 modifies it
-	// 한글: StackWalk64가 context를 수정하므로 복사본 사용
+	// StackWalk64가 context를 수정하므로 복사본을 전달한다.
 	CONTEXT ctxCopy = *context;
 
 	constexpr int kMaxDepth = 100;
@@ -461,7 +438,7 @@ void CrashDump::WriteCallStack(std::wofstream& outFile,
 }
 
 // ============================================================
-// Thread suspension helpers
+// 스레드 일시 중단 헬퍼
 // ============================================================
 
 void CrashDump::SuspendOtherThreads()
@@ -507,7 +484,7 @@ void CrashDump::ResumeOtherThreads()
 }
 
 // ============================================================
-// Exception code → string
+// 예외 코드 → 문자열 변환
 // ============================================================
 
 const char* CrashDump::ExceptionCodeToString(DWORD code)
@@ -545,7 +522,7 @@ const char* CrashDump::ExceptionCodeToString(DWORD code)
 }
 
 // ============================================================
-// File name helper
+// 파일명 헬퍼
 // ============================================================
 
 void CrashDump::GetBaseFileName(const char* fullPath, char* outName, size_t outSize)

@@ -27,9 +27,7 @@ bool IOUringBufferPool::InitializeFixed(io_uring* ring, size_t poolSize, size_t 
     if (poolSize == 0 || slotSize == 0)
         return false;
 
-    // English: Guard against size_t multiplication overflow (same rationale as
-    //          StandardBufferPool::Initialize — see comment there).
-    // 한글: size_t 곱셈 오버플로우 방어 (StandardBufferPool::Initialize와 동일한 이유).
+    // size_t 곱셈 오버플로우 방어 (StandardBufferPool::Initialize의 동일 패턴 참고).
     if (slotSize > std::numeric_limits<size_t>::max() / poolSize)
         return false;
 

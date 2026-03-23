@@ -124,10 +124,8 @@ namespace Network::TestServer
             std::function<void(ResultCode, const std::string&)> callback;
             std::queue<DBServerTask> pending;
 
-            // English: Deadline for the current in-flight request. Valid only when
-            //          requestId != 0. Set in ProcessTask when the request is sent.
-            // 한글: 현재 in-flight 요청의 마감 시각. requestId != 0일 때만 유효.
-            //       ProcessTask에서 요청 전송 시 설정.
+            // 현재 in-flight 요청의 마감 시각. requestId != 0일 때만 유효.
+            // ProcessTask에서 요청 전송 시 설정.
             std::chrono::steady_clock::time_point inflightDeadline;
         };
 
@@ -182,16 +180,12 @@ namespace Network::TestServer
         void CheckTimeouts(size_t workerIndex);
 
     private:
-        // English: Maximum time to wait for a DB server response before firing Timeout.
-        //          Tune based on expected DB round-trip latency + headroom.
-        // 한글: DB 서버 응답 대기 최대 시간 (Timeout 콜백 발동 기준).
-        //       예상 DB 왕복 지연 + 여유를 고려하여 조정.
+        // DB 서버 응답 대기 최대 시간 (Timeout 콜백 발동 기준).
+        // 예상 DB 왕복 지연 + 여유를 고려하여 조정.
         static constexpr int kRequestTimeoutMs = 5000;
 
-        // English: Worker wakeup interval for timeout checks (in milliseconds).
-        //          Must be <= kRequestTimeoutMs to catch timeouts promptly.
-        // 한글: 타임아웃 확인을 위한 워커 깨움 주기 (밀리초).
-        //       타임아웃을 적시에 감지하려면 kRequestTimeoutMs 이하여야 함.
+        // 타임아웃 확인을 위한 워커 깨움 주기 (밀리초).
+        // 타임아웃을 적시에 감지하려면 kRequestTimeoutMs 이하여야 함.
         static constexpr int kTimeoutCheckIntervalMs = 1000;
 
         std::vector<std::unique_ptr<WorkerData>> mWorkers;

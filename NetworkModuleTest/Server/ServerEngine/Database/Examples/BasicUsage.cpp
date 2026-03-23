@@ -1,11 +1,15 @@
 /**
- * Basic Usage Example for Database Module
+ * 데이터베이스 모듈 기본 사용 예제 (참조용 코드 — 빌드 대상 아님)
  *
- * This file demonstrates basic usage of the Database Module including:
- * - Creating a database connection
- * - Executing queries
- * - Using prepared statements
- * - Handling results
+ * 주의: 이 파일은 과거 API(소문자 메서드명 connect/createStatement 등)를 사용한다.
+ * 현재 API는 Pascal case (Connect/CreateStatement)이며, 실제 사용 시 아래 코드를
+ * 현재 인터페이스에 맞게 수정해야 한다.
+ *
+ * 예시 범위:
+ * - 데이터베이스 연결 생성
+ * - 쿼리 실행
+ * - 파라미터 바인딩이 있는 prepared statement
+ * - 결과 처리
  */
 
 #include "../DatabaseModule.h"

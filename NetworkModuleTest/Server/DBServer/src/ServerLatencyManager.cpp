@@ -1,4 +1,4 @@
-// English: ServerLatencyManager implementation
+// ServerLatencyManager 구현
 
 #include "../include/ServerLatencyManager.h"
 #include <algorithm>

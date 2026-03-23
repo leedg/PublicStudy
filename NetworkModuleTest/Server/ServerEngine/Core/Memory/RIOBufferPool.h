@@ -45,8 +45,8 @@ public:
     size_t PoolSize()  const override { return mPoolSize; }
     size_t FreeCount() const override;
 
-    // English: RIO concrete extensions (non-virtual — use concrete type directly).
-    // 한글: RIO 구체 확장 메서드 (비-가상 — 구체 타입으로 직접 호출).
+    // RIO 구체 확장 메서드 — 비가상이므로 구체 타입(RIOBufferPool)으로 직접 호출.
+    // IBufferPool* 경유 시 사용 불가 (의도적 설계: 플랫폼 ABI를 인터페이스에 노출하지 않음).
     uint64_t GetRIOBufferId(size_t index) const;
     size_t   GetRIOOffset  (size_t index) const { return index * mSlotSize; }
 

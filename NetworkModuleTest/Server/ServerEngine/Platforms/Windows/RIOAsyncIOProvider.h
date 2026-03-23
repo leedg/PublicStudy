@@ -1,7 +1,19 @@
 #pragma once
 
-// English: RIO (Registered I/O) based AsyncIOProvider implementation for
-// Windows 8+
+// Windows 8+ 전용 RIO(Registered I/O) 기반 AsyncIOProvider 구현.
+//
+// RIO를 선택해야 하는 이유:
+//   - IOCP는 WSASend/WSARecv 호출마다 커널이 버퍼를 non-paged pool에 pin한다.
+//     연결이 많아지면 WSA 10055(WSAENOBUFS) 오류로 소켓을 닫아야 하는 상황이 발생한다.
+//   - RIO는 VirtualAlloc 슬랩을 RIORegisterBuffer로 한 번만 등록하고 이후 I/O에서
+//     재사용하므로 per-op 핀 비용과 WSAENOBUFS 오류를 원천 방지한다.
+//   - 단, Windows 8 이상에서만 사용 가능하며 WSA_FLAG_REGISTERED_IO 소켓 플래그 필요.
+//
+// 슬랩 풀 설계:
+//   - mRecvPool / mSendPool 각각 VirtualAlloc + 1회 RIORegisterBuffer.
+//   - 슬롯 크기 8192 바이트, 슬롯 수 = maxConcurrent (연결당 1 recv + 1 send 슬롯).
+//   - RIOBufferPool은 IBufferPool 인터페이스를 구현한 구체 클래스이며,
+//     RIOBufferPool.h 에서 AsyncBufferPool의 using alias로도 제공된다.
 
 #include "Network/Core/AsyncIOProvider.h"
 
@@ -101,9 +113,9 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	};
 
 	RIO_CQ mCompletionQueue;
-	std::unordered_map<SocketHandle, RIO_RQ> mRequestQueues;           // English: O(1) request queue lookup / 한글: O(1) 요청 큐 탐색
-	std::unordered_map<int64_t, RegisteredBufferEntry> mRegisteredBuffers; // English: O(1) buffer lookup / 한글: O(1) 버퍼 탐색
-	std::unordered_map<uintptr_t, std::shared_ptr<PendingOperation>> mPendingOps; // English: O(1) pending op lookup / 한글: O(1) 대기 작업 탐색
+	std::unordered_map<SocketHandle, RIO_RQ> mRequestQueues;           // socket → RIO 요청 큐 (O(1) 탐색)
+	std::unordered_map<int64_t, RegisteredBufferEntry> mRegisteredBuffers; // bufferId → 등록 버퍼 (O(1) 탐색)
+	std::unordered_map<uintptr_t, std::shared_ptr<PendingOperation>> mPendingOps; // opKey → 대기 작업 (O(1) 탐색)
 	mutable std::mutex mMutex;
 
 	// Pre-registered slab pools (mRecvPool / mSendPool own VirtualAlloc + 1x RIORegisterBuffer each)
@@ -123,8 +135,8 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 	PfnRIORecv mPfnRIORecv;
 
 	HANDLE mCompletionEvent;
-	mutable std::mutex mNotifyMutex; // English: Serializes RIONotify + event wait to one thread at a time
-									 // 한글: RIONotify + 이벤트 대기를 한 스레드씩 직렬화
+	mutable std::mutex mNotifyMutex; // RIONotify + 이벤트 대기를 한 스레드씩 직렬화
+									 // (여러 워커가 동시에 notify를 arm하면 알림이 유실될 수 있다)
 	ProviderInfo mInfo;
 	ProviderStats mStats;
 	std::string mLastError;

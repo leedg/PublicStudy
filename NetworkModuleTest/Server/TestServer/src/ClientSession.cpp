@@ -1,5 +1,4 @@
-// English: ClientSession implementation with asynchronous DB operations
-// 한글: 비동기 DB 작업을 사용하는 ClientSession 구현
+// ClientSession 구현 — 비동기 DB 작업 위임
 
 #include "../include/ClientSession.h"
 #include "../include/DBTaskQueue.h"
@@ -13,8 +12,7 @@ namespace Network::TestServer
     using namespace Network::Utils;
 
     // =============================================================================
-    // English: ClientSession implementation
-    // 한글: ClientSession 구현
+    // ClientSession 구현
     // =============================================================================
 
     ClientSession::ClientSession(std::weak_ptr<DBTaskQueue> dbTaskQueue)
@@ -32,8 +30,7 @@ namespace Network::TestServer
     {
         Logger::Info("ClientSession connected - ID: " + std::to_string(GetId()));
 
-        // English: Record connect time asynchronously (non-blocking)
-        // 한글: 접속 시간을 비동기로 기록 (논블로킹)
+        // 접속 시간을 비동기로 기록 (논블로킹)
         if (!mConnectionRecorded)
         {
             AsyncRecordConnectTime();
@@ -45,8 +42,7 @@ namespace Network::TestServer
     {
         Logger::Info("ClientSession disconnected - ID: " + std::to_string(GetId()));
 
-        // English: Record disconnect time asynchronously (non-blocking)
-        // 한글: 접속 종료 시간을 비동기로 기록 (논블로킹)
+        // 접속 종료 시간을 비동기로 기록 (논블로킹)
         AsyncRecordDisconnectTime();
     }
 
@@ -60,22 +56,19 @@ namespace Network::TestServer
 
     std::vector<char> ClientSession::Encrypt(const char* data, uint32_t size)
     {
-        // English: No-op placeholder — copy data as-is
-        // 한글: no-op 플레이스홀더 — 데이터를 그대로 복사
+        // no-op 플레이스홀더 — 데이터를 그대로 복사
         return std::vector<char>(data, data + size);
     }
 
     std::vector<char> ClientSession::Decrypt(const char* data, uint32_t size)
     {
-        // English: No-op placeholder — copy data as-is
-        // 한글: no-op 플레이스홀더 — 데이터를 그대로 복사
+        // no-op 플레이스홀더 — 데이터를 그대로 복사
         return std::vector<char>(data, data + size);
     }
 
     void ClientSession::AsyncRecordConnectTime()
     {
-        // English: Get current time string
-        // 한글: 현재 시간 문자열 조회
+        // 현재 시간 문자열 생성
         auto now = std::chrono::system_clock::now();
         auto time = std::chrono::system_clock::to_time_t(now);
 
@@ -89,17 +82,12 @@ namespace Network::TestServer
         char timeStr[64];
         std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &localTime);
 
-        // English: Submit task to queue (immediate return, processed in background).
-        //          lock() the weak_ptr — if the queue is already destroyed (late IOCP
-        //          completion after Stop()), lock() returns nullptr and we skip safely.
-        // 한글: 큐에 작업 제출 (즉시 반환, 백그라운드 처리).
-        //       weak_ptr을 lock() — Stop() 이후 늦은 IOCP 완료 시 nullptr 반환, 안전하게 건너뜀.
+        // 큐에 작업 제출 (즉시 반환, 백그라운드 처리).
+        //   weak_ptr::lock() — Stop() 이후 늦은 IOCP 완료 시 nullptr 반환, 안전하게 건너뛴다.
         if (auto queue = mDBTaskQueue.lock())
         {
-            // English: Shutdown may begin after lock() succeeds but before IsRunning() check.
-            //          If so, this task is lost — intentional behavior for graceful shutdown.
-            // 한글: lock() 성공 후 IsRunning() 체크 전에 Shutdown이 시작될 수 있음.
-            //      이 경우 이 작업은 손실됨 (graceful shutdown을 위한 의도된 동작).
+            // lock() 성공 후 IsRunning() 체크 전에 Shutdown이 시작될 수 있다.
+            // 이 경우 이 작업은 손실됨 (graceful shutdown의 의도된 동작).
             if (queue->IsRunning())
             {
                 queue->RecordConnectTime(GetId(), timeStr);
@@ -116,8 +104,7 @@ namespace Network::TestServer
 
     void ClientSession::AsyncRecordDisconnectTime()
     {
-        // English: Get current time string
-        // 한글: 현재 시간 문자열 조회
+        // 현재 시간 문자열 생성
         auto now = std::chrono::system_clock::now();
         auto time = std::chrono::system_clock::to_time_t(now);
 
@@ -131,14 +118,11 @@ namespace Network::TestServer
         char timeStr[64];
         std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &localTime);
 
-        // English: lock() weak_ptr for the same reason as in AsyncRecordConnectTime.
-        // 한글: AsyncRecordConnectTime과 동일한 이유로 weak_ptr lock().
+        // AsyncRecordConnectTime과 동일한 이유로 weak_ptr::lock() 사용
         if (auto queue = mDBTaskQueue.lock())
         {
-            // English: Shutdown may begin after lock() succeeds but before IsRunning() check.
-            //          If so, this task is lost — intentional behavior for graceful shutdown.
-            // 한글: lock() 성공 후 IsRunning() 체크 전에 Shutdown이 시작될 수 있음.
-            //      이 경우 이 작업은 손실됨 (graceful shutdown을 위한 의도된 동작).
+            // lock() 성공 후 IsRunning() 체크 전에 Shutdown이 시작될 수 있다.
+            // 이 경우 이 작업은 손실됨 (graceful shutdown의 의도된 동작).
             if (queue->IsRunning())
             {
                 queue->RecordDisconnectTime(GetId(), timeStr);

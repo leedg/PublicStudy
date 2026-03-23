@@ -1,5 +1,4 @@
-// Base NetworkEngine implementation
-// 한글: 기본 NetworkEngine 구현
+// 기본 NetworkEngine 구현
 
 #include "BaseNetworkEngine.h"
 #include "NetworkEventBus.h"
@@ -27,8 +26,7 @@ BaseNetworkEngine::~BaseNetworkEngine()
 }
 
 // =============================================================================
-// INetworkEngine interface implementation
-// 한글: INetworkEngine 인터페이스 구현
+// INetworkEngine 인터페이스 구현
 // =============================================================================
 
 bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
@@ -43,18 +41,18 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 	mMaxConnections = maxConnections;
 	mStats.startTime = Utils::Timer::GetCurrentTimestamp();
 
-	// Initialize session pool (one-time, allocates all session slots).
-	// 한글: 세션 풀 초기화 (1회, 모든 세션 슬롯 사전 할당).
+	// 세션 풀 초기화 (1회, 모든 세션 슬롯 사전 할당).
 	if (!SessionPool::Instance().Initialize(maxConnections))
 	{
 		Utils::Logger::Error("SessionPool initialization failed");
 		return false;
 	}
 
-	// Initialize logic dispatcher (KeyedDispatcher — session-affinity worker pool).
-	// 한글: 로직 디스패처 초기화 (KeyedDispatcher — 세션 친화도 워커 풀).
+	// 로직 디스패처 초기화 (KeyedDispatcher — 세션 친화도 워커 풀).
 	{
 		Network::Concurrency::KeyedDispatcher::Options opts;
+		// 워커 4개 — CPU 바운드 패킷 파싱 부하를 여러 스레드로 분산하면서도
+		// 세션 친화도로 동일 세션 처리를 단일 워커에 직렬화한다.
 		opts.mWorkerCount = 4;
 		opts.mQueueOptions.mCapacity    = MAX_LOGIC_QUEUE_DEPTH;
 		opts.mQueueOptions.mBackpressure = Network::Concurrency::BackpressurePolicy::RejectNewest;
@@ -66,21 +64,20 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 		}
 	}
 
-	// Initialize engine-level timer queue.
-	// 한글: 엔진 수준 타이머 큐 초기화.
+	// 엔진 수준 타이머 큐 초기화.
 	if (!mTimerQueue.Initialize())
 	{
 		Utils::Logger::Error("TimerQueue initialization failed");
 		return false;
 	}
 
-	// Schedule periodic session-timeout check every PING_TIMEOUT_MS/2.
-	// 한글: PING_TIMEOUT_MS/2 주기로 세션 타임아웃 점검 등록.
+	// PING_TIMEOUT_MS/2 주기로 세션 타임아웃 점검 등록.
+	// PING_TIMEOUT_MS의 절반 주기로 검사하면 최악의 경우에도 PING_TIMEOUT_MS 이내에
+	// 비활성 세션을 감지할 수 있다.
 	mTimerQueue.ScheduleRepeat(
 		[this]() -> bool
 		{
-			// Check inactive sessions and close timed-out ones.
-			// 한글: 비활성 세션 점검 및 타임아웃 세션 종료.
+			// 비활성 세션 점검 및 타임아웃 세션 종료.
 			if (!mRunning.load(std::memory_order_acquire))
 			{
 				return false;
@@ -105,8 +102,7 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 		},
 		PING_TIMEOUT_MS / 2);
 
-	// Call platform-specific initialization
-	// 한글: 플랫폼별 초기화 호출
+	// 플랫폼별 초기화 호출
 	if (!InitializePlatform())
 	{
 		Utils::Logger::Error("Platform initialization failed");
@@ -135,8 +131,7 @@ bool BaseNetworkEngine::Start()
 
 	mRunning.store(true, std::memory_order_release);
 
-	// Start platform-specific I/O
-	// 한글: 플랫폼별 I/O 시작
+	// 플랫폼별 I/O 시작
 	if (!StartPlatformIO())
 	{
 		Utils::Logger::Error("Failed to start platform I/O");
@@ -157,16 +152,15 @@ void BaseNetworkEngine::Stop()
 
 	mRunning.store(false, std::memory_order_release);
 
-	// Stop timer queue first (cancels periodic session-timeout checks).
-	// 한글: 타이머 큐 먼저 종료 (주기 세션 타임아웃 점검 취소).
+	// 타이머 큐 먼저 종료 (주기 세션 타임아웃 점검 취소).
+	// 타이머를 먼저 내리지 않으면 CloseAllSessions() 이후에도 타임아웃 콜백이
+	// 이미 닫힌 세션에 접근하려 할 수 있다.
 	mTimerQueue.Shutdown();
 
-	// Stop platform-specific I/O
-	// 한글: 플랫폼별 I/O 중지
+	// 플랫폼별 I/O 중지
 	StopPlatformIO();
 
-	// Close all sessions
-	// 한글: 모든 세션 종료
+	// 모든 세션 종료
 	SessionManager::Instance().CloseAllSessions();
 
 	// Shutdown logic dispatcher after all sessions are closed.
@@ -182,8 +176,7 @@ void BaseNetworkEngine::Stop()
 	//       전달되지 않을 수 있음 — 엔진이 종료 중이므로 의도된 동작임.
 	mLogicDispatcher.Shutdown();
 
-	// Shutdown platform resources
-	// 한글: 플랫폼 리소스 종료
+	// 플랫폼 리소스 종료
 	ShutdownPlatform();
 
 	mInitialized.store(false, std::memory_order_release);
@@ -223,8 +216,7 @@ bool BaseNetworkEngine::SendData(Utils::ConnectionId connectionId,
 		return false;
 	}
 
-	// Session::Send now returns SendResult — check result directly.
-	// 한글: Session::Send가 SendResult를 반환하므로 결과를 직접 확인.
+	// Session::Send가 SendResult를 반환하므로 결과를 직접 확인.
 	const auto sendResult = session->Send(data, static_cast<uint32_t>(size));
 	if (sendResult != Session::SendResult::Ok)
 	{
@@ -270,8 +262,7 @@ void BaseNetworkEngine::CloseConnection(Utils::ConnectionId connectionId)
 		                    std::to_string(connectionId));
 	}
 
-	// Remove from manager immediately (caller's thread) — same as ProcessRecvCompletion
-	// 한글: 호출 스레드에서 즉시 매니저에서 제거 — ProcessRecvCompletion과 동일한 패턴
+	// 호출 스레드에서 즉시 매니저에서 제거 — ProcessRecvCompletion과 동일한 패턴.
 	SessionManager::Instance().RemoveSession(session);
 }
 
@@ -303,8 +294,7 @@ INetworkEngine::Statistics BaseNetworkEngine::GetStatistics() const
 }
 
 // =============================================================================
-// Helper methods for derived classes
-// 한글: 파생 클래스용 헬퍼 메서드
+// 파생 클래스용 헬퍼 메서드
 // =============================================================================
 
 void BaseNetworkEngine::FireEvent(NetworkEvent eventType,
@@ -322,8 +312,7 @@ void BaseNetworkEngine::FireEvent(NetworkEvent eventType,
 		}
 	}
 
-	// Create event data
-	// 한글: 이벤트 데이터 생성
+	// 이벤트 데이터 생성
 	NetworkEventData eventData;
 	eventData.eventType = eventType;
 	eventData.connectionId = connId;
@@ -337,8 +326,6 @@ void BaseNetworkEngine::FireEvent(NetworkEvent eventType,
 		std::memcpy(eventData.data.get(), data, dataSize);
 	}
 
-	// Call callback
-	// 한글: 콜백 호출
 	if (callback)
 	{
 		callback(eventData);
@@ -400,8 +387,7 @@ void BaseNetworkEngine::ProcessRecvCompletion(SessionRef session,
 		return;
 	}
 
-	// Update stats (atomic, no lock needed)
-	// 한글: 통계 업데이트 (atomic, 락 불필요)
+	// 통계 업데이트 (relaxed 순서로도 충분 — 통계는 정확한 순서 보장이 불필요)
 	mTotalBytesReceived.fetch_add(bytesReceived, std::memory_order_relaxed);
 
 	// Dispatch via AsyncScope so that pending tasks are skipped after session Close().
@@ -465,12 +451,9 @@ void BaseNetworkEngine::ProcessSendCompletion(SessionRef session,
 		return;
 	}
 
-	// Fire DataSent event
-	// 한글: DataSent 이벤트 발생
 	FireEvent(NetworkEvent::DataSent, session->GetId());
 
-	// Continue sending if queue has more data
-	// 한글: 큐에 더 많은 데이터가 있으면 계속 전송
+	// 큐에 더 많은 데이터가 있으면 계속 전송
 	if (!session->PostSend())
 	{
 		Utils::Logger::Debug("Send queue empty for session " +

@@ -1,7 +1,9 @@
 #pragma once
 
-// English: Exception class for database operations
-// 한글: 데이터베이스 작업용 예외 클래스
+// 데이터베이스 레이어 전용 예외 클래스.
+// std::exception을 상속하므로 범용 catch (const std::exception &)으로도 잡힌다.
+// mErrorCode에는 드라이버 고유 에러 코드(ODBC native error, HRESULT, SQLite rc 등)가
+// 저장되며, 0이면 코드 없음을 의미한다.
 
 #include <exception>
 #include <string>
@@ -11,31 +13,24 @@ namespace Network
 namespace Database
 {
 
-// ==========================================================================
-// English: DatabaseException class
-// 한글: DatabaseException 클래스
-// ==========================================================================
+// =============================================================================
+// DatabaseException 클래스
+// =============================================================================
 
-/**
- * English: Exception class for database operations
- * 한글: 데이터베이스 작업용 예외 클래스
- */
 class DatabaseException : public std::exception
 {
   public:
-	// English: Constructor
-	// 한글: 생성자
+	// message: 사람이 읽을 수 있는 에러 설명
+	// errorCode: 드라이버 고유 에러 코드 (없으면 0)
 	DatabaseException(const std::string &message, int errorCode = 0)
 		: mMessage(message), mErrorCode(errorCode)
 	{
 	}
 
-	// English: Get error message
-	// 한글: 에러 메시지 조회
+	// std::exception::what() 구현 — 에러 메시지 반환
 	const char *what() const noexcept override { return mMessage.c_str(); }
 
-	// English: Get error code
-	// 한글: 에러 코드 조회
+	// 드라이버 고유 에러 코드 반환 (0이면 코드 없음)
 	int GetErrorCode() const { return mErrorCode; }
 
   private:

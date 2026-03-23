@@ -1,5 +1,4 @@
-// English: Main entry point for ServerEngine
-// 한글: ServerEngine 메인 진입점
+// ServerEngine 메인 진입점 — 플랫폼 감지 기본 동작 확인용
 
 #include "Network/Core/AsyncIOProvider.h"
 #include "Network/Core/PlatformDetect.h"

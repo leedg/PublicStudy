@@ -1,10 +1,10 @@
 #pragma once
 
-// Asynchronous DB task queue - separates game logic from database operations
-// 한글: 비동기 DB 작업 큐 - 게임 로직과 데이터베이스 작업 분리
+// 비동기 DB 작업 큐 - 게임 로직과 데이터베이스 작업을 분리한다.
+//   게임 이벤트(접속/해제/플레이어 데이터 갱신)가 발생하면 DB 작업을 이 큐에 위임하고
+//   즉시 반환하여 IOCP 완료 스레드를 블로킹하지 않는다.
 
-// Forward-declare IDatabase to avoid pulling in ServerEngine headers here
-// 한글: ServerEngine 헤더 전이 방지를 위한 IDatabase 전방 선언
+// ServerEngine 헤더 전이 방지를 위한 IDatabase 전방 선언
 namespace Network { namespace Database { class IDatabase; } }
 
 #include "Utils/NetworkUtils.h"
@@ -29,8 +29,7 @@ namespace Network::TestServer
     using Utils::ConnectionId;
 
     // =============================================================================
-    // DB task types
-    // 한글: DB 작업 타입
+    // DB 작업 타입
     // =============================================================================
 
     enum class DBTaskType : uint8_t
@@ -41,8 +40,7 @@ namespace Network::TestServer
     };
 
     // =============================================================================
-    // DB task data
-    // 한글: DB 작업 데이터
+    // DB 작업 데이터
     // =============================================================================
 
     struct DBTask
@@ -94,42 +92,37 @@ namespace Network::TestServer
         DBTaskQueue();
         ~DBTaskQueue();
 
-        // Lifecycle
-        // 한글: 생명주기
+        // 생명주기
         bool Initialize(size_t workerThreadCount = 1,
                         const std::string& walPath = "db_tasks.wal",
                         Network::Database::IDatabase* db = nullptr);
         void Shutdown();
         bool IsRunning() const;
 
-        // Task submission (non-blocking, move semantics)
-        // 한글: 작업 제출 (논블로킹, 이동 의미론)
+        // 작업 제출 (논블로킹, 이동 의미론)
+        //   내부에서 sessionId % workerCount로 워커를 선택해 enqueue한다.
+        //   동일 sessionId는 항상 같은 워커로 라우팅되므로 per-session FIFO가 보장된다.
         void EnqueueTask(DBTask&& task);
 
-        // Convenience methods for common operations
-        // 한글: 일반적인 작업을 위한 편의 메서드
+        // 일반적인 작업을 위한 편의 메서드 (EnqueueTask 래퍼)
         void RecordConnectTime(ConnectionId sessionId, const std::string& timestamp);
         void RecordDisconnectTime(ConnectionId sessionId, const std::string& timestamp);
         void UpdatePlayerData(ConnectionId sessionId, const std::string& jsonData,
                               std::function<void(bool, const std::string&)> callback = nullptr);
 
-        // Statistics
-        // 한글: 통계
+        // 통계 — mQueueSize/mProcessedCount/mFailedCount는 atomic이므로 lock-free 조회
         size_t GetQueueSize() const;
         size_t GetProcessedCount() const;
         size_t GetFailedCount() const;
 
     private:
-        // Worker thread function
-        // 한글: 워커 스레드 함수
+        // 워커 스레드 메인 루프 — 자신의 WorkerData::cv에서 대기, 작업 도착 시 pop → ProcessTask
         void WorkerThreadFunc(size_t workerIndex);
 
-        // Process individual task
-        // 한글: 개별 작업 처리
+        // 개별 작업 처리 — 타입 스위치 후 핸들러 호출, 콜백 실행, WAL 완료 마킹
         bool ProcessTask(const DBTask& task);
 
-        // Specific task handlers
-        // 한글: 특정 작업 핸들러
+        // 개별 DB 작업 핸들러 — 각각 IDatabase를 통해 SP를 호출하고 결과 문자열을 채운다
         bool HandleRecordConnectTime(const DBTask& task, std::string& result);
         bool HandleRecordDisconnectTime(const DBTask& task, std::string& result);
         bool HandleUpdatePlayerData(const DBTask& task, std::string& result);
@@ -172,39 +165,30 @@ namespace Network::TestServer
 
         std::vector<std::unique_ptr<WorkerData>> mWorkers;
 
-        // Global queue size counter across all workers (lock-free GetQueueSize)
-        // 한글: 전체 워커에 걸친 글로벌 큐 크기 카운터 (lock-free GetQueueSize)
+        // 전체 워커에 걸친 글로벌 큐 크기 카운터 (lock-free GetQueueSize)
         std::atomic<size_t>             mQueueSize;
 
         std::atomic<bool>               mIsRunning;
 
-        // Statistics
-        // 한글: 통계
+        // 통계
         std::atomic<size_t>             mProcessedCount;
         std::atomic<size_t>             mFailedCount;
 
-        // WAL crash-recovery members
-        // 한글: WAL 크래시 복구 멤버
+        // WAL 크래시 복구 멤버
         std::string                     mWalPath;       // WAL 파일 경로
 
-        // English: Native file handle for the WAL append stream.
-        //          Using a native handle allows FlushFileBuffers (Windows) /
-        //          fdatasync (POSIX) to be called after every write, guaranteeing
-        //          that the record reaches durable storage before we acknowledge
-        //          the task. std::ofstream only flushes to the OS buffer.
-        // 한글: WAL 추가 스트림용 네이티브 파일 핸들.
-        //       네이티브 핸들을 사용하면 매 쓰기 후 FlushFileBuffers (Windows) /
-        //       fdatasync (POSIX)를 호출할 수 있어, 작업을 확인하기 전에
-        //       레코드가 영구 저장소에 기록됨을 보장합니다.
-        //       std::ofstream은 OS 버퍼까지만 flush합니다.
+        // WAL 추가 스트림용 네이티브 파일 핸들.
+        //   네이티브 핸들을 사용하면 매 쓰기 후 FlushFileBuffers(Windows) /
+        //   fdatasync(POSIX)를 호출하여, 작업을 확인하기 전에 레코드가
+        //   영구 저장소에 기록됨을 보장한다.
+        //   std::ofstream은 OS 버퍼까지만 flush하므로 크래시 안전 보장 불가.
 #ifdef _WIN32
         HANDLE                          mWalHandle = INVALID_HANDLE_VALUE;
 #else
         int                             mWalFd = -1;
 #endif
         mutable std::mutex              mWalMutex;      // WAL 파일 쓰기 직렬화
-        // Injected database (non-owning); nullptr = log-only mode
-        // 한글: 주입된 데이터베이스 (non-owning); nullptr이면 로그만 출력
+        // 주입된 데이터베이스 (non-owning); nullptr이면 로그만 출력
         Network::Database::IDatabase* mDatabase = nullptr;
     };
 

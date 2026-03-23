@@ -1,10 +1,8 @@
 #pragma once
 
-// TestServer main header - game server using NetworkEngine (multi-platform)
-// 한글: TestServer 메인 헤더 - NetworkEngine 사용 게임 서버 (멀티플랫폼)
+// TestServer 메인 헤더 - NetworkEngine 사용 게임 서버 (멀티플랫폼)
 
-// Forward-declare IDatabase so we can own the local DB without including ServerEngine headers here
-// 한글: 여기에 ServerEngine 헤더를 포함하지 않고 로컬 DB를 소유하기 위한 IDatabase 전방 선언
+// ServerEngine 헤더를 포함하지 않고 로컬 DB를 소유하기 위한 IDatabase 전방 선언
 namespace Network { namespace Database { class IDatabase; } }
 
 #include "ClientPacketHandler.h"
@@ -27,8 +25,7 @@ namespace Network::TestServer
     using Utils::ConnectionId;
 
     // =============================================================================
-    // TestServer class - manages game clients and DB server connections
-    // 한글: TestServer 클래스 - 게임 클라이언트 및 DB 서버 연결 관리
+    // TestServer 클래스 - 게임 클라이언트 연결과 DB 서버 연결을 함께 관리한다.
     // =============================================================================
 
     class TestServer
@@ -37,8 +34,7 @@ namespace Network::TestServer
         TestServer();
         ~TestServer();
 
-        // Lifecycle
-        // 한글: 생명주기
+        // 생명주기
         bool Initialize(uint16_t port                  = Utils::DEFAULT_TEST_SERVER_PORT,
                         const std::string& dbConnectionString = "",
                         const std::string& engineType         = "auto",
@@ -47,104 +43,85 @@ namespace Network::TestServer
         void Stop();
         bool IsRunning() const;
 
-        // Connect to DB server
-        // 한글: DB 서버에 연결
+        // DB 서버 연결
         bool ConnectToDBServer(const std::string& host, uint16_t port);
 
-        // Run self-tests for DBServerTaskQueue (check-failure path, no network needed).
-        // Returns true if all assertions pass.
-        // 한글: DBServerTaskQueue 셀프 테스트 (체크 실패 경로, 네트워크 불필요).
+        // DBServerTaskQueue 셀프 테스트 (check-failure 경로, 네트워크 불필요).
+        // 모든 assertion이 통과하면 true 반환.
         bool RunSelfTest();
 
     private:
-        // Network event handlers for client connections
-        // 한글: 클라이언트 연결에 대한 네트워크 이벤트 핸들러
+        // 클라이언트 연결 네트워크 이벤트 핸들러.
+        // OnClientConnectionEstablished/Closed에서 직접 DB를 접근하지 않는다.
+        //   이유: 이벤트 핸들러는 IOCP 완료 스레드에서 호출되므로 블로킹 DB 호출이
+        //   불가하다. 대신 DBTaskQueue에 비동기 작업으로 위임한다.
         void OnClientConnectionEstablished(const Core::NetworkEventData& eventData);
         void OnClientConnectionClosed(const Core::NetworkEventData& eventData);
         void OnClientDataReceived(const Core::NetworkEventData& eventData);
 
-        // DB server helpers
-        // 한글: DB 서버 연결 헬퍼
+        // DB 서버 연결 헬퍼
         void DisconnectFromDBServer();
         bool SendDBPacket(const void* data, uint32_t size);
         void DBRecvLoop();
-        void SendDBPing();   // Send one DB ping packet (called by timer) / 한글: DB 핑 1회 전송 (타이머 콜백)
+        void SendDBPing();   // DB 핑 1회 전송 (타이머 콜백)
         void DBReconnectLoop();
 
     private:
-        // Packet handler shared across all client sessions (stateless after ctor).
-        //          Allocated once in TestServer ctor, injected into per-session OnRecv callbacks.
-        // 한글: 모든 클라이언트 세션에서 공유하는 패킷 핸들러 (생성 후 stateless).
-        //       TestServer 생성자에서 1회 할당, 세션별 OnRecv 콜백에 주입.
+        // 모든 클라이언트 세션에서 공유하는 패킷 핸들러 (생성 후 stateless).
+        // TestServer 생성자에서 1회 할당, 세션별 OnRecv 콜백에 주입.
         std::unique_ptr<ClientPacketHandler>        mPacketHandler;
 
-        // Client connection engine (multi-platform support)
-        // 한글: 클라이언트 연결 엔진 (멀티플랫폼 지원)
+        // 클라이언트 연결 엔진 (멀티플랫폼 지원)
         std::unique_ptr<Core::INetworkEngine>       mClientEngine;
 
-        // DB Server connection (typed session replaces raw Core::SessionRef)
-        // 한글: DB 서버 연결 (raw Core::SessionRef 대신 타입화된 세션 사용)
+        // DB 서버 연결 세션 (raw Core::SessionRef 대신 타입화된 세션 사용)
         DBServerSessionRef                           mDBServerSession;
 
-        // Local database owned by TestServer, injected into DBTaskQueue.
-        //          MockDatabase if dbConnectionString is empty; SQLiteDatabase otherwise.
-        //          Outlives mDBTaskQueue (declared first, destroyed last — reversed destruction order).
-        // 한글: TestServer가 소유하는 로컬 DB, DBTaskQueue에 주입.
-        //       dbConnectionString이 빈 문자열이면 MockDatabase, 아니면 SQLiteDatabase.
-        //       mDBTaskQueue보다 오래 살아야 하므로 이 멤버를 먼저 선언(역순 파괴).
+        // TestServer가 소유하는 로컬 DB, DBTaskQueue에 주입.
+        //   dbConnectionString이 비면 MockDatabase, 아니면 SQLiteDatabase.
+        //   mDBTaskQueue보다 오래 살아야 하므로 먼저 선언 (C++ 역순 소멸 보장).
         std::unique_ptr<Network::Database::IDatabase> mLocalDatabase;
 
-        // Asynchronous DB task queue — shared_ptr so the session configurator lambda
-        //          can capture a weak_ptr.  Session OnRecv callbacks observe the queue via
-        //          weak_ptr::lock(); if the queue is destroyed before a late IOCP completion
-        //          fires, lock() returns nullptr and the callback skips the enqueue safely (no UAF).
-        // 한글: 비동기 DB 작업 큐 — 세션 설정 람다에서 weak_ptr 캡처를 위해 shared_ptr 사용.
-        //       세션 OnRecv 콜백은 weak_ptr::lock()으로 큐에 접근하며,
-        //       늦은 IOCP 완료 시 큐가 이미 소멸되면 lock()이 nullptr을 반환하고
-        //       콜백이 안전하게 건너뜀 (use-after-free 없음).
+        // 비동기 DB 작업 큐 — shared_ptr로 유지하여 세션 팩토리 람다가 weak_ptr을 캡처한다.
+        //   세션 OnRecv 콜백은 weak_ptr::lock()으로 큐에 접근하며,
+        //   TestServer 종료 후 늦게 도착한 IOCP 완료에서 큐가 이미 소멸됐을 경우
+        //   lock()이 nullptr을 반환하므로 use-after-free 없이 안전하게 건너뛴다.
         std::shared_ptr<DBTaskQueue>                mDBTaskQueue;
 
-        // Async task queue for routing client requests through TestDBServer
-        // 한글: 클라이언트 요청을 TestDBServer로 중계하는 비동기 작업 큐
+        // 클라이언트 요청을 TestDBServer로 중계하는 비동기 작업 큐
         std::shared_ptr<DBServerTaskQueue>          mDBServerTaskQueue;
 
-        // Server state
-        // 한글: 서버 상태
+        // 서버 상태
         std::atomic<bool>                           mIsRunning;
         uint16_t                                    mPort;
         std::string                                 mDbConnectionString;
         std::string                                 mEngineType;
 
 #ifdef _WIN32
-        // DB server connection state (Windows-only for now)
-        // 한글: DB 서버 연결 상태 (현재 Windows 전용)
+        // DB 서버 연결 상태 (현재 Windows 전용)
         SocketHandle                                mDBServerSocket;
         std::atomic<bool>                           mDBRunning;
         std::atomic<uint32_t>                       mDBPingSequence;
         std::thread                                 mDBRecvThread;
-        // mDBPingThread replaced by TimerQueue — mDBPingTimer holds the handle.
-        // 한글: mDBPingThread를 TimerQueue로 교체 — mDBPingTimer가 핸들 보유.
+        // 이전의 mDBPingThread를 TimerQueue로 교체 — mDBPingTimer가 핸들 보유.
         Network::Concurrency::TimerQueue            mTimerQueue;
         Network::Concurrency::TimerQueue::TimerHandle mDBPingTimer{0};
         std::mutex                                  mDBSendMutex;
-        // Condition variable to interrupt reconnect loop sleep on shutdown
-        // 한글: 종료 시 재연결 루프 sleep 즉시 깨우기 위한 조건 변수
+        // 종료 시 재연결 루프 backoff sleep을 즉시 깨우기 위한 조건 변수.
+        // Stop()이 notify_all()로 DBReconnectLoop를 중단시킨다.
         std::condition_variable                     mDBShutdownCV;
         std::mutex                                  mDBShutdownMutex;
         std::vector<char>                           mDBRecvBuffer;
-        // Read offset for O(1) buffer consumption (avoids O(n) erase)
-        // 한글: O(1) 버퍼 소비를 위한 읽기 오프셋 (O(n) erase 방지)
+        // 읽기 오프셋 — O(1) 버퍼 소비를 위해 사용 (O(n) erase 방지)
         size_t                                      mDBRecvOffset = 0;
-        // Stored endpoint for DB reconnect
-        // 한글: DB 재연결용 엔드포인트 저장
+        // DB 재연결 시 사용할 엔드포인트 저장
         std::string                                 mDBHost;
         uint16_t                                    mDBPort = 0;
         std::thread                                 mDBReconnectThread;
         std::atomic<bool>                           mDBReconnectRunning;
-        // Last WSA error from ConnectToDBServer() — used to distinguish
-        //          WSAECONNREFUSED (server shutting down) from other failures
-        // 한글: ConnectToDBServer() 실패 시 마지막 WSA 에러 코드
-        //       WSAECONNREFUSED(서버 종료 중)와 기타 오류 구분에 사용
+        // ConnectToDBServer() 실패 시 마지막 WSA 에러 코드.
+        // WSAECONNREFUSED(10061, 서버 종료/기동 중)와 기타 오류를 구분하여
+        // DBReconnectLoop에서 백오프 전략을 결정한다.
         std::atomic<int>                            mLastDBConnectError{0};
 #endif
     };

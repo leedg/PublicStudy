@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Client session class for connection management
-// 한글: 클라이언트 세션 클래스 — 연결 관리
+// 클라이언트 세션 클래스 — 연결 관리
 
 #include "../../Concurrency/AsyncScope.h"
 #include "../../Utils/NetworkUtils.h"
@@ -18,8 +17,7 @@
 namespace Network::Core
 {
 // =============================================================================
-// English: Session state
-// 한글: 세션 상태
+// 세션 상태
 // =============================================================================
 
 enum class SessionState : uint8_t
@@ -32,8 +30,7 @@ enum class SessionState : uint8_t
 };
 
 // =============================================================================
-// English: IO operation type
-// 한글: IO 작업 타입
+// IO 작업 타입
 // =============================================================================
 
 enum class IOType : uint8_t
@@ -45,8 +42,7 @@ enum class IOType : uint8_t
 };
 
 // =============================================================================
-// English: IOCP overlapped context (Windows only)
-// 한글: IOCP overlapped 컨텍스트 (Windows 전용)
+// IOCP overlapped 컨텍스트 (Windows 전용)
 // =============================================================================
 
 #ifdef _WIN32
@@ -74,59 +70,48 @@ struct IOContext : public OVERLAPPED
 #endif // _WIN32
 
 // =============================================================================
-// English: Session class
-// 한글: 세션 클래스
+// 세션 클래스
 // =============================================================================
 
 class Session : public std::enable_shared_from_this<Session>
 {
-	// English: NetworkEngine classes need access to PostSend for completion handling
-	// 한글: NetworkEngine 클래스가 완료 처리를 위해 PostSend에 접근해야 함
+	// BaseNetworkEngine이 IOCP 완료 처리에서 PostSend()를 직접 호출하기 위해 접근 허용.
+	// PostSend()는 Session 내부 상태(mSendContext, mCurrentSendSlotIdx)를 직접 다루므로
+	// public 공개 대신 friend로 제한한다.
 	friend class BaseNetworkEngine;
 
   public:
 	Session();
 	virtual ~Session();
 
-	// English: Lifecycle
-	// 한글: 생명주기
+	// 생명주기
 	void Initialize(Utils::ConnectionId id, SocketHandle socket);
 	void Close();
 
-	// English: Block until all in-flight AsyncScope tasks have completed.
-	//          MUST be called between Close() and Reset() when returning a pool session.
-	//          Close() calls mAsyncScope.Cancel() (skips pending tasks) but does NOT wait;
-	//          pool sessions never call ~Session() so the RAII drain in ~AsyncScope()
-	//          never fires. This method closes that gap.
-	// 한글: 모든 in-flight AsyncScope 태스크가 완료될 때까지 블로킹.
-	//       풀 세션 반납 시 Close()와 Reset() 사이에 반드시 호출해야 함.
-	//       Close()는 mAsyncScope.Cancel() 호출(대기 태스크 건너뜀)하지만 대기하지 않음.
-	//       풀 세션은 ~Session()이 호출되지 않으므로 ~AsyncScope()의 RAII 드레인이
-	//       실행되지 않는다. 이 메서드가 그 빈틈을 채운다.
+	// 모든 in-flight AsyncScope 태스크가 완료될 때까지 블로킹.
+	// 풀 세션 반납 시 Close()와 Reset() 사이에 반드시 호출해야 한다.
+	// Close()는 mAsyncScope.Cancel()을 호출(대기 태스크 건너뜀)하지만 블로킹하지 않는다.
+	// 풀 세션은 ~Session()이 호출되지 않으므로 ~AsyncScope()의 RAII 드레인이
+	// 실행되지 않는다. 이 메서드가 그 빈틈을 채운다.
 	void WaitForPendingTasks();
 
-	// English: Reset session state for pool reuse. Call after Close() + WaitForPendingTasks()
-	//          and before re-Initialize(). Clears ID, state, counters, and recv accum buffers.
-	//          mAsyncProvider is cleaned in Close(). mRecvAccumBuffer is cleared here
-	//          (not in Close()) — see Close() comment for race rationale.
-	// 한글: 풀 재사용을 위한 세션 상태 초기화. Close() + WaitForPendingTasks() 이후,
-	//       재Initialize() 이전에 호출. ID·상태·카운터·recv 누적 버퍼 초기화.
-	//       mAsyncProvider는 Close()에서 정리. mRecvAccumBuffer는 여기서 초기화
-	//       (Close()에서 하지 않음) — race 이유는 Close() 주석 참고.
+	// 풀 재사용을 위한 세션 상태 초기화.
+	// Close() + WaitForPendingTasks() 이후, 재Initialize() 이전에 호출.
+	// ID·상태·카운터·recv 누적 버퍼 초기화.
+	// mAsyncProvider는 Close()에서 정리. mRecvAccumBuffer는 여기서 초기화
+	// (Close()에서 하지 않음) — race 이유는 Close() 주석 참고.
 	void Reset();
 
-	// English: Send result — returned by Send() to give the caller backpressure feedback.
-	// 한글: 전송 결과 — 호출자에게 백프레셔 피드백을 제공하는 Send() 반환값.
+	// 전송 결과 — 호출자에게 백프레셔 피드백을 제공하는 Send() 반환값.
 	enum class SendResult : uint8_t
 	{
-		Ok,              // English: Packet enqueued/sent successfully / 한글: 패킷 큐잉/전송 성공
-		QueueFull,       // English: Send queue above backpressure threshold / 한글: 송신 큐 백프레셔 임계값 초과
-		NotConnected,    // English: Session not connected / 한글: 세션 미연결
-		InvalidArgument, // English: Oversized or null packet — do not retry / 한글: 과도한 크기이거나 null 패킷 — 재시도 불필요
+		Ok,              // 패킷 큐잉/전송 성공
+		QueueFull,       // 송신 큐 백프레셔 임계값 초과
+		NotConnected,    // 세션 미연결
+		InvalidArgument, // 과도한 크기이거나 null 패킷 — 재시도 불필요
 	};
 
-	// English: Send packet. Returns SendResult for backpressure feedback.
-	// 한글: 패킷 전송. 백프레셔 피드백을 위해 SendResult 반환.
+	// 패킷 전송. 백프레셔 피드백을 위해 SendResult 반환.
 	SendResult Send(const void *data, uint32_t size);
 
 	template <typename T> SendResult Send(const T &packet)
@@ -134,12 +119,10 @@ class Session : public std::enable_shared_from_this<Session>
 		return Send(&packet, sizeof(T));
 	}
 
-	// English: Post receive request to IOCP
-	// 한글: IOCP에 수신 요청 등록
+	// IOCP에 수신 요청 등록 (POSIX에서는 AsyncIOProvider::RecvAsync()가 직접 구동하므로 미사용)
 	bool PostRecv();
 
-	// English: Accessors
-	// 한글: 접근자
+	// 접근자
 	Utils::ConnectionId GetId() const { return mId; }
 	SocketHandle GetSocket() const { return mSocket.load(std::memory_order_acquire); }
 	SessionState GetState() const { return mState.load(std::memory_order_acquire); }
@@ -149,8 +132,9 @@ class Session : public std::enable_shared_from_this<Session>
 	Utils::Timestamp GetLastPingTime() const { return mLastPingTime; }
 	void SetLastPingTime(Utils::Timestamp time) { mLastPingTime = time; }
 
-	// English: Ping sequence — atomic to prevent race between ping timer thread and I/O thread
-	// 한글: 핑 시퀀스 — 핑 타이머 스레드와 I/O 스레드 간 race 방지를 위해 atomic 사용
+	// 핑 시퀀스 — 핑 타이머 스레드와 I/O 워커 스레드가 동시에 접근할 수 있으므로 atomic 사용.
+	// relaxed 순서로 충분: 시퀀스 번호 자체의 단조 증가만 보장되면 되며, 다른 데이터와의
+	// happens-before 관계가 필요하지 않다.
 	uint32_t GetPingSequence() const
 	{
 		return mPingSequence.load(std::memory_order_relaxed);
@@ -165,27 +149,23 @@ class Session : public std::enable_shared_from_this<Session>
 		std::lock_guard<std::mutex> lock(mSendMutex);
 		mAsyncProvider = std::move(provider);
 	}
-	// English: Cross-platform recv buffer access
-	// 한글: 크로스 플랫폼 수신 버퍼 접근자
+	// 크로스 플랫폼 수신 버퍼 접근자
 	char *GetRecvBuffer();
 	const char *GetRecvBuffer() const;
 	size_t GetRecvBufferSize() const;
 
-	// English: Access recv buffer (for IOCP completion)
-	// 한글: 수신 버퍼 접근 (IOCP 완료 처리용)
+	// 수신/송신 버퍼 접근 (IOCP 완료 처리용)
 #ifdef _WIN32
 	IOContext &GetRecvContext() { return mRecvContext; }
 	IOContext &GetSendContext() { return mSendContext; }
 
-	// English: Resolve IO type by OVERLAPPED pointer without dereferencing it.
-	//          Used by IOCP completion path to avoid touching freed memory.
-	// 한국어: OVERLAPPED 포인터 역참조 없이 IO 타입을 조회.
-	//       IOCP 완료 경로에서 해제된 메모리 접근을 피하기 위해 사용.
+	// OVERLAPPED 포인터 역참조 없이 IO 타입 조회.
+	// IOCP 완료 경로에서 완료 패킷 처리 시 이미 해제됐을 수 있는 메모리를
+	// 역참조하지 않고도 Recv/Send 방향을 판별하기 위해 SessionPool의 불변 맵을 활용.
 	static bool TryResolveIOType(const OVERLAPPED *overlapped, IOType &outType);
 #endif
 
-	// English: Virtual event handlers (override in derived classes)
-	// 한글: 가상 이벤트 핸들러 (파생 클래스에서 오버라이드)
+	// 가상 이벤트 핸들러 (파생 클래스에서 오버라이드)
 	virtual void OnConnected() {}
 	virtual void OnDisconnected() {}
 	virtual void OnRecv(const char *data, uint32_t size)
@@ -193,23 +173,18 @@ class Session : public std::enable_shared_from_this<Session>
 		if (mOnRecvCb) mOnRecvCb(this, data, size);
 	}
 
-	// English: Per-session recv callback — set once in SessionManager::CreateSession via
-	//          SetSessionConfigurator, before PostRecv() is issued. Cleared in Reset().
-	//          Signature includes Session* so the handler can call session->Send() without
-	//          capturing a raw pointer in the closure.
-	// 한글: 세션별 recv 콜백 — SessionManager::CreateSession에서 PostRecv() 이전에 1회 설정.
-	//       Reset()에서 초기화. Session*를 인자로 포함하여 핸들러가 클로저에 raw ptr를
-	//       캡처하지 않고 session->Send()를 호출할 수 있도록 함.
+	// 세션별 recv 콜백 — SessionManager::CreateSession에서 PostRecv() 이전에 1회 설정.
+	// Reset()에서 초기화. Session*를 인자로 포함하여 핸들러가 클로저에 raw ptr를
+	// 캡처하지 않고 session->Send()를 호출할 수 있도록 함.
 	using OnRecvCallback = std::function<void(Session*, const char*, uint32_t)>;
 	void SetOnRecv(OnRecvCallback cb);
 
-	// English: TCP stream reassembly - engine calls this with raw bytes
-	// 한글: TCP 스트림 재조립 - 엔진이 원시 바이트로 이 메서드를 호출
+	// TCP 스트림 재조립 — 엔진이 IOCP/epoll 완료 후 원시 수신 바이트를 넘기는 진입점.
+	// 내부적으로 PacketHeader.size 기반 패킷 경계를 검출하고 OnRecv()를 완성 패킷 단위로 호출한다.
 	void ProcessRawRecv(const char *data, uint32_t size);
 
   private:
-	// English: Internal send processing
-	// 한글: 내부 전송 처리
+	// 내부 전송 처리
 	void FlushSendQueue();
 	bool PostSend();
 	SocketHandle GetInvalidSocket() const;
@@ -219,72 +194,55 @@ class Session : public std::enable_shared_from_this<Session>
 	std::atomic<SocketHandle> mSocket;
 	std::atomic<SessionState> mState;
 
-	// English: Time tracking
-	// 한글: 시간 추적
+	// 시간 추적
 	Utils::Timestamp mConnectTime;
 	Utils::Timestamp mLastPingTime;
 	std::atomic<uint32_t> mPingSequence;
 
-	// English: IO contexts (Windows IOCP)
-	// 한글: IO 컨텍스트 (Windows IOCP)
+	// IO 컨텍스트 (Windows IOCP)
+	// Windows는 WSARecv/WSASend에 OVERLAPPED를 직접 제공해야 하므로 IOContext 내장.
+	// POSIX는 epoll/io_uring 이벤트 루프가 fd를 직접 관리하므로 단순 바이트 버퍼만 유지.
 #ifdef _WIN32
 	IOContext mRecvContext;
 	IOContext mSendContext;
 #else
-	// English: Recv buffer for POSIX platforms
-	// 한글: POSIX 플랫폼용 수신 버퍼
+	// POSIX 플랫폼용 수신 버퍼 (RecvAsync()에 넘길 raw 버퍼)
 	std::array<char, RECV_BUFFER_SIZE> mRecvBuffer{};
 #endif
 
-	// English: Send queue with lock contention optimization.
-	//          IOCP path (Windows): uses SendRequest referencing a pool slot (0 alloc).
-	//          Other platforms: uses vector<char> (unchanged).
-	// 한글: Lock 경합 최적화가 적용된 전송 큐.
-	//       IOCP 경로(Windows): 풀 슬롯을 참조하는 SendRequest 사용 (0 alloc).
-	//       다른 플랫폼: vector<char> 사용 (기존과 동일).
+	// Lock 경합 최적화가 적용된 전송 큐.
+	// IOCP 경로(Windows): 풀 슬롯을 참조하는 SendRequest 사용 (0 alloc).
+	// 다른 플랫폼: vector<char> 사용 (기존과 동일).
 #ifdef _WIN32
 	struct SendRequest
 	{
-		size_t   slotIdx; // English: index into SendBufferPool / 한글: SendBufferPool 슬롯 인덱스
-		uint32_t size;    // English: payload byte count / 한글: 페이로드 바이트 수
+		size_t   slotIdx; // SendBufferPool 슬롯 인덱스
+		uint32_t size;    // 페이로드 바이트 수
 	};
 	std::queue<SendRequest> mSendQueue;
-	size_t mCurrentSendSlotIdx; // English: in-flight slot index (~0 = none) / 한글: 전송 중 슬롯 인덱스 (~0 = 없음)
+	// 현재 WSASend에 제출 중인 슬롯 인덱스.
+	// ~size_t(0) = 전송 중인 슬롯 없음. 비트 반전값으로 초기화하면 별도 bool 플래그 없이
+	// 유효/무효를 구분할 수 있어 분기가 단순해진다.
+	size_t mCurrentSendSlotIdx;
 #else
 	std::queue<std::vector<char>> mSendQueue;
 #endif
 	std::mutex mSendMutex;
 	std::atomic<bool> mIsSending;
 
-	// English: Fast-path optimization - queue size counter (lock-free read)
-	// 한글: Fast-path 최적화 — 큐 크기 카운터 (lock-free 읽기)
-	// Purpose: Avoid mutex lock when queue is likely empty
-	// 목적: 큐가 비어있을 가능성이 높을 때 mutex 잠금 회피
+	// Fast-path 최적화 — 큐 크기 카운터 (lock-free 읽기).
+	// mSendQueue.size()는 mSendMutex 없이는 읽을 수 없으므로 별도 atomic 카운터를 유지한다.
+	// 큐가 비어있을 가능성이 높은 경우 mutex 획득을 건너뛸 수 있다.
 	std::atomic<size_t> mSendQueueSize;
 
-	// English: Async I/O provider — protected by mSendMutex.
-	//          SetAsyncProvider(), Close(), Send() RIO path, and PostSend() POSIX
-	//          path all lock mSendMutex before reading/writing this field.
-	//          Copy the shared_ptr under the lock, then use the snapshot outside
-	//          the lock to avoid holding mSendMutex during actual I/O calls.
-	// 한글: 비동기 I/O 공급자 — mSendMutex 보호.
-	//       SetAsyncProvider(), Close(), Send() RIO 경로, PostSend() POSIX 경로가
-	//       이 필드 읽기/쓰기 전에 mSendMutex를 획득한다.
-	//       락 내에서 shared_ptr을 복사한 뒤, 락 해제 후 스냅샷을 사용하여
-	//       실제 I/O 호출 중 mSendMutex를 보유하지 않도록 한다.
+	// 비동기 I/O 공급자 — mSendMutex 보호.
+	// SetAsyncProvider(), Close(), Send() RIO 경로, PostSend() POSIX 경로가
+	// 이 필드 읽기/쓰기 전에 mSendMutex를 획득한다.
+	// 락 내에서 shared_ptr을 복사한 뒤, 락 해제 후 스냅샷을 사용하여
+	// 실제 I/O 호출 중 mSendMutex를 보유하지 않도록 한다.
 	std::shared_ptr<AsyncIO::AsyncIOProvider> mAsyncProvider;
 
-	// English: TCP reassembly accumulation buffer + read offset.
-	//
-	//   mRecvMutex removed — serialization is now guaranteed by KeyedDispatcher affinity.
-	//   Same sessionId always routes to the same worker thread, so ProcessRawRecv calls
-	//   for a given session are inherently sequential (no concurrent workers).
-	//
-	//   mRecvAccumOffset — O(1) read pointer (position B pattern).
-	//                      Instead of erasing (O(n) memmove) after every packet, we advance
-	//                      an offset and compact only when the offset exceeds half the buffer.
-	//
-	// 한글: TCP 재조립 누적 버퍼 + 읽기 오프셋.
+	// TCP 재조립 누적 버퍼 + 읽기 오프셋.
 	//
 	//   mRecvMutex 제거 — KeyedDispatcher 친화도로 직렬화 보장.
 	//   동일 sessionId는 항상 동일 워커로 라우팅되므로 동일 세션의
@@ -296,35 +254,23 @@ class Session : public std::enable_shared_from_this<Session>
 	std::vector<char> mRecvAccumBuffer;
 	size_t            mRecvAccumOffset{0};
 
-	// English: Reusable batch buffer for ProcessRawRecv general path.
-	//          Reserved in Initialize() to amortise allocations across calls.
-	//          No mutex needed — KeyedDispatcher affinity serialises all
-	//          ProcessRawRecv calls for the same session on the same worker.
-	//          Swapped with a local variable before dispatching OnRecv.
-	// 한글: ProcessRawRecv 일반 경로용 재사용 배치 버퍼.
-	//       Initialize()에서 예약하여 호출 간 할당 비용을 상각.
-	//       mutex 불필요 — KeyedDispatcher 친화도가 동일 세션의
-	//       ProcessRawRecv 호출을 같은 워커에서 직렬화.
-	//       OnRecv 디스패치 전 지역 변수와 swap.
+	// ProcessRawRecv 일반 경로용 재사용 배치 버퍼.
+	// Initialize()에서 예약하여 호출 간 할당 비용을 상각.
+	// mutex 불필요 — KeyedDispatcher 친화도가 동일 세션의
+	// ProcessRawRecv 호출을 같은 워커에서 직렬화.
+	// OnRecv 디스패치 전 지역 변수와 swap.
 	std::vector<char> mRecvBatchBuf;
 
-	// English: Application-level recv callback. Set once before PostRecv() in
-	//          SessionManager::CreateSession (happens-before first recv completion).
-	//          Cleared in Reset() so the slot can be reused without stale captures.
-	// 한글: 애플리케이션 수준 recv 콜백. SessionManager::CreateSession에서
-	//       PostRecv() 이전에 1회 설정 (첫 recv 완료보다 happens-before 보장).
-	//       Reset()에서 초기화하여 스테일 캡처 없이 슬롯 재사용 가능.
+	// 애플리케이션 수준 recv 콜백. SessionManager::CreateSession에서
+	// PostRecv() 이전에 1회 설정 (첫 recv 완료보다 happens-before 보장).
+	// Reset()에서 초기화하여 스테일 캡처 없이 슬롯 재사용 가능.
 	OnRecvCallback mOnRecvCb;
 
-	// English: Async scope for cooperative cancellation of queued logic tasks.
-	//          BaseNetworkEngine calls mAsyncScope.Submit(...) instead of Dispatch() directly,
-	//          so that tasks queued after Close() are silently skipped.
-	//          RAII dtor calls Cancel() + WaitForDrain() ensuring no tasks run after Session dtor.
-	// 한글: 큐잉된 로직 작업의 협력 취소를 위한 비동기 스코프.
-	//       BaseNetworkEngine이 Dispatch() 대신 mAsyncScope.Submit(...)을 호출하여
-	//       Close() 이후 큐잉된 작업이 조용히 건너뜀.
-	//       RAII 소멸자가 Cancel() + WaitForDrain()을 자동 호출하여
-	//       Session 소멸 후 작업이 실행되지 않도록 보장.
+	// 큐잉된 로직 작업의 협력 취소를 위한 비동기 스코프.
+	// BaseNetworkEngine이 Dispatch() 대신 mAsyncScope.Submit(...)을 호출하여
+	// Close() 이후 큐잉된 작업이 조용히 건너뜀.
+	// RAII 소멸자가 Cancel() + WaitForDrain()을 자동 호출하여
+	// Session 소멸 후 작업이 실행되지 않도록 보장.
 	Network::Concurrency::AsyncScope mAsyncScope;
 };
 

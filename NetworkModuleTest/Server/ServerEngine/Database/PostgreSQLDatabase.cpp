@@ -1,4 +1,4 @@
-// PostgreSQLDatabase implementation (compiled only when HAVE_LIBPQ is defined)
+// PostgreSQLDatabase 구현 (HAVE_LIBPQ 정의 시에만 컴파일)
 
 #include "PostgreSQLDatabase.h"
 #include "Utils/Logger.h"
@@ -149,7 +149,7 @@ bool PostgreSQLResultSet::GetBool(size_t columnIndex)
 	const char *val = PQgetvalue(mResult, mCurrentRow, static_cast<int>(columnIndex));
 	if (!val || *val == '\0')
 		return false;
-	// PostgreSQL returns 't'/'f' for boolean columns; also handle '1'/'true'.
+	// PostgreSQL BOOLEAN 컬럼은 't'/'f'를 반환한다. '1'/'T'도 허용.
 	return (*val == 't' || *val == 'T' || *val == '1');
 }
 
@@ -284,11 +284,11 @@ PGresult *PostgreSQLStatement::RunExecParams(const std::vector<Param> &params)
 		mConn,
 		mQuery.c_str(),
 		static_cast<int>(values.size()),
-		nullptr,                            // paramTypes: let server infer
+		nullptr,                            // paramTypes: 서버가 타입 추론
 		values.empty() ? nullptr : values.data(),
-		nullptr,                            // paramLengths: text format, unused
-		nullptr,                            // paramFormats: all text (0)
-		0                                   // result format: text
+		nullptr,                            // paramLengths: 텍스트 형식이므로 미사용
+		nullptr,                            // paramFormats: 모두 텍스트(0)
+		0                                   // resultFormat: 텍스트
 	);
 }
 

@@ -1,7 +1,6 @@
 #pragma once
 
-// Mutex-backed execution queue with backpressure control.
-// 한글: 백프레셔 제어를 지원하는 mutex 기반 실행 큐.
+// 백프레셔 제어를 지원하는 mutex 기반 실행 큐.
 
 #include <atomic>
 #include <chrono>
@@ -14,6 +13,17 @@
 namespace Network::Concurrency
 {
 
+// =============================================================================
+// BackpressurePolicy
+//
+// RejectNewest: 큐가 가득 찼을 때 새 작업을 즉시 거부하고 false를 반환.
+//   - 생산자가 넌블로킹이어야 하는 I/O 스레드(IOCP 완료 포트 등)에 적합.
+//   - 단점: 작업 유실 가능. 상위 레이어에서 재시도 또는 에러 처리가 필요.
+//
+// Block: 큐에 공간이 생길 때까지 생산자를 블로킹(선택적 타임아웃 지원).
+//   - 처리 속도보다 생산 속도가 일시적으로 빠를 때 유실 없이 흐름 제어 가능.
+//   - 단점: 생산자 스레드가 대기하므로 공유 스레드(워커 풀 등)에서는 주의 필요.
+// =============================================================================
 enum class BackpressurePolicy : uint8_t
 {
 	RejectNewest,
@@ -25,16 +35,12 @@ struct ExecutionQueueOptions
 {
 	BackpressurePolicy mBackpressure = BackpressurePolicy::RejectNewest;
 
-	size_t mCapacity = 0; // 0 = unbounded
-	                      // 한글: 0 = 무제한
+	size_t mCapacity = 0; // 0 = 무제한
 };
 
 // =============================================================================
 // ExecutionQueue
-// - TryPush/TryPop are always non-blocking.
-// - Push/Pop block when BackpressurePolicy::Block and the queue is full.
 //
-// 한글: ExecutionQueue
 // - TryPush/TryPop은 항상 논블로킹.
 // - Push/Pop은 BackpressurePolicy::Block이고 큐가 가득 찼을 때 블로킹.
 // =============================================================================
@@ -133,6 +139,9 @@ class ExecutionQueue
 	bool PushBlocking(T &&value, int timeoutMs)
 	{
 		std::unique_lock<std::mutex> lock(mMutex);
+		// 람다 조건식으로 spurious wakeup을 방어한다.
+		// OS는 notify 없이도 wait를 깨울 수 있으므로(spurious wakeup),
+		// 람다가 false를 반환하면 wait/wait_until이 자동으로 재대기한다.
 		auto canPush = [this] {
 			return mShutdown.load(std::memory_order_acquire) ||
 			       mOptions.mCapacity == 0 ||
@@ -158,11 +167,10 @@ class ExecutionQueue
 		return true;
 	}
 
-	// PopWait: waits mNotEmptyCV under mMutex — the same mutex held by the
-	//          producer during push+notify — so notify cannot slip between the
-	//          consumer's empty-check and its wait entry.
-	// 한글: PopWait: 생산자가 push+notify 시 보유하는 것과 동일한 뮤텍스(mMutex) 하에서
-	//       mNotEmptyCV를 대기하여 missed-notification 경쟁을 제거함.
+	// PopWait: 생산자의 push+notify와 동일한 뮤텍스(mMutex) 하에서
+	// mNotEmptyCV를 대기한다. 덕분에 소비자의 빈 큐 확인과 wait 진입 사이에
+	// notify가 끼어드는 missed-notification 경쟁이 원천 차단된다.
+	// 람다 조건식이 spurious wakeup 후 재확인을 담당한다.
 	bool PopWait(T &out, int timeoutMs)
 	{
 		const auto deadline =
@@ -192,8 +200,7 @@ class ExecutionQueue
 				return true;
 			}
 		}
-		// After shutdown, drain remaining items.
-		// 한글: shutdown 이후 잔여 아이템 drain.
+		// shutdown 이후 잔여 아이템 drain: Shutdown() 전에 이미 큐에 들어온 작업을 버리지 않는다.
 		std::lock_guard<std::mutex> lock(mMutex);
 		if (!mQueue.empty())
 		{

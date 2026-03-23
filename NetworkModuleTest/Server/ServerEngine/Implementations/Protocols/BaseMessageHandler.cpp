@@ -5,7 +5,8 @@
 namespace Network::Implementations
 {
 
-// Message header structure (internal)
+// 내부 메시지 헤더 레이아웃 (packed — 패딩 없음):
+//   [type: uint32_t][connectionId: uint64_t][timestamp: uint64_t][dataSize: uint32_t]
 #pragma pack(push, 1)
 struct MessageHeader
 {

@@ -1,7 +1,10 @@
 #pragma once
 
-// English: ODBC implementation of database interfaces
-// 한글: 데이터베이스 인터페이스의 ODBC 구현
+// 데이터베이스 인터페이스의 ODBC 구현.
+// ODBC 선택 이유: Windows 환경에서 DSN 설정만으로 SQL Server, MySQL, Oracle 등
+// 다양한 DB에 동일한 코드로 연결할 수 있다. 드라이버 설치만으로 백엔드를 교체할 수 있어
+// 다중 DB 지원이 필요한 서버 엔진에 적합하다.
+// OLE DB 대비 ODBC는 크로스 플랫폼 표준이지만, 이 구현은 Windows 전용 헤더에 의존한다.
 
 #include "../Interfaces/DatabaseConfig.h"
 #include "../Interfaces/DatabaseException.h"
@@ -18,7 +21,7 @@
 #include <atomic>
 #include <memory>
 #include <type_traits>
-// 한글: ODBC 헤더가 필요로 하는 Windows 타입을 먼저 정의한다.
+// ODBC 헤더가 필요로 하는 Windows 타입을 먼저 정의한다.
 #include <windows.h>
 #include <sql.h>
 #include <sqlext.h>
@@ -29,29 +32,21 @@ namespace Network
 namespace Database
 {
 
-// English: Forward declarations
-// 한글: 전방 선언
+// 전방 선언
 class ODBCConnection;
 class ODBCStatement;
 class ODBCResultSet;
 
 // =============================================================================
-// English: ODBCDatabase class
-// 한글: ODBCDatabase 클래스
+// ODBCDatabase — IDatabase의 ODBC 구현
 // =============================================================================
 
-/**
- * English: ODBC implementation of IDatabase
- * 한글: IDatabase의 ODBC 구현
- */
 class ODBCDatabase : public IDatabase
 {
   public:
 	ODBCDatabase();
 	virtual ~ODBCDatabase();
 
-	// English: IDatabase interface
-	// 한글: IDatabase 인터페이스
 	void Connect(const DatabaseConfig &config) override;
 	void Disconnect() override;
 	bool IsConnected() const override;
@@ -59,6 +54,8 @@ class ODBCDatabase : public IDatabase
 	std::unique_ptr<IConnection> CreateConnection() override;
 	std::unique_ptr<IStatement> CreateStatement() override;
 
+	// 트랜잭션 상태는 연결 단위이므로 이 메서드들은 항상 DatabaseException을 발생시킨다.
+	// CreateConnection()으로 얻은 IConnection에서 BeginTransaction()을 사용할 것.
 	void BeginTransaction() override;
 	void CommitTransaction() override;
 	void RollbackTransaction() override;
@@ -70,8 +67,6 @@ class ODBCDatabase : public IDatabase
 	SQLHENV GetEnvironment() const { return mEnvironment; }
 
   private:
-	// English: Helper methods
-	// 한글: 헬퍼 메서드
 	void InitializeEnvironment();
 	void CleanupEnvironment();
 	void CheckSQLReturn(SQLRETURN ret, const std::string &operation,
@@ -84,27 +79,23 @@ class ODBCDatabase : public IDatabase
 };
 
 // =============================================================================
-// English: ODBCConnection class
-// 한글: ODBCConnection 클래스
+// ODBCConnection — IConnection의 ODBC 구현
 // =============================================================================
 
-/**
- * English: ODBC implementation of IConnection
- * 한글: IConnection의 ODBC 구현
- */
 class ODBCConnection : public IConnection
 {
   public:
 	explicit ODBCConnection(SQLHENV env);
 	virtual ~ODBCConnection();
 
-	// English: IConnection interface
-	// 한글: IConnection 인터페이스
 	void Open(const std::string &connectionString) override;
 	void Close() override;
 	bool IsOpen() const override;
 
 	std::unique_ptr<IStatement> CreateStatement() override;
+
+	// BeginTransaction: SQL_AUTOCOMMIT_OFF 설정
+	// CommitTransaction/RollbackTransaction: SQLEndTran 후 SQL_AUTOCOMMIT_ON 복구
 	void BeginTransaction() override;
 	void CommitTransaction() override;
 	void RollbackTransaction() override;
@@ -116,8 +107,6 @@ class ODBCConnection : public IConnection
 	SQLHDBC GetHandle() const { return mConnection; }
 
   private:
-	// English: Helper methods
-	// 한글: 헬퍼 메서드
 	void CheckSQLReturn(SQLRETURN ret, const std::string &operation);
 	std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
 
@@ -130,28 +119,19 @@ class ODBCConnection : public IConnection
 };
 
 // =============================================================================
-// English: ODBCStatement class
-// 한글: ODBCStatement 클래스
+// ODBCStatement — IStatement의 ODBC 구현
 // =============================================================================
 
-/**
- * English: ODBC implementation of IStatement
- * 한글: IStatement의 ODBC 구현
- */
 class ODBCStatement : public IStatement
 {
   public:
-	// English: conn must remain alive for the lifetime of this statement.
-	//          ownerConn (optional) transfers ownership when a statement is created
-	//          via IDatabase::CreateStatement() — keeps the per-statement connection alive.
-	// 한글: conn은 이 statement의 생존 기간 동안 유효해야 함.
-	//       ownerConn(선택)은 IDatabase::CreateStatement()에서 문장별 연결 소유권 이전용.
+	// conn: statement 생존 기간 동안 유효한 연결 핸들 (non-owning).
+	// ownerConn (선택): IDatabase::CreateStatement()에서 생성된 경우
+	//   statement 전용 연결의 소유권을 이전받아 연결 수명을 statement와 함께 관리한다.
 	explicit ODBCStatement(SQLHDBC conn,
 	                       std::unique_ptr<ODBCConnection> ownerConn = nullptr);
 	virtual ~ODBCStatement();
 
-	// English: IStatement interface
-	// 한글: IStatement 인터페이스
 	void SetQuery(const std::string &query) override;
 	void SetTimeout(int seconds) override;
 
@@ -173,19 +153,15 @@ class ODBCStatement : public IStatement
 	void Close() override;
 
   private:
-	// English: Helper methods
-	// 한글: 헬퍼 메서드
 	void CheckSQLReturn(SQLRETURN ret, const std::string &operation);
 	std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
 	void BindParameters();
 
   private:
-	// English: Typed parameter value — stores the native C value for each bind type.
-	//          SQLBindParameter receives a pointer into this struct; mParams must not
-	//          be modified between BindParameters() and SQLExecDirectA().
-	// 한글: 타입별 파라미터 값 — 각 바인딩 타입의 네이티브 C 값을 저장.
-	//       SQLBindParameter는 이 구조체 내부 포인터를 받으므로 BindParameters()와
-	//       SQLExecDirectA() 사이에 mParams를 수정해서는 안 됨.
+	// 타입별 파라미터 값 — 각 바인딩 타입의 네이티브 C 값을 저장.
+	// SQLBindParameter는 이 구조체 내부 포인터를 받으므로,
+	// BindParameters()와 SQLExecDirectA() 사이에 mParams를 수정해서는 안 된다.
+	// (문자열 경유 변환을 피해 int/long/double을 네이티브 타입으로 바인딩)
 	struct ParamValue
 	{
 		enum class Type { Text, Int, Int64, Double, Bool, Null } type = Type::Null;
@@ -196,17 +172,14 @@ class ODBCStatement : public IStatement
 		SQLLEN      indicator = SQL_NULL_DATA;
 	};
 
-	// English: Batch entry — snapshot of parameters for one batch item
-	// 한글: 배치 항목 — 배치 아이템 하나의 파라미터 스냅샷
+	// 배치 항목 — 배치 아이템 하나의 파라미터 스냅샷
 	struct BatchEntry
 	{
 		std::vector<ParamValue> params;
 	};
 
-	// English: Resize mParams and assign a fixed-size typed slot (int / long long / double).
-	//          TypeTag is the ParamValue::Type enum; FieldPtr is a member pointer to the value field.
-	// 한글: mParams를 늘리고 고정 크기 타입 슬롯을 채움 (int / long long / double).
-	//       TypeTag는 ParamValue::Type 열거형; FieldPtr은 값 필드의 멤버 포인터.
+	// mParams를 늘리고 고정 크기 타입 슬롯을 채운다 (int / long long / double).
+	// TypeTag는 ParamValue::Type 열거형; FieldPtr은 값 필드의 멤버 포인터.
 	template<ParamValue::Type TypeTag, auto FieldPtr>
 	void SetParam(size_t index, decltype(ParamValue{}.*FieldPtr) value)
 	{
@@ -218,8 +191,7 @@ class ODBCStatement : public IStatement
 	}
 
   private:
-	// English: Keeps the per-statement connection alive when created via IDatabase::CreateStatement().
-	// 한글: IDatabase::CreateStatement()에서 생성된 경우 연결 수명 유지용.
+	// IDatabase::CreateStatement()에서 생성된 경우 연결 수명 유지용
 	std::unique_ptr<ODBCConnection> mOwnerConn;
 	SQLHSTMT mStatement;
 	SQLHDBC mConnection;
@@ -231,22 +203,16 @@ class ODBCStatement : public IStatement
 };
 
 // =============================================================================
-// English: ODBCResultSet class
-// 한글: ODBCResultSet 클래스
+// ODBCResultSet — IResultSet의 ODBC 구현
 // =============================================================================
 
-/**
- * English: ODBC implementation of IResultSet
- * 한글: IResultSet의 ODBC 구현
- */
 class ODBCResultSet : public IResultSet
 {
   public:
 	explicit ODBCResultSet(SQLHSTMT stmt);
 	virtual ~ODBCResultSet();
 
-	// English: IResultSet interface (name overloads inherited from IResultSet default impl)
-	// 한글: IResultSet 인터페이스 (이름 오버로드는 IResultSet 기본 구현 상속)
+	// IResultSet 인터페이스 (이름 오버로드는 IResultSet 기본 구현 상속)
 	bool Next() override;
 	bool IsNull(size_t columnIndex) override;
 	std::string GetString(size_t columnIndex) override;
@@ -260,16 +226,12 @@ class ODBCResultSet : public IResultSet
 	void Close() override;
 
   private:
-	// English: Per-row column data cache. FetchColumn() populates a slot on first access
-	//          and returns cached data on subsequent calls within the same row.
-	//          This prevents SQLGetData from being called twice on the same column
-	//          (which advances the stream cursor on forward-only result sets).
-	//          The cache is invalidated on each Next() call.
-	// 한글: 행별 컬럼 데이터 캐시. FetchColumn()이 첫 접근 시 슬롯을 채우고
-	//       동일 행 내 이후 호출에는 캐시를 반환.
-	//       SQLGetData를 같은 컬럼에 두 번 호출하는 것을 방지
-	//       (forward-only 커서에서 스트림 커서가 이동함).
-	//       Next() 호출마다 캐시를 무효화.
+	// 행별 컬럼 데이터 캐시.
+	// FetchColumn()이 첫 접근 시 SQLGetData를 호출해 슬롯을 채우고,
+	// 같은 행 내 이후 호출에는 캐시를 반환한다.
+	// 이유: forward-only 커서에서 SQLGetData를 같은 컬럼에 두 번 호출하면
+	//       스트림 커서가 이동해 데이터를 잃는다.
+	// Next() 호출 시 캐시를 전체 무효화한다.
 	struct ColumnData
 	{
 		bool fetched = false;
@@ -277,15 +239,12 @@ class ODBCResultSet : public IResultSet
 		std::string value;
 	};
 
-	// English: Helper methods
-	// 한글: 헬퍼 메서드
 	void LoadMetadata();
 	const ColumnData &FetchColumn(size_t columnIndex);
 	void CheckSQLReturn(SQLRETURN ret, const std::string &operation);
 	std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
 
-	// English: Parse a string column value as a numeric type; returns defaultVal on failure.
-	// 한글: 문자열 컬럼 값을 숫자 타입으로 변환; 실패 시 defaultVal 반환.
+	// 문자열 컬럼 값을 숫자 타입으로 변환; 실패 시 defaultVal 반환.
 	template<typename T>
 	static T ParseAs(const std::string &s, T defaultVal) noexcept
 	{

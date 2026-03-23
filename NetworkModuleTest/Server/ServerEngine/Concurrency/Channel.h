@@ -1,7 +1,6 @@
 #pragma once
 
-// English: Typed async channel with pluggable queue backend.
-// 한글: 백엔드 교체가 가능한 타입 기반 비동기 채널.
+// ExecutionQueue<T>를 감싼 타입 기반 생산자/소비자 채널.
 
 #include "ExecutionQueue.h"
 #include <utility>
@@ -9,11 +8,10 @@
 namespace Network::Concurrency
 {
 // =============================================================================
-// English: Channel<T>
-// - Producer/consumer utility that wraps ExecutionQueue<T>.
+// Channel<T>
 //
-// 한글: Channel<T>
-// - ExecutionQueue<T>를 감싼 생산자/소비자 유틸리티.
+// ExecutionQueue<T>의 Push/Pop API를 Send/Receive 의미론으로 래핑한다.
+// 백프레셔 정책(RejectNewest / Block)과 용량 제한은 Options를 통해 설정한다.
 // =============================================================================
 
 template <typename T>

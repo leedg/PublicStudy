@@ -238,12 +238,9 @@ void DBServerTaskQueue::WorkerThreadFunc(size_t workerIndex)
 
     while (mIsRunning.load())
     {
-        // English: Wake periodically to check for timed-out in-flight requests.
-        //          wait_for with kTimeoutCheckIntervalMs ensures we don't wait
-        //          indefinitely when no work arrives but a request has timed out.
-        // 한글: in-flight 타임아웃 확인을 위해 주기적으로 깨어남.
-        //       작업이 없어도 kTimeoutCheckIntervalMs 후에 깨어나
-        //       타임아웃된 요청을 처리할 수 있음.
+        // in-flight 타임아웃 확인을 위해 주기적으로 깨어남.
+        // 작업이 없어도 kTimeoutCheckIntervalMs 후에 깨어나
+        // 타임아웃된 요청을 처리할 수 있음.
         {
             std::unique_lock<std::mutex> lock(worker.mutex);
             worker.cv.wait_for(lock,
@@ -513,10 +510,8 @@ void DBServerTaskQueue::CheckTimeouts(size_t workerIndex)
     WorkerData& worker = *mWorkers[workerIndex];
     const auto now = std::chrono::steady_clock::now();
 
-    // English: Collect timed-out session IDs first to avoid modifying the map
-    //          while iterating over it (ProcessTask may insert new entries).
-    // 한글: 반복 중 맵 수정(ProcessTask에서 항목 삽입 가능)을 피하기 위해
-    //       타임아웃 세션 ID를 먼저 수집.
+    // 반복 중 맵 수정(ProcessTask에서 항목 삽입 가능)을 피하기 위해
+    // 타임아웃 세션 ID를 먼저 수집.
     std::vector<ConnectionId> timedOut;
     for (const auto& [sessionId, ss] : worker.sessions)
     {

@@ -1,20 +1,16 @@
 #pragma once
 
-// English: Unified utility functions for NetworkModule
-// 한글: NetworkModule용 통합 유틸리티 함수
+// NetworkModule 통합 유틸리티 헤더.
+// 모든 유틸리티를 한 번에 포함할 때 사용한다.
 //
-// English: This header includes all utility classes for convenience
-// 한글: 이 헤더는 편의를 위해 모든 유틸리티 클래스를 포함합니다
-//
-// English: Individual headers can be included separately if needed:
-// 한글: 필요한 경우 개별 헤더를 따로 포함할 수 있습니다:
-//   - NetworkTypes.h    : Type definitions and constants
-//   - Timer.h           : Time measurement utility
-//   - StringUtils.h     : std::string manipulation utilities
-//   - StringUtil.h      : Safe char[] buffer operations (copy/format/append)
-//   - SafeQueue.h       : Thread-safe queue
-//   - ThreadPool.h      : Thread pool for async tasks
-//   - Logger.h          : Logging utility
+// 필요한 유틸리티만 선택적으로 포함하려면 개별 헤더를 직접 include한다:
+//   - NetworkTypes.h  : 타입 별칭 및 네트워크 상수
+//   - Timer.h         : 경과 시간 측정 (steady_clock 기반)
+//   - StringUtils.h   : std::string 조작 유틸리티
+//   - StringUtil.h    : 고정 크기 char[] 버퍼 안전 연산 (copy/format/append)
+//   - SafeQueue.h     : 스레드 안전 큐
+//   - ThreadPool.h    : 비동기 태스크용 스레드 풀
+//   - Logger.h        : 레벨 필터링 + 파일/콘솔 로거
 
 #include "NetworkTypes.h"
 #include "Timer.h"

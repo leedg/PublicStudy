@@ -1,5 +1,4 @@
-// English: ConnectionPool implementation
-// 한글: ConnectionPool 구현
+// ConnectionPool 구현
 
 #include "ConnectionPool.h"
 #include "DatabaseFactory.h"
@@ -33,8 +32,7 @@ bool ConnectionPool::Initialize(const DatabaseConfig &config)
 	mMaxPoolSize = config.mMaxPoolSize;
 	mMinPoolSize = config.mMinPoolSize;
 
-	// English: Create database instance
-	// 한글: 데이터베이스 인스턴스 생성
+	// DatabaseFactory로 백엔드 DB 인스턴스 생성
 	mDatabase = DatabaseFactory::CreateDatabase(config.mType);
 	if (!mDatabase)
 	{
@@ -45,8 +43,7 @@ bool ConnectionPool::Initialize(const DatabaseConfig &config)
 	{
 		mDatabase->Connect(config);
 
-		// English: Pre-create minimum connections
-		// 한글: 최소 연결 미리 생성
+		// mMinPoolSize만큼 연결을 미리 생성하여 첫 GetConnection() 대기를 줄인다
 		for (size_t i = 0; i < mMinPoolSize; ++i)
 		{
 			auto pConn = CreateNewConnection();
@@ -73,42 +70,27 @@ void ConnectionPool::Shutdown()
 		return;
 	}
 
-	// English: Wait for all connections to be returned
-	// 한글: 모든 연결이 반환될 때까지 대기
+	// 모든 활성 연결이 반환될 때까지 최대 5초 대기
 	{
 		std::unique_lock<std::mutex> lock(mMutex);
 		mCondition.wait_for(lock, std::chrono::seconds(5),
 							[this] { return mActiveConnections.load() == 0; });
 	}
 
-	// English: Close all connections and disconnect database under a single lock.
-	//          Call ClearLocked() (not Clear()) to avoid re-locking the non-recursive
-	//          mutex — re-locking std::mutex is undefined behaviour (typically deadlocks).
-	//          If the 5-second wait timed out and in-use connections remain,
-	//          force-close them to prevent resource leaks on Disconnect().
-	// 한글: 단일 락 아래 모든 연결 닫기 및 데이터베이스 연결 해제.
-	//       비재귀 mutex 재락킹(UB, 통상 데드락)을 피하기 위해
-	//       Clear() 대신 ClearLocked() 호출.
-	//       5초 대기가 타임아웃되어 in-use 연결이 남아 있으면,
-	//       리소스 누수 방지를 위해 강제 종료.
+	// 단일 락 아래 모든 연결 닫기 및 DB 연결 해제.
+	// Clear() 대신 ClearLocked() 호출: 비재귀 mutex 재락킹은 UB(통상 데드락).
+	// 5초 대기 타임아웃 후에도 in-use 연결이 남으면 강제 종료하여 리소스 누수 방지.
 	{
 		std::lock_guard<std::mutex> lock(mMutex);
 
-		// English: Mark as not initialized FIRST, inside the lock, so that any
-		//          concurrent GetConnection() call that passes the mInitialized.load()
-		//          check and then acquires the mutex sees false and bails out before
-		//          operating on the already-cleared mConnections.
-		// 한글: 락 내부에서 먼저 미초기화로 표시 — GetConnection()이
-		//       mInitialized.load() 체크를 통과한 뒤 mutex를 획득해도
-		//       false를 보고 즉시 반환, 이미 클리어된 mConnections를 건드리지 않도록.
+		// 락 내부에서 먼저 미초기화 표시.
+		// GetConnection()이 mInitialized.load() 체크를 통과한 뒤 mutex를 획득해도
+		// false를 보고 즉시 반환 — 이미 클리어된 mConnections 접근을 방지.
 		mInitialized.store(false);
 
 		if (mActiveConnections.load() > 0)
 		{
-			// English: Timed out waiting for connections to be returned.
-			//          Force-close all remaining connections regardless of in-use state.
-			// 한글: 연결 반환 대기 타임아웃.
-			//       in-use 여부와 무관하게 남은 모든 연결을 강제 종료.
+			// 대기 타임아웃: in-use 여부에 무관하게 남은 연결 전체를 강제 종료
 			for (auto &pooled : mConnections)
 			{
 				pooled.mConnection->Close();
@@ -155,28 +137,21 @@ std::shared_ptr<IConnection> ConnectionPool::GetConnection()
 
 	std::unique_lock<std::mutex> lock(mMutex);
 
-	// English: Re-check mInitialized after acquiring the lock. Shutdown() sets it
-	//          to false as its first action inside the same mutex, so a thread that
-	//          passed the pre-lock load() check above can still race with Shutdown().
-	//          Without this re-check, it would proceed to wait_for and then call
-	//          CreateNewConnection() on a nullptr mDatabase — null pointer dereference.
-	// 한글: 락 획득 후 mInitialized 재확인. Shutdown()이 동일 mutex 내부에서
-	//       첫 동작으로 false로 설정하므로, 위의 선락킹 load() 체크를 통과한 스레드가
-	//       Shutdown()과 경쟁할 수 있음. 재확인 없이는 wait_for 진행 후
-	//       nullptr mDatabase에서 CreateNewConnection() 호출 → null 포인터 역참조.
+	// 락 획득 후 mInitialized 재확인.
+	// Shutdown()이 동일 mutex 내부 첫 동작으로 false로 설정하므로,
+	// 위의 선락킹 load() 체크를 통과한 스레드가 Shutdown()과 경쟁할 수 있다.
+	// 재확인 없으면 wait_for 진행 후 nullptr mDatabase에서 CreateNewConnection() 호출
+	// → null 포인터 역참조가 된다.
 	if (!mInitialized.load(std::memory_order_relaxed))
 	{
 		throw DatabaseException("Connection pool is shutting down");
 	}
 
-	// English: Wait for available connection or timeout
-	// 한글: 사용 가능한 연결 대기 또는 타임아웃
+	// 사용 가능한 연결이 생길 때까지 mConnectionTimeout 동안 대기
 	bool acquired = mCondition.wait_for(
 		lock, mConnectionTimeout,
 		[this]
 		{
-			// English: Check if any connection is available
-			// 한글: 사용 가능한 연결이 있는지 확인
 			for (auto &pooled : mConnections)
 			{
 				if (!pooled.mInUse && pooled.mConnection->IsOpen())
@@ -184,9 +159,7 @@ std::shared_ptr<IConnection> ConnectionPool::GetConnection()
 					return true;
 				}
 			}
-
-			// English: Can we create a new connection?
-			// 한글: 새 연결을 생성할 수 있는가?
+			// 풀 상한 미만이면 새 연결 생성 가능 — 대기 해제
 			return mConnections.size() < mMaxPoolSize;
 		});
 
@@ -196,8 +169,7 @@ std::shared_ptr<IConnection> ConnectionPool::GetConnection()
 			"Connection pool timeout - no connections available");
 	}
 
-	// English: Try to find an existing free connection
-	// 한글: 기존 무료 연결 찾기 시도
+	// 유휴 연결(mInUse=false, IsOpen=true)을 먼저 찾아 반환
 	for (auto &pooled : mConnections)
 	{
 		if (!pooled.mInUse && pooled.mConnection->IsOpen())
@@ -209,8 +181,7 @@ std::shared_ptr<IConnection> ConnectionPool::GetConnection()
 		}
 	}
 
-	// English: Create a new connection if under limit
-	// 한글: 제한 미만이면 새 연결 생성
+	// 유휴 연결 없고 풀 상한 미만이면 새 연결 생성
 	if (mConnections.size() < mMaxPoolSize)
 	{
 		auto pConn = CreateNewConnection();
@@ -247,8 +218,7 @@ void ConnectionPool::ReturnConnection(std::shared_ptr<IConnection> pConnection)
 
 void ConnectionPool::ClearLocked()
 {
-	// English: Caller must already hold mMutex — no lock acquired here.
-	// 한글: 호출자가 이미 mMutex를 보유해야 함 — 여기서 락 획득 안 함.
+	// 호출자가 이미 mMutex를 보유해야 한다 — 여기서 락 획득 안 함.
 	for (auto it = mConnections.begin(); it != mConnections.end();)
 	{
 		if (!it->mInUse)

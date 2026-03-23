@@ -1,15 +1,18 @@
 #pragma once
 
-// English: Linux-specific NetworkEngine implementation
-// 한글: Linux 전용 NetworkEngine 구현
+// Linux 전용 NetworkEngine 구현.
 //
-// Supports two modes:
-// - epoll: Standard event notification (all Linux versions)
-// - io_uring: Modern async I/O (Linux 5.1+, high performance)
+// 두 가지 I/O 백엔드를 지원한다:
+// - Epoll  : 모든 Linux 버전에서 동작하는 표준 이벤트 알림.
+//            커널이 fd 상태 변화를 통지하면 AcceptLoop / WorkerThread가 처리한다.
+// - IOUring: Linux 5.1+ 의 고성능 비동기 I/O.
+//            빌드 시스템(CMake find_library)이 HAVE_IO_URING 또는 HAVE_LIBURING를
+//            정의한 경우에만 활성화되며, 정의되지 않았거나 런타임 초기화에 실패하면
+//            자동으로 epoll로 폴백한다.
 //
-// 두 가지 모드 지원:
-// - epoll: 표준 이벤트 알림 (모든 Linux 버전)
-// - io_uring: 최신 비동기 I/O (Linux 5.1+, 고성능)
+// 선택 기준:
+//   - 커널 5.1 미만이거나 liburing 미설치 환경  → Epoll
+//   - 커널 5.1 이상 + liburing 설치 + 고처리량 요구 → IOUring
 
 #ifdef __linux__
 
@@ -20,36 +23,23 @@
 namespace Network::Platforms
 {
 
-// =============================================================================
-// English: Linux NetworkEngine
-// 한글: Linux NetworkEngine
-// =============================================================================
-
 class LinuxNetworkEngine : public Core::BaseNetworkEngine
 {
   public:
-	// English: I/O backend mode
-	// 한글: I/O 백엔드 모드
+	// I/O 백엔드 모드
 	enum class Mode
 	{
-		Epoll,    // English: Standard epoll / 한글: 표준 epoll
-		IOUring   // English: io_uring / 한글: io_uring
+		Epoll,   // 표준 epoll (커널 2.6+)
+		IOUring  // io_uring (커널 5.1+, liburing 필요)
 	};
 
-	/**
-	 * English: Constructor
-	 * 한글: 생성자
-	 * @param mode I/O backend mode (Epoll or IOUring)
-	 */
+	// @param mode  사용할 I/O 백엔드. IOUring 선택 시 런타임에 지원 여부를 확인하고
+	//              실패하면 Epoll로 자동 폴백한다.
 	explicit LinuxNetworkEngine(Mode mode = Mode::Epoll);
 	virtual ~LinuxNetworkEngine();
 
   protected:
-	// =====================================================================
-	// English: Platform-specific implementation
-	// 한글: 플랫폼별 구현
-	// =====================================================================
-
+	// 플랫폼별 구현 (BaseNetworkEngine 순수 가상 재정의)
 	bool InitializePlatform() override;
 	void ShutdownPlatform() override;
 	bool StartPlatformIO() override;
@@ -58,38 +48,25 @@ class LinuxNetworkEngine : public Core::BaseNetworkEngine
 	void ProcessCompletions() override;
 
   private:
-	// English: Create listen socket
-	// 한글: Listen 소켓 생성
+	// listen 소켓 생성 및 바인드
 	bool CreateListenSocket();
 
-	// English: Queue recv for a session
-	// 한글: 세션 수신 등록
+	// 세션에 recv 작업 등록 (epoll EPOLLIN 또는 io_uring RecvAsync)
 	bool QueueRecv(const Core::SessionRef &session);
 
-	// English: Worker thread function
-	// 한글: 워커 스레드 함수
+	// 완료 처리 루프 (WorkerThread 내부에서 반복 호출)
 	void WorkerThread();
 
   private:
-	// English: I/O mode
-	// 한글: I/O 모드
-	Mode mMode;
+	Mode mMode;         // 초기화 이후 Epoll 폴백 시 변경될 수 있음
+	int  mListenSocket; // POSIX fd; -1 = 미초기화
 
-	// English: Listen socket
-	// 한글: Listen 소켓
-	int mListenSocket;
-
-	// English: Accept loop backoff (ms) - member to avoid static variable bug
-	// 한글: Accept 루프 백오프 (ms) - static 변수 버그 방지를 위한 멤버 변수
+	// Accept 루프에서 연속 오류 발생 시 지수 백오프용 대기 시간(ms).
+	// static 변수 대신 멤버 변수로 유지하여 재진입/복수 인스턴스 버그를 방지한다.
 	int mAcceptBackoffMs;
 
-	// English: Accept thread
-	// 한글: Accept 스레드
-	std::thread mAcceptThread;
-
-	// English: Worker threads (for completion processing)
-	// 한글: 워커 스레드 (완료 처리용)
-	std::vector<std::thread> mWorkerThreads;
+	std::thread              mAcceptThread;  // 단일 accept 전담 스레드
+	std::vector<std::thread> mWorkerThreads; // 완료 처리 워커 (hardware_concurrency개)
 };
 
 } // namespace Network::Platforms

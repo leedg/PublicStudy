@@ -1,11 +1,15 @@
 /**
- * Connection Pool Usage Example
+ * 연결 풀 사용 예제 (참조용 코드 — 빌드 대상 아님)
  *
- * This file demonstrates connection pool usage including:
- * - Initializing connection pool
- * - Acquiring and returning connections
- * - Using RAII wrapper (ScopedConnection)
- * - Monitoring pool status
+ * 주의: 이 파일은 과거 API(소문자 메서드명 initialize/getConnection 등)를 사용한다.
+ * 현재 API는 Pascal case (Initialize/GetConnection)이며, 실제 사용 시 아래 코드를
+ * 현재 인터페이스에 맞게 수정해야 한다.
+ *
+ * 예시 범위:
+ * - ConnectionPool 초기화
+ * - 연결 획득과 반환
+ * - RAII 래퍼(ScopedConnection) 사용
+ * - 풀 상태 모니터링
  */
 
 #include "../DatabaseModule.h"

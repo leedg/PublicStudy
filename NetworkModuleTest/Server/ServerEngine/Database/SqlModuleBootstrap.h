@@ -1,5 +1,20 @@
 #pragma once
 
+// SQL 모듈 부트스트랩 유틸리티.
+// 서버 시작 시 DB 스키마(테이블 DDL)가 이미 적용되었는지 확인하고,
+// 처음 실행되는 경우에만 SQL 스크립트를 실행한다.
+//
+// 동작 원리:
+//   1. T_ModuleBootstrapState 테이블에 모듈별 적용 상태(IN_PROGRESS/COMPLETED/FAILED)와
+//      매니페스트 해시(스크립트 경로+내용의 FNV-1a 64비트 해시)를 기록한다.
+//   2. 이미 COMPLETED이고 해시가 동일하면 스킵(false 반환).
+//   3. 해시가 변경되면 자동 재적용을 거부하고 DatabaseException을 발생시킨다
+//      (의도치 않은 스키마 변경 방지 — 마이그레이션은 별도 도구로 처리).
+//   4. DatabaseType::Mock이면 상태 테이블 없이 항상 tableScripts만 실행한다
+//      (테스트/CI 환경에서 실제 DB 없이 동작 가능).
+//   5. INSERT 중복 키 오류 시 경쟁 상태(다중 인스턴스 동시 시작)로 판단하여
+//      먼저 완료된 인스턴스 결과를 신뢰한다.
+
 #include "../Interfaces/DatabaseConfig.h"
 #include "../Interfaces/DatabaseException.h"
 #include "../Interfaces/IConnection.h"
@@ -22,9 +37,9 @@ namespace Network::Database::SqlModuleBootstrap
 
 struct ModuleSpec
 {
-    std::string moduleName;
-    std::vector<std::string> tableScripts;
-    std::vector<std::string> managedScripts;
+    std::string moduleName;           // 모듈 식별자 (T_ModuleBootstrapState의 PK)
+    std::vector<std::string> tableScripts;   // DDL 스크립트 경로 목록 (CREATE TABLE 등)
+    std::vector<std::string> managedScripts; // 해시 계산에 포함할 스크립트 경로 목록
 };
 
 namespace Detail
@@ -32,13 +47,13 @@ namespace Detail
 
 inline constexpr const char* kBootstrapStatusInProgress = "IN_PROGRESS";
 inline constexpr const char* kBootstrapStatusCompleted = "COMPLETED";
-inline constexpr const char* kBootstrapStatusFailed = "FAILED";
+inline constexpr const char* kBootstrapStatusFailed    = "FAILED";
 
 struct BootstrapState
 {
-    bool exists = false;
-    std::string manifestHash;
-    std::string status;
+    bool exists = false;          // T_ModuleBootstrapState에 레코드가 존재하는지
+    std::string manifestHash;     // 저장된 스크립트 매니페스트 해시
+    std::string status;           // IN_PROGRESS / COMPLETED / FAILED
 };
 
 inline std::string ToLowerCopy(std::string value)

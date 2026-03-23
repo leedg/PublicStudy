@@ -1,7 +1,15 @@
 #pragma once
 
-// English: In-memory mock database implementation for testing (no external dependencies)
-// 한글: 테스트용 인메모리 Mock 데이터베이스 구현 (외부 의존성 없음)
+// Mock 데이터베이스 구현 — 외부 DB 서버 없이 IDatabase 인터페이스를 완전히 구현.
+//
+// 주요 사용 사례:
+//   1. 단위 테스트: GetExecutedQueries()로 쿼리 실행 내역을 검증.
+//   2. 서버 시작 시 SqlModuleBootstrap 우회: DatabaseType::Mock이면
+//      bootstrap 상태 테이블 생성/검사를 건너뛰므로 DB 없이 서버 초기화 가능.
+//   3. CI 환경: 외부 DB 의존성 없이 빌드/테스트 파이프라인 구동.
+//
+// MockDatabase는 모든 커넥션이 하나의 쿼리 로그(mLog)를 공유하며,
+// mMutex로 멀티스레드 접근을 보호한다.
 
 #include "../Interfaces/DatabaseConfig.h"
 #include "../Interfaces/DatabaseException.h"
@@ -19,14 +27,12 @@ namespace Network
 namespace Database
 {
 
-// English: Forward declarations
-// 한글: 전방 선언
+// 전방 선언
 class MockConnection;
 class MockStatement;
 
 // =============================================================================
-// English: ExecutedQuery — record of a query execution (for test verification)
-// 한글: ExecutedQuery — 쿼리 실행 기록 (테스트 검증용)
+// ExecutedQuery — 쿼리 실행 기록 (테스트 검증용)
 // =============================================================================
 
 struct ExecutedQuery
@@ -36,8 +42,9 @@ struct ExecutedQuery
 };
 
 // =============================================================================
-// English: MockResultSet — empty result set (Next() always returns false)
-// 한글: MockResultSet — 빈 결과 집합 (Next()는 항상 false 반환)
+// MockResultSet — 항상 빈 결과 집합 (Next()는 항상 false 반환)
+// 실제 데이터가 필요한 테스트에서는 MockStatement를 서브클래싱하거나
+// 별도의 테스트 픽스처를 사용할 것.
 // =============================================================================
 
 class MockResultSet : public IResultSet
@@ -73,8 +80,9 @@ class MockResultSet : public IResultSet
 };
 
 // =============================================================================
-// English: MockStatement — logs every query + parameters, returns success
-// 한글: MockStatement — 쿼리 + 파라미터 로그 기록, 항상 성공 반환
+// MockStatement — 쿼리와 파라미터를 로그에 기록하고 항상 성공을 반환.
+// ExecuteQuery()는 빈 MockResultSet, ExecuteUpdate()는 1(1행 영향)을 반환한다.
+// mLog와 mMutex는 MockDatabase 소유이며 참조로 전달받는다.
 // =============================================================================
 
 class MockStatement : public IStatement
@@ -138,16 +146,14 @@ class MockStatement : public IStatement
 		return true;
 	}
 
-	// English: AddBatch — snapshot current params to batch list, then clear for next set
-	// 한글: AddBatch — 현재 파라미터를 배치 목록에 저장 후 초기화
+	// AddBatch — 현재 파라미터를 배치 목록에 저장 후 초기화
 	void AddBatch() override
 	{
 		mBatchEntries.push_back({mQuery, mCurrentParams});
 		mCurrentParams.clear();
 	}
 
-	// English: ExecuteBatch — record all batched entries to log, return success codes
-	// 한글: ExecuteBatch — 배치 항목 전체를 로그에 기록, 성공 코드 반환
+	// ExecuteBatch — 배치 항목 전체를 로그에 기록하고 각 항목에 대해 1(성공)을 반환
 	std::vector<int> ExecuteBatch() override
 	{
 		std::vector<int> results;
@@ -189,8 +195,8 @@ class MockStatement : public IStatement
 };
 
 // =============================================================================
-// English: MockConnection — tracks open/transaction state, creates MockStatements
-// 한글: MockConnection — 연결/트랜잭션 상태 추적, MockStatement 생성
+// MockConnection — 연결/트랜잭션 상태를 플래그로 추적하고 MockStatement를 생성.
+// Open()을 호출하면 즉시 연결 성공 상태가 된다.
 // =============================================================================
 
 class MockConnection : public IConnection
@@ -229,8 +235,8 @@ class MockConnection : public IConnection
 };
 
 // =============================================================================
-// English: MockDatabase — in-memory mock, shared query log for all connections
-// 한글: MockDatabase — 인메모리 Mock, 모든 커넥션이 쿼리 로그 공유
+// MockDatabase — 모든 커넥션이 공유 쿼리 로그(mLog)를 통해 실행 내역을 기록.
+// GetExecutedQueries() / ClearLog()로 테스트에서 실행 내역을 검증하거나 초기화한다.
 // =============================================================================
 
 class MockDatabase : public IDatabase
@@ -246,6 +252,7 @@ class MockDatabase : public IDatabase
 	std::unique_ptr<IConnection> CreateConnection() override;
 	std::unique_ptr<IStatement> CreateStatement() override;
 
+	// Mock은 트랜잭션을 시뮬레이션하지 않으므로 no-op
 	void BeginTransaction() override {}
 	void CommitTransaction() override {}
 	void RollbackTransaction() override {}
@@ -253,12 +260,10 @@ class MockDatabase : public IDatabase
 	DatabaseType GetType() const override { return DatabaseType::Mock; }
 	const DatabaseConfig &GetConfig() const override { return mConfig; }
 
-	// English: Test verification — retrieve all logged query executions
-	// 한글: 테스트 검증용 — 실행된 모든 쿼리 로그 조회
+	// 테스트 검증용 — 실행된 모든 쿼리 로그 조회 (thread-safe)
 	std::vector<ExecutedQuery> GetExecutedQueries() const;
 
-	// English: Clear the query log
-	// 한글: 쿼리 로그 초기화
+	// 쿼리 로그 초기화 (thread-safe)
 	void ClearLog();
 
   private:
