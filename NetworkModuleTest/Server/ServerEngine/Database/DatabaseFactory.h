@@ -34,6 +34,7 @@ class DatabaseFactory
 	static std::unique_ptr<IDatabase> CreateOLEDBDatabase();
 	static std::unique_ptr<IDatabase> CreateMockDatabase();
 	static std::unique_ptr<IDatabase> CreateSQLiteDatabase();
+	static std::unique_ptr<IDatabase> CreatePostgreSQLDatabase();
 };
 
 } // namespace Database

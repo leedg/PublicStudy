@@ -9,8 +9,8 @@
 #include "ODBCDatabase.h"
 #include "OLEDBDatabase.h"
 #endif
+#include "PostgreSQLDatabase.h"
 #include "SQLiteDatabase.h"
-#include <iostream>
 #include <map>
 #include <stdexcept>
 
@@ -26,11 +26,12 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateDatabase(DatabaseType type)
 #ifdef _WIN32
 	case DatabaseType::ODBC:
 	case DatabaseType::MySQL:
-	case DatabaseType::PostgreSQL:
 		return CreateODBCDatabase();
 	case DatabaseType::OLEDB:
 		return CreateOLEDBDatabase();
 #endif
+	case DatabaseType::PostgreSQL:
+		return CreatePostgreSQLDatabase();
 	case DatabaseType::Mock:
 		return CreateMockDatabase();
 	case DatabaseType::SQLite:
@@ -45,9 +46,7 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateODBCDatabase()
 #ifdef _WIN32
 	return std::make_unique<ODBCDatabase>();
 #else
-	std::cerr << "[DatabaseFactory] ODBC backend is only available on Windows. "
-	             "Returning nullptr — use SQLite or Mock instead.\n";
-	return nullptr;
+	throw DatabaseException("ODBC backend is only available on Windows");
 #endif
 }
 
@@ -56,9 +55,7 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateOLEDBDatabase()
 #ifdef _WIN32
 	return std::make_unique<OLEDBDatabase>();
 #else
-	std::cerr << "[DatabaseFactory] OLEDB backend is only available on Windows. "
-	             "Returning nullptr — use ODBC or SQLite instead.\n";
-	return nullptr;
+	throw DatabaseException("OLEDB backend is only available on Windows");
 #endif
 }
 
@@ -70,6 +67,16 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateMockDatabase()
 std::unique_ptr<IDatabase> DatabaseFactory::CreateSQLiteDatabase()
 {
 	return std::make_unique<SQLiteDatabase>();
+}
+
+std::unique_ptr<IDatabase> DatabaseFactory::CreatePostgreSQLDatabase()
+{
+#ifdef HAVE_LIBPQ
+	return std::make_unique<PostgreSQLDatabase>();
+#else
+	throw DatabaseException(
+		"PostgreSQL (libpq) not available: recompile with HAVE_LIBPQ and link libpq");
+#endif
 }
 
 namespace Utils

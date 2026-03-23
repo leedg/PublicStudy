@@ -69,6 +69,19 @@ else()
 endif()
 
 # =============================================================================
+# PostgreSQL (libpq) option
+# =============================================================================
+
+find_package(PostgreSQL)
+if(PostgreSQL_FOUND)
+    message(STATUS "libpq ${PostgreSQL_VERSION_STRING} found — PostgreSQLDatabase enabled")
+    set(HAVE_LIBPQ ON)
+else()
+    message(WARNING "libpq not found — PostgreSQLDatabase unavailable (DatabaseFactory will throw on PostgreSQL requests)")
+    set(HAVE_LIBPQ OFF)
+endif()
+
+# =============================================================================
 # ServerEngine static library
 # =============================================================================
 
@@ -130,6 +143,10 @@ target_sources(ServerEngine PRIVATE
     ${ENGINE_ROOT}/Database/ConnectionPool.cpp
 )
 
+if(HAVE_LIBPQ)
+    target_sources(ServerEngine PRIVATE ${ENGINE_ROOT}/Database/PostgreSQLDatabase.cpp)
+endif()
+
 # English: ServerEngine include root — lets sources use "Network/Core/...", "Utils/..." etc.
 # 한글: ServerEngine 인클루드 루트 — "Network/Core/...", "Utils/..." 등 경로 사용
 target_include_directories(ServerEngine PUBLIC
@@ -151,6 +168,13 @@ if(HAVE_SQLITE3)
     target_compile_definitions(ServerEngine PUBLIC HAVE_SQLITE3)
     target_include_directories(ServerEngine PUBLIC ${SQLITE3_INCLUDE_DIRS})
     target_link_libraries(ServerEngine PUBLIC ${SQLITE3_LIBRARIES})
+endif()
+
+# PostgreSQL (libpq) definitions and link
+if(HAVE_LIBPQ)
+    target_compile_definitions(ServerEngine PUBLIC HAVE_LIBPQ)
+    target_include_directories(ServerEngine PUBLIC ${PostgreSQL_INCLUDE_DIRS})
+    target_link_libraries(ServerEngine PUBLIC ${PostgreSQL_LIBRARIES})
 endif()
 
 # POSIX threads
@@ -178,6 +202,7 @@ add_executable(TestServer
     ${TESTSERVER_ROOT}/src/ClientSession.cpp
     ${TESTSERVER_ROOT}/src/DBServerPacketHandler.cpp
     ${TESTSERVER_ROOT}/src/DBServerSession.cpp
+    ${TESTSERVER_ROOT}/src/DBServerTaskQueue.cpp
     ${TESTSERVER_ROOT}/src/DBTaskQueue.cpp
     ${TESTSERVER_ROOT}/src/ServerSession.cpp
     ${TESTSERVER_ROOT}/src/TestDatabaseManager.cpp
