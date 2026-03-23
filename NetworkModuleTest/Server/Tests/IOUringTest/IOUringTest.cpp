@@ -1,165 +1,154 @@
-// English: io_uring AsyncIOProvider + IOUringBufferPool test suite.
-//          No GTest dependency - uses std::cout (same pattern as AsyncIOTest.cpp).
-//          Compiled and run only on Linux with HAVE_LIBURING defined.
-// 한글: io_uring AsyncIOProvider + IOUringBufferPool 테스트.
-//       GTest 미사용, std::cout 기반 (AsyncIOTest.cpp 패턴).
-//       Linux + HAVE_LIBURING 환경에서만 컴파일 및 실행.
-
 #if defined(__linux__) && defined(HAVE_LIBURING)
+
+#include "Core/Memory/IOUringBufferPool.h"
 #include "Network/Core/AsyncIOProvider.h"
 #include "Platforms/Linux/IOUringAsyncIOProvider.h"
-#include "Platforms/Linux/IOUringBufferPool.h"
+
 #include <iostream>
 
 using namespace Network::AsyncIO;
 using namespace Network::AsyncIO::Linux;
+using Network::Core::Memory::BufferSlot;
+using Network::Core::Memory::IOUringBufferPool;
 
-static int gPassed = 0, gFailed = 0;
+static int gPassed = 0;
+static int gFailed = 0;
 
-static void Pass(const char *name)
+static void Pass(const char* name)
 {
     std::cout << "[PASS] " << name << "\n";
     ++gPassed;
 }
 
-static void Fail(const char *name, const char *reason)
+static void Fail(const char* name, const char* reason)
 {
     std::cout << "[FAIL] " << name << " - " << reason << "\n";
     ++gFailed;
 }
 
-// -----------------------------------------------------------------------
-void TestIOUringProviderInit()
+static void TestIOUringProviderInit()
 {
-    const char *name = "IOUringProviderInit";
+    const char* name = "IOUringProviderInit";
+
     IOUringAsyncIOProvider provider;
-    auto err = provider.Initialize(256, 128);
-    // English: PlatformNotSupported is acceptable on kernels without io_uring.
-    // 한글: io_uring 미지원 커널에서 PlatformNotSupported는 정상.
-    if (err == AsyncIOError::Success ||
-        err == AsyncIOError::PlatformNotSupported)
+    const auto err = provider.Initialize(256, 128);
+    if (err == AsyncIOError::Success || err == AsyncIOError::PlatformNotSupported) {
         Pass(name);
-    else
+    } else {
         Fail(name, provider.GetLastError());
-    if (provider.IsInitialized())
-        provider.Shutdown();
+    }
+
+    provider.Shutdown();
 }
 
-// -----------------------------------------------------------------------
-void TestIOUringBufferPoolInit()
+static void TestIOUringBufferPoolInit()
 {
-    const char *name = "IOUringBufferPoolInit";
-    IOUringAsyncIOProvider provider;
-    if (provider.Initialize(256, 128) != AsyncIOError::Success)
-    {
-        std::cout << "[SKIP] " << name << " - io_uring not available\n";
-        return;
-    }
+    const char* name = "IOUringBufferPoolInit";
+
     IOUringBufferPool pool;
-    bool ok = pool.Initialize(&provider, 65536, 8);
-    if (ok && pool.GetPoolSize() == 8 && pool.GetAvailable() == 8)
+    const bool ok = pool.Initialize(8, 65536);
+    if (ok &&
+        pool.PoolSize() == 8 &&
+        pool.SlotSize() == 65536 &&
+        pool.FreeCount() == 8 &&
+        !pool.IsFixedBufferMode()) {
         Pass(name);
-    else
-        Fail(name, "Pool init failed or wrong counts");
-    // English: Pool must shut down before provider to allow clean buffer deregistration.
-    // 한글: 버퍼 해제 등록을 위해 pool을 provider보다 먼저 종료해야 함.
+    } else {
+        Fail(name, "pool init produced unexpected state");
+    }
+
     pool.Shutdown();
-    provider.Shutdown();
 }
 
-// -----------------------------------------------------------------------
-void TestIOUringBufferPoolAcquireRelease()
+static void TestIOUringBufferPoolAcquireRelease()
 {
-    const char *name = "IOUringBufferPoolAcquireRelease";
-    IOUringAsyncIOProvider provider;
-    if (provider.Initialize(256, 128) != AsyncIOError::Success)
-    {
-        std::cout << "[SKIP] " << name << " - io_uring not available\n";
-        return;
-    }
+    const char* name = "IOUringBufferPoolAcquireRelease";
+
     IOUringBufferPool pool;
-    if (!pool.Initialize(&provider, 65536, 4))
-    {
+    if (!pool.Initialize(4, 65536)) {
         Fail(name, "Init failed");
-        provider.Shutdown();
         return;
     }
 
-    int64_t id1 = -1, id2 = -1;
-    uint8_t *buf1 = pool.Acquire(id1);
-    uint8_t *buf2 = pool.Acquire(id2);
+    const BufferSlot slot1 = pool.Acquire();
+    const BufferSlot slot2 = pool.Acquire();
 
-    if (!buf1 || !buf2 || id1 < 0 || id2 < 0 || pool.GetAvailable() != 2)
-    {
-        Fail(name, "Acquire returned wrong state");
-    }
-    else
-    {
-        pool.Release(id1);
-        if (pool.GetAvailable() == 3)
-            Pass(name);
-        else
-            Fail(name, "Release did not restore availability");
-    }
-
-    // English: Pool must shut down before provider to allow clean buffer deregistration.
-    // 한글: 버퍼 해제 등록을 위해 pool을 provider보다 먼저 종료해야 함.
-    pool.Shutdown();
-    provider.Shutdown();
-}
-
-// -----------------------------------------------------------------------
-void TestIOUringBufferPoolExhaustion()
-{
-    const char *name = "IOUringBufferPoolExhaustion";
-    IOUringAsyncIOProvider provider;
-    if (provider.Initialize(256, 128) != AsyncIOError::Success)
-    {
-        std::cout << "[SKIP] " << name << " - io_uring not available\n";
-        return;
-    }
-    IOUringBufferPool pool;
-    if (!pool.Initialize(&provider, 4096, 2))
-    {
-        Fail(name, "Init failed");
-        provider.Shutdown();
+    if (slot1.ptr == nullptr ||
+        slot2.ptr == nullptr ||
+        slot1.index == slot2.index ||
+        pool.FreeCount() != 2) {
+        Fail(name, "Acquire returned invalid slots");
+        pool.Shutdown();
         return;
     }
 
-    int64_t id1 = -1, id2 = -1, id3 = -1;
-    pool.Acquire(id1);
-    pool.Acquire(id2);
-    uint8_t *buf3 = pool.Acquire(id3); // English: must return nullptr / 한글: nullptr 반환 필수
+    pool.Release(slot1.index);
+    const bool firstReleaseOk = (pool.FreeCount() == 3);
+    pool.Release(slot2.index);
 
-    if (buf3 == nullptr && id3 == -1)
+    if (firstReleaseOk && pool.FreeCount() == 4) {
         Pass(name);
-    else
-        Fail(name, "Expected nullptr on pool exhaustion");
+    } else {
+        Fail(name, "Release did not restore free count");
+    }
 
-    // English: Pool must shut down before provider to allow clean buffer deregistration.
-    // 한글: 버퍼 해제 등록을 위해 pool을 provider보다 먼저 종료해야 함.
     pool.Shutdown();
-    provider.Shutdown();
 }
 
-// -----------------------------------------------------------------------
+static void TestIOUringBufferPoolExhaustion()
+{
+    const char* name = "IOUringBufferPoolExhaustion";
+
+    IOUringBufferPool pool;
+    if (!pool.Initialize(2, 4096)) {
+        Fail(name, "Init failed");
+        return;
+    }
+
+    const BufferSlot slot1 = pool.Acquire();
+    const BufferSlot slot2 = pool.Acquire();
+    const BufferSlot slot3 = pool.Acquire();
+
+    if (slot1.ptr != nullptr &&
+        slot2.ptr != nullptr &&
+        slot3.ptr == nullptr &&
+        pool.FreeCount() == 0) {
+        Pass(name);
+    } else {
+        Fail(name, "Expected empty slot on exhaustion");
+    }
+
+    if (slot1.ptr != nullptr) {
+        pool.Release(slot1.index);
+    }
+    if (slot2.ptr != nullptr) {
+        pool.Release(slot2.index);
+    }
+
+    pool.Shutdown();
+}
+
 int main()
 {
     std::cout << "=== io_uring AsyncIOProvider + BufferPool Tests ===\n\n";
+
     TestIOUringProviderInit();
     TestIOUringBufferPoolInit();
     TestIOUringBufferPoolAcquireRelease();
     TestIOUringBufferPoolExhaustion();
-    std::cout << "\nResult: " << gPassed << " passed, " << gFailed
-              << " failed\n";
+
+    std::cout << "\nResult: " << gPassed << " passed, " << gFailed << " failed\n";
     return gFailed > 0 ? 1 : 0;
 }
 
-#else // !(linux && liburing)
+#else
+
 #include <iostream>
+
 int main()
 {
     std::cout << "[SKIP] IOUringTest: Linux + liburing only\n";
     return 0;
 }
-#endif // defined(__linux__) && defined(HAVE_LIBURING)
+
+#endif

@@ -1,46 +1,59 @@
-# run-db-tests.ps1 — DBModuleTest 수동 테스트 런처
+# run-db-tests.ps1
 #
-# 사용법:
+# Usage:
 #   .\scripts\run-db-tests.ps1 [-Backend sqlite|mssql|pgsql|mysql|oledb|all]
-#                               [-Config Debug|Release]
-#                               [-ConnStr <연결 문자열>]
-#                               [-Build] [-Rebuild]
+#                              [-Config Debug|Release]
+#                              [-ConnStr <connection string>]
+#                              [-Build] [-Rebuild]
 #
-# 환경변수로 연결 문자열을 미리 지정할 수 있습니다:
-#   DB_MSSQL_ODBC  DB_PGSQL_ODBC  DB_MYSQL_ODBC  DB_OLEDB
-#
-# 예시:
-#   .\scripts\run-db-tests.ps1                          # 대화형 메뉴
-#   .\scripts\run-db-tests.ps1 -Backend sqlite          # SQLite만
-#   .\scripts\run-db-tests.ps1 -Backend all -Build      # 전체 (빌드 포함)
-#   $env:DB_MSSQL_ODBC="Driver=..."; .\scripts\run-db-tests.ps1 -Backend mssql
+# Optional environment variables:
+#   DB_MSSQL_ODBC
+#   DB_PGSQL_ODBC
+#   DB_MYSQL_ODBC
+#   DB_OLEDB
 
 param(
-    [ValidateSet('sqlite','mssql','pgsql','mysql','oledb','all','interactive')]
+    [ValidateSet('sqlite', 'mssql', 'pgsql', 'mysql', 'oledb', 'all', 'interactive')]
     [string]$Backend = 'interactive',
 
-    [ValidateSet('Debug','Release')]
+    [ValidateSet('Debug', 'Release')]
     [string]$Config = 'Debug',
 
-    [string]$ConnStr = '',   # 단일 백엔드 지정 시 연결 문자열 오버라이드
+    [string]$ConnStr = '',
 
-    [switch]$Build,           # 실행 전 빌드
-    [switch]$Rebuild          # 클린 빌드
+    [switch]$Build,
+    [switch]$Rebuild
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $projectDir = Split-Path -Parent $PSScriptRoot
-$vcxproj    = Join-Path $projectDir 'DBModuleTest.vcxproj'
-$binDir     = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path "x64\$Config"
-$exePath    = Join-Path $binDir "DBModuleTest.exe"
+$vcxproj = Join-Path $projectDir 'DBModuleTest.vcxproj'
+$projectBinDir = Join-Path $projectDir "x64\$Config"
+$repoBinDir = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path "x64\$Config"
 
-# ── MSBuild 탐색 ──────────────────────────────────────────────────────────
+function Resolve-DBModuleTestExePath {
+    $candidates = @(
+        (Join-Path $projectBinDir 'DBModuleTest.exe')
+        (Join-Path $repoBinDir 'DBModuleTest.exe')
+    )
+
+    $existing = $candidates | Where-Object { Test-Path $_ }
+    if ($existing) {
+        return $existing |
+            Sort-Object { (Get-Item $_).LastWriteTimeUtc } -Descending |
+            Select-Object -First 1
+    }
+
+    return $candidates[0]
+}
 
 function Find-MSBuild {
     $cmd = Get-Command msbuild.exe -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
+    if ($cmd) {
+        return $cmd.Source
+    }
 
     $vswhere = @(
         "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -50,118 +63,169 @@ function Find-MSBuild {
     if ($vswhere) {
         $vs = & $vswhere -latest -requires Microsoft.Component.MSBuild -property installationPath 2>$null
         if ($vs) {
-            $candidate = Join-Path $vs 'MSBuild\Current\Bin\amd64\MSBuild.exe'
-            if (Test-Path $candidate) { return $candidate }
-            $candidate = Join-Path $vs 'MSBuild\Current\Bin\MSBuild.exe'
-            if (Test-Path $candidate) { return $candidate }
+            $amd64 = Join-Path $vs 'MSBuild\Current\Bin\amd64\MSBuild.exe'
+            if (Test-Path $amd64) {
+                return $amd64
+            }
+
+            $default = Join-Path $vs 'MSBuild\Current\Bin\MSBuild.exe'
+            if (Test-Path $default) {
+                return $default
+            }
         }
     }
+
     return $null
 }
-
-# ── 빌드 ─────────────────────────────────────────────────────────────────
 
 function Invoke-Build {
     param([switch]$Clean)
 
     $msbuild = Find-MSBuild
-    if (-not $msbuild) { throw 'MSBuild.exe를 찾을 수 없습니다. Visual Studio를 설치하세요.' }
-    Write-Host "[BUILD] MSBuild: $msbuild"
+    if (-not $msbuild) {
+        throw 'MSBuild.exe was not found. Install Visual Studio or Build Tools.'
+    }
 
     $target = if ($Clean) { 'Rebuild' } else { 'Build' }
-    & $msbuild $vcxproj /p:Configuration=$Config /p:Platform=x64 /t:$target /m /nologo /verbosity:minimal
-    if ($LASTEXITCODE -ne 0) { throw "빌드 실패 (exit $LASTEXITCODE)" }
-    Write-Host "[BUILD] 완료: $binDir"
-}
 
-# ── 단일 백엔드 비대화형 실행 ─────────────────────────────────────────────
+    Write-Host "[BUILD] MSBuild: $msbuild"
+    & $msbuild $vcxproj /p:Configuration=$Config /p:Platform=x64 /t:$target /m /nologo /verbosity:minimal
+    if ($LASTEXITCODE -ne 0) {
+        throw "Build failed (exit $LASTEXITCODE)"
+    }
+
+    Write-Host "[BUILD] Output dir: $projectBinDir"
+}
 
 function Run-Backend {
-    param([int]$MenuNum, [string]$Label, [string]$ConnOverride)
+    param(
+        [string]$ExePath,
+        [string]$BackendName,
+        [string]$Label,
+        [string]$ConnOverride
+    )
 
-    Write-Host "`n[$Label] 테스트 시작..."
+    Write-Host "`n[$Label] Starting..."
 
-    # 연결 문자열 오버라이드 (환경변수)
-    $input = "$MenuNum`n"   # 백엔드 선택
-    if ($MenuNum -eq 1) {
-        # SQLite — 연결 문자열 입력 없음
-        $input += "`n"
-    } else {
-        # 연결 문자열 입력 (빈 줄 = 기본값, 아니면 오버라이드)
-        $input += "$ConnOverride`n"
+    $args = @('--backend', $BackendName)
+    if ($ConnOverride) {
+        $args += @('--connstr', $ConnOverride)
     }
-    $input += "`n"  # Enter를 눌러 계속
-    $input += "0`n" # 종료
 
-    $output = $input | & $exePath 2>&1
-    Write-Host $output
+    $stdoutPath = Join-Path $env:TEMP "dbmoduletest_stdout_$PID.txt"
+    $stderrPath = Join-Path $env:TEMP "dbmoduletest_stderr_$PID.txt"
 
-    # 결과 파싱
-    if ($output -match 'ALL OK') { return $true  }
-    if ($output -match 'FAILED') { return $false }
-    return $true  # 연결 실패는 경고로 처리
+    try {
+        Remove-Item $stdoutPath, $stderrPath -ErrorAction SilentlyContinue
+
+        $proc = Start-Process -FilePath $ExePath `
+            -ArgumentList $args `
+            -WorkingDirectory (Split-Path -Parent $ExePath) `
+            -PassThru -Wait `
+            -RedirectStandardOutput $stdoutPath `
+            -RedirectStandardError $stderrPath
+
+        if (Test-Path $stdoutPath) {
+            Get-Content $stdoutPath | Write-Host
+        }
+
+        if ((Test-Path $stderrPath) -and ((Get-Item $stderrPath).Length -gt 0)) {
+            Get-Content $stderrPath | Write-Host
+        }
+
+        if ($proc.ExitCode -ne 0) {
+            Write-Host "[WARN] Exit code: $($proc.ExitCode)" -ForegroundColor Yellow
+        }
+
+        return ($proc.ExitCode -eq 0)
+    }
+    finally {
+        Remove-Item $stdoutPath, $stderrPath -ErrorAction SilentlyContinue
+    }
 }
 
-# ── 메인 ─────────────────────────────────────────────────────────────────
+$exePath = Resolve-DBModuleTestExePath
 
 Write-Host ''
-Write-Host '=== DBModuleTest — Network::Database 모듈 수동 테스트 ===' -ForegroundColor Magenta
-Write-Host "프로젝트: $projectDir"
-Write-Host "설정:     $Config / x64"
+Write-Host '=== DBModuleTest / Network::Database manual test runner ===' -ForegroundColor Magenta
+Write-Host "Project: $projectDir"
+Write-Host "Config:  $Config / x64"
 Write-Host ''
 
-if ($Build -or $Rebuild) { Invoke-Build -Clean:$Rebuild }
+if ($Build -or $Rebuild) {
+    Invoke-Build -Clean:$Rebuild
+    $exePath = Resolve-DBModuleTestExePath
+}
 
 if (-not (Test-Path $exePath)) {
-    Write-Host "[WARN] 실행 파일이 없습니다: $exePath" -ForegroundColor Yellow
-    Write-Host "       -Build 옵션으로 먼저 빌드하거나 Visual Studio에서 빌드하세요." -ForegroundColor Yellow
-    $ans = Read-Host "지금 빌드할까요? (y/N)"
-    if ($ans -match '^[yY]') { Invoke-Build }
-    else { exit 1 }
+    Write-Host "[WARN] Executable not found: $exePath" -ForegroundColor Yellow
+    Write-Host '       Use -Build or build the project from Visual Studio first.' -ForegroundColor Yellow
+    $answer = Read-Host 'Build now? (y/N)'
+    if ($answer -match '^[yY]') {
+        Invoke-Build
+        $exePath = Resolve-DBModuleTestExePath
+    }
+    else {
+        exit 1
+    }
 }
 
-# ── 대화형 모드 ───────────────────────────────────────────────────────────
 if ($Backend -eq 'interactive') {
-    Write-Host '대화형 모드로 실행합니다 (메뉴에서 백엔드를 선택하세요).'
+    Write-Host 'Launching interactive mode.'
     Write-Host ''
     & $exePath
     exit $LASTEXITCODE
 }
 
-# ── 비대화형 모드 ─────────────────────────────────────────────────────────
-
 $map = @{
-    'sqlite' = @{ Num = 1; Label = 'SQLite';    Env = '' }
-    'mssql'  = @{ Num = 2; Label = 'MSSQL ODBC'; Env = 'DB_MSSQL_ODBC' }
-    'pgsql'  = @{ Num = 3; Label = 'PostgreSQL ODBC'; Env = 'DB_PGSQL_ODBC' }
-    'mysql'  = @{ Num = 4; Label = 'MySQL ODBC'; Env = 'DB_MYSQL_ODBC' }
-    'oledb'  = @{ Num = 5; Label = 'OLE DB';    Env = 'DB_OLEDB' }
+    'sqlite' = @{ Label = 'SQLite'; Env = '' }
+    'mssql'  = @{ Label = 'MSSQL ODBC'; Env = 'DB_MSSQL_ODBC' }
+    'pgsql'  = @{ Label = 'PostgreSQL ODBC'; Env = 'DB_PGSQL_ODBC' }
+    'mysql'  = @{ Label = 'MySQL ODBC'; Env = 'DB_MYSQL_ODBC' }
+    'oledb'  = @{ Label = 'OLE DB'; Env = 'DB_OLEDB' }
 }
 
-$targets = if ($Backend -eq 'all') { @('sqlite','mssql','pgsql','mysql','oledb') }
-           else                    { @($Backend) }
+$targets = if ($Backend -eq 'all') {
+    @('sqlite', 'mssql', 'pgsql', 'mysql', 'oledb')
+}
+else {
+    @($Backend)
+}
 
 $results = @()
-foreach ($t in $targets) {
-    $info = $map[$t]
+foreach ($target in $targets) {
+    $info = $map[$target]
     $conn = ''
-    if ($ConnStr) { $conn = $ConnStr }
+
+    if ($ConnStr) {
+        $conn = $ConnStr
+    }
     elseif ($info.Env) {
-        $envVal = [System.Environment]::GetEnvironmentVariable($info.Env)
-        if ($envVal) { $conn = $envVal }
+        $envValue = [System.Environment]::GetEnvironmentVariable($info.Env)
+        if ($envValue) {
+            $conn = $envValue
+        }
     }
 
-    $ok = Run-Backend -MenuNum $info.Num -Label $info.Label -ConnOverride $conn
-    $results += [PSCustomObject]@{ Backend = $info.Label; OK = $ok }
+    $ok = Run-Backend -ExePath $exePath -BackendName $target -Label $info.Label -ConnOverride $conn
+    $results += [PSCustomObject]@{
+        Backend = $info.Label
+        OK = $ok
+    }
 }
 
 Write-Host ''
-Write-Host '=== 최종 요약 ===' -ForegroundColor Magenta
+Write-Host '=== Final Summary ===' -ForegroundColor Magenta
+
 $allOk = $true
-foreach ($r in $results) {
-    $mark  = if ($r.OK) { 'PASS' } else { 'FAIL'; $allOk = $false }
-    $color = if ($r.OK) { 'Green' } else { 'Red' }
-    Write-Host ("  [{0}] {1}" -f $mark, $r.Backend) -ForegroundColor $color
+foreach ($result in $results) {
+    $mark = if ($result.OK) { 'PASS' } else { 'FAIL' }
+    $color = if ($result.OK) { 'Green' } else { 'Red' }
+    if (-not $result.OK) {
+        $allOk = $false
+    }
+
+    Write-Host ("  [{0}] {1}" -f $mark, $result.Backend) -ForegroundColor $color
 }
 
 exit $(if ($allOk) { 0 } else { 1 })

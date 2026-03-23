@@ -102,6 +102,22 @@ if ($existing -match '^Up') {
 # ── Step 5: Wait for PostgreSQL ───────────────────────────────────────────────
 
 Wait-ContainerReady -ContainerName $CONTAINER_NAME -Port $PG_PORT -TimeoutSec 60
+Write-Info "Waiting for PostgreSQL login readiness (up to 30s)..."
+$ready = $false
+$deadline = (Get-Date).AddSeconds(30)
+do {
+    Start-Sleep -Seconds 2
+    docker exec $CONTAINER_NAME psql -U $PG_USER -d postgres -tAc "SELECT 1" 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        $ready = $true
+        break
+    }
+} while ((Get-Date) -lt $deadline)
+
+if (-not $ready) {
+    throw "PostgreSQL did not become query-ready within 30 seconds"
+}
+Write-Ok "PostgreSQL login ready"
 
 # ── Step 6: Create test database ──────────────────────────────────────────────
 
