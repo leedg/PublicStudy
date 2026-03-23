@@ -46,6 +46,8 @@ Debug/
 *.temp
 *.log
 ~$*
+*.bkp
+.$*.bkp
 
 # Build output logs
 *_out.txt

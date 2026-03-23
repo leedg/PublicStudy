@@ -12,11 +12,11 @@
 
 이 보고서는 NetworkModuleTest 프로젝트의 네트워크 처리 구조, 비동기 처리 구조, DB 처리 구조를 코드 수준에서 정리한다. 멀티플랫폼으로서 아키텍처의 각 계층이 어떻게 협력하고, 데이터가 어떤 경로로 흐르며, 비동기·논블로킹 설계가 어떻게 적용되어 있는지를 중심으로 기술한다.
 
-![전체 아키텍처 개요 — INetworkEngine · AsyncIOProvider · 스레드 역할 분리](assets/diag_overview.png)
+![전체 아키텍처 개요 — INetworkEngine · AsyncIOProvider · 스레드 역할 분리](assets/Sec01-Overview-SystemFlowChart.png)
 
 ▲ 전체 아키텍처 개요 — INetworkEngine · AsyncIOProvider · 스레드 역할 분리
 
-![아키텍처 계층 구조](assets/diag_arch.png)
+![아키텍처 계층 구조](assets/Sec01-Overview-ArchitectureLayers.png)
 
 ▲ 아키텍처 계층 구조
 
@@ -61,11 +61,11 @@
 4. 로직 스레드풀에서 `OnConnected + Connected` 이벤트 비동기 실행
 5. 첫 번째 Recv 등록 (수신 루프 시작)
 
-![클라이언트 생명주기 시퀀스 — 접속 수락 → 핸드셰이크 → ping/pong → 종료](assets/diag_client_lifecycle.png)
+![클라이언트 생명주기 시퀀스 — 접속 수락 → 핸드셰이크 → ping/pong → 종료](assets/Sec02-Network-ClientLifecycleSequence.png)
 
 ▲ 클라이언트 생명주기 시퀀스 — 접속 수락 → 핸드셰이크 → ping/pong → 종료
 
-![연결 수립 시퀀스](assets/diag_seq.png)
+![연결 수립 시퀀스](assets/Sec02-Network-ConnectionEstablishmentSequence.png)
 
 ▲ 연결 수립 시퀀스
 
@@ -73,7 +73,7 @@
 
 `Session`은 네트워크 계층의 핵심 단위다. 연결 상태, 송수신 큐, `AsyncScope`를 하나의 객체로 관리하며, 동기화는 역할별로 분리된 프리미티브가 담당한다.
 
-![Session UML — 주요 멤버 변수 및 동기화 프리미티브 구조](assets/diag_session_uml.png)
+![Session UML — 주요 멤버 변수 및 동기화 프리미티브 구조](assets/Sec02-Network-SessionUML.png)
 
 ▲ Session UML — 주요 멤버 변수 및 동기화 프리미티브 구조
 
@@ -129,7 +129,7 @@
 
 비동기 처리는 I/O 완료 스레드(플랫폼 엔진)와 로직 스레드풀(`KeyedDispatcher`)의 역할 분리를 기반으로 한다. DB 작업은 별도의 논블로킹 큐(`DBTaskQueue`, `OrderedTaskQueue`)로 오프로딩하여 로직 스레드 지연을 최소화한다.
 
-![I/O 완료 → 워커 배정 흐름](assets/diag_async_1_dispatch.png)
+![I/O 완료 → 워커 배정 흐름](assets/Sec03-Async-IOCompletionDispatchFlow.png)
 
 ▲ I/O 완료 → 워커 배정 흐름
 
@@ -179,7 +179,7 @@
 `Concurrency/KeyedDispatcher.h` — Dispatch / Shutdown 구현
 `Concurrency/ExecutionQueue.h` — Push / Pop / BackpressurePolicy
 
-![KeyedDispatcher — 세션 친화 라우팅 (session_id % workerCount)](assets/diag_async_2_keyed.png)
+![KeyedDispatcher — 세션 친화 라우팅 (session_id % workerCount)](assets/Sec03.3-AsyncWAL-KeyedDispatcherSessionRouting.png)
 
 ▲ KeyedDispatcher — 세션 친화 라우팅 (session_id % workerCount)
 
@@ -200,7 +200,7 @@
 
 DB 레이어는 `IDatabase / IStatement` 인터페이스 기반으로 구현체를 교체 가능하게 설계되어 있다. `TestServer`는 로컬 SQLite/Mock DB를 `DBTaskQueue`로 비동기 접근하고, `TestDBServer`는 네트워크로 수신한 요청을 `OrderedTaskQueue`를 통해 처리한다.
 
-![DB 처리 계층](assets/diag_db.png)
+![DB 처리 계층](assets/Sec04-DB-ProcessingLayerWALFactoryQueue.png)
 
 ▲ DB 처리 계층
 
