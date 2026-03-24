@@ -35,12 +35,12 @@ namespace Network::Core
 
 struct NetworkBusEventData
 {
-	NetworkEvent eventType{};
-	ConnectionId connectionId{0};
-	size_t       dataSize{0};
-	OSError      errorCode{0};
-	Timestamp    timestamp{0};
-	std::vector<uint8_t> data; // 페이로드 복사 (데이터 없으면 empty)
+	NetworkEvent         eventType{};      // 이벤트 종류
+	ConnectionId         connectionId{0};  // 관련 세션 ID
+	size_t               dataSize{0};      // data 벡터의 유효 바이트 수
+	OSError              errorCode{0};     // OS 에러 코드 (없으면 0)
+	Timestamp            timestamp{0};     // 이벤트 발생 시각
+	std::vector<uint8_t> data;             // 페이로드 복사 (데이터 없으면 empty — 다중 구독자에 복사 전달)
 };
 
 // =============================================================================
@@ -73,14 +73,14 @@ class NetworkEventBus
 
 	struct Subscription
 	{
-		SubscriberHandle            handle;
-		std::weak_ptr<EventChannel> channel;
+		SubscriberHandle            handle;   // Unsubscribe() 에 전달할 고유 핸들
+		std::weak_ptr<EventChannel> channel;  // 구독자 채널 — 만료 시 다음 Publish에서 지연 제거
 	};
 
-	// NetworkEvent(uint8_t) → 구독자 리스트.
-	std::unordered_map<uint8_t, std::vector<Subscription>> mSubscribers;
-	mutable std::shared_mutex                              mMutex;
-	std::atomic<SubscriberHandle>                          mNextHandle{1};
+	// ─── 내부 상태 ───────────────────────────────────────────────────────────
+	std::unordered_map<uint8_t, std::vector<Subscription>> mSubscribers;  // NetworkEvent 키별 구독자 리스트
+	mutable std::shared_mutex                              mMutex;        // mSubscribers 읽기(shared)·쓰기(unique) 보호
+	std::atomic<SubscriberHandle>                          mNextHandle{1}; // 단조 증가 핸들 생성기 (relaxed)
 };
 
 } // namespace Network::Core

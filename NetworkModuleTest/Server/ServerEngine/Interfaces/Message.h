@@ -14,10 +14,10 @@ using ConnectionId = uint64_t;
 
 struct Message
 {
-	MessageType          type         = MessageType::Unknown;
-	ConnectionId         connectionId = 0;
-	std::vector<uint8_t> data;        // 헤더를 제외한 페이로드
-	uint64_t             timestamp    = 0; // 밀리초 (system_clock 기준)
+	MessageType          type         = MessageType::Unknown; // 파싱된 메시지 타입
+	ConnectionId         connectionId = 0;                    // 송수신 연결 ID
+	std::vector<uint8_t> data;                                // 헤더를 제외한 페이로드
+	uint64_t             timestamp    = 0;                    // 메시지 생성 시각 (system_clock 밀리초)
 };
 
 } // namespace Network::Interfaces

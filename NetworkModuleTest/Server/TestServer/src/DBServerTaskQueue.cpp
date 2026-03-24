@@ -596,5 +596,4 @@ bool DBServerTaskQueue::CheckTask(const DBServerTask& task)
     }
 }
 
-
 } // namespace Network::TestServer

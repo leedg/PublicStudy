@@ -91,7 +91,6 @@ void IocpAsyncIOProvider::Shutdown()
 	std::lock_guard<std::mutex> lock(mMutex);
 	mPendingRecvOps.clear();
 	mPendingSendOps.clear();
-
 }
 
 bool IocpAsyncIOProvider::IsInitialized() const
@@ -144,7 +143,7 @@ int64_t IocpAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 
 AsyncIOError IocpAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
 {
-	// UnregisterBuffer: IOCP는 버퍼 등록을 사용하지 않으므로 승과 반환.
+	// UnregisterBuffer: IOCP는 버퍼 등록을 사용하지 않으므로 성공 반환.
 	return AsyncIOError::Success;
 }
 
@@ -315,7 +314,7 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 AsyncIOError IocpAsyncIOProvider::FlushRequests()
 {
-	// IOCP는 배치 배송 개념이 없다. FlushRequests는 노억으로 성공을 반환한다.
+	// IOCP는 배치 발송 개념이 없다. FlushRequests는 노옵으로 성공을 반환한다.
 	return AsyncIOError::Success;
 }
 

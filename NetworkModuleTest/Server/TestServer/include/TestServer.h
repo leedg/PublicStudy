@@ -69,60 +69,62 @@ namespace Network::TestServer
     private:
         // 모든 클라이언트 세션에서 공유하는 패킷 핸들러 (생성 후 stateless).
         // TestServer 생성자에서 1회 할당, 세션별 OnRecv 콜백에 주입.
-        std::unique_ptr<ClientPacketHandler>        mPacketHandler;
+        std::unique_ptr<ClientPacketHandler>        mPacketHandler;       // 클라이언트 패킷 디스패처 (stateless, 공유)
 
         // 클라이언트 연결 엔진 (멀티플랫폼 지원)
-        std::unique_ptr<Core::INetworkEngine>       mClientEngine;
+        std::unique_ptr<Core::INetworkEngine>       mClientEngine;        // IOCP/io_uring 등 자동 선택; Stop 시 해제
 
         // DB 서버 연결 세션 (raw Core::SessionRef 대신 타입화된 세션 사용)
-        DBServerSessionRef                           mDBServerSession;
+        DBServerSessionRef                           mDBServerSession;     // TestDBServer와의 단일 연결 세션 (shared_ptr)
 
         // TestServer가 소유하는 로컬 DB, DBTaskQueue에 주입.
         //   dbConnectionString이 비면 MockDatabase, 아니면 SQLiteDatabase.
         //   mDBTaskQueue보다 오래 살아야 하므로 먼저 선언 (C++ 역순 소멸 보장).
-        std::unique_ptr<Network::Database::IDatabase> mLocalDatabase;
+        std::unique_ptr<Network::Database::IDatabase> mLocalDatabase;     // 로컬 DB 소유 — mDBTaskQueue보다 먼저 선언 필수
 
         // 비동기 DB 작업 큐 — shared_ptr로 유지하여 세션 팩토리 람다가 weak_ptr을 캡처한다.
         //   세션 OnRecv 콜백은 weak_ptr::lock()으로 큐에 접근하며,
         //   TestServer 종료 후 늦게 도착한 IOCP 완료에서 큐가 이미 소멸됐을 경우
         //   lock()이 nullptr을 반환하므로 use-after-free 없이 안전하게 건너뛴다.
-        std::shared_ptr<DBTaskQueue>                mDBTaskQueue;
+        std::shared_ptr<DBTaskQueue>                mDBTaskQueue;         // 로컬 DB 비동기 작업 큐; 세션은 weak_ptr로 참조
 
         // 클라이언트 요청을 TestDBServer로 중계하는 비동기 작업 큐
-        std::shared_ptr<DBServerTaskQueue>          mDBServerTaskQueue;
+        std::shared_ptr<DBServerTaskQueue>          mDBServerTaskQueue;   // DB 서버 중계 큐; 세션은 weak_ptr로 참조
 
         // 서버 상태
-        std::atomic<bool>                           mIsRunning;
-        uint16_t                                    mPort;
-        std::string                                 mDbConnectionString;
-        std::string                                 mEngineType;
+        std::atomic<bool>                           mIsRunning;          // Start 후 true, Stop 시 false
+        uint16_t                                    mPort;               // 클라이언트 리슨 포트 (Initialize 시 설정)
+        std::string                                 mDbConnectionString; // 로컬 DB 연결 문자열 (비면 MockDatabase)
+        std::string                                 mEngineType;         // 네트워크 엔진 타입 ("auto", "iocp" 등)
 
 #ifdef _WIN32
+        // ─────────────────────────────────────────────
         // DB 서버 연결 상태 (현재 Windows 전용)
-        SocketHandle                                mDBServerSocket;
-        std::atomic<bool>                           mDBRunning;
-        std::atomic<uint32_t>                       mDBPingSequence;
-        std::thread                                 mDBRecvThread;
+        // ─────────────────────────────────────────────
+        SocketHandle                                mDBServerSocket;      // DB 서버 TCP 소켓 (INVALID_SOCKET = 미연결)
+        std::atomic<bool>                           mDBRunning;           // DB 연결 활성 여부; DBRecvLoop 루프 조건
+        std::atomic<uint32_t>                       mDBPingSequence;      // 핑 시퀀스 번호 — 타이머 콜백에서 단조 증가 (relaxed)
+        std::thread                                 mDBRecvThread;        // DB 수신 루프 스레드 — DisconnectFromDBServer 시 join
         // 이전의 mDBPingThread를 TimerQueue로 교체 — mDBPingTimer가 핸들 보유.
-        Network::Concurrency::TimerQueue            mTimerQueue;
-        Network::Concurrency::TimerQueue::TimerHandle mDBPingTimer{0};
-        std::mutex                                  mDBSendMutex;
+        Network::Concurrency::TimerQueue            mTimerQueue;          // 주기적 DB 핑 타이머 스케줄러 (소유)
+        Network::Concurrency::TimerQueue::TimerHandle mDBPingTimer{0};    // 반복 핑 타이머 핸들 (0 = 미등록)
+        std::mutex                                  mDBSendMutex;         // SendDBPacket 직렬화 (다중 스레드 send 방지)
         // 종료 시 재연결 루프 backoff sleep을 즉시 깨우기 위한 조건 변수.
         // Stop()이 notify_all()로 DBReconnectLoop를 중단시킨다.
-        std::condition_variable                     mDBShutdownCV;
-        std::mutex                                  mDBShutdownMutex;
-        std::vector<char>                           mDBRecvBuffer;
+        std::condition_variable                     mDBShutdownCV;        // Stop() 시 DBReconnectLoop 즉시 깨움
+        std::mutex                                  mDBShutdownMutex;     // mDBShutdownCV 대응 뮤텍스
+        std::vector<char>                           mDBRecvBuffer;        // DB 수신 누적 버퍼 (8192*4 예비 할당)
         // 읽기 오프셋 — O(1) 버퍼 소비를 위해 사용 (O(n) erase 방지)
-        size_t                                      mDBRecvOffset = 0;
+        size_t                                      mDBRecvOffset = 0;    // mDBRecvBuffer 내 미처리 데이터 시작 위치
         // DB 재연결 시 사용할 엔드포인트 저장
-        std::string                                 mDBHost;
-        uint16_t                                    mDBPort = 0;
-        std::thread                                 mDBReconnectThread;
-        std::atomic<bool>                           mDBReconnectRunning;
+        std::string                                 mDBHost;              // DB 서버 호스트 (ConnectToDBServer 인자 저장)
+        uint16_t                                    mDBPort = 0;          // DB 서버 포트 (ConnectToDBServer 인자 저장)
+        std::thread                                 mDBReconnectThread;   // 재연결 루프 스레드 — Stop 시 join
+        std::atomic<bool>                           mDBReconnectRunning;  // 재연결 루프 활성 여부 (중복 시작 방지)
         // ConnectToDBServer() 실패 시 마지막 WSA 에러 코드.
         // WSAECONNREFUSED(10061, 서버 종료/기동 중)와 기타 오류를 구분하여
         // DBReconnectLoop에서 백오프 전략을 결정한다.
-        std::atomic<int>                            mLastDBConnectError{0};
+        std::atomic<int>                            mLastDBConnectError{0};  // ConnectToDBServer 실패 시 WSAGetLastError() 결과
 #endif
     };
 

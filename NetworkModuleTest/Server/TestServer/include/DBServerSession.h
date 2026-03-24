@@ -29,7 +29,7 @@ namespace Network::TestServer
         DBServerPacketHandler* GetPacketHandler() { return mPacketHandler.get(); }
 
     private:
-        std::unique_ptr<DBServerPacketHandler> mPacketHandler;
+        std::unique_ptr<DBServerPacketHandler> mPacketHandler;  // DB 서버 수신 패킷 디스패처 — 세션 소유
     };
 
     using DBServerSessionRef = std::shared_ptr<DBServerSession>;

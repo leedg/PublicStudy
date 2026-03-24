@@ -94,12 +94,19 @@ public:
 	size_t GetActiveTaskCount() const { return mActiveTasks.load(); }
 
 private:
-	std::vector<std::thread> mWorkers;
-	SafeQueue<std::function<void()>> mTasks;
-	std::atomic<bool> mStop;
-	std::atomic<size_t> mActiveTasks;
-	std::mutex mWaitMutex;
-	std::condition_variable mWaitCV;
+	// ─────────────────────────────────────────────
+	// 스레드 & 큐
+	// ─────────────────────────────────────────────
+	std::vector<std::thread> mWorkers;                  // 고정 크기 워커 스레드 목록
+	SafeQueue<std::function<void()>> mTasks;            // 워커 스레드가 소비하는 태스크 큐
+
+	// ─────────────────────────────────────────────
+	// 상태 & 동기화
+	// ─────────────────────────────────────────────
+	std::atomic<bool> mStop;                            // true → 워커 루프 종료 신호 (relaxed 읽기 허용)
+	std::atomic<size_t> mActiveTasks;                   // 현재 실행 중인 태스크 수; WaitForAll() 조건 판단에 사용
+	std::mutex mWaitMutex;                              // mWaitCV 계약용 뮤텍스 (보호 대상 없음, CV 요구사항 충족)
+	std::condition_variable mWaitCV;                    // mActiveTasks == 0 && mTasks.Empty() 시 notify
 
 	void WorkerThread()
 	{

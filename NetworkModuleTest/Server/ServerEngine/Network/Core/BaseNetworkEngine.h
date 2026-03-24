@@ -117,39 +117,38 @@ class BaseNetworkEngine : public INetworkEngine
 	// 비동기 I/O 공급자 (플랫폼별 백엔드).
 	// Session이 SetAsyncProvider()를 통해 복사본을 보유하므로 shared_ptr을 사용한다.
 	// 엔진이 Shutdown()되더라도 세션이 참조를 놓을 때까지 공급자 객체가 살아있는다.
-	std::shared_ptr<AsyncIO::AsyncIOProvider> mProvider;
+	std::shared_ptr<AsyncIO::AsyncIOProvider> mProvider;  // IOCP/RIO/epoll 등 플랫폼별 I/O 공급자
 
-	// 설정
-	uint16_t mPort;
-	size_t mMaxConnections;
+	// ─── 설정 (Initialize()에서 1회 쓰기, 이후 읽기 전용) ───────────────────
+	uint16_t mPort;            // 수신 대기 포트 번호
+	size_t   mMaxConnections;  // 최대 허용 동시 연결 수
 
-	// 상태
-	std::atomic<bool> mRunning;
-	std::atomic<bool> mInitialized;
+	// ─── 상태 ────────────────────────────────────────────────────────────────
+	std::atomic<bool> mRunning;      // Start()/Stop() 제어 플래그 — I/O 루프 종료 조건
+	std::atomic<bool> mInitialized;  // 중복 Initialize() 호출 방지
 
-	// 이벤트 콜백
-	std::unordered_map<NetworkEvent, NetworkEventCallback> mCallbacks;
-	mutable std::mutex mCallbackMutex;
+	// ─── 이벤트 콜백 ─────────────────────────────────────────────────────────
+	std::unordered_map<NetworkEvent, NetworkEventCallback> mCallbacks;  // 이벤트 타입별 단일 콜백
+	mutable std::mutex mCallbackMutex;                                  // mCallbacks 읽기·쓰기 보호
 
 	// 순서 보장 비동기 로직 실행을 위한 키 친화도 디스패처.
 	// 동일 sessionId는 항상 같은 워커로 라우팅되어 세션 단위 FIFO 순서가 보장된다.
-	// 이로 인해 ProcessRawRecv와 Close()가 동일 세션에 대해 직렬화된다.
-	Network::Concurrency::KeyedDispatcher mLogicDispatcher;
+	Network::Concurrency::KeyedDispatcher mLogicDispatcher;  // 세션 친화도 로직 워커 풀 (기본 4스레드)
 
 	// 엔진 수준 타이머 큐.
 	// 세션 타임아웃 점검(PING_TIMEOUT_MS/2 주기) 등 주기 작업에 사용된다.
-	Network::Concurrency::TimerQueue mTimerQueue;
+	Network::Concurrency::TimerQueue mTimerQueue;  // 주기 타이머 — Shutdown()에서 명시적으로 내림
 
-	// 통계 — 핫 패스 카운터는 atomic, 콜드 패스 데이터는 mutex 사용.
-	// Send/Recv 에러 카운터를 분리 집계하여 GetStatistics()에서 방향별 분류를 제공한다.
+	// ─── 통계 ────────────────────────────────────────────────────────────────
+	// 핫 패스 카운터는 atomic (lock-free), 콜드 패스 스냅샷은 mStatsMutex 보호.
 	// totalErrors = sendErrors + recvErrors.
-	mutable std::mutex mStatsMutex;
-	Statistics mStats;
-	std::atomic<uint64_t> mTotalBytesSent{0};
-	std::atomic<uint64_t> mTotalBytesReceived{0};
-	std::atomic<uint64_t> mTotalConnections{0};
-	std::atomic<uint64_t> mTotalSendErrors{0};
-	std::atomic<uint64_t> mTotalRecvErrors{0};
+	mutable std::mutex    mStatsMutex;                   // mStats 스냅샷 일관성 보호
+	Statistics            mStats;                        // startTime 등 초기화 시점 데이터
+	std::atomic<uint64_t> mTotalBytesSent{0};            // 누적 송신 바이트 (relaxed 읽기 허용)
+	std::atomic<uint64_t> mTotalBytesReceived{0};        // 누적 수신 바이트 (relaxed 읽기 허용)
+	std::atomic<uint64_t> mTotalConnections{0};          // 누적 연결 수 (현재 미사용 — 확장 예정)
+	std::atomic<uint64_t> mTotalSendErrors{0};           // 송신 방향 에러 카운터
+	std::atomic<uint64_t> mTotalRecvErrors{0};           // 수신 방향 에러 카운터
 };
 
 } // namespace Network::Core

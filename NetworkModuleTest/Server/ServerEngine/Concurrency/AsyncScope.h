@@ -144,15 +144,21 @@ class AsyncScope
 		}
 	}
 
-	std::atomic<bool> mCancelled;
-	std::atomic<size_t> mInFlight;
+	// ─────────────────────────────────────────────
+	// 취소 & 인플라이트 추적
+	// ─────────────────────────────────────────────
+	std::atomic<bool>   mCancelled;  // true → 새 Submit() 차단 + 래퍼 람다에서 태스크 실행 스킵; release/acquire 쌍
+	std::atomic<size_t> mInFlight;   // 현재 디스패치 완료 대기 중인 태스크 수; WaitForDrain() 조건 판단에 사용
 
+	// ─────────────────────────────────────────────
+	// 드레인 동기화
+	// ─────────────────────────────────────────────
 	// mDrainMutex는 순전히 std::condition_variable 계약을 충족하기 위해 존재한다.
 	// condition_variable::wait는 보호할 공유 가변 상태가 없더라도 unique_lock을 요구한다.
 	// (mInFlight는 atomic이므로 락 없이 안전하게 읽을 수 있다.)
 	// EndTask는 이 mutex를 보유하지 않고 notify_all을 호출하며, 이는 의도적이고 정확하다.
-	mutable std::mutex mDrainMutex;
-	std::condition_variable mDrainCV;
+	mutable std::mutex mDrainMutex;       // CV 계약용 (보호 대상 없음; mInFlight는 atomic)
+	std::condition_variable mDrainCV;     // mInFlight == 0 시 notify_all → WaitForDrain() 대기자 깨움
 };
 
 } // namespace Network::Concurrency

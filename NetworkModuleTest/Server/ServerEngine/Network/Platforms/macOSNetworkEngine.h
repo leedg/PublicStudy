@@ -42,12 +42,18 @@ class macOSNetworkEngine : public Core::BaseNetworkEngine
 	void WorkerThread();
 
   private:
-	int mListenSocket; // POSIX fd; -1 = 미초기화
+	// ─────────────────────────────────────────────
+	// 소켓
+	// ─────────────────────────────────────────────
+	int mListenSocket;    // TCP listen fd — POSIX fd; -1 = 미초기화
 
 	// Accept 루프에서 연속 오류 발생 시 지수 백오프용 대기 시간(ms).
 	// static 변수 대신 멤버 변수로 유지하여 재진입/복수 인스턴스 버그를 방지한다.
-	int mAcceptBackoffMs;
+	int mAcceptBackoffMs; // 초기값 10ms, 오류 지속 시 최대 1000ms까지 2배씩 증가
 
+	// ─────────────────────────────────────────────
+	// 스레드
+	// ─────────────────────────────────────────────
 	std::thread              mAcceptThread;  // 단일 accept 전담 스레드
 	std::vector<std::thread> mWorkerThreads; // 완료 처리 워커 (hardware_concurrency개)
 };

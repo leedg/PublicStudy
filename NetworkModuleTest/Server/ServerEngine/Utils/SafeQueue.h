@@ -123,11 +123,22 @@ public:
 	}
 
 private:
-	std::queue<T> mQueue;
-	mutable std::mutex mMutex;
-	std::condition_variable mCondition;
-	bool mShutdown = false;
-	size_t mMaxSize = 0;
+	// ─────────────────────────────────────────────
+	// 저장소
+	// ─────────────────────────────────────────────
+	std::queue<T> mQueue;                          // 실제 항목을 보관하는 FIFO 컨테이너
+
+	// ─────────────────────────────────────────────
+	// 동기화
+	// ─────────────────────────────────────────────
+	mutable std::mutex mMutex;                     // mQueue / mShutdown 접근 직렬화
+	std::condition_variable mCondition;            // 항목 추가(!mQueue.empty()) 또는 Shutdown 시 notify
+
+	// ─────────────────────────────────────────────
+	// 설정 & 상태
+	// ─────────────────────────────────────────────
+	bool mShutdown = false;                        // true → Pop()이 즉시 false 반환하도록 신호
+	size_t mMaxSize = 0;                           // 큐 최대 용량 (0 = 무제한)
 };
 
 } // namespace Network::Utils

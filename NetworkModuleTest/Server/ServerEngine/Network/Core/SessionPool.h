@@ -59,28 +59,28 @@ class SessionPool
     // alignas(64)로 핫 atomic 필드를 별도 캐시 라인에 배치 — false sharing 방지.
     struct alignas(64) PoolSlot
     {
-        Session            session;
-        std::atomic<bool>  inUse{false};
-        size_t             slotIdx{0};
+        Session           session;          // 세션 객체 본체 — 이동하지 않아 OVERLAPPED 포인터가 안정적
+        std::atomic<bool> inUse{false};     // 슬롯 사용 중 여부 — acquire/release로 가시성 보장
+        size_t            slotIdx{0};       // 자기 자신의 인덱스 — deleter 캡처용 (포인터 산술 불필요)
     };
 
     // 인덱스로 슬롯 반납. shared_ptr deleter에서 slotIdx를 캡처하므로 포인터 산술 불필요.
     void ReleaseInternal(size_t slotIdx);
 
-    std::unique_ptr<PoolSlot[]>  mSlots;
-    size_t                       mCapacity{0};
+    std::unique_ptr<PoolSlot[]> mSlots;      // 사전 할당된 세션 슬롯 배열 — 고정 주소로 OVERLAPPED 포인터 안정
+    size_t                      mCapacity{0}; // 슬롯 총 수 — Initialize() 이후 불변
 
     // O(1) 프리리스트 스택 (mFreeListMutex 보호).
-    std::vector<size_t> mFreeList;
-    std::mutex          mFreeListMutex;
+    std::vector<size_t> mFreeList;            // 빈 슬롯 인덱스 스택 — back()/pop_back() 대여, push_back() 반납
+    std::mutex          mFreeListMutex;       // mFreeList Acquire/Release 동시 접근 보호
 
 #ifdef _WIN32
     // Initialize() 이후 불변 — 다중 스레드 읽기에 락 불필요.
-    std::unordered_map<const OVERLAPPED *, IOType> mIOContextMap;
+    std::unordered_map<const OVERLAPPED *, IOType> mIOContextMap;  // OVERLAPPED* → Recv/Send 역매핑
 #endif
 
-    std::atomic<size_t> mActiveCount{0};
-    bool                mInitialized{false};
+    std::atomic<size_t> mActiveCount{0};  // 현재 대여 중인 슬롯 수 — Shutdown 시 잔여 감지용
+    bool                mInitialized{false};  // 중복 Initialize() 방지 플래그
 };
 
 } // namespace Network::Core

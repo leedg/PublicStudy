@@ -45,10 +45,10 @@ namespace Network::TestServer
 
     struct DBTask
     {
-        DBTaskType type;
-        ConnectionId sessionId;
-        std::string data;     // JSON 또는 직렬화된 데이터
-        std::function<void(bool success, const std::string& result)> callback;  // 선택적 콜백
+        DBTaskType type;      // 작업 종류 (RecordConnectTime / RecordDisconnectTime / UpdatePlayerData)
+        ConnectionId sessionId;  // 요청 세션 ID — 워커 라우팅 키 (sessionId % workerCount)
+        std::string data;     // JSON 또는 직렬화된 데이터 (타입별 페이로드)
+        std::function<void(bool success, const std::string& result)> callback;  // 완료 콜백 (선택적; nullptr 가능)
         uint64_t walSeq = 0;  // WAL sequence (0 = not WAL-tracked, e.g. recovered tasks)
                               // 한글: WAL 시퀀스 번호 (0 = WAL 추적 안 함, 예: 복구된 태스크)
 
@@ -157,22 +157,22 @@ namespace Network::TestServer
         //   워커 내부: 단일 스레드 + FIFO → A가 완료되기 전까지 B는 절대 꺼내지지 않음.
         struct WorkerData
         {
-            std::queue<DBTask>      taskQueue;
-            mutable std::mutex      mutex;
-            std::condition_variable cv;
-            std::thread             thread;
+            std::queue<DBTask>      taskQueue;  // 이 워커에 라우팅된 미처리 작업 (FIFO)
+            mutable std::mutex      mutex;      // taskQueue 접근 직렬화
+            std::condition_variable cv;         // 작업 도착 또는 종료 신호 대기
+            std::thread             thread;     // 워커 스레드 소유 — Shutdown 시 join
         };
 
-        std::vector<std::unique_ptr<WorkerData>> mWorkers;
+        std::vector<std::unique_ptr<WorkerData>> mWorkers;  // 워커별 데이터 (인덱스 = sessionId % workerCount)
 
         // 전체 워커에 걸친 글로벌 큐 크기 카운터 (lock-free GetQueueSize)
-        std::atomic<size_t>             mQueueSize;
+        std::atomic<size_t>             mQueueSize;      // 미처리 작업 수 합계 (relaxed; 근사치 허용)
 
-        std::atomic<bool>               mIsRunning;
+        std::atomic<bool>               mIsRunning;      // Initialize 후 true, Shutdown 시 false
 
         // 통계
-        std::atomic<size_t>             mProcessedCount;
-        std::atomic<size_t>             mFailedCount;
+        std::atomic<size_t>             mProcessedCount;  // 성공 처리된 작업 수 (relaxed, lock-free 조회)
+        std::atomic<size_t>             mFailedCount;     // 실패한 작업 수 (relaxed, lock-free 조회)
 
         // WAL 크래시 복구 멤버
         std::string                     mWalPath;       // WAL 파일 경로
@@ -187,9 +187,9 @@ namespace Network::TestServer
 #else
         int                             mWalFd = -1;
 #endif
-        mutable std::mutex              mWalMutex;      // WAL 파일 쓰기 직렬화
+        mutable std::mutex              mWalMutex;      // WAL 파일 쓰기 직렬화 (다중 워커 동시 접근 방지)
         // 주입된 데이터베이스 (non-owning); nullptr이면 로그만 출력
-        Network::Database::IDatabase* mDatabase = nullptr;
+        Network::Database::IDatabase* mDatabase = nullptr;  // TestServer가 소유; DBTaskQueue 종료 후까지 살아있어야 함
     };
 
 } // namespace Network::TestServer

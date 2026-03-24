@@ -86,10 +86,10 @@ private:
     static std::string OLEDBErrorMessage(IUnknown *obj, const IID &iid);
 
 private:
-    DatabaseConfig  mConfig;
-    IDBInitialize  *mDataSource;
-    bool            mCOMInitialized;
-    std::atomic<bool> mConnected;
+    DatabaseConfig    mConfig;          // Connect() 시 전달된 설정 복사본
+    IDBInitialize    *mDataSource;      // OLE DB 데이터 소스 (IDBInitialize); Connect() 후 유효, AddRef됨
+    bool              mCOMInitialized;  // 이 스레드에서 CoInitializeEx(S_OK) 성공 시 true — 소멸자에서 CoUninitialize
+    std::atomic<bool> mConnected;       // Connect() 성공 후 true; thread-safe 상태 확인용
 };
 
 // =============================================================================
@@ -120,14 +120,14 @@ public:
     IDBCreateCommand *GetSession() const { return mSession; }
 
 private:
-    IDBInitialize    *mDataSource;   // 빌린 포인터 (소유 안 함)
-    IDBCreateCommand *mSession;      // AddRef'd
-    ITransactionLocal *mTransaction; // QI'd from mSession
-    std::string       mConnStr;
-    std::string       mLastError;
-    int               mLastErrorCode;
-    bool              mConnected;
-    bool              mInTransaction;
+    IDBInitialize    *mDataSource;   // 빌린 포인터 (OLEDBDatabase 소유, 소유 안 함)
+    IDBCreateCommand *mSession;      // Open()에서 CreateSession()으로 획득; Close()에서 Release
+    ITransactionLocal *mTransaction; // mSession으로부터 QI; 공급자가 미지원 시 nullptr
+    std::string       mConnStr;      // Open() 시 전달된 연결 문자열 (현재 미사용)
+    std::string       mLastError;    // 마지막 오류 메시지
+    int               mLastErrorCode; // 마지막 오류 코드 (0이면 오류 없음)
+    bool              mConnected;    // Open() 성공 후 true; Close() 시 false
+    bool              mInTransaction; // BeginTransaction() 후 true; Commit/Rollback 시 false
 };
 
 // =============================================================================
@@ -206,12 +206,12 @@ private:
                                 std::vector<BYTE> &buf);
     void     ReleaseCommand();
 
-    std::unique_ptr<OLEDBConnection> mOwnerConn;
-    IDBCreateCommand *mCommandFactory; // 빌린 포인터 (소유 안 함)
-    std::string       mQuery;
-    std::vector<ParamValue> mParams;
-    std::vector<BatchEntry> mBatches;
-    int               mTimeout;
+    std::unique_ptr<OLEDBConnection> mOwnerConn;  // IDatabase::CreateStatement()에서 생성 시 연결 수명 유지용 소유 포인터
+    IDBCreateCommand *mCommandFactory;             // OLEDBConnection::mSession (빌린 포인터, 소유 안 함)
+    std::string       mQuery;                      // SetQuery()로 설정된 SQL 문자열
+    std::vector<ParamValue> mParams;               // 현재 BindParameter()로 바인딩된 파라미터 (1-based → 0-based 저장)
+    std::vector<BatchEntry> mBatches;              // AddBatch()로 누적된 배치 항목 목록
+    int               mTimeout;                    // SetTimeout()으로 설정된 쿼리 타임아웃 (초)
 };
 
 // =============================================================================
@@ -272,16 +272,16 @@ private:
     static constexpr DBLENGTH kTextBufW  = 2048 * sizeof(wchar_t);
     static constexpr DBLENGTH kColSlot   = kValueOff + kTextBufW;
 
-    IRowset    *mRowset;
-    IAccessor  *mRowAccessor;
-    HACCESSOR   mHRowAccessor;
-    HROW        mCurrentRow;
-    std::vector<BYTE>        mRowBuffer;
-    std::vector<DBBINDING>   mRowBindings;
-    std::vector<std::string> mColumnNames;  // 소문자 정규화
-    std::vector<ColumnData>  mRowCache;
-    bool mMetadataLoaded;
-    bool mHasData;
+    IRowset    *mRowset;                         // Execute()에서 받은 IRowset; Close()에서 Release
+    IAccessor  *mRowAccessor;                    // 행 accessor 인터페이스 — LoadMetadata()에서 QI
+    HACCESSOR   mHRowAccessor;                   // 행 accessor 핸들 — LoadMetadata()에서 생성, Close()에서 Release
+    HROW        mCurrentRow;                     // 현재 행 핸들; DB_NULL_HROW이면 행 없음
+    std::vector<BYTE>        mRowBuffer;         // GetData() 행 데이터 버퍼 (accessor 레이아웃과 일치)
+    std::vector<DBBINDING>   mRowBindings;       // 컬럼별 accessor 바인딩 정보 (LoadMetadata에서 구성)
+    std::vector<std::string> mColumnNames;       // 소문자 정규화된 컬럼명 목록 (대소문자 무관 검색)
+    std::vector<ColumnData>  mRowCache;          // 현재 행의 컬럼별 캐시 — Next() 시 전체 무효화
+    bool mMetadataLoaded;                        // LoadMetadata() 호출 완료 여부 (중복 호출 방지)
+    bool mHasData;                               // GetNextRows()가 행을 반환한 동안 true
 };
 
 } // namespace Database

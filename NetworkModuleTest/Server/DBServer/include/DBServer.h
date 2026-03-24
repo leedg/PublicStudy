@@ -173,42 +173,46 @@ class DBServer
 	// =====================================================================
 
 	// Network components
-	std::unique_ptr<AsyncIO::AsyncIOProvider> mAsyncIOProvider;
-	std::unique_ptr<Protocols::MessageHandler> mMessageHandler;
-	std::unique_ptr<Protocols::PingPongHandler> mPingPongHandler;
+	std::unique_ptr<AsyncIO::AsyncIOProvider> mAsyncIOProvider;   // 플랫폼 비동기 I/O 엔진 (소유)
+	std::unique_ptr<Protocols::MessageHandler> mMessageHandler;   // 메시지 타입별 핸들러 등록/디스패치
+	std::unique_ptr<Protocols::PingPongHandler> mPingPongHandler; // Ping/Pong RTT 계산 헬퍼
 	// Ping/Pong 레이턴시 + 시간 저장 — ServerLatencyManager로 통합 (이전: DBPingTimeManager)
-	std::unique_ptr<ServerLatencyManager> mLatencyManager;
+	std::unique_ptr<ServerLatencyManager> mLatencyManager;        // 통합 RTT 통계 + 핑 시간 저장 (소유)
 
+	// ─────────────────────────────────────────────
 	// Server state
-	std::atomic<bool> mIsRunning;
-	std::atomic<bool> mIsInitialized;
-	uint16_t mPort;
-	size_t mMaxConnections;
+	// ─────────────────────────────────────────────
+	std::atomic<bool> mIsRunning;      // Start 후 true, Stop 시 false
+	std::atomic<bool> mIsInitialized;  // Initialize 완료 여부; 중복 초기화 방지
+	uint16_t mPort;                    // 리슨 포트 (Initialize 시 설정)
+	size_t mMaxConnections;            // 최대 허용 연결 수
 
+	// ─────────────────────────────────────────────
 	// Database configuration
+	// ─────────────────────────────────────────────
 	struct DatabaseConfig
 	{
-		std::string host = "localhost";
-		uint16_t port = 5432;
-		std::string database = "networkdb";
-		std::string username = "postgres";
-		std::string password = "password";
-		std::string connectionString;
+		std::string host = "localhost";     // DB 호스트 주소 (SetDatabaseConfig로 변경)
+		uint16_t port = 5432;               // DB 포트 (SetDatabaseConfig로 변경)
+		std::string database = "networkdb"; // DB 이름 (SetDatabaseConfig로 변경)
+		std::string username = "postgres";  // DB 접속 사용자 이름
+		std::string password = "password";  // DB 접속 비밀번호
+		std::string connectionString;       // DSN/Driver 기반 완전한 연결 문자열 (설정 시 host 등 무시)
 		// 외부 DB 없이 바로 동작하도록 기본값을 Mock으로 설정
-		Network::Database::DatabaseType type = Network::Database::DatabaseType::Mock;
+		Network::Database::DatabaseType type = Network::Database::DatabaseType::Mock;  // DB 백엔드 타입
 		Network::Database::SqlDialect sqlDialectHint =
-			Network::Database::SqlDialect::Auto;
+			Network::Database::SqlDialect::Auto;  // SQL 방언 힌트 (Auto = 연결 문자열에서 추론)
 	} mDbConfig;
 
 	// ConnectToDatabase가 생성하는 소유 데이터베이스 인스턴스
-	std::unique_ptr<Network::Database::IDatabase> mDatabase;
+	std::unique_ptr<Network::Database::IDatabase> mDatabase;  // ConnectToDatabase 시 생성, DisconnectFromDatabase 시 해제
 
 	// Worker thread
-	std::thread mWorkerThread;
+	std::thread mWorkerThread;  // AsyncIO 완료 이벤트 처리 루프 스레드 — Stop 시 join
 
 	// Connection management
-	std::unordered_map<ConnectionId, std::string> mConnections;
-	std::mutex mConnectionsMutex;
+	std::unordered_map<ConnectionId, std::string> mConnections;  // 활성 연결 목록 (connectionId → 상태 문자열)
+	std::mutex mConnectionsMutex;  // mConnections 읽기/쓰기 직렬화
 
 	// =====================================================================
 	// 내부 메서드

@@ -39,7 +39,7 @@ public:
 	}
 
 private:
-	Timestamp mStartTime;
+	Timestamp mStartTime;  // 마지막 Reset() 또는 생성 시점의 steady_clock 밀리초 값
 };
 
 } // namespace Network::Utils

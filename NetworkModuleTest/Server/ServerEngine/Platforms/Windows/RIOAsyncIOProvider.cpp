@@ -215,7 +215,6 @@ void RIOAsyncIOProvider::Shutdown()
 		CloseHandle(mCompletionEvent);
 		mCompletionEvent = nullptr;
 	}
-
 }
 
 bool RIOAsyncIOProvider::IsInitialized() const

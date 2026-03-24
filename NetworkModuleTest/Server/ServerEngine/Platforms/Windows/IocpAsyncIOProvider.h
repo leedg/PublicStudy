@@ -109,30 +109,40 @@ class IocpAsyncIOProvider : public AsyncIOProvider
 	// 대기 중인 I/O 작업 추적 구조체
 	struct PendingOperation
 	{
-		OVERLAPPED mOverlapped; // IOCP 오버랩 구조체 (포인터 캐스트를 위해 반드시 첫 번째 멤버)
-		WSABUF mWsaBuffer;
-		std::unique_ptr<uint8_t[]> mBuffer; // WSASend/WSARecv 기간 동안 커널이 pin하는 동적 버퍼
-		RequestContext mContext; // ConnectionId (완료 시 세션 조회에 사용)
-		AsyncIOType mType;       // Recv 또는 Send
-		SocketHandle mSocket = INVALID_SOCKET; // 소유 소켓 — OVERLAPPED* 에서 O(1) 맵 탐색에 사용
+		OVERLAPPED                 mOverlapped; // IOCP 오버랩 구조체 — 포인터 캐스트를 위해 반드시 첫 번째 멤버
+		WSABUF                     mWsaBuffer;  // WSASend/WSARecv에 전달하는 scatter-gather 버퍼 디스크립터
+		std::unique_ptr<uint8_t[]> mBuffer;     // WSASend/WSARecv 기간 동안 커널이 pin하는 동적 버퍼
+		RequestContext             mContext;    // ConnectionId — 완료 시 SessionManager 조회에 사용
+		AsyncIOType                mType;       // I/O 방향 (Recv 또는 Send)
+		SocketHandle               mSocket = INVALID_SOCKET; // 소유 소켓 — OVERLAPPED*에서 O(1) 맵 탐색에 사용
 	};
 
 	// =====================================================================
 	// 멤버 변수
 	// =====================================================================
 
-	HANDLE mCompletionPort; // IOCP 완료 포트 핸들
+	// ─────────────────────────────────────────────
+	// IOCP 핸들 및 pending 맵
+	// ─────────────────────────────────────────────
+	HANDLE mCompletionPort; // IOCP 완료 포트 핸들 — CreateIoCompletionPort로 생성 (Windows 전용)
+
 	std::unordered_map<OVERLAPPED *, std::unique_ptr<PendingOperation>>
-		mPendingRecvOps; // 대기 중인 recv 작업 맵 (OVERLAPPED* → PendingOperation)
+		mPendingRecvOps; // 대기 중인 recv 작업 맵 (OVERLAPPED* → PendingOperation); mMutex로 보호
 	std::unordered_map<OVERLAPPED *, std::unique_ptr<PendingOperation>>
-		mPendingSendOps; // 대기 중인 send 작업 맵 (OVERLAPPED* → PendingOperation)
-	mutable std::mutex mMutex; // mPending* 맵과 mStats 보호용 뮤텍스
-	ProviderInfo mInfo;
-	ProviderStats mStats;
-	std::string mLastError;
-	size_t mMaxConcurrentOps;
-	std::atomic<bool> mInitialized;
-	std::atomic<bool> mShuttingDown{false}; // 종료 플래그 — CloseHandle 전에 설정하여 ProcessCompletions 조기 반환
+		mPendingSendOps; // 대기 중인 send 작업 맵 (OVERLAPPED* → PendingOperation); mMutex로 보호
+
+	mutable std::mutex mMutex; // mPending* 맵과 mStats 접근을 직렬화하는 뮤텍스
+
+	// ─────────────────────────────────────────────
+	// 상태 및 통계
+	// ─────────────────────────────────────────────
+	ProviderInfo  mInfo;             // 플랫폼 정보 (이름, 지원 기능 플래그 등)
+	ProviderStats mStats;            // 요청/완료/에러 카운터 (mMutex로 보호)
+	std::string   mLastError;        // 마지막 에러 메시지 — GetLastError()가 반환
+	size_t        mMaxConcurrentOps; // Initialize()에서 설정한 최대 동시 I/O 수
+
+	std::atomic<bool> mInitialized;        // 초기화 완료 여부 — acquire/release 사용
+	std::atomic<bool> mShuttingDown{false}; // 종료 진행 플래그 — CloseHandle 전에 설정하여 ProcessCompletions 조기 반환
 };
 
 } // namespace Windows

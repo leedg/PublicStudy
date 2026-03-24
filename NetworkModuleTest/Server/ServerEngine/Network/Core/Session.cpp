@@ -579,7 +579,6 @@ void Session::ProcessRawRecv(const char *data, uint32_t size)
 	bool shouldClose = false;
 
 	{
-
 		// 오버플로우 방어 (slow-loris / 플러드 방어).
 		// MAX_PACKET_SIZE * 4 = 최대 패킷 4개 분량. 그 이상 누적되면 악의적 연결로 간주하고 종료.
 		constexpr size_t kMaxAccumSize = MAX_PACKET_SIZE * 4;

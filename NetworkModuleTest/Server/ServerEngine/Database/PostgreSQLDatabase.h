@@ -69,10 +69,10 @@ class PostgreSQLResultSet : public IResultSet
   private:
 	void CheckRow() const;
 
-	PGresult *           mResult;
-	int                  mNumRows;
-	int                  mCurrentRow; // -1: Next() 호출 전
-	std::vector<std::string> mColumnNames;
+	PGresult *               mResult;       // PQexecParams 결과 포인터; Close()에서 PQclear()
+	int                      mNumRows;      // 결과 집합의 전체 행 수 (PQntuples)
+	int                      mCurrentRow;   // 현재 커서 위치 (-1이면 Next() 호출 전)
+	std::vector<std::string> mColumnNames;  // 컬럼 인덱스 → 이름 매핑 (생성자에서 초기화)
 };
 
 // =============================================================================
@@ -123,11 +123,11 @@ class PostgreSQLStatement : public IStatement
 	void       ApplyTimeout() const;
 	static int ParseAffectedRows(PGresult *result);
 
-	PGconn *    mConn;
-	std::string mQuery;
-	int         mTimeoutSeconds = 0;
-	std::vector<Param>               mCurrentParams;
-	std::vector<std::vector<Param>>  mBatchParams;
+	PGconn *    mConn;            // PostgreSQLConnection/Database 소유 연결 핸들 (빌린 참조, 소유 안 함)
+	std::string mQuery;           // SetQuery()로 설정된 SQL 문자열 ($1, $2, ... 플레이스홀더 사용)
+	int         mTimeoutSeconds = 0;  // SetTimeout()으로 설정된 statement_timeout (0이면 타임아웃 없음)
+	std::vector<Param>               mCurrentParams;  // 현재 BindParameter()로 바인딩된 파라미터
+	std::vector<std::vector<Param>>  mBatchParams;    // AddBatch()로 누적된 배치 파라미터 셋 목록
 };
 
 // =============================================================================
@@ -158,10 +158,10 @@ class PostgreSQLConnection : public IConnection
   private:
 	void ExecRaw(const char *sql);
 
-	PGconn *    mConn           = nullptr;
-	bool        mInTransaction  = false;
-	int         mLastErrorCode  = 0;
-	std::string mLastError;
+	PGconn *    mConn          = nullptr;  // 물리 연결 핸들 — Open()에서 PQconnectdb, Close()에서 PQfinish
+	bool        mInTransaction = false;   // BeginTransaction() 후 true; Close() 시 미완료면 자동 ROLLBACK
+	int         mLastErrorCode = 0;       // 마지막 ExecRaw 오류 코드 (-1이면 오류, 0이면 없음)
+	std::string mLastError;               // 마지막 오류 메시지 (ExecRaw 실패 시 갱신)
 };
 
 // =============================================================================
@@ -195,9 +195,9 @@ class PostgreSQLDatabase : public IDatabase
   private:
 	void ExecRaw(const char *sql);
 
-	DatabaseConfig mConfig;
-	PGconn *       mConn      = nullptr;
-	bool           mConnected = false;
+	DatabaseConfig mConfig;               // Connect() 시 전달된 설정 복사본
+	PGconn *       mConn      = nullptr;  // 공유 연결 핸들 — Connect()에서 PQconnectdb, Disconnect()에서 PQfinish
+	bool           mConnected = false;    // Connect() 성공 후 true; Disconnect() 시 false
 };
 
 #endif // HAVE_LIBPQ

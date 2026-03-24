@@ -29,10 +29,10 @@ using ConnectionId = uint64_t;
 
 enum class MessageType : uint32_t
 {
-	Unknown     = 0,
+	Unknown     = 0,    // 파싱 실패 / 미초기화 sentinel
 	Ping        = 1,    // Client → Server 생존 확인 요청
 	Pong        = 2,    // Server → Client 응답
-	CustomStart = 1000
+	CustomStart = 1000  // 테스트 시나리오별 확장 시작 값
 };
 
 // =============================================================================
@@ -41,10 +41,10 @@ enum class MessageType : uint32_t
 
 struct Message
 {
-	MessageType          mType         = MessageType::Unknown;
-	ConnectionId         mConnectionId = 0;
-	std::vector<uint8_t> mData;         // 헤더를 제외한 페이로드
-	uint64_t             mTimestamp     = 0; // 밀리초 (system_clock 기준)
+	MessageType          mType         = MessageType::Unknown; // 파싱된 메시지 타입
+	ConnectionId         mConnectionId = 0;                    // 송수신 연결 ID
+	std::vector<uint8_t> mData;                                // 헤더를 제외한 페이로드
+	uint64_t             mTimestamp    = 0;                    // 메시지 생성 시각 (system_clock 밀리초)
 };
 
 // =============================================================================
@@ -107,9 +107,9 @@ class MessageHandler
 	static bool ValidateMessage(const uint8_t *data, size_t size);
 
   private:
-	std::unordered_map<MessageType, MessageHandlerCallback> mHandlers;
-	uint32_t mNextMessageId;
-	std::mutex mMutex;
+	std::unordered_map<MessageType, MessageHandlerCallback> mHandlers;      // 타입별 콜백 맵 — mMutex로 보호
+	uint32_t                                                mNextMessageId; // 다음 메시지 ID (현재 미사용 예약 필드)
+	std::mutex                                              mMutex;         // mHandlers 접근 직렬화 (ProcessMessage/Register/Unregister)
 };
 
 } // namespace Network::Protocols

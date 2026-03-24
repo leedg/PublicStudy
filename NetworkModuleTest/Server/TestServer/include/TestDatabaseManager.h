@@ -115,9 +115,9 @@ class TestServerDatabaseManager
 	bool ExecuteCustomSqlFile(const std::string &relativePath);
 
   private:
-	std::unique_ptr<Network::Database::ConnectionPool> mDatabaseConnectionPool;
-	Network::Database::DatabaseConfig mDatabaseConfig;
-	bool mIsInitialized;
+	std::unique_ptr<Network::Database::ConnectionPool> mDatabaseConnectionPool;  // ODBC 연결 풀 — ShutdownDatabase 시 해제
+	Network::Database::DatabaseConfig mDatabaseConfig;  // 연결 풀 초기화 시 설정된 DB 구성 (dialect, pool size 등)
+	bool mIsInitialized;  // InitializeConnectionPool 완료 여부; ShutdownDatabase 후 false로 재설정
 };
 
 } // namespace TestServer

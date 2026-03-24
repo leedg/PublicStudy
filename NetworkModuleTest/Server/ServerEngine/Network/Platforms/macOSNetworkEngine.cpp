@@ -308,7 +308,7 @@ void macOSNetworkEngine::ProcessCompletions()
 		if (entry.mOsError != 0 || entry.mResult <= 0)
 		{
 			// ProcessErrorCompletion을 통해 처리:
-			//   - Send / Recv 방향별 에러 카운터를 올바르게 증가시키다.
+			//   - Send / Recv 방향별 에러 카운터를 올바르게 증가시킨다.
 			//   - session->mAsyncScope 경유로 disconnect를 라우팅하여
 			//     다른 경로에서 Close()가 이미 호출된 경우 이중 이벤트를 방지한다.
 			ProcessErrorCompletion(session, entry.mType, entry.mOsError);

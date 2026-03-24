@@ -45,12 +45,12 @@ using Clock = std::chrono::steady_clock;
 // EmitLockRecord()가 이 구조체를 TraceLogging 이벤트로 직렬화한다.
 struct LockRecord
 {
-	const char *name;
-	const char *file;
-	int line;
-	uint64_t waitNs;   // lock() 호출~획득까지 대기 시간 (나노초)
-	uint64_t holdNs;   // 락 획득~해제까지 보유 시간 (나노초)
-	uint32_t threadId;
+	const char *name;      // 락 변수 이름 (문자열 리터럴 — 생존 기간 보장 필요)
+	const char *file;      // 소스 파일 경로 (__FILE__ 리터럴)
+	int         line;      // 소스 라인 번호 (__LINE__)
+	uint64_t    waitNs;    // lock() 호출~획득까지 대기 시간 (나노초)
+	uint64_t    holdNs;    // 락 획득~해제까지 보유 시간 (나노초)
+	uint32_t    threadId;  // 락을 획득한 스레드 ID
 };
 
 void EmitLockRecord(const LockRecord &record) noexcept;
@@ -73,11 +73,11 @@ inline uint32_t GetThreadId() noexcept
 
 struct LockTiming
 {
-	const char *name;
-	const char *file;
-	int line;
-	Clock::time_point waitStart;
-	Clock::time_point acquired;
+	const char       *name;      // 락 변수 이름 (LockRecord와 동일한 문자열 리터럴)
+	const char       *file;      // 소스 파일 경로
+	int               line;      // 소스 라인 번호
+	Clock::time_point waitStart; // lock() 호출 직전 시각 — 대기 시간 산출 기준
+	Clock::time_point acquired;  // lock() 반환 직후 시각 — 보유 시간 산출 기준
 };
 
 inline LockTiming StartLockWait(const char *name, const char *file,
@@ -113,7 +113,7 @@ class LockHoldScope
 	LockHoldScope &operator=(const LockHoldScope &) = delete;
 
   private:
-	LockTiming &mTiming;
+	LockTiming &mTiming;  // 소멸자에서 holdNs 계산에 사용할 타이밍 참조
 };
 
 template <typename Mutex>
@@ -144,8 +144,8 @@ class LockGuard
 	LockGuard &operator=(const LockGuard &) = delete;
 
   private:
-	Mutex &mMutex;
-	LockTiming mTiming;
+	Mutex     &mMutex;   // 보호 대상 뮤텍스 참조 — 소멸자에서 unlock() 호출
+	LockTiming mTiming;  // 대기/보유 시간 측정용 타이밍 스냅샷
 };
 
 } // namespace Network::Utils::LockProfiling

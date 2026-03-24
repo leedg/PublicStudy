@@ -78,9 +78,9 @@ class ConnectionPool : public IConnectionPool
 	// 풀링된 연결 항목 — 연결 객체, 마지막 사용 시각, 사용 중 여부를 묶음
 	struct PooledConnection
 	{
-		std::shared_ptr<IConnection> mConnection;
-		std::chrono::steady_clock::time_point mLastUsed;
-		bool mInUse;
+		std::shared_ptr<IConnection> mConnection;              // 풀링된 연결 인스턴스
+		std::chrono::steady_clock::time_point mLastUsed;       // 마지막으로 GetConnection/ReturnConnection된 시각 (아이들 타임아웃 기준)
+		bool mInUse;                                           // true이면 현재 대여 중, false이면 유휴
 
 		PooledConnection(std::shared_ptr<IConnection> pConn)
 			: mConnection(std::move(pConn)),
@@ -93,19 +93,19 @@ class ConnectionPool : public IConnectionPool
 	void CleanupIdleConnections();
 
   private:
-	DatabaseConfig mConfig;
-	std::unique_ptr<IDatabase> mDatabase;
-	std::vector<PooledConnection> mConnections;
-	mutable std::mutex mMutex;
-	std::condition_variable mCondition;
-	std::atomic<bool> mInitialized;
-	std::atomic<size_t> mActiveConnections;
+	DatabaseConfig mConfig;                          // Initialize() 시 전달된 설정 복사본
+	std::unique_ptr<IDatabase> mDatabase;            // 백엔드 DB 인스턴스 (DatabaseFactory로 생성) — 연결 팩토리 역할
+	std::vector<PooledConnection> mConnections;      // 풀에 등록된 모든 연결 항목 목록 (mMutex로 보호)
+	mutable std::mutex mMutex;                       // mConnections 접근 및 condition wait/notify 보호
+	std::condition_variable mCondition;              // GetConnection() 대기 및 ReturnConnection() 알림
+	std::atomic<bool> mInitialized;                  // Initialize() 성공 후 true; Shutdown() 시 false
+	std::atomic<size_t> mActiveConnections;          // 현재 대여 중(mInUse=true)인 연결 수 (락 없이 조회 가능)
 
 	// 풀 설정값 — 기본값은 생성자에서 설정, DatabaseConfig 또는 Set*()로 변경 가능
-	size_t mMaxPoolSize;          // 동시 active 연결 상한 (기본 10)
-	size_t mMinPoolSize;          // 초기 미리 생성 연결 수 (기본 2)
-	std::chrono::seconds mConnectionTimeout; // GetConnection() 최대 대기 (기본 30초)
-	std::chrono::seconds mIdleTimeout;       // 유휴 연결 회수 기준 (기본 300초)
+	size_t mMaxPoolSize;                             // 동시 active 연결 상한 (기본 10)
+	size_t mMinPoolSize;                             // 초기 미리 생성 연결 수 (기본 2)
+	std::chrono::seconds mConnectionTimeout;         // GetConnection() 최대 대기 시간 (기본 30초)
+	std::chrono::seconds mIdleTimeout;               // 유휴 연결 회수 기준 경과 시간 (기본 300초)
 };
 
 // =============================================================================
@@ -163,8 +163,8 @@ class ScopedConnection
 	const IConnection *Get() const { return mConnection.get(); }
 
   private:
-	std::shared_ptr<IConnection> mConnection;
-	IConnectionPool *mPool;
+	std::shared_ptr<IConnection> mConnection;  // 풀에서 대여한 연결; 소멸자에서 ReturnConnection으로 반환
+	IConnectionPool *mPool;                    // 연결을 반환할 풀 포인터 (이동 후 nullptr)
 };
 
 } // namespace Database

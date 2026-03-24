@@ -73,9 +73,9 @@ class ODBCDatabase : public IDatabase
 						SQLHANDLE handle, SQLSMALLINT handleType);
 
   private:
-	DatabaseConfig mConfig;
-	SQLHENV mEnvironment;
-	std::atomic<bool> mConnected;
+	DatabaseConfig mConfig;           // Connect() 시 전달된 설정 복사본
+	SQLHENV mEnvironment;             // ODBC 환경 핸들 — InitializeEnvironment()에서 할당, 소멸자에서 해제
+	std::atomic<bool> mConnected;     // Connect() 성공 후 true; thread-safe 상태 확인용
 };
 
 // =============================================================================
@@ -111,11 +111,11 @@ class ODBCConnection : public IConnection
 	std::string GetSQLErrorMessage(SQLHANDLE handle, SQLSMALLINT handleType);
 
   private:
-	SQLHDBC mConnection;
-	SQLHENV mEnvironment;
-	std::atomic<bool> mConnected;
-	std::string mLastError;
-	int mLastErrorCode;
+	SQLHDBC mConnection;              // ODBC 연결 핸들 — Open() 후 유효, SQL_NULL_HANDLE이면 미할당
+	SQLHENV mEnvironment;             // ODBCDatabase 소유 환경 핸들 (빌린 참조)
+	std::atomic<bool> mConnected;     // Open() 성공 후 true; thread-safe 상태 확인용
+	std::string mLastError;           // 마지막 ODBC 오류 메시지 (GetSQLErrorMessage에서 갱신)
+	int mLastErrorCode;               // 마지막 ODBC 네이티브 오류 코드 (0이면 오류 없음)
 };
 
 // =============================================================================
@@ -191,15 +191,14 @@ class ODBCStatement : public IStatement
 	}
 
   private:
-	// IDatabase::CreateStatement()에서 생성된 경우 연결 수명 유지용
-	std::unique_ptr<ODBCConnection> mOwnerConn;
-	SQLHSTMT mStatement;
-	SQLHDBC mConnection;
-	std::string mQuery;
-	std::vector<ParamValue> mParams;
-	std::vector<BatchEntry> mBatches;
-	bool mPrepared;
-	int mTimeout;
+	std::unique_ptr<ODBCConnection> mOwnerConn;  // IDatabase::CreateStatement()에서 생성 시 연결 수명 유지용 소유 포인터
+	SQLHSTMT mStatement;                          // ODBC statement 핸들 — 생성자에서 할당, Close()에서 해제
+	SQLHDBC mConnection;                          // 연결 핸들 (빌린 참조 — 소유 안 함)
+	std::string mQuery;                           // SetQuery()로 설정된 SQL 문자열
+	std::vector<ParamValue> mParams;              // 현재 BindParameter()로 바인딩된 파라미터 (1-based → 0-based 저장)
+	std::vector<BatchEntry> mBatches;             // AddBatch()로 누적된 배치 항목 목록
+	bool mPrepared;                               // SQLExecDirectA() 호출 완료 여부 (중복 실행 방지)
+	int mTimeout;                                 // SetTimeout()으로 설정된 쿼리 타임아웃 (초)
 };
 
 // =============================================================================
@@ -257,13 +256,13 @@ class ODBCResultSet : public IResultSet
 	}
 
   private:
-	SQLHSTMT mStatement;
-	bool mHasData;
-	std::vector<std::string> mColumnNames;
-	std::vector<SQLSMALLINT> mColumnTypes;
-	std::vector<SQLULEN> mColumnSizes;
-	bool mMetadataLoaded;
-	std::vector<ColumnData> mRowCache;
+	SQLHSTMT mStatement;                      // ODBCStatement 소유 statement 핸들 (빌린 참조 — 여기서 해제 안 함)
+	bool mHasData;                            // SQLFetch()가 SQL_NO_DATA를 반환하지 않은 동안 true
+	std::vector<std::string> mColumnNames;    // 컬럼 인덱스 → 이름 매핑 (LoadMetadata에서 초기화)
+	std::vector<SQLSMALLINT> mColumnTypes;    // ODBC SQL 타입 코드 (SQL_VARCHAR 등)
+	std::vector<SQLULEN> mColumnSizes;        // 최대 컬럼 크기 (SQLDescribeColA에서 획득)
+	bool mMetadataLoaded;                     // LoadMetadata() 호출 완료 여부 (중복 호출 방지)
+	std::vector<ColumnData> mRowCache;        // 현재 행의 컬럼별 캐시 — Next() 호출 시 전체 무효화
 };
 
 } // namespace Database

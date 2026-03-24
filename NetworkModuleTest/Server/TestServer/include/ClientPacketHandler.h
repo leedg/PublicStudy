@@ -32,7 +32,7 @@ namespace Network::TestServer
 
     private:
         // 패킷 핸들러 펑터 맵 (PacketType → Handler)
-        std::unordered_map<uint16_t, PacketHandlerFunc> mHandlers;
+        std::unordered_map<uint16_t, PacketHandlerFunc> mHandlers;  // 생성자에서 1회 구성 후 read-only (stateless)
 
         // 생성자에서 모든 패킷 핸들러를 등록
         void RegisterHandlers();

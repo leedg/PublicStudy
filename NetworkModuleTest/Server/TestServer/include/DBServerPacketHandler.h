@@ -44,7 +44,7 @@ namespace Network::TestServer
 
     private:
         // 패킷 핸들러 펑터 맵 (ServerPacketType → Handler)
-        std::unordered_map<uint16_t, PacketHandlerFunc> mHandlers;
+        std::unordered_map<uint16_t, PacketHandlerFunc> mHandlers;  // 생성자에서 1회 구성 후 read-only (stateless)
 
         // 생성자에서 모든 패킷 핸들러를 등록
         void RegisterHandlers();
@@ -57,8 +57,8 @@ namespace Network::TestServer
     private:
         // 핑 시퀀스 카운터.
         //   타이머 스레드(SendPingToDBServer)와 I/O 워커 스레드가 동시에 접근하므로 atomic 사용.
-        std::atomic<uint32_t> mPingSequence;
-        DBServerTaskQueue* mTaskQueue = nullptr;
+        std::atomic<uint32_t> mPingSequence;   // fetch_add(relaxed) — 단조 증가, 순서 보장 불필요
+        DBServerTaskQueue* mTaskQueue = nullptr;  // DBQueryRes 응답 라우팅 대상 (non-owning); SetTaskQueue로 주입
     };
 
 } // namespace Network::TestServer

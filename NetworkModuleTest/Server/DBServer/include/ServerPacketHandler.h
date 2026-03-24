@@ -47,7 +47,7 @@ namespace Network::DBServer
 
     private:
         // 패킷 핸들러 펑터 맵 (ServerPacketType → Handler)
-        std::unordered_map<uint16_t, PacketHandlerFunc> mHandlers;
+        std::unordered_map<uint16_t, PacketHandlerFunc> mHandlers;  // 생성자에서 1회 구성 후 read-only (stateless)
 
         // 생성자에서 모든 패킷 핸들러를 등록
         void RegisterHandlers();
@@ -57,8 +57,8 @@ namespace Network::DBServer
         void HandleDBSavePingTimeRequest(Core::Session* session, const Core::PKT_DBSavePingTimeReq* packet);
 
     private:
-        ServerLatencyManager* mLatencyManager;        // non-owning — 통합 RTT + 핑 시간 관리자
-        OrderedTaskQueue*     mOrderedTaskQueue;      // non-owning — per-serverId 순서 보장 큐
+        ServerLatencyManager* mLatencyManager;        // non-owning — 통합 RTT + 핑 시간 관리자; Initialize로 주입
+        OrderedTaskQueue*     mOrderedTaskQueue;      // non-owning — per-serverId 순서 보장 큐; Initialize로 주입
     };
 
 } // namespace Network::DBServer

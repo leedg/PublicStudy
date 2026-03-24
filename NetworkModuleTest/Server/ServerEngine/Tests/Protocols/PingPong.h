@@ -67,25 +67,28 @@ class PingPongHandler
 #endif
 
   private:
-	uint32_t mNextSequence;
-	uint64_t mLastPingTimestamp;
-	uint32_t mLastPingSequence;
-	std::string mLastPingMessage;
-	uint64_t mLastPongTimestamp;
-	uint64_t mLastPongPingTimestamp;
-	uint32_t mLastPongPingSequence;
-	std::string mLastPongMessage;
-	bool mHasLastPing;
-	bool mHasLastPong;
+	// ── Ping 상태 ───────────────────────────────────────────────────────────
+	uint32_t    mNextSequence;          // CreatePing()에서 자동 증가하는 시퀀스 번호 (1부터 시작)
+	uint64_t    mLastPingTimestamp;     // 마지막으로 생성/파싱한 Ping 타임스탬프 (밀리초)
+	uint32_t    mLastPingSequence;      // 마지막으로 생성/파싱한 Ping 시퀀스 번호
+	std::string mLastPingMessage;       // 마지막으로 생성/파싱한 Ping 메시지 문자열
+	bool        mHasLastPing;           // ParsePing() 또는 CreatePing() 성공 후 true
 
-	// 검증 페이로드: Ping에 포함해 송신 → Pong이 에코 → ParsePong에서 원본 대조
-	std::vector<uint32_t> mLastPingValidationNums;  // 1~5개 랜덤 숫자
-	std::vector<char>     mLastPingValidationChars; // 1~5개 랜덤 문자
-	bool                  mLastValidationOk = false;
+	// ── Pong 상태 ───────────────────────────────────────────────────────────
+	uint64_t    mLastPongTimestamp;     // 마지막으로 생성/파싱한 Pong 타임스탬프 (밀리초)
+	uint64_t    mLastPongPingTimestamp; // Pong에 에코된 원본 Ping 타임스탬프 (RTT 계산 기준)
+	uint32_t    mLastPongPingSequence;  // Pong에 에코된 원본 Ping 시퀀스 번호
+	std::string mLastPongMessage;       // 마지막으로 생성/파싱한 Pong 메시지 문자열
+	bool        mHasLastPong;           // ParsePong() 또는 CreatePong() 성공 후 true
+
+	// ── 검증 페이로드: Ping에 포함 → Pong이 에코 → ParsePong에서 원본 대조 ──
+	std::vector<uint32_t> mLastPingValidationNums;  // CreatePing()에서 생성된 1~5개 랜덤 숫자
+	std::vector<char>     mLastPingValidationChars; // CreatePing()에서 생성된 1~5개 랜덤 ASCII 문자
+	bool                  mLastValidationOk = false; // ParsePong()에서 에코값과 원본 대조 결과
 
 #ifdef HAS_PROTOBUF
-	std::unique_ptr<ping::Ping> mLastPing;
-	std::unique_ptr<ping::Pong> mLastPong;
+	std::unique_ptr<ping::Ping> mLastPing; // protobuf 모드: ParsePing() 후 저장되는 Ping 메시지 객체
+	std::unique_ptr<ping::Pong> mLastPong; // protobuf 모드: ParsePong() 후 저장되는 Pong 메시지 객체
 #endif
 };
 

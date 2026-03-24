@@ -11,6 +11,7 @@ namespace Network::Core
 {
 using Utils::ConnectionId;
 using Utils::Timestamp;
+
 // =============================================================================
 // 네트워크 이벤트 타입
 // =============================================================================
@@ -30,12 +31,12 @@ enum class NetworkEvent : uint8_t
 
 struct NetworkEventData
 {
-	NetworkEvent eventType;
-	ConnectionId connectionId;
-	size_t dataSize;
-	OSError errorCode;
-	Timestamp timestamp;
-	std::unique_ptr<uint8_t[]> data;
+	NetworkEvent               eventType;     // 이벤트 종류 (Connected/Disconnected 등)
+	ConnectionId               connectionId;  // 관련 세션 ID
+	size_t                     dataSize;      // data 버퍼의 유효 바이트 수
+	OSError                    errorCode;     // OS 에러 코드 (없으면 0)
+	Timestamp                  timestamp;     // 이벤트 발생 시각 (나노초 에포크)
+	std::unique_ptr<uint8_t[]> data;          // 페이로드 (DataReceived 이벤트에만 유효, move-only)
 };
 
 // =============================================================================
@@ -107,15 +108,15 @@ class INetworkEngine
 
 	struct Statistics
 	{
-		uint64_t totalConnections;
-		uint64_t activeConnections;
-		uint64_t totalBytesSent;
-		uint64_t totalBytesReceived;
+		uint64_t  totalConnections;   // 누적 연결 수
+		uint64_t  activeConnections;  // 현재 활성 연결 수
+		uint64_t  totalBytesSent;     // 누적 송신 바이트
+		uint64_t  totalBytesReceived; // 누적 수신 바이트
 		// 방향별 에러 카운터. totalErrors == sendErrors + recvErrors.
-		uint64_t totalSendErrors;
-		uint64_t totalRecvErrors;
-		uint64_t totalErrors;
-		Timestamp startTime;
+		uint64_t  totalSendErrors;    // 송신 방향 에러 수
+		uint64_t  totalRecvErrors;    // 수신 방향 에러 수
+		uint64_t  totalErrors;        // 전체 에러 수 (= sendErrors + recvErrors)
+		Timestamp startTime;          // 엔진 Initialize() 호출 시각
 	};
 
 	/** 엔진 통계 조회 */

@@ -51,12 +51,12 @@ namespace Network::TestServer
         void AsyncRecordDisconnectTime();
 
     private:
-        bool mConnectionRecorded;
-        std::unique_ptr<ClientPacketHandler> mPacketHandler;
+        bool mConnectionRecorded;                        // 접속 시간 DB 기록 완료 여부 (중복 기록 방지)
+        std::unique_ptr<ClientPacketHandler> mPacketHandler;  // 수신 패킷 디스패처 — 세션 전용 소유
 
         // DB 작업 큐 — weak_ptr로 세션이 큐의 수명을 연장하지 않도록 한다.
         // 매 접근 전 lock(); nullptr이면 큐가 이미 종료된 상태.
-        std::weak_ptr<DBTaskQueue> mDBTaskQueue;
+        std::weak_ptr<DBTaskQueue> mDBTaskQueue;         // 비동기 DB 위임 큐 (non-owning); lock()으로 접근
     };
 
     using ClientSessionRef = std::shared_ptr<ClientSession>;

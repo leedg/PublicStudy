@@ -37,9 +37,9 @@ namespace Network::Database::SqlModuleBootstrap
 
 struct ModuleSpec
 {
-    std::string moduleName;           // 모듈 식별자 (T_ModuleBootstrapState의 PK)
-    std::vector<std::string> tableScripts;   // DDL 스크립트 경로 목록 (CREATE TABLE 등)
-    std::vector<std::string> managedScripts; // 해시 계산에 포함할 스크립트 경로 목록
+	std::string moduleName;                    // 모듈 식별자 — T_ModuleBootstrapState PK; 비어 있으면 예외
+	std::vector<std::string> tableScripts;     // DDL 스크립트 경로 목록 (CREATE TABLE 등); 최소 1개 필요
+	std::vector<std::string> managedScripts;   // 매니페스트 해시 계산에 포함할 스크립트 경로 목록; 최소 1개 필요
 };
 
 namespace Detail
@@ -51,9 +51,9 @@ inline constexpr const char* kBootstrapStatusFailed    = "FAILED";
 
 struct BootstrapState
 {
-    bool exists = false;          // T_ModuleBootstrapState에 레코드가 존재하는지
-    std::string manifestHash;     // 저장된 스크립트 매니페스트 해시
-    std::string status;           // IN_PROGRESS / COMPLETED / FAILED
+	bool exists = false;           // T_ModuleBootstrapState에 해당 모듈 레코드가 존재하는지
+	std::string manifestHash;      // DB에 저장된 스크립트 매니페스트 해시 (FNV-1a 64비트, hex)
+	std::string status;            // 상태 문자열 — IN_PROGRESS / COMPLETED / FAILED
 };
 
 inline std::string ToLowerCopy(std::string value)

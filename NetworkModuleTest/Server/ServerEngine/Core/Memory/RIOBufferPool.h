@@ -55,16 +55,18 @@ public:
     char*        SlotPtr(size_t index) const;
 
 private:
-    void*        mSlab    = nullptr;
-    RIO_BUFFERID mSlabId  = RIO_INVALID_BUFFERID;
-    size_t       mSlotSize = 0;
-    size_t       mPoolSize = 0;
+    void*        mSlab    = nullptr;             // VirtualAlloc으로 할당한 슬랩 연속 메모리 (Windows 전용)
+    RIO_BUFFERID mSlabId  = RIO_INVALID_BUFFERID; // 슬랩 전체를 대표하는 단일 RIO 버퍼 ID — 슬롯별 offset으로 접근
 
-    std::vector<size_t> mFreeIndices;
-    mutable std::mutex  mMutex;
+    size_t       mSlotSize = 0; // 슬롯 하나의 크기 (바이트) — Initialize 이후 불변
+    size_t       mPoolSize = 0; // 전체 슬롯 수 — Initialize 이후 불변
 
-    LPFN_RIOREGISTERBUFFER   mPfnRegisterBuffer   = nullptr;
-    LPFN_RIODEREGISTERBUFFER mPfnDeregisterBuffer  = nullptr;
+    std::vector<size_t> mFreeIndices;  // 반환된 슬롯 인덱스 스택 (후입선출); mMutex로 보호
+    mutable std::mutex  mMutex;        // mSlab 접근 외 mFreeIndices/mSlotSize/mPoolSize 보호용
+
+    // RIO 버퍼 등록/해제 함수 포인터 — LoadRIOFunctions()에서 WSAIoctl로 초기화 (Windows RIO 전용)
+    LPFN_RIOREGISTERBUFFER   mPfnRegisterBuffer   = nullptr; // RIORegisterBuffer
+    LPFN_RIODEREGISTERBUFFER mPfnDeregisterBuffer = nullptr; // RIODeregisterBuffer
 };
 
 } // namespace Memory

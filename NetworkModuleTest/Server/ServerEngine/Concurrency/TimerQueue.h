@@ -59,10 +59,10 @@ class TimerQueue
   private:
 	struct TimerEntry
 	{
-		TimerHandle handle{0};
-		std::chrono::steady_clock::time_point nextFire;
-		uint32_t intervalMs{0}; // 0 = 단발(one-shot)
-		std::function<bool()> cb;
+		TimerHandle handle{0};                          // 고유 식별자; Cancel() 호출 시 조회 키
+		std::chrono::steady_clock::time_point nextFire; // 다음 실행 예정 시각 (min-heap 정렬 기준)
+		uint32_t intervalMs{0};                         // 반복 간격 ms; 0 = 단발(one-shot)
+		std::function<bool()> cb;                       // 실행할 콜백; true 반환 시 재등록, false 시 해제
 	};
 
 	// min-heap 비교자: nextFire가 가장 이른 항목이 heap front에 위치한다.
@@ -83,18 +83,28 @@ class TimerQueue
 
 	void WorkerLoop();
 
+	// ─────────────────────────────────────────────
+	// 힙 & 동기화
+	// ─────────────────────────────────────────────
 	// 벡터 기반 min-heap (std::push_heap / std::pop_heap 사용).
-	std::vector<TimerEntry> mHeap;
-	mutable std::mutex mMutex;
-	std::condition_variable mCV;
-	std::thread mWorkerThread;
-	std::atomic<bool> mRunning{false};
-	std::atomic<TimerHandle> mNextHandle{1};
+	std::vector<TimerEntry> mHeap;               // nextFire 기준 min-heap; mMutex 보호
+	mutable std::mutex mMutex;                   // mHeap / mCancelledHandles 접근 직렬화
+	std::condition_variable mCV;                 // 새 항목 추가·Cancel·Shutdown 시 notify → WorkerLoop 깨움
 
+	// ─────────────────────────────────────────────
+	// 워커 스레드 & 생명주기
+	// ─────────────────────────────────────────────
+	std::thread mWorkerThread;                   // 타이머 만료를 처리하는 단일 백그라운드 스레드
+	std::atomic<bool> mRunning{false};           // true → 실행 중; false → Shutdown 신호 (acq_rel)
+	std::atomic<TimerHandle> mNextHandle{1};     // 발급할 다음 핸들 값; fetch_add(relaxed)로 단조 증가
+
+	// ─────────────────────────────────────────────
+	// 취소 집합
+	// ─────────────────────────────────────────────
 	// pop과 실행 사이에 Cancel()로 취소된 핸들을 보관한다 (mMutex 보호).
 	// 원샷 타이머가 실행된 뒤 Cancel()이 호출되어도 이 집합에서 즉시 제거되므로
 	// 핸들이 무한히 누적되지 않는다.
-	std::unordered_set<TimerHandle> mCancelledHandles;
+	std::unordered_set<TimerHandle> mCancelledHandles;  // 실행 전 폐기할 핸들 집합
 };
 
 } // namespace Network::Concurrency

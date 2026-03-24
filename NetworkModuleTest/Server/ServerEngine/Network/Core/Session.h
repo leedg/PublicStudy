@@ -49,9 +49,9 @@ enum class IOType : uint8_t
 
 struct IOContext : public OVERLAPPED
 {
-	IOType type;
-	WSABUF wsaBuf;
-	char buffer[RECV_BUFFER_SIZE];
+	IOType type;                    // 이 OVERLAPPED가 Recv/Send 중 어느 방향인지 식별
+	WSABUF wsaBuf;                  // WSARecv/WSASend에 전달할 버퍼 기술자
+	char buffer[RECV_BUFFER_SIZE];  // 수신 경로용 내장 버퍼 — Send 경로는 SendBufferPool 슬롯을 직접 지시
 
 	IOContext(IOType ioType) : type(ioType)
 	{
@@ -190,88 +190,78 @@ class Session : public std::enable_shared_from_this<Session>
 	SocketHandle GetInvalidSocket() const;
 
   private:
-	Utils::ConnectionId mId;
-	std::atomic<SocketHandle> mSocket;
-	std::atomic<SessionState> mState;
+	Utils::ConnectionId       mId;      // 세션 고유 식별자 — KeyedDispatcher 라우팅 키
+	std::atomic<SocketHandle> mSocket;  // 소켓 핸들 — Close()에서 exchange()로 원자적 교체
+	std::atomic<SessionState> mState;   // 연결 상태 — IsConnected()·Close() 경쟁 방지를 위해 atomic
 
-	// 시간 추적
-	Utils::Timestamp mConnectTime;
-	Utils::Timestamp mLastPingTime;
-	std::atomic<uint32_t> mPingSequence;
+	// ─── 시간 추적 ───────────────────────────────────────────────────────────
+	Utils::Timestamp      mConnectTime;    // 세션이 Connected 상태로 전환된 타임스탬프
+	Utils::Timestamp      mLastPingTime;   // 마지막 핑 수신 시간 — 타임아웃 감지 기준
+	std::atomic<uint32_t> mPingSequence;   // 핑 시퀀스 번호 — 타이머·I/O 워커 동시 접근으로 atomic
 
-	// IO 컨텍스트 (Windows IOCP)
+	// ─── IO 컨텍스트 ─────────────────────────────────────────────────────────
 	// Windows는 WSARecv/WSASend에 OVERLAPPED를 직접 제공해야 하므로 IOContext 내장.
 	// POSIX는 epoll/io_uring 이벤트 루프가 fd를 직접 관리하므로 단순 바이트 버퍼만 유지.
 #ifdef _WIN32
-	IOContext mRecvContext;
-	IOContext mSendContext;
+	IOContext mRecvContext;  // WSARecv OVERLAPPED 컨텍스트 + 수신 버퍼
+	IOContext mSendContext;  // WSASend OVERLAPPED 컨텍스트 — mCurrentSendSlotIdx 슬롯의 wsaBuf 지시
 #else
-	// POSIX 플랫폼용 수신 버퍼 (RecvAsync()에 넘길 raw 버퍼)
-	std::array<char, RECV_BUFFER_SIZE> mRecvBuffer{};
+	std::array<char, RECV_BUFFER_SIZE> mRecvBuffer{};  // POSIX 플랫폼용 수신 버퍼 (RecvAsync()에 직접 전달)
 #endif
 
+	// ─── 전송 큐 ─────────────────────────────────────────────────────────────
 	// Lock 경합 최적화가 적용된 전송 큐.
 	// IOCP 경로(Windows): 풀 슬롯을 참조하는 SendRequest 사용 (0 alloc).
 	// 다른 플랫폼: vector<char> 사용 (기존과 동일).
 #ifdef _WIN32
 	struct SendRequest
 	{
-		size_t   slotIdx; // SendBufferPool 슬롯 인덱스
-		uint32_t size;    // 페이로드 바이트 수
+		size_t   slotIdx;  // SendBufferPool 슬롯 인덱스
+		uint32_t size;     // 페이로드 바이트 수
 	};
-	std::queue<SendRequest> mSendQueue;
+	std::queue<SendRequest> mSendQueue;         // 미전송 요청 대기 큐 (mSendMutex 보호)
 	// 현재 WSASend에 제출 중인 슬롯 인덱스.
 	// ~size_t(0) = 전송 중인 슬롯 없음. 비트 반전값으로 초기화하면 별도 bool 플래그 없이
 	// 유효/무효를 구분할 수 있어 분기가 단순해진다.
-	size_t mCurrentSendSlotIdx;
+	size_t mCurrentSendSlotIdx;                 // 커널에 제출 중인 SendBufferPool 슬롯 — ~0이면 없음
 #else
-	std::queue<std::vector<char>> mSendQueue;
+	std::queue<std::vector<char>> mSendQueue;   // 미전송 버퍼 큐 (mSendMutex 보호)
 #endif
-	std::mutex mSendMutex;
-	std::atomic<bool> mIsSending;
+	std::mutex          mSendMutex;             // mSendQueue·mAsyncProvider 보호
+	std::atomic<bool>   mIsSending;             // CAS로 이중 PostSend 방지 — true이면 send 루프 진행 중
 
 	// Fast-path 최적화 — 큐 크기 카운터 (lock-free 읽기).
 	// mSendQueue.size()는 mSendMutex 없이는 읽을 수 없으므로 별도 atomic 카운터를 유지한다.
 	// 큐가 비어있을 가능성이 높은 경우 mutex 획득을 건너뛸 수 있다.
-	std::atomic<size_t> mSendQueueSize;
+	std::atomic<size_t> mSendQueueSize;         // mSendQueue와 동기화된 크기 카운터 (lock-free 읽기용)
 
 	// 비동기 I/O 공급자 — mSendMutex 보호.
 	// SetAsyncProvider(), Close(), Send() RIO 경로, PostSend() POSIX 경로가
 	// 이 필드 읽기/쓰기 전에 mSendMutex를 획득한다.
-	// 락 내에서 shared_ptr을 복사한 뒤, 락 해제 후 스냅샷을 사용하여
-	// 실제 I/O 호출 중 mSendMutex를 보유하지 않도록 한다.
-	std::shared_ptr<AsyncIO::AsyncIOProvider> mAsyncProvider;
+	std::shared_ptr<AsyncIO::AsyncIOProvider> mAsyncProvider;  // 플랫폼별 I/O 공급자 (Close()에서 reset)
 
+	// ─── 수신 재조립 버퍼 ────────────────────────────────────────────────────
 	// TCP 재조립 누적 버퍼 + 읽기 오프셋.
-	//
-	//   mRecvMutex 제거 — KeyedDispatcher 친화도로 직렬화 보장.
-	//   동일 sessionId는 항상 동일 워커로 라우팅되므로 동일 세션의
-	//   ProcessRawRecv 호출은 본질적으로 순차 실행 (동시 워커 없음).
-	//
-	//   mRecvAccumOffset — O(1) 읽기 포인터.
-	//                      패킷마다 erase(O(n) memmove) 대신 오프셋만 전진하고,
-	//                      오프셋이 버퍼 절반을 초과하면 compact.
-	std::vector<char> mRecvAccumBuffer;
-	size_t            mRecvAccumOffset{0};
+	// KeyedDispatcher 친화도로 동일 세션의 ProcessRawRecv가 항상 같은 워커에서 직렬화되므로
+	// mRecvMutex 없이 안전하게 접근 가능.
+	std::vector<char> mRecvAccumBuffer;      // TCP 스트림 재조립용 누적 버퍼 — mutex 없이 접근 가능
+	size_t            mRecvAccumOffset{0};   // O(1) 읽기 포인터 — 절반 초과 시 compact
 
 	// ProcessRawRecv 일반 경로용 재사용 배치 버퍼.
 	// Initialize()에서 예약하여 호출 간 할당 비용을 상각.
-	// mutex 불필요 — KeyedDispatcher 친화도가 동일 세션의
-	// ProcessRawRecv 호출을 같은 워커에서 직렬화.
-	// OnRecv 디스패치 전 지역 변수와 swap.
-	std::vector<char> mRecvBatchBuf;
+	// OnRecv 디스패치 전 지역 변수와 swap하여 재사용 capacity를 보존.
+	std::vector<char> mRecvBatchBuf;         // 완성 패킷 배치 임시 버퍼 — capacity 재사용으로 alloc 상각
 
 	// 애플리케이션 수준 recv 콜백. SessionManager::CreateSession에서
 	// PostRecv() 이전에 1회 설정 (첫 recv 완료보다 happens-before 보장).
 	// Reset()에서 초기화하여 스테일 캡처 없이 슬롯 재사용 가능.
-	OnRecvCallback mOnRecvCb;
+	OnRecvCallback mOnRecvCb;                // 완성 패킷 단위 애플리케이션 콜백 — Reset()에서 초기화
 
+	// ─── 비동기 스코프 ───────────────────────────────────────────────────────
 	// 큐잉된 로직 작업의 협력 취소를 위한 비동기 스코프.
-	// BaseNetworkEngine이 Dispatch() 대신 mAsyncScope.Submit(...)을 호출하여
-	// Close() 이후 큐잉된 작업이 조용히 건너뜀.
-	// RAII 소멸자가 Cancel() + WaitForDrain()을 자동 호출하여
-	// Session 소멸 후 작업이 실행되지 않도록 보장.
-	Network::Concurrency::AsyncScope mAsyncScope;
+	// BaseNetworkEngine이 Submit(...)으로 태스크를 제출하며,
+	// Close() 이후 Cancel()로 대기 태스크를 조용히 건너뜀.
+	Network::Concurrency::AsyncScope mAsyncScope;  // Close() 후 대기 태스크 취소 — RAII로 드레인 보장
 };
 
 using SessionRef = std::shared_ptr<Session>;

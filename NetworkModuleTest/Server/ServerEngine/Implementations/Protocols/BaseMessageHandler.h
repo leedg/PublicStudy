@@ -74,9 +74,9 @@ class BaseMessageHandler : public Interfaces::IMessageHandler
 												  size_t size);
 
   private:
-	std::unordered_map<Interfaces::MessageType, MessageCallback> mHandlers;
-	mutable std::mutex mMutex;
-	uint32_t mNextMessageId; // 미래 메시지 추적용 (현재 미사용)
+	std::unordered_map<Interfaces::MessageType, MessageCallback> mHandlers; // 타입별 콜백 맵 — mMutex로 보호
+	mutable std::mutex                                           mMutex;    // mHandlers 접근 직렬화 (ProcessMessage/Register/Unregister)
+	uint32_t                                                     mNextMessageId; // 미래 메시지 추적용 예약 필드 (현재 미사용)
 };
 
 } // namespace Network::Implementations

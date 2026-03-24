@@ -50,14 +50,14 @@ namespace Network::DBServer
         size_t GetWorkerQueueSize(size_t workerIndex) const;
 
     private:
-        size_t                          mWorkerCount;
-        std::atomic<bool>               mIsRunning;
-        Network::Concurrency::KeyedDispatcher mDispatcher;
+        size_t                          mWorkerCount;   // Initialize 시 확정, 이후 불변
+        std::atomic<bool>               mIsRunning;     // Initialize 후 true, Shutdown 시 false; acquire/release 사용
+        Network::Concurrency::KeyedDispatcher mDispatcher;  // 내부 키 친화도 라우팅 엔진 (소유)
 
         // 전역 통계 (atomic, lock-free)
-        std::atomic<size_t>             mTotalEnqueued;
-        std::atomic<size_t>             mTotalProcessed;
-        std::atomic<size_t>             mTotalFailed;
+        std::atomic<size_t>             mTotalEnqueued;   // Dispatch 호출 성공 횟수 (relaxed)
+        std::atomic<size_t>             mTotalProcessed;  // 작업 정상 완료 횟수 (relaxed)
+        std::atomic<size_t>             mTotalFailed;     // 예외 또는 drop된 작업 횟수 (relaxed)
     };
 
 } // namespace Network::DBServer

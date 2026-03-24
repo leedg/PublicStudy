@@ -41,10 +41,10 @@ namespace Network::Utils
 
 enum class LogLevel : int
 {
-	Debug = 0,
-	Info = 1,
-	Warn = 2,
-	Err = 3
+	Debug = 0,  // 상세 디버그 정보 — 개발·진단 시에만 활성화
+	Info  = 1,  // 일반 운영 정보 — 기본 출력 레벨
+	Warn  = 2,  // 주의 필요 이벤트 — 서비스 지속 가능하나 확인 권장
+	Err   = 3   // 오류 — 즉각적인 대응이 필요한 심각 상태
 };
 
 // =============================================================================
@@ -109,11 +109,11 @@ public:
 	static void Flush() { std::cout.flush(); }
 
 private:
-	static inline std::atomic<LogLevel> sCurrentLevel{LogLevel::Info};
-	static inline std::string sLogFile;
-	static inline std::unique_ptr<std::ofstream> sLogFileStream;
-	static inline std::mutex sMutex;
-	static inline std::atomic<bool> sConsoleInitialized{false};
+	static inline std::atomic<LogLevel> sCurrentLevel{LogLevel::Info};  // 현재 출력 레벨 — 이 레벨 이상만 출력, thread-safe
+	static inline std::string sLogFile;                                  // SetLogFile()로 지정한 파일 경로 (빈 문자열 = 파일 출력 비활성)
+	static inline std::unique_ptr<std::ofstream> sLogFileStream;        // 파일 출력 스트림 — nullptr이면 콘솔 전용
+	static inline std::mutex sMutex;                                     // 콘솔/파일 출력 직렬화용 (WriteLog, SetLogFile에서 사용)
+	static inline std::atomic<bool> sConsoleInitialized{false};         // Windows UTF-8 콘솔 초기화 완료 여부 (exchange로 중복 방지)
 
 	// Windows 콘솔 코드 페이지를 UTF-8로 초기화 (한글 출력 지원).
 	// call_once 대신 atomic exchange로 중복 초기화를 방지한다.

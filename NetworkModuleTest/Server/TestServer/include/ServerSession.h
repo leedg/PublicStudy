@@ -30,7 +30,7 @@ namespace Network::TestServer
         void OnRecv(const char* data, uint32_t size) override;
 
     protected:
-        ReconnectCallback mReconnectCallback;
+        ReconnectCallback mReconnectCallback;  // 연결 끊김 시 소유자(TestServer 등)가 등록한 재연결 콜백
     };
 
     using ServerSessionRef = std::shared_ptr<ServerSession>;

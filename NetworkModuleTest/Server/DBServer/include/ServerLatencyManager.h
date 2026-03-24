@@ -33,24 +33,24 @@ namespace Network::DBServer
 
     struct ServerLatencyInfo
     {
-        uint32_t serverId = 0;
-        std::string serverName;
+        uint32_t serverId = 0;           // 서버 식별자 (PKT_ServerPingReq에서 유도)
+        std::string serverName;          // 사람이 읽을 수 있는 서버 이름 (로그/DB 저장용)
 
         // 최신 RTT 측정값 (ms)
-        uint64_t lastRttMs = 0;
+        uint64_t lastRttMs = 0;          // 가장 최근 핑 왕복 시간 (ms)
 
         // 누적 평균 RTT (ms)
-        double avgRttMs = 0.0;
+        double avgRttMs = 0.0;           // 누적 이동 평균 RTT — pingCount 기반 온라인 갱신
 
         // 최소/최대 RTT (ms)
-        uint64_t minRttMs = UINT64_MAX;
-        uint64_t maxRttMs = 0;
+        uint64_t minRttMs = UINT64_MAX;  // 관측된 최솟값 (초기값 UINT64_MAX로 첫 측정에서 갱신됨)
+        uint64_t maxRttMs = 0;           // 관측된 최댓값
 
         // 해당 서버의 총 Ping 횟수
-        uint64_t pingCount = 0;
+        uint64_t pingCount = 0;          // RecordLatency 호출 누적 횟수 (avgRttMs 계산에 사용)
 
         // 마지막 측정 타임스탬프
-        uint64_t lastMeasuredTime = 0;
+        uint64_t lastMeasuredTime = 0;   // 에포크 이후 ms (GMT); 마지막 RecordLatency 호출 시각
     };
 
     // =============================================================================
@@ -117,18 +117,18 @@ namespace Network::DBServer
         void EnsureTables();
 
     private:
-        std::atomic<bool> mInitialized;
+        std::atomic<bool> mInitialized;  // Initialize 후 true, Shutdown 시 false; acquire/release 사용
 
         // 주입된 데이터베이스 (non-owning); nullptr이면 로그만 출력
-        Network::Database::IDatabase* mDatabase = nullptr;
+        Network::Database::IDatabase* mDatabase = nullptr;  // SetDatabase로 주입; DBServer가 소유 및 수명 관리
 
         // 서버별 레이턴시 맵 (mutex로 보호)
-        mutable std::mutex mLatencyMutex;
-        std::unordered_map<uint32_t, ServerLatencyInfo> mLatencyMap;
+        mutable std::mutex mLatencyMutex;                        // mLatencyMap 읽기/쓰기 직렬화
+        std::unordered_map<uint32_t, ServerLatencyInfo> mLatencyMap;  // serverId → 레이턴시 통계 (인메모리)
 
         // 서버별 마지막 Ping 타임스탬프 (GetLastPingTime O(1) 조회용)
-        mutable std::mutex mPingTimeMutex;
-        std::unordered_map<uint32_t, uint64_t> mLastPingTimeMap;
+        mutable std::mutex mPingTimeMutex;                       // mLastPingTimeMap 읽기/쓰기 직렬화
+        std::unordered_map<uint32_t, uint64_t> mLastPingTimeMap;  // serverId → 마지막 ping 타임스탬프 (인메모리)
     };
 
 } // namespace Network::DBServer

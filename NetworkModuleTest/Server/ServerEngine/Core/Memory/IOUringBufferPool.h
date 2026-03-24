@@ -50,14 +50,14 @@ public:
     bool IsFixedBufferMode()               const { return mIsFixed; }
 
 private:
-    void*               mStorage   = nullptr;
-    size_t              mSlotSize  = 0;
-    size_t              mPoolSize  = 0;
-    bool                mIsFixed   = false;
-    io_uring*           mRing      = nullptr; // external ownership (reference only)
-    std::vector<iovec>  mIovecs;
-    std::vector<size_t> mFreeIndices;
-    mutable std::mutex  mMutex;
+    void*               mStorage  = nullptr; // posix_memalign으로 할당한 슬랩 연속 메모리 (4096 바이트 정렬)
+    size_t              mSlotSize = 0;        // 슬롯 하나의 크기 (바이트) — Initialize 이후 불변
+    size_t              mPoolSize = 0;        // 전체 슬롯 수 — Initialize 이후 불변
+    bool                mIsFixed  = false;    // true이면 io_uring fixed-buffer 모드 (zero-copy I/O 활성화)
+    io_uring*           mRing     = nullptr;  // 외부 소유 io_uring 인스턴스 참조 — fixed 모드에서만 유효 (Linux 전용)
+    std::vector<iovec>  mIovecs;              // fixed-buffer 등록 시 io_uring_register_buffers에 전달하는 iov 배열
+    std::vector<size_t> mFreeIndices;         // 반환된 슬롯 인덱스 스택 (후입선출); mMutex로 보호
+    mutable std::mutex  mMutex;               // mStorage, mFreeIndices, mSlotSize, mPoolSize 보호용
 };
 
 } // namespace Memory

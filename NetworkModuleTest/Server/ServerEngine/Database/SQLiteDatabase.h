@@ -66,12 +66,10 @@ class SQLiteResultSet : public IResultSet
 	int ResolveColumn(const std::string &columnName) const;
 
   private:
-	sqlite3_stmt *mStmt;
-	bool mDone;
-	// Next()가 SQLITE_ROW를 반환한 동안만 true.
-	// Get*() 호출 전에 반드시 true여야 한다 (sqlite3_column_* 호출 조건).
-	bool mHasData;
-	std::vector<std::string> mColumnNames;
+	sqlite3_stmt *mStmt;                     // 래핑하는 SQLite prepared statement; Close()에서 sqlite3_finalize()
+	bool mDone;                              // sqlite3_step()이 SQLITE_DONE/오류를 반환한 후 true — 재호출 방지
+	bool mHasData;                           // 현재 행이 유효한 동안 true (Next()가 SQLITE_ROW 반환 후)
+	std::vector<std::string> mColumnNames;   // 컬럼 인덱스 → 이름 매핑 (LoadColumnNames에서 초기화)
 };
 
 // =============================================================================
@@ -142,11 +140,11 @@ class SQLiteStatement : public IStatement
 	}
 
   private:
-	sqlite3 *mDb;
-	sqlite3_stmt *mStmt; // 단일 실행 경로용 — ExecuteQuery에서 SQLiteResultSet으로 소유권 이전
-	std::string mQuery;
-	std::vector<Param> mCurrentParams;
-	std::vector<std::vector<Param>> mBatchParams;
+	sqlite3 *mDb;                                 // 연결 핸들 (SQLiteDatabase 소유; non-owning 참조)
+	sqlite3_stmt *mStmt;                          // 단일 실행 경로용 — ExecuteQuery에서 SQLiteResultSet으로 소유권 이전
+	std::string mQuery;                           // SetQuery()로 설정된 SQL 문자열
+	std::vector<Param> mCurrentParams;            // 현재 BindParameter()로 바인딩된 파라미터 (1-based → 0-based 저장)
+	std::vector<std::vector<Param>> mBatchParams; // AddBatch()로 누적된 배치 파라미터 셋 목록
 };
 
 // =============================================================================
@@ -177,11 +175,11 @@ class SQLiteConnection : public IConnection
 	void ExecRaw(const char *sql);
 
   private:
-	sqlite3 *mDb;
-	bool mOpen;
-	bool mInTransaction;
-	int mLastErrorCode;
-	std::string mLastError;
+	sqlite3 *mDb;          // 공유 연결 핸들 (SQLiteDatabase 소유; non-owning 참조)
+	bool mOpen;            // Open() 호출 후 true; Close() 시 false
+	bool mInTransaction;   // BeginTransaction() 후 true; Commit/Rollback 시 false
+	int mLastErrorCode;    // 마지막 sqlite3_exec() 반환 코드 (SQLITE_OK=0)
+	std::string mLastError; // 마지막 오류 메시지 (ExecRaw 실패 시 갱신)
 };
 
 // =============================================================================
@@ -220,9 +218,9 @@ class SQLiteDatabase : public IDatabase
 	void ExecRaw(const char *sql);
 
   private:
-	DatabaseConfig mConfig;
-	sqlite3 *mDb;
-	bool mConnected;
+	DatabaseConfig mConfig;  // Connect() 시 전달된 설정 복사본 (mConnectionString = 파일 경로)
+	sqlite3 *mDb;            // SQLite3 연결 핸들 — Connect() 후 유효, nullptr이면 미초기화 또는 닫힘
+	bool mConnected;         // Connect() 성공 후 true; Disconnect() 시 false
 };
 
 #else // !HAVE_SQLITE3
@@ -263,8 +261,8 @@ class SQLiteDatabase : public IDatabase
 	const DatabaseConfig &GetConfig() const override { return mConfig; }
 
   private:
-	DatabaseConfig mConfig;
-	bool mConnected;
+	DatabaseConfig mConfig;  // 미사용 (스텁)
+	bool mConnected;         // 항상 false (스텁)
 };
 
 #endif // HAVE_SQLITE3

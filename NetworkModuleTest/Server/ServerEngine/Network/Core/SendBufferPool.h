@@ -42,11 +42,11 @@ class SendBufferPool : public ::Network::Core::Memory::IBufferPool
     SendBufferPool() = default;
     ~SendBufferPool() override { Shutdown(); }
 
-    void*               mStorage  = nullptr;  // _aligned_malloc 연속 메모리
-    std::vector<size_t> mFreeSlots;            // O(1) 프리슬롯 스택
-    mutable std::mutex  mMutex;
-    size_t              mSlotSize{0};
-    size_t              mPoolSize{0};
+    void*               mStorage  = nullptr;  // _aligned_malloc 연속 슬랩 (64바이트 정렬, poolSize × slotSize)
+    std::vector<size_t> mFreeSlots;            // O(1) 프리슬롯 스택 — back()/pop_back() 대여, push_back() 반납
+    mutable std::mutex  mMutex;                // mFreeSlots·mStorage 동시 접근 보호
+    size_t              mSlotSize{0};          // 슬롯당 바이트 수 — Initialize 이후 불변
+    size_t              mPoolSize{0};          // 전체 슬롯 수 — Initialize 이후 불변
 };
 
 } // namespace Network::Core

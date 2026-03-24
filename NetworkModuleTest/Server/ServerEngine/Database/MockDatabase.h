@@ -37,8 +37,8 @@ class MockStatement;
 
 struct ExecutedQuery
 {
-	std::string query;
-	std::vector<std::string> parameters;
+	std::string query;                    // 실행된 SQL 쿼리 문자열
+	std::vector<std::string> parameters;  // 바인딩된 파라미터 목록 (문자열로 변환 저장)
 };
 
 // =============================================================================
@@ -186,12 +186,12 @@ class MockStatement : public IStatement
 	}
 
   private:
-	std::vector<ExecutedQuery> &mLog;
-	std::mutex &mMutex;
-	std::string mQuery;
-	std::vector<std::string> mCurrentParams;
-	std::vector<ExecutedQuery> mBatchEntries;
-	int mTimeout;
+	std::vector<ExecutedQuery> &mLog;         // 공유 쿼리 로그 (MockDatabase 소유, 참조만)
+	std::mutex &mMutex;                       // 공유 로그 보호용 뮤텍스 (MockDatabase 소유, 참조만)
+	std::string mQuery;                       // 현재 설정된 SQL 쿼리 문자열
+	std::vector<std::string> mCurrentParams;  // 현재 배치/단일 실행에 바인딩된 파라미터
+	std::vector<ExecutedQuery> mBatchEntries; // AddBatch()로 누적된 배치 항목들
+	int mTimeout;                             // SetTimeout()으로 설정된 타임아웃 (초); 실제 적용 안 함
 };
 
 // =============================================================================
@@ -226,12 +226,12 @@ class MockConnection : public IConnection
 	std::string GetLastError() const override { return mLastError; }
 
   private:
-	std::vector<ExecutedQuery> &mLog;
-	std::mutex &mMutex;
-	bool mConnected;
-	bool mInTransaction;
-	int mLastErrorCode;
-	std::string mLastError;
+	std::vector<ExecutedQuery> &mLog;  // 공유 쿼리 로그 (MockDatabase 소유, 참조만)
+	std::mutex &mMutex;                // 공유 로그 보호용 뮤텍스 (MockDatabase 소유, 참조만)
+	bool mConnected;                   // Open() 호출 후 true
+	bool mInTransaction;               // BeginTransaction() 후 true; Commit/Rollback 시 false
+	int mLastErrorCode;                // 마지막 오류 코드 (현재 항상 0)
+	std::string mLastError;            // 마지막 오류 메시지 (현재 항상 빈 문자열)
 };
 
 // =============================================================================
@@ -267,10 +267,10 @@ class MockDatabase : public IDatabase
 	void ClearLog();
 
   private:
-	DatabaseConfig mConfig;
-	bool mConnected;
-	mutable std::mutex mMutex;
-	std::vector<ExecutedQuery> mLog;
+	DatabaseConfig mConfig;                // Connect() 시 전달된 설정 복사본
+	bool mConnected;                       // Connect() 후 true; Disconnect() 시 false
+	mutable std::mutex mMutex;             // mLog 멀티스레드 접근 보호 (GetExecutedQueries/ClearLog)
+	std::vector<ExecutedQuery> mLog;       // 모든 커넥션이 공유하는 쿼리 실행 로그
 };
 
 } // namespace Database

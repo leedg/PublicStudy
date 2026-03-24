@@ -71,7 +71,7 @@ class Channel
 	}
 
   private:
-	ExecutionQueue<T> mQueue;
+	ExecutionQueue<T> mQueue;  // Send/Receive 호출이 위임되는 실제 큐 (백프레셔·용량 정책 포함)
 };
 
 } // namespace Network::Concurrency

@@ -71,7 +71,7 @@ namespace Network::DBServer
 
         Logger::Info("Shutting down OrderedTaskQueue...");
         mIsRunning.store(false, std::memory_order_release);
-        
+
         // mDispatcher.Shutdown()은 blocking이며 모든 인큐된 작업이
         //   완료될 때까지 대기한다. 통계 출력 전에 정확성을 보장하기 위함이다.
         mDispatcher.Shutdown();

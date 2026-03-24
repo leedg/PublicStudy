@@ -80,8 +80,8 @@ namespace Network::DBServer
         bool ExecuteQuery(const std::string& query);
 
     private:
-        std::atomic<bool> mInitialized;
-        std::mutex mMutex;
+        std::atomic<bool> mInitialized;  // Initialize 후 true, Shutdown 시 false; acquire/release 사용
+        std::mutex mMutex;               // SavePingTime / GetLastPingTime 직렬화 (레거시 구현 잔재)
 
         // English: Database connection placeholder
         // 한글: 데이터베이스 연결 공백

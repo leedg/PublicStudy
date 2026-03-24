@@ -56,9 +56,9 @@ class SessionManager
 	Utils::ConnectionId GenerateSessionId();
 
   private:
-	std::unordered_map<Utils::ConnectionId, SessionRef> mSessions;
-	mutable std::mutex mMutex;
-	std::function<void(Session *)> mSessionConfigurator;
+	std::unordered_map<Utils::ConnectionId, SessionRef> mSessions;          // 활성 세션 맵 (mMutex 보호)
+	mutable std::mutex                                  mMutex;             // mSessions 읽기·쓰기 보호
+	std::function<void(Session *)>                      mSessionConfigurator;  // CreateSession 시 1회 호출 설정 콜백
 };
 
 } // namespace Network::Core

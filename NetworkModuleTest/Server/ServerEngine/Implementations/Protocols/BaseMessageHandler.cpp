@@ -10,10 +10,10 @@ namespace Network::Implementations
 #pragma pack(push, 1)
 struct MessageHeader
 {
-	uint32_t type;
-	uint64_t connectionId;
-	uint64_t timestamp;
-	uint32_t dataSize;
+	uint32_t type;         // MessageType 열거값 (uint32_t 캐스트)
+	uint64_t connectionId; // 송신 또는 수신 측 연결 ID
+	uint64_t timestamp;    // 메시지 생성 시각 (system_clock 밀리초)
+	uint32_t dataSize;     // 헤더 이후 페이로드 크기 (바이트)
 };
 #pragma pack(pop)
 

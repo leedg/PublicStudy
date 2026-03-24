@@ -33,9 +33,8 @@ enum class BackpressurePolicy : uint8_t
 template <typename T>
 struct ExecutionQueueOptions
 {
-	BackpressurePolicy mBackpressure = BackpressurePolicy::RejectNewest;
-
-	size_t mCapacity = 0; // 0 = 무제한
+	BackpressurePolicy mBackpressure = BackpressurePolicy::RejectNewest;  // 큐 포화 시 동작 정책
+	size_t mCapacity = 0;                                                  // 최대 수용 항목 수 (0 = 무제한)
 };
 
 // =============================================================================
@@ -48,7 +47,6 @@ template <typename T>
 class ExecutionQueue
 {
   public:
-
 	explicit ExecutionQueue(const ExecutionQueueOptions<T> &options)
 		: mOptions(options), mShutdown(false), mSize(0)
 	{
@@ -120,7 +118,6 @@ class ExecutionQueue
 	size_t Capacity()  const { return mOptions.mCapacity; }
 
   private:
-
 	bool TryPushImpl(T &&value)
 	{
 		{
@@ -212,13 +209,20 @@ class ExecutionQueue
 		return false;
 	}
 
-	ExecutionQueueOptions<T>    mOptions;
-	std::atomic<bool>           mShutdown;
-	std::atomic<size_t>         mSize;
-	std::queue<T>               mQueue;
-	mutable std::mutex          mMutex;
-	std::condition_variable     mNotEmptyCV;
-	std::condition_variable     mNotFullCV;
+	// ─────────────────────────────────────────────
+	// 설정 & 상태
+	// ─────────────────────────────────────────────
+	ExecutionQueueOptions<T>    mOptions;    // 백프레셔 정책 및 용량 한도
+	std::atomic<bool>           mShutdown;  // true → Push/Pop 즉시 거부; acq_rel 쌍으로 가시성 보장
+	std::atomic<size_t>         mSize;      // 현재 큐 항목 수; Size()/Empty() 논블로킹 조회용
+
+	// ─────────────────────────────────────────────
+	// 저장소 & 동기화
+	// ─────────────────────────────────────────────
+	std::queue<T>               mQueue;       // 실제 항목을 보관하는 FIFO 컨테이너 (mMutex 보호)
+	mutable std::mutex          mMutex;       // mQueue 접근 직렬화
+	std::condition_variable     mNotEmptyCV;  // 항목 추가 시 notify → Pop 대기자 깨움
+	std::condition_variable     mNotFullCV;   // 항목 제거 시 notify → Block 정책 Push 대기자 깨움
 };
 
 } // namespace Network::Concurrency
