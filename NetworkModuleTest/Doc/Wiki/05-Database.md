@@ -137,6 +137,10 @@ Network::Database::IDatabase
 └── GetConfig()        — 현재 설정 반환
 ```
 
+> **Execute / Query 위임 구조:** `IDatabase`는 SQL 실행 메서드를 직접 노출하지 않는다.
+> `CreateStatement()`로 `IStatement`를 얻은 뒤 `IStatement::Execute()` / `IStatement::Query()`를 호출하는 것이 이 계층의 Execute/Query 진입점이다.
+> 이 분리를 통해 파라미터 바인딩·결과셋 반복을 인터페이스에서 일관되게 처리할 수 있다.
+
 ### DatabaseFactory
 
 `DatabaseFactory::CreateDatabase(type)` 정적 메서드 하나로 모든 백엔드 생성을 캡슐화한다.
