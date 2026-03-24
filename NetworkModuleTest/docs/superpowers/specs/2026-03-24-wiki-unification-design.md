@@ -21,6 +21,8 @@
 | `Doc/Reports/WikiPackage/` | `Doc/Wiki/`로 통합 |
 | `Doc/Reports/_scripts/` (9파일) | docx 생성 도구, Wiki 발행 이후 불필요 |
 
+**주의:** `Doc/Reports/WikiPackage/WikiPackage_Reference.docx`는 삭제 전 내용이 신규 Wiki 페이지에 반영되었는지 확인한다. 반영 완료 후 삭제. 별도 보관이 필요하면 `Doc/Reports/` 루트로 이동 후 삭제.
+
 ---
 
 ## 신규 폴더 구조
@@ -84,29 +86,59 @@ NetworkModuleTest/Doc/Wiki/
 
 ```
 main 브랜치 push
-  └→ .git/hooks/post-push 실행
-       └→ Doc/Wiki/ 변경 여부 확인
-            └→ (변경 있을 때만) scripts/publish-wiki.ps1 실행
+  └→ .git/hooks/pre-push 실행
+       └→ Doc/Wiki/ 변경 여부 확인 (push 대상 커밋 범위 기준)
+            └→ (변경 있을 때만) publish-wiki.ps1 실행
                  └→ PublicStudy.wiki.git 클론 (임시 디렉터리)
-                      └→ Doc/Wiki/ 파일 복사
+                      └→ Doc/Wiki/ 전체 복사 (assets/, diagrams/ 포함)
                            └→ wiki repo commit + push
 ```
+
+### 인증 방식
+
+SSH 키가 설정된 경우 SSH URL 사용:
+```
+git@github.com:leedg/PublicStudy.wiki.git
+```
+SSH 키 없이 HTTPS를 쓸 경우 `GH_TOKEN` 환경변수 필요:
+```
+https://$env:GH_TOKEN@github.com/leedg/PublicStudy.wiki.git
+```
+구현 시 SSH 우선, 없으면 `GH_TOKEN` 폴백으로 처리한다.
 
 ### publish-wiki.ps1 동작
 
 1. `$env:TEMP` 하위에 임시 디렉터리 생성
-2. `git clone https://github.com/leedg/PublicStudy.wiki.git` 실행
-3. 기존 wiki 파일 삭제 후 `Doc/Wiki/` 내용 복사
+2. wiki repo 클론 (위 인증 방식 적용)
+3. 기존 wiki 파일 삭제 후 `Doc/Wiki/` **전체 디렉터리 복사** (`assets/`, `diagrams/` 서브디렉터리 포함 — `.md` 파일만 복사하면 이미지 누락됨)
 4. `git commit -m "docs: sync wiki from main"` + `git push`
 5. 임시 디렉터리 정리
 
-### post-push hook 조건
+### pre-push hook 조건
+
+git의 클라이언트 훅은 `pre-push`를 사용한다 (`post-push`는 존재하지 않음). `pre-push` 훅은 push되는 ref 목록을 stdin으로 받는다.
 
 ```bash
-# Doc/Wiki/ 하위 변경이 있는 push일 때만 실행
-changed=$(git diff --name-only HEAD~1 HEAD | grep "^NetworkModuleTest/Doc/Wiki/")
+#!/usr/bin/env bash
+# .git/hooks/pre-push
+REPO_ROOT=$(git rev-parse --show-toplevel)
+SCRIPT="$REPO_ROOT/NetworkModuleTest/Doc/Wiki/scripts/publish-wiki.ps1"
+
+# stdin에서 push 대상 ref 읽기
+changed=""
+while read local_ref local_sha remote_ref remote_sha; do
+  # 첫 push인 경우 remote_sha는 0000...0000
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    base=$(git rev-list --max-parents=0 "$local_sha")
+  else
+    base="$remote_sha"
+  fi
+  changed=$(git diff --name-only "$base" "$local_sha" | grep "^NetworkModuleTest/Doc/Wiki/")
+  [ -n "$changed" ] && break
+done
+
 if [ -n "$changed" ]; then
-  powershell.exe -File scripts/publish-wiki.ps1
+  powershell.exe -File "$SCRIPT"
 fi
 ```
 
@@ -127,6 +159,6 @@ fi
 2. 신규 페이지(04~06) 코드 기반 작성
 3. Mermaid 다이어그램 `.mmd` 작성 + SVG 렌더링
 4. `publish-wiki.ps1` 스크립트 작성
-5. `.git/hooks/post-push` hook 설정
-6. 기존 `Doc/WikiDraft/`, `Doc/Reports/WikiPackage/`, `Doc/Reports/_scripts/` 삭제
-7. 초기 GitHub Wiki push 실행
+5. `.git/hooks/pre-push` hook 설정
+6. **초기 GitHub Wiki push 실행 및 결과 확인** ← 반드시 성공 확인 후 다음 단계
+7. 기존 `Doc/WikiDraft/`, `Doc/Reports/WikiPackage/`, `Doc/Reports/_scripts/` 삭제 및 커밋
