@@ -1,9 +1,0 @@
-date:        2026-03-05 01:12:10
-backend:     epoll
-server:      server:9000
-num_clients: 10
-num_pings:   5
-kernel:      5.15.167.4-microsoft-standard-WSL2
-wait_sec:    0
-duration_sec: 162
-result:      FAIL (exit_1)

@@ -1,0 +1,71 @@
+====================================
+  TestServer - IOCP Game Server
+====================================
+[11:18:50] [INFO] Initializing server on port 9000
+[11:18:50] [INFO] TestServer: using MockDatabase for DBTaskQueue
+[11:18:50] [INFO] Initializing DBTaskQueue with 1 worker threads
+[11:18:50] [INFO] DBTaskQueue: DB tables ensured (SessionConnectLog, SessionDisconnectLog, PlayerData)
+[11:18:50] [INFO] WAL: Clean startup (no pending tasks to recover)
+[11:18:50] [INFO] DBTaskQueue initialized successfully
+[11:18:50] [INFO] SessionManager initialized
+[11:18:50] [INFO] Windows RIO supported, using RIO backend (auto)
+[11:18:50] [INFO] WindowsNetworkEngine created with mode: RIO
+[11:18:50] [INFO] DBTaskQueue worker thread started
+[11:18:50] [INFO] Winsock initialized (version 2.2)
+[11:18:50] [INFO] Using RIO backend
+[11:18:50] [INFO] Listen socket created and bound to port 9000
+[11:18:50] [INFO] BaseNetworkEngine initialized on port 9000
+[11:18:50] [INFO] TestServer initialized on port 9000
+[11:18:50] [INFO] Started 16 worker threads + 1 accept thread
+[11:18:50] [INFO] BaseNetworkEngine started
+[11:18:50] [INFO] TestServer started
+[11:18:50] [INFO] Connecting to DB server at 127.0.0.1:8002
+[11:18:50] [INFO] Session initialized - ID: 448
+[11:18:50] [INFO] Successfully connected to DB server at 127.0.0.1:8002
+[11:18:50] [INFO] Server is running. Press Ctrl+C to stop.
+[11:18:50] [INFO] Accept thread started
+[11:18:51] [INFO] Session initialized - ID: 1
+[11:18:51] [INFO] Session created - ID: 1, Total: 1
+[11:18:51] [INFO] Client connected - IP: 127.0.0.1:50620 (Session 1)
+[11:18:51] [INFO] ClientSession connected - ID: 1
+[11:18:51] [INFO] Client connected - Connection: 1
+[11:18:51] [INFO] DB INSERT SessionConnectLog - Session: 1 at 2026-03-01 11:18:51
+[11:18:51] [INFO] Client connect request - Session: 1, ClientVersion: 1
+[11:18:51] [INFO] Session initialized - ID: 2
+[11:18:51] [INFO] Session created - ID: 2, Total: 2
+[11:18:51] [INFO] Client connected - IP: 127.0.0.1:50621 (Session 2)
+[11:18:51] [INFO] ClientSession connected - ID: 2
+[11:18:51] [INFO] Client connected - Connection: 2
+[11:18:51] [INFO] DB INSERT SessionConnectLog - Session: 2 at 2026-03-01 11:18:51
+[11:18:51] [INFO] Client connect request - Session: 2, ClientVersion: 1
+[11:18:56] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 1, Seq: 0
+[11:18:56] [INFO] [GameServer] Client Ping/Pong (every 10th) - Session: 2, Seq: 0
+[11:19:10] [INFO] Ping time saved successfully in DB - ServerId: 1
+[11:19:22] [INFO] ClientSession disconnected - ID: 1
+[11:19:22] [INFO] Session closed - ID: 1
+[11:19:22] [INFO] DB INSERT SessionDisconnectLog - Session: 1 at 2026-03-01 11:19:22
+[11:19:22] [INFO] Client disconnected - Connection: 1
+[11:19:22] [INFO] Session removed - ID: 1, Remaining: 1
+[11:19:23] [INFO] Session closed - ID: 2
+[11:19:23] [INFO] Session removed - ID: 2, Remaining: 0
+[11:19:23] [INFO] ClientSession disconnected - ID: 2
+[11:19:23] [INFO] Client disconnected - Connection: 2
+[11:19:23] [INFO] DB INSERT SessionDisconnectLog - Session: 2 at 2026-03-01 11:19:23
+[11:19:23] [INFO] Shutdown event signaled - stopping server
+[11:19:23] [INFO] Shutting down server...
+[11:19:23] [INFO] Shutting down DB task queue...
+[11:19:23] [INFO] Shutting down DBTaskQueue...
+[11:19:23] [INFO] DBTaskQueue worker thread stopped
+[11:19:23] [INFO] DBTaskQueue shutdown complete - Processed: 4, Failed: 0
+[11:19:23] [INFO] DB task queue statistics - Processed: 4, Failed: 0
+[11:19:23] [INFO] TestServer: local database disconnected
+[11:19:23] [WARN] DB server closed connection
+[11:19:23] [INFO] Session closed - ID: 448
+[11:19:23] [INFO] Accept thread stopped
+[11:19:23] [INFO] All I/O threads stopped
+[11:19:23] [INFO] All sessions closed - Count: 0
+[11:19:23] [INFO] WindowsNetworkEngine platform shutdown complete
+[11:19:23] [INFO] BaseNetworkEngine stopped
+[11:19:23] [INFO] TestServer stopped
+[11:19:23] [INFO] Server stopped.
+Server shutdown complete.

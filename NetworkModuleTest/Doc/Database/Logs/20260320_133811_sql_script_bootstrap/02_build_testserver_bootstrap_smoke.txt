@@ -1,8 +1,0 @@
-﻿
-=== Setting up MSVC x64 environment ===
-[INFO]  Using: C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat
-[OK]    MSVC 14.38.33130 (x64) ready
-testserver_mysql_bootstrap_smoke.cpp
-TestDatabaseManager.cpp
-코드를 생성하고 있습니다...
-Harness: E:\MyGitHub\PublicStudy4\NetworkModuleTest\scripts\db_tests\build_smoke\testserver_bootstrap_smoke.exe

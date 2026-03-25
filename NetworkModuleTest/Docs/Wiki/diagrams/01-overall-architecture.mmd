@@ -1,0 +1,44 @@
+%%{init: {'theme':'base', 'themeVariables': {
+'fontFamily':'Segoe UI, Noto Sans KR, sans-serif',
+'primaryColor':'#EAF4FF','primaryTextColor':'#0F172A',
+'primaryBorderColor':'#3B82F6','lineColor':'#64748B',
+'secondaryColor':'#FFF8E6','tertiaryColor':'#F8FAFC'
+}}}%%
+flowchart LR
+    Client[TestClient]
+
+    subgraph TS[TestServer :9000]
+        Engine["INetworkEngine\n(CreateNetworkEngine 'auto')\nBaseNetworkEngine + AsyncIOProvider"]
+        SessionMgr[SessionManager]
+        SessionPool[SessionPool]
+        Session[Core::Session]
+        EventFlow["이벤트 핸들러\nConnected / Disconnected"]
+        DBQueue["DBTaskQueue\nworkerCount=3 기본\n워커별 독립 큐"]
+    end
+
+    subgraph Platforms[플랫폼 백엔드]
+        Win["Windows\nRIO → IOCP 폴백"]
+        Lin["Linux\nio_uring → epoll 폴백"]
+        Mac["macOS\nkqueue"]
+    end
+
+    subgraph DBS[TestDBServer :8002 선택]
+        OrderedQ[OrderedTaskQueue]
+        IDB["IDatabase\n(SQLite / Mock / ODBC)"]
+    end
+
+    Client <-->|TCP 패킷| Engine
+    Engine --> SessionMgr --> SessionPool --> Session
+    Engine --> EventFlow --> DBQueue
+    Engine -. 플랫폼 선택 .-> Platforms
+    DBQueue <-->|TCP| DBS
+    OrderedQ --> IDB
+
+    classDef external  fill:#EEF2FF,stroke:#4F46E5,color:#1E1B4B,stroke-width:1.2px;
+    classDef component fill:#E0F2FE,stroke:#0284C7,color:#0C4A6E,stroke-width:1.2px;
+    classDef platform  fill:#FFF7ED,stroke:#C2410C,color:#7C2D12,stroke-width:1.2px;
+    classDef db        fill:#ECFDF5,stroke:#059669,color:#064E3B,stroke-width:1.2px;
+    class Client external;
+    class Engine,SessionMgr,SessionPool,Session,EventFlow,DBQueue component;
+    class Win,Lin,Mac platform;
+    class OrderedQ,IDB db;

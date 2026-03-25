@@ -1,0 +1,30 @@
+====================================
+  TestClient - Network Test Client
+====================================
+[12:45:42] [INFO] Socket platform initialized
+[12:45:42] [INFO] Graceful shutdown event: TestClient_GracefulShutdown_28284
+[12:45:42] [INFO] Connecting to 127.0.0.1:9000...
+[12:45:42] [INFO] Connecting to 127.0.0.1:9000...
+[12:45:42] [INFO] TCP connected
+[12:45:42] [INFO] SessionConnectReq sent, waiting for response...
+[12:45:42] [INFO] Session established - ID: 1, ServerTime: 1772250342
+[12:45:42] [INFO] Network worker thread started
+
+Connected! Press 'q' to quit, 's' for statistics.
+
+[12:45:47] [INFO] [Client] Ping sent (every 10th) - Seq: 0, Total: 1
+[12:45:47] [INFO] [Client] Pong received (every 10th) - Seq: 0, RTT: 3ms
+[12:46:14] [INFO] Shutdown event signaled - stopping client
+
+--- Latency Statistics ---
+  Session ID : 1
+  Ping sent  : 6
+  Pong recv  : 6
+  Last RTT   : 0 ms
+  Min RTT    : 0 ms
+  Max RTT    : 3 ms
+  Avg RTT    : 0 ms
+--------------------------
+
+[12:46:14] [INFO] Disconnected
+[12:46:14] [INFO] TestClient shutdown complete.

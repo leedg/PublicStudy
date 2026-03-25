@@ -1,0 +1,21 @@
+====================================
+  TestClient - Network Test Client
+====================================
+[16:15:46] [INFO] Socket platform initialized
+[16:15:46] [INFO] Graceful shutdown event: TestClient_GracefulShutdown_58496
+[16:15:46] [INFO] Connecting to 127.0.0.1:9000...
+[16:15:46] [INFO] Connecting to 127.0.0.1:9000...
+[16:15:46] [INFO] TCP connected
+[16:15:46] [INFO] SessionConnectReq sent, waiting for response...
+[16:15:46] [INFO] Session established - ID: 1, ServerTime: 1772608546
+[16:15:46] [INFO] Network worker thread started
+
+Connected! Press 'q' to quit, 's' for statistics.
+
+[16:15:50] [ERROR] recv() failed: 10054
+[16:15:50] [WARN] Connection lost - will reconnect
+[16:15:50] [INFO] Reconnecting... attempt #1 (delay: 1000ms)
+[16:15:51] [INFO] Connecting to 127.0.0.1:9000...
+[16:15:52] [INFO] TCP connected
+[16:15:52] [INFO] SessionConnectReq sent, waiting for response...
+[16:15:52] [INFO] Session established - ID: 1, ServerTime: 1772608552

@@ -1,0 +1,288 @@
+====================================
+  TestDBServer - Database Server
+====================================
+[16:44:48] [INFO] Initializing TestDBServer on port 8002
+[16:44:48] [INFO] Initializing ServerLatencyManager...
+[16:44:48] [INFO] ServerLatencyManager initialized successfully
+[16:44:48] [INFO] OrderedTaskQueue: initialized with 4 workers
+[16:44:48] [INFO] OrderedTaskQueue initialized successfully
+[16:44:48] [INFO] SessionManager initialized
+[16:44:48] [INFO] Windows RIO supported, using RIO backend (auto)
+[16:44:48] [INFO] WindowsNetworkEngine created with mode: RIO
+[16:44:48] [INFO] Winsock initialized (version 2.2)
+[16:44:48] [INFO] Using RIO backend
+[16:44:48] [INFO] Listen socket created and bound to port 8002
+[16:44:48] [INFO] BaseNetworkEngine initialized on port 8002
+[16:44:48] [INFO] TestDBServer initialized on port 8002
+[16:44:48] [INFO] Started 16 worker threads + 1 accept thread
+[16:44:48] [INFO] BaseNetworkEngine started
+[16:44:48] [INFO] TestDBServer started
+[16:44:48] [INFO] TestDBServer is running. Press Ctrl+C to stop.
+[16:44:48] [INFO] Accept thread started
+[16:44:49] [INFO] Session initialized - ID: 1
+[16:44:49] [INFO] Session created - ID: 1, Total: 1
+[16:44:49] [INFO] Client connected - IP: 127.0.0.1:51295 (Session 1)
+[16:44:49] [INFO] DBSession connected - ID: 1
+[16:44:49] [INFO] Game server connected - Connection: 1
+[16:44:49] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 1
+[16:44:54] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 2
+[16:44:59] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 3
+[16:45:04] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 4
+[16:45:09] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:45:09] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 0ms, Count: 5
+[16:45:09] [INFO] Ping time saved for ServerId: 1
+[16:45:14] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 6
+[16:45:19] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 7
+[16:45:24] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 8
+[16:45:29] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 9
+[16:45:34] [INFO] [DBServer] Ping received (every 10th) - Seq: 10, Latency: 0ms
+[16:45:34] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:45:34] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 10
+[16:45:34] [INFO] Ping time saved for ServerId: 1
+[16:45:39] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 11
+[16:45:44] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 12
+[16:45:49] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 13
+[16:45:54] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 14
+[16:45:59] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 15
+[16:45:59] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:45:59] [INFO] Ping time saved for ServerId: 1
+[16:46:04] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 16
+[16:46:09] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 17
+[16:46:14] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 18
+[16:46:19] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 19
+[16:46:24] [INFO] [DBServer] Ping received (every 10th) - Seq: 20, Latency: 0ms
+[16:46:24] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:46:24] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 20
+[16:46:24] [INFO] Ping time saved for ServerId: 1
+[16:46:29] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 21
+[16:46:34] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 22
+[16:46:39] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 23
+[16:46:44] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 24
+[16:46:49] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:46:49] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 25
+[16:46:49] [INFO] Ping time saved for ServerId: 1
+[16:46:54] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 26
+[16:46:59] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 27
+[16:47:04] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 28
+[16:47:09] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 29
+[16:47:14] [INFO] [DBServer] Ping received (every 10th) - Seq: 30, Latency: 0ms
+[16:47:14] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:47:14] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 30
+[16:47:14] [INFO] Ping time saved for ServerId: 1
+[16:47:19] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 31
+[16:47:24] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 32
+[16:47:29] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 33
+[16:47:34] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 34
+[16:47:39] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:47:39] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 35
+[16:47:39] [INFO] Ping time saved for ServerId: 1
+[16:47:44] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 36
+[16:47:49] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 37
+[16:47:54] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 38
+[16:47:59] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 39
+[16:48:04] [INFO] [DBServer] Ping received (every 10th) - Seq: 40, Latency: 0ms
+[16:48:04] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:48:04] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 40
+[16:48:04] [INFO] Ping time saved for ServerId: 1
+[16:48:09] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 41
+[16:48:14] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 42
+[16:48:19] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 43
+[16:48:24] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 44
+[16:48:29] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:48:29] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 45
+[16:48:29] [INFO] Ping time saved for ServerId: 1
+[16:48:34] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 46
+[16:48:39] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 47
+[16:48:44] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 48
+[16:48:49] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 49
+[16:48:54] [INFO] [DBServer] Ping received (every 10th) - Seq: 50, Latency: 0ms
+[16:48:54] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:48:54] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 50
+[16:48:54] [INFO] Ping time saved for ServerId: 1
+[16:48:59] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 51
+[16:49:04] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 52
+[16:49:09] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 53
+[16:49:14] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 54
+[16:49:19] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 55
+[16:49:19] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:49:19] [INFO] Ping time saved for ServerId: 1
+[16:49:24] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 56
+[16:49:29] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 57
+[16:49:34] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 58
+[16:49:39] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 59
+[16:49:44] [INFO] [DBServer] Ping received (every 10th) - Seq: 60, Latency: 1ms
+[16:49:44] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:49:44] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 60
+[16:49:44] [INFO] Ping time saved for ServerId: 1
+[16:49:49] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 61
+[16:49:54] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 62
+[16:49:59] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 63
+[16:50:04] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 64
+[16:50:09] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 65
+[16:50:09] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:50:09] [INFO] Ping time saved for ServerId: 1
+[16:50:14] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 66
+[16:50:19] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 67
+[16:50:24] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 68
+[16:50:29] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 69
+[16:50:34] [INFO] [DBServer] Ping received (every 10th) - Seq: 70, Latency: 0ms
+[16:50:34] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:50:34] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 70
+[16:50:34] [INFO] Ping time saved for ServerId: 1
+[16:50:39] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 71
+[16:50:44] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 72
+[16:50:49] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 1ms, Count: 73
+[16:50:54] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 2ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 74
+[16:50:59] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:50:59] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 75
+[16:50:59] [INFO] Ping time saved for ServerId: 1
+[16:51:04] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 76
+[16:51:09] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 77
+[16:51:14] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 78
+[16:51:19] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 79
+[16:51:24] [INFO] [DBServer] Ping received (every 10th) - Seq: 80, Latency: 0ms
+[16:51:24] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:51:24] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 80
+[16:51:24] [INFO] Ping time saved for ServerId: 1
+[16:51:29] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 81
+[16:51:34] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 82
+[16:51:39] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 83
+[16:51:44] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 84
+[16:51:49] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:51:49] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 85
+[16:51:49] [INFO] Ping time saved for ServerId: 1
+[16:51:54] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 86
+[16:51:59] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 87
+[16:52:04] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 88
+[16:52:09] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 89
+[16:52:14] [INFO] [DBServer] Ping received (every 10th) - Seq: 90, Latency: 0ms
+[16:52:14] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:52:14] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 90
+[16:52:14] [INFO] Ping time saved for ServerId: 1
+[16:52:19] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 91
+[16:52:25] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 92
+[16:52:30] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 93
+[16:52:35] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 94
+[16:52:40] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:52:40] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 95
+[16:52:40] [INFO] Ping time saved for ServerId: 1
+[16:52:45] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 96
+[16:52:50] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 97
+[16:52:55] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 98
+[16:53:00] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 99
+[16:53:05] [INFO] [DBServer] Ping received (every 10th) - Seq: 100, Latency: 1ms
+[16:53:05] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:53:05] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 100
+[16:53:05] [INFO] Ping time saved for ServerId: 1
+[16:53:10] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 101
+[16:53:15] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 102
+[16:53:20] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 103
+[16:53:25] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 104
+[16:53:30] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:53:30] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 105
+[16:53:30] [INFO] Ping time saved for ServerId: 1
+[16:53:35] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 106
+[16:53:40] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 107
+[16:53:45] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 108
+[16:53:50] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 109
+[16:53:55] [INFO] [DBServer] Ping received (every 10th) - Seq: 110, Latency: 1ms
+[16:53:55] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:53:55] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 110
+[16:53:55] [INFO] Ping time saved for ServerId: 1
+[16:54:00] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 111
+[16:54:05] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 112
+[16:54:10] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 113
+[16:54:15] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 114
+[16:54:20] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:54:20] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 115
+[16:54:20] [INFO] Ping time saved for ServerId: 1
+[16:54:25] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 116
+[16:54:30] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 117
+[16:54:35] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 118
+[16:54:40] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 119
+[16:54:45] [INFO] [DBServer] Ping received (every 10th) - Seq: 120, Latency: 0ms
+[16:54:45] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:54:45] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 120
+[16:54:45] [INFO] Ping time saved for ServerId: 1
+[16:54:50] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 121
+[16:54:55] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 122
+[16:55:00] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 123
+[16:55:05] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 124
+[16:55:10] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 125
+[16:55:10] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:55:10] [INFO] Ping time saved for ServerId: 1
+[16:55:15] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 126
+[16:55:20] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 127
+[16:55:25] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 128
+[16:55:30] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 129
+[16:55:35] [INFO] [DBServer] Ping received (every 10th) - Seq: 130, Latency: 0ms
+[16:55:35] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:55:35] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 130
+[16:55:35] [INFO] Ping time saved for ServerId: 1
+[16:55:40] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 131
+[16:55:45] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 132
+[16:55:50] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 133
+[16:55:55] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 134
+[16:56:00] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:56:00] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 135
+[16:56:00] [INFO] Ping time saved for ServerId: 1
+[16:56:05] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 136
+[16:56:10] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 137
+[16:56:15] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 138
+[16:56:20] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 139
+[16:56:25] [INFO] [DBServer] Ping received (every 10th) - Seq: 140, Latency: 0ms
+[16:56:25] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:56:25] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 140
+[16:56:25] [INFO] Ping time saved for ServerId: 1
+[16:56:30] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 141
+[16:56:35] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 142
+[16:56:40] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 143
+[16:56:45] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 144
+[16:56:50] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:56:50] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 145
+[16:56:50] [INFO] Ping time saved for ServerId: 1
+[16:56:55] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 146
+[16:57:00] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 147
+[16:57:05] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 148
+[16:57:10] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 149
+[16:57:15] [INFO] [DBServer] Ping received (every 10th) - Seq: 150, Latency: 0ms
+[16:57:15] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:57:15] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 150
+[16:57:15] [INFO] Ping time saved for ServerId: 1
+[16:57:20] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 151
+[16:57:25] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 152
+[16:57:30] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 153
+[16:57:35] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 154
+[16:57:40] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:57:40] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 155
+[16:57:40] [INFO] Ping time saved for ServerId: 1
+[16:57:45] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 156
+[16:57:50] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 0ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 157
+[16:57:55] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 158
+[16:58:00] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 159
+[16:58:05] [INFO] [DBServer] Ping received (every 10th) - Seq: 160, Latency: 1ms
+[16:58:05] [INFO] DB save ping time request - ServerId: 1, ServerName: TestServer
+[16:58:05] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 160
+[16:58:05] [INFO] Ping time saved for ServerId: 1
+[16:58:10] [INFO] Latency recorded - ServerId: 1, ServerName: Server_1, RTT: 1ms, Avg: 0ms, Min: 0ms, Max: 2ms, Count: 161
+[16:58:11] [INFO] DBSession disconnected - ID: 1
+[16:58:11] [INFO] Game server disconnected - Connection: 1
+[16:58:11] [INFO] Session closed - ID: 1
+[16:58:11] [INFO] Session removed - ID: 1, Remaining: 0
+[16:58:11] [INFO] Shutdown event signaled - stopping DBServer
+[16:58:11] [INFO] Shutting down TestDBServer...
+[16:58:11] [INFO] Accept thread stopped
+[16:58:11] [INFO] All I/O threads stopped
+[16:58:11] [INFO] All sessions closed - Count: 0
+[16:58:11] [INFO] WindowsNetworkEngine platform shutdown complete
+[16:58:11] [INFO] BaseNetworkEngine stopped
+[16:58:11] [INFO] Shutting down ordered task queue...
+[16:58:11] [INFO] Shutting down OrderedTaskQueue...
+[16:58:11] [INFO] OrderedTaskQueue: shutdown complete - submitted=193, completed=193, failed=0, rejected=0
+[16:58:11] [INFO] OrderedTaskQueue shutdown complete - Enqueued: 193, Processed: 193, Failed: 0
+[16:58:11] [INFO] OrderedTaskQueue statistics - Enqueued: 193, Processed: 193
+[16:58:11] [INFO] Shutting down ServerLatencyManager...
+[16:58:11] [INFO] ServerLatencyManager shut down
+[16:58:11] [INFO] TestDBServer stopped
+[16:58:11] [INFO] TestDBServer stopped.
+Server shutdown complete.

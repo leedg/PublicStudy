@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# pre-push hook: main 브랜치 push 시 Docs/Wiki/ 변경이 있으면 publish-wiki.ps1 실행
+# 설치: cp NetworkModuleTest/Docs/Wiki/scripts/pre-push.hook .git/hooks/pre-push
+#        chmod +x .git/hooks/pre-push
+
+# main 브랜치 push 시에만 동작 (feature/test 브랜치에서는 실행하지 않음)
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$CURRENT_BRANCH" != "main" ]; then
+  exit 0
+fi
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+SCRIPT="$REPO_ROOT/NetworkModuleTest/Docs/Wiki/scripts/publish-wiki.ps1"
+
+if [ ! -f "$SCRIPT" ]; then
+  echo "Warning: publish-wiki.ps1 not found at $SCRIPT — wiki sync skipped."
+  exit 0
+fi
+
+changed=""
+while read local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    base=$(git rev-list --max-parents=0 "$local_sha")
+  else
+    base="$remote_sha"
+  fi
+  changed=$(git diff --name-only "$base" "$local_sha" | grep "^NetworkModuleTest/Docs/Wiki/")
+  [ -n "$changed" ] && break
+done
+
+if [ -n "$changed" ]; then
+  echo "Docs/Wiki/ changes detected — publishing to GitHub Wiki..."
+  powershell.exe -File "$SCRIPT" || echo "Warning: wiki publish failed (exit $?) — push will continue."
+fi
