@@ -177,8 +177,6 @@
     <None Include="ConnectionPool.cpp" />
     <None Include="odbc_sample.cpp" />
     <None Include="oledb_sample.cpp" />
-    <None Include="Doc\README.md" />
-    <None Include="README.md" />
   </ItemGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

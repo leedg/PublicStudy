@@ -5,6 +5,9 @@
 #include "DatabaseType_enum.h"
 #include <string>
 #include <sstream>
+#ifndef _WIN32
+#include <cstdint>
+#endif
 
 namespace Network
 {

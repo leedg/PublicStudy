@@ -135,13 +135,4 @@
     </None>
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Documentation -->
-    <None Include="README.md">
-      <Filter>Documentation</Filter>
-    </None>
-    <None Include="Doc\README.md">
-      <Filter>Documentation</Filter>
-    </None>
-  </ItemGroup>
 </Project>

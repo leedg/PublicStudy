@@ -5,7 +5,7 @@
 
 #include "EpollAsyncIOProvider.h"
 #include "Utils/Logger.h"
-#include "PlatformDetect.h"
+#include "Network/Core/PlatformDetect.h"
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>

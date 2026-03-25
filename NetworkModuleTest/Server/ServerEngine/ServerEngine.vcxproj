@@ -244,44 +244,4 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-  <ItemGroup Label="Documentation">
-    <!-- 메인 문서 -->
-    <None Include="..\..\README.md" />
-    <None Include="..\..\Doc\README.md" />
-    <None Include="..\..\Doc\01_ProjectOverview.md" />
-    <None Include="..\..\Doc\02_Architecture.md" />
-    <None Include="..\..\Doc\03_Protocol.md" />
-    <None Include="..\..\Doc\03_ConcurrencyRuntime.md" />
-    <None Include="..\..\Doc\04_API.md" />
-    <None Include="..\..\Doc\05_DevelopmentGuide.md" />
-    <None Include="..\..\Doc\06_SolutionGuide.md" />
-    <None Include="..\..\Doc\07_VisualMap.md" />
-    <!-- 아키텍처 문서 -->
-    <None Include="..\..\Doc\Architecture\AsyncDB.md" />
-    <None Include="..\..\Doc\Architecture\CrossPlatform.md" />
-    <None Include="..\..\Doc\Architecture\MultiplatformEngine.md" />
-    <None Include="..\..\Doc\Architecture\NetworkArchitecture.md" />
-    <None Include="..\..\Doc\Architecture\PLATFORM_STRUCTURE_ANALYSIS.md" />
-    <None Include="..\..\Doc\Architecture\ServerMigration.md" />
-    <!-- 성능 최적화 문서 -->
-    <None Include="..\..\Doc\Performance\Benchmarking.md" />
-    <None Include="..\..\Doc\Performance\LockContentionAnalysis.md" />
-    <None Include="..\..\Doc\Performance\VALUE_COPY_OPTIMIZATION.md" />
-    <None Include="..\..\Doc\Performance\PerformanceTestGuideline.md" />
-    <None Include="..\..\Doc\Performance\ServerEngineNetworkLoadTestChecklist.md" />
-    <None Include="..\..\Doc\Performance\ServerEngineNetworkLoadTestLogTemplate.md" />
-    <None Include="..\..\Doc\Performance\Logs\PERF_HISTORY.md" />
-    <!-- 데이터베이스 문서 -->
-    <None Include="..\..\Doc\Database\MigrationGuide.md" />
-    <None Include="..\..\Doc\Database\README.md" />
-    <!-- 네트워크 문서 -->
-    <None Include="..\..\Doc\Network\APIDesign.md" />
-    <None Include="..\..\Doc\Network\CodingConventions.md" />
-    <None Include="..\..\Doc\Network\IOCPAnalysis.md" />
-    <!-- 개발 문서 -->
-    <None Include="..\..\Doc\Development\CMakeBuild.md" />
-    <None Include="..\..\Doc\Development\FILTER_REORGANIZATION.md" />
-    <None Include="..\..\Doc\Development\NamingConventions.md" />
-    <None Include="..\..\Doc\Development\UnitTesting.md" />
-  </ItemGroup>
 </Project>

@@ -84,13 +84,18 @@ if (UNIX AND NOT APPLE)
     endif()
 endif()
 
+# ConnectionPool is cross-platform; always include it on all platforms.
+list(APPEND SERVER_ENGINE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/Database/ConnectionPool.cpp"
+)
+list(APPEND SERVER_ENGINE_PRIVATE_DEFS ENABLE_DATABASE_SUPPORT=1)
+
+# ODBC/OLE DB backends are Windows-only.
 if (WIN32 AND ENABLE_DATABASE_SUPPORT)
     list(APPEND SERVER_ENGINE_SOURCES
-        "${CMAKE_CURRENT_SOURCE_DIR}/Database/ConnectionPool.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/Database/ODBCDatabase.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/Database/OLEDBDatabase.cpp"
     )
-    list(APPEND SERVER_ENGINE_PRIVATE_DEFS ENABLE_DATABASE_SUPPORT=1)
 endif()
 
 add_library(ServerEngine STATIC
