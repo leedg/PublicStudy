@@ -1,0 +1,89 @@
+%%{init: {'theme':'base', 'themeVariables': {'fontFamily':'Segoe UI, Noto Sans KR, sans-serif','primaryColor':'#EAF4FF','primaryTextColor':'#0F172A','primaryBorderColor':'#3B82F6','lineColor':'#64748B'}}}%%
+classDiagram
+    class IBufferPool {
+        <<interface>>
+        +Initialize(poolSize, slotSize) bool
+        +Shutdown() void
+        +Acquire() BufferSlot
+        +Release(index) void
+        +SlotSize() size_t
+        +PoolSize() size_t
+        +FreeCount() size_t
+    }
+
+    class StandardBufferPool {
+        -mStorage : void*
+        -mSlotSize : size_t
+        -mPoolSize : size_t
+        -mFreeIndices : vector~size_t~
+        -mMutex : mutex
+        +Initialize() bool
+        +Acquire() BufferSlot
+        +Release() void
+        할당: _aligned_malloc / posix_memalign
+        등록: 없음
+    }
+
+    class RIOBufferPool {
+        -mSlab : void*
+        -mSlabId : RIO_BUFFERID
+        -mSlotSize : size_t
+        -mPoolSize : size_t
+        -mFreeIndices : vector~size_t~
+        -mMutex : mutex
+        +Initialize() bool
+        +Acquire() BufferSlot
+        +Release() void
+        +GetRIOBufferId() uint64_t
+        +GetRIOOffset() size_t
+        +GetSlabId() RIO_BUFFERID
+        +SlotPtr() char*
+        할당: VirtualAlloc
+        등록: RIORegisterBuffer 1회
+    }
+
+    class IOUringBufferPool {
+        -mStorage : void*
+        -mRing : io_uring*
+        -mIsFixed : bool
+        -mIovecs : vector~iovec~
+        -mFreeIndices : vector~size_t~
+        -mMutex : mutex
+        +Initialize() bool
+        +InitializeFixed(ring) bool
+        +Acquire() BufferSlot
+        +Release() void
+        +GetFixedBufferIndex() int
+        +IsFixedBufferMode() bool
+        할당: posix_memalign
+        등록: io_uring_register_buffers
+    }
+
+    class SendBufferPool {
+        <<singleton>>
+        -mStorage : void*
+        -mFreeSlots : vector~size_t~
+        -mMutex : mutex
+        -mSlotSize : size_t
+        -mPoolSize : size_t
+        +Instance() SendBufferPool&
+        +Initialize() bool
+        +Acquire() BufferSlot
+        +Release() void
+        +SlotPtr() char*
+        할당: _aligned_malloc 64바이트 정렬
+        용도: IOCP 송신 전용
+    }
+
+    class AsyncBufferPool {
+        <<using alias>>
+        Windows: RIOBufferPool
+        Linux: IOUringBufferPool
+    }
+
+    IBufferPool <|-- StandardBufferPool : 구현
+    IBufferPool <|-- RIOBufferPool : 구현
+    IBufferPool <|-- IOUringBufferPool : 구현
+    IBufferPool <|-- SendBufferPool : 구현
+    RIOBufferPool <.. AsyncBufferPool : Windows alias
+    IOUringBufferPool <.. AsyncBufferPool : Linux alias

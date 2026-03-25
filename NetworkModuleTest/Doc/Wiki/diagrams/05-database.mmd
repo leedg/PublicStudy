@@ -1,0 +1,91 @@
+%%{init: {'theme':'base', 'themeVariables': {'fontFamily':'Segoe UI, Noto Sans KR, sans-serif','primaryColor':'#EAF4FF','primaryTextColor':'#0F172A','primaryBorderColor':'#3B82F6','lineColor':'#64748B'}}}%%
+classDiagram
+    class IDatabase {
+        <<interface>>
+        +Connect(config: DatabaseConfig) void
+        +Disconnect() void
+        +IsConnected() bool
+        +CreateConnection() unique_ptr~IConnection~
+        +CreateStatement() unique_ptr~IStatement~
+        +BeginTransaction() void
+        +CommitTransaction() void
+        +RollbackTransaction() void
+        +GetType() DatabaseType
+        +GetConfig() DatabaseConfig
+    }
+
+    class ODBCDatabase {
+        Windows 전용
+        sql.h / sqlext.h
+    }
+
+    class OLEDBDatabase {
+        Windows 전용
+        oledb.h / COM 초기화 필요
+    }
+
+    class PostgreSQLDatabase {
+        HAVE_LIBPQ 필요
+        libpq 직접 연동
+    }
+
+    class SQLiteDatabase {
+        HAVE_SQLITE3 필요
+        파일/인메모리 DB
+    }
+
+    class MockDatabase {
+        외부 의존성 없음
+        테스트 전용
+    }
+
+    class DatabaseFactory {
+        +CreateDatabase(type: DatabaseType)$ unique_ptr~IDatabase~
+        +CreateODBCDatabase()$ unique_ptr~IDatabase~
+        +CreateOLEDBDatabase()$ unique_ptr~IDatabase~
+        +CreatePostgreSQLDatabase()$ unique_ptr~IDatabase~
+        +CreateSQLiteDatabase()$ unique_ptr~IDatabase~
+        +CreateMockDatabase()$ unique_ptr~IDatabase~
+    }
+
+    class ConnectionPool {
+        -mDatabase: unique_ptr~IDatabase~
+        -mConnections: vector~PooledConnection~
+        -mMaxPoolSize: size_t = 10
+        -mMinPoolSize: size_t = 2
+        -mConnectionTimeout: 30s
+        -mIdleTimeout: 300s
+        +Initialize(config) bool
+        +GetConnection() shared_ptr~IConnection~
+        +ReturnConnection(conn) void
+        +Shutdown() void
+    }
+
+    class DBTaskQueue {
+        -mWorkers: vector~WorkerData~
+        -mDatabase: IDatabase*
+        +Initialize(workerCount, walPath, db) bool
+        +EnqueueTask(task: DBTask) void
+        +RecordConnectTime(sessionId, ts) void
+        +RecordDisconnectTime(sessionId, ts) void
+        +UpdatePlayerData(sessionId, json, cb) void
+        +Shutdown() void
+    }
+
+    class ScopedConnection {
+        +IsValid() bool
+        +operator->() IConnection*
+        ~ScopedConnection() ReturnConnection 자동 호출
+    }
+
+    IDatabase <|.. ODBCDatabase
+    IDatabase <|.. OLEDBDatabase
+    IDatabase <|.. PostgreSQLDatabase
+    IDatabase <|.. SQLiteDatabase
+    IDatabase <|.. MockDatabase
+
+    DatabaseFactory ..> IDatabase : creates
+    ConnectionPool --> IDatabase : uses (팩토리)
+    ConnectionPool --> ScopedConnection : 생성 지원
+    DBTaskQueue --> IDatabase : uses (쿼리 실행)
+    DBTaskQueue --> ConnectionPool : 내부 연결 요청
