@@ -60,7 +60,6 @@ sequenceDiagram
     end
 ```
 
-![네트워크 엔진](assets/02-network-engine.svg)
 
 ---
 

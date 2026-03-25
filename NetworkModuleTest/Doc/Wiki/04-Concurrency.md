@@ -16,7 +16,6 @@
 
 ## 다이어그램
 
-![동시성 런타임](assets/04-concurrency.svg)
 
 ```mermaid
 %%{init: {'theme':'base', 'themeVariables': {'fontFamily':'Segoe UI, Noto Sans KR, sans-serif','primaryColor':'#EAF4FF','primaryTextColor':'#0F172A','primaryBorderColor':'#3B82F6','lineColor':'#64748B'}}}%%

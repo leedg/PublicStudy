@@ -18,7 +18,6 @@ ServerEngine의 데이터베이스 레이어는 백엔드 구현과 호출부를
 
 ## 다이어그램
 
-![데이터베이스](assets/05-database.svg)
 
 ```mermaid
 %%{init: {'theme':'base', 'themeVariables': {'fontFamily':'Segoe UI, Noto Sans KR, sans-serif','primaryColor':'#EAF4FF','primaryTextColor':'#0F172A','primaryBorderColor':'#3B82F6','lineColor':'#64748B'}}}%%

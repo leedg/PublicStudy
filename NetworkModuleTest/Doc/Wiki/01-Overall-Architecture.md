@@ -55,7 +55,6 @@ flowchart LR
     class OrderedQ,IDB db;
 ```
 
-![전체 구조](assets/01-overall-architecture.svg)
 
 ## 상세 설명
 

@@ -103,7 +103,6 @@ classDiagram
     IOUringBufferPool <.. AsyncBufferPool : Linux alias
 ```
 
-![버퍼 및 메모리](assets/06-buffer-memory.svg)
 
 ---
 

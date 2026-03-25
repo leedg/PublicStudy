@@ -55,7 +55,6 @@ flowchart TD
     class L done;
 ```
 
-![종료 및 재연결](assets/07-shutdown.svg)
 
 ---
 

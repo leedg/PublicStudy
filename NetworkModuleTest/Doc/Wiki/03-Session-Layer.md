@@ -72,7 +72,6 @@ classDiagram
     TestServer ..> Session : SetOnRecv 콜백 주입
 ```
 
-![세션 계층](assets/03-session-layer.svg)
 
 ## 상세 설명
 
