@@ -6,36 +6,7 @@ Windows(IOCP/RIO) · Linux(epoll/io_uring) · macOS(kqueue) 백엔드를
 단일 인터페이스(`INetworkEngine`)로 추상화합니다.
 실제 클라이언트-서버 부하 환경에서 **세션 관리 · 비동기 DB · 재연결 흐름**을 검증합니다.
 
----
-
-## 전체 아키텍처
-
-<p align="center">
-  <img src="Doc/WikiDraft/ServerStructure/assets/01-overall-architecture.png"
-       alt="Overall Architecture" width="860"/>
-</p>
-
-`TestClient → TestServer → TestDBServer(옵션)` 3-tier 구조.
-`ServerEngine`이 플랫폼별 IO 백엔드를 선택하고,
-`SessionManager / SessionPool`이 세션 생명주기를 관리합니다.
-
----
-
-## 세션 계층
-
-<p align="center">
-  <img src="Doc/WikiDraft/ServerStructure/assets/02-session-layer.png"
-       alt="Session Layer" width="760"/>
-</p>
-
----
-
-## 패킷 · 비동기 DB 흐름
-
-<p align="center">
-  <img src="Doc/WikiDraft/ServerStructure/assets/03-packet-and-asyncdb-flow.png"
-       alt="Packet and Async DB Flow" width="760"/>
-</p>
+> **Wiki:** https://github.com/leedg/PublicStudy/wiki
 
 ---
 
@@ -45,8 +16,8 @@ Windows(IOCP/RIO) · Linux(epoll/io_uring) · macOS(kqueue) 백엔드를
 |------|------|
 | **IO 백엔드** | Windows: IOCP / RIO &nbsp;·&nbsp; Linux: epoll / io_uring &nbsp;·&nbsp; macOS: kqueue |
 | **세션 관리** | `SessionPool` + `KeyedDispatcher` (세션 키 기반 직렬화, 락 없는 순서 보장) |
-| **비동기 DB** | `DBTaskQueue` → SQLite / ODBC / OLE DB 멀티 백엔드 인터페이스 |
-| **자동 재연결** | `TimerQueue` 기반 DB 서버 자동 재연결 정책 |
+| **비동기 DB** | `DBTaskQueue` → SQLite / ODBC / OLE DB / PostgreSQL 멀티 백엔드 |
+| **자동 재연결** | 지수 백오프(1s→30s max) · `condition_variable` 즉시 깨우기 설계 |
 | **버퍼 풀** | RIO slab pool · io_uring fixed buffer 사전 등록 (Non-Paged Pool 절약) |
 | **Send 백프레셔** | 큐 임계치 초과 시 `SendResult::QueueFull` 반환 |
 | **Linux 통합 테스트** | Docker 3-tier (DBServer → Server → Client) 자동화 · 결과 git 자동 저장 |
@@ -58,20 +29,16 @@ Windows(IOCP/RIO) · Linux(epoll/io_uring) · macOS(kqueue) 백엔드를
 ### Windows — VS 2022
 
 > **선결 조건:** Visual Studio 2022 + C++ 빌드 도구(MSVC v143) + Windows SDK 10.0
-> → MSBuild PATH 등록 없이 자동 탐지합니다 (vswhere 사용).
 
 ```powershell
 # 빌드
 .\build_all.ps1
 
-# 서버 시작 (DBServer:18002, Server:19010 — 충돌 시 자동 fallback)
+# 서버 시작 (DBServer:8002, Server:9000)
 .\run_allServer.ps1
 
 # 클라이언트 실행
 .\run_client.ps1
-
-# 통합 테스트 (5초)
-.\run_test_auto.ps1 -RunSeconds 5
 ```
 
 ### Linux — 네이티브
@@ -109,9 +76,6 @@ sudo apt-get install -y cmake build-essential pkg-config liburing-dev libsqlite3
 > **선결 조건:** `xcode-select --install` + `brew install cmake pkg-config`
 
 ```bash
-# ServerEngine 컴파일 검증
-./scripts/verify_macos.sh
-
 # 전체 빌드 (TestServer, DBServer, TestClient)
 ./scripts/build_unix.sh --config Release
 ```
@@ -120,13 +84,10 @@ sudo apt-get install -y cmake build-essential pkg-config liburing-dev libsqlite3
 
 ## 기본 포트
 
-| 실행 파일 | Windows | Linux / macOS |
-|-----------|:-------:|:-------------:|
-| TestDBServer | `18002` | `9001` |
-| TestServer   | `19010` | `9000` |
-
-> 포트 충돌 시 자동으로 다음 빈 포트로 fallback합니다.
-> 포트를 고정하려면 `-DisablePortFallback`을 사용하세요.
+| 실행 파일 | 포트 |
+|-----------|:----:|
+| TestDBServer | `8002` |
+| TestServer   | `9000` |
 
 ---
 
@@ -136,32 +97,36 @@ sudo apt-get install -y cmake build-essential pkg-config liburing-dev libsqlite3
 
 | 문서 | 내용 |
 |------|------|
-| [01 프로젝트 개요](Doc/01_ProjectOverview.md) | 프로젝트 범위 · 현재 상태 · 변경 이력 |
-| [02 아키텍처](Doc/02_Architecture.md) | 런타임 구조 · 모듈 관계 · 플랫폼별 엔진 |
-| [03 프로토콜](Doc/03_Protocol.md) | PacketDefine · ServerPacketDefine 바이너리 포맷 |
-| [04 API](Doc/04_API.md) | CLI 옵션 · 주요 C++ API 레퍼런스 |
-| [05 개발 가이드](Doc/05_DevelopmentGuide.md) | **플랫폼별 빌드 · 실행 · 테스트 상세** |
-| [06 솔루션 가이드](Doc/06_SolutionGuide.md) | 솔루션/프로젝트 구성 · 빌드 순서 |
-| [07 코드-문서 매핑](Doc/07_VisualMap.md) | 디렉터리 ↔ 문서 연결 지도 |
+| [01 프로젝트 개요](Docs/01_ProjectOverview.md) | 프로젝트 범위 · 현재 상태 · 변경 이력 |
+| [02 아키텍처](Docs/02_Architecture.md) | 런타임 구조 · 모듈 관계 · 플랫폼별 엔진 |
+| [03 프로토콜](Docs/03_Protocol.md) | PacketDefine · ServerPacketDefine 바이너리 포맷 |
+| [04 API](Docs/04_API.md) | CLI 옵션 · 주요 C++ API 레퍼런스 |
+| [05 개발 가이드](Docs/05_DevelopmentGuide.md) | 플랫폼별 빌드 · 실행 · 테스트 상세 |
+| [06 솔루션 가이드](Docs/06_SolutionGuide.md) | 솔루션/프로젝트 구성 · 빌드 순서 |
+| [07 코드-문서 매핑](Docs/07_VisualMap.md) | 디렉터리 ↔ 문서 연결 지도 |
 
-### 아키텍처 다이어그램 (Wiki)
+### Wiki (GitHub)
 
-| 문서 | 내용 |
-|------|------|
-| [01 전체 구조](Doc/WikiDraft/ServerStructure/01-Overall-Architecture.md) | 3-tier 전체 구성도 |
-| [02 세션 계층](Doc/WikiDraft/ServerStructure/02-Session-Layer.md) | 세션 생명주기 · UML |
-| [03 패킷·비동기 DB](Doc/WikiDraft/ServerStructure/03-Packet-and-AsyncDB-Flow.md) | 패킷 처리 · DB 비동기 흐름 |
-| [04 Graceful Shutdown](Doc/WikiDraft/ServerStructure/04-Graceful-Shutdown.md) | 종료 시퀀스 |
-| [05 재연결 전략](Doc/WikiDraft/ServerStructure/05-Reconnect-Strategy.md) | DB 자동 재연결 정책 |
+아키텍처 · 모듈 상세 설명은 GitHub Wiki를 참고하세요.
+
+| 페이지 | 내용 |
+|--------|------|
+| [전체 구조](https://github.com/leedg/PublicStudy/wiki/01-Overall-Architecture) | 2계층 구조, 플랫폼 분기 |
+| [네트워크 엔진](https://github.com/leedg/PublicStudy/wiki/02-Network-Engine) | AsyncIOProvider, 플랫폼 백엔드 |
+| [세션 계층](https://github.com/leedg/PublicStudy/wiki/03-Session-Layer) | Session · SessionManager · SessionPool |
+| [동시성 런타임](https://github.com/leedg/PublicStudy/wiki/04-Concurrency) | ExecutionQueue · KeyedDispatcher · AsyncScope |
+| [데이터베이스](https://github.com/leedg/PublicStudy/wiki/05-Database) | IDatabase · ConnectionPool · 멀티DB |
+| [버퍼/메모리](https://github.com/leedg/PublicStudy/wiki/06-Buffer-Memory) | IBufferPool · RIO/IOUring/Standard |
+| [종료 및 재연결](https://github.com/leedg/PublicStudy/wiki/07-Shutdown-Reconnect) | Graceful Shutdown · DB 재연결 백오프 |
+| [빌드 및 실행](https://github.com/leedg/PublicStudy/wiki/08-Build-and-Run) | 빌드 명령 · 실행 순서 · 포트 정보 |
 
 ### 보고서 · 성능
 
 | 문서 | 내용 |
 |------|------|
-| [Wiki 패키지](Doc/Reports/WikiPackage/) | 게시용 최종 다이어그램 패키지 |
-| [Executive Summary](Doc/Reports/ExecutiveSummary/) | 요약 보고서 (다이어그램 포함) |
-| [팀 공유 보고서](Doc/Reports/TeamShare/) | 팀 공유용 상세 보고서 |
-| [성능 테스트 로그](Doc/Performance/Logs/) | Windows · Linux 벤치마크 결과 |
+| [Executive Summary](Docs/Reports/ExecutiveSummary/) | 요약 보고서 (다이어그램 포함) |
+| [팀 공유 보고서](Docs/Reports/TeamShare/) | 팀 공유용 상세 보고서 |
+| [성능 테스트 로그](Docs/Performance/Logs/) | Windows · Linux 벤치마크 결과 |
 
 ### DB 모듈 테스트
 
@@ -181,7 +146,7 @@ NetworkModuleTest/
 │   │   ├── Network/Core/          # INetworkEngine · Session · PacketDefine
 │   │   ├── Network/Platforms/     # Windows(IOCP/RIO) · Linux(epoll/io_uring) · macOS(kqueue)
 │   │   ├── Concurrency/           # KeyedDispatcher · AsyncScope · TimerQueue
-│   │   └── Database/              # IDatabase → SQLite / ODBC / OLE DB
+│   │   └── Database/              # IDatabase → SQLite / ODBC / OLE DB / PostgreSQL
 │   ├── TestServer/                # 클라이언트 수락 서버
 │   └── DBServer/                  # 서버 간 패킷 처리 서버
 │
@@ -197,15 +162,21 @@ NetworkModuleTest/
 │   └── scripts/
 │
 ├── scripts/                       # 플랫폼별 빌드 스크립트
-│   ├── build_windows.ps1          # Windows (MSBuild 자동 탐지)
-│   ├── build_unix.sh              # Linux / macOS (CMake)
-│   ├── verify_macos.sh            # macOS ServerEngine 검증
-│   └── db_tests/                  # DB 백엔드별 Docker 테스트
+│   ├── build_windows.ps1
+│   ├── build_unix.sh
+│   └── db_tests/
 │
-└── Doc/                           # 설계 문서 및 개발 가이드
-    ├── WikiDraft/ServerStructure/ # 아키텍처 다이어그램 (mmd 소스 + 이미지)
-    ├── Reports/                   # 보고서 패키지
-    └── Performance/               # 성능 분석 로그
+├── Docs/                          # 설계 문서 및 개발 가이드
+│   ├── Wiki/                      # GitHub Wiki 소스 (main push 시 자동 동기화)
+│   │   ├── scripts/publish-wiki.ps1
+│   │   └── scripts/pre-push.hook
+│   ├── Reports/                   # 보고서 패키지
+│   └── Performance/               # 성능 분석 로그
+│
+└── dev-planning/                  # 작업 설계 문서 (플랜·스펙)
+    └── superpowers/
+        ├── plans/
+        └── specs/
 ```
 
 ---
