@@ -70,7 +70,7 @@ Server/ServerEngine/
   Database/              <- DB 추상화
 
 Server/TestServer/
-  src/TestServer.cpp     <- 클라이언트 수용 + 로컬 DBTaskQueue + (옵션) DBServer 링크
+  src/TestServer.cpp     <- 클라이언트 수용 + 로컬 DBTaskQueue + (옵션) TestDBServer 링크
 
 Server/DBServer/
   src/TestDBServer.cpp   <- 서버 간 패킷 수신/처리

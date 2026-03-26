@@ -141,8 +141,8 @@ In the `.cpp`, all forward declarations and function signatures that mention `As
 **Files:**
 - `Server/ServerEngine/Core/Memory/RIOBufferPool.h` (if it includes AsyncIOProvider.h)
 - `Server/ServerEngine/Tests/AsyncIOTest.cpp`
-- `Server/DBServer/include/DBServer.h`
-- `Server/DBServer/src/DBServer.cpp`
+- ~~`Server/DBServer/include/DBServer.h`~~ (삭제됨 — 2026-03-26)
+- ~~`Server/DBServer/src/DBServer.cpp`~~ (삭제됨 — 2026-03-26)
 - `Server/ServerEngine/main.cpp`
 - Any test files: `Server/Tests/EpollTest/EpollTest.cpp`, `IOCPTest/IOCPTest.cpp`, `IOUringTest/IOUringTest.cpp`, `RIOTest/RIOTest.cpp`
 
