@@ -20,13 +20,7 @@
     <ClCompile Include="src\TestDBServer.cpp">
       <Filter>Server</Filter>
     </ClCompile>
-    <ClCompile Include="src\DBServer.cpp">
-      <Filter>Server</Filter>
-    </ClCompile>
     <ClInclude Include="include\TestDBServer.h">
-      <Filter>Server</Filter>
-    </ClInclude>
-    <ClInclude Include="include\DBServer.h">
       <Filter>Server</Filter>
     </ClInclude>
 
