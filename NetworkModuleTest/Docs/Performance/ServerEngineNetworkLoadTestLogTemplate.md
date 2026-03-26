@@ -2,7 +2,7 @@
 
 복사해서 파일명만 바꿔 사용:
 
-`Doc/Performance/Logs/YYYYMMDD_HHMM_<scenario>.md`
+`Docs/Performance/Logs/YYYYMMDD_HHMM_<scenario>.md`
 
 ---
 

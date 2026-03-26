@@ -47,8 +47,8 @@ AsyncIOProvider
 ---
 
 ## 참고
-- `Doc/Architecture/NetworkArchitecture.md` (현재 아키텍처 설명)
-- `Doc/Architecture/MultiplatformEngine.md` (구현 히스토리/상세)
+- `Docs/Architecture/NetworkArchitecture.md` (현재 아키텍처 설명)
+- `Docs/Architecture/MultiplatformEngine.md` (구현 히스토리/상세)
 
 ---
 

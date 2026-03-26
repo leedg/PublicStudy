@@ -502,4 +502,4 @@ ServerEngine/
 **Linux Docker 통합 테스트 결과:**
 - 환경: Ubuntu 22.04, gcc-12, kernel 6.6.87.2-WSL2
 - epoll + io_uring 양 백엔드 10 클라이언트 5 핑 **PASS**
-- 로그: `Doc/Performance/Logs/20260302_191739_linux/`
+- 로그: `Docs/Performance/Logs/20260302_191739_linux/`

@@ -99,7 +99,7 @@ ModuleTest/DBModuleTest/
   scripts/
     run-db-tests.ps1            빌드 + 실행 런처
 
-  Doc/
+  Docs/
     README.md                   이 파일
     README_SHORT.md             한 줄 요약
     VERSION_SELECTOR.md         VS 버전별 솔루션 선택 가이드

@@ -83,12 +83,12 @@ Client/TestClient/
 
 | 문서 | 기준 코드 |
 |---|---|
-| `Doc/01_ProjectOverview.md` | `Server/`, `Client/`, `Doc/` |
-| `Doc/02_Architecture.md` | `Server/ServerEngine/`, `Server/TestServer/`, `Server/DBServer/` |
-| `Doc/03_Protocol.md` | `Network/Core/PacketDefine.h`, `Network/Core/ServerPacketDefine.h` |
-| `Doc/04_API.md` | `Network/Core/NetworkEngine.h`, 각 실행파일 `main.cpp` |
-| `Doc/05_DevelopmentGuide.md` | `run_*.ps1`, `*.vcxproj`, 테스트 스크립트 |
-| `Doc/06_SolutionGuide.md` | `NetworkModuleTest.sln` 및 솔루션 프로젝트 |
+| `Docs/01_ProjectOverview.md` | `Server/`, `Client/`, `Docs/` |
+| `Docs/02_Architecture.md` | `Server/ServerEngine/`, `Server/TestServer/`, `Server/DBServer/` |
+| `Docs/03_Protocol.md` | `Network/Core/PacketDefine.h`, `Network/Core/ServerPacketDefine.h` |
+| `Docs/04_API.md` | `Network/Core/NetworkEngine.h`, 각 실행파일 `main.cpp` |
+| `Docs/05_DevelopmentGuide.md` | `run_*.ps1`, `*.vcxproj`, 테스트 스크립트 |
+| `Docs/06_SolutionGuide.md` | `NetworkModuleTest.sln` 및 솔루션 프로젝트 |
 
 ## 5. 주의 사항
 

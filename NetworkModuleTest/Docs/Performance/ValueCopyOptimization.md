@@ -363,7 +363,7 @@ if (mMode == Mode::IOCP) {
 | 500  | 500  | 500  | 0    | 188 MB    | 0 ms    | **PASS** |
 | 1000 | 1000 | 1000 | 0    | 193.7 MB  | 0 ms    | **PASS** |
 
-> 상세 로그: `Doc/Performance/Logs/20260301_111832/`
+> 상세 로그: `Docs/Performance/Logs/20260301_111832/`
 
 ---
 

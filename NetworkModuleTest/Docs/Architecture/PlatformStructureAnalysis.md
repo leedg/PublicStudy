@@ -6,7 +6,7 @@
 > 이 문서는 리팩터링 과정의 구조 분석 기록입니다.
 > `IOCPNetworkEngine.h/cpp`는 현재 코드에서 **이미 제거**되었습니다.
 > 이 문서에 등장하는 파일/클래스 다수는 더 이상 존재하지 않습니다.
-> 현재 구조는 `Doc/Architecture/NetworkArchitecture.md`를 참조하세요.
+> 현재 구조는 `Docs/Architecture/NetworkArchitecture.md`를 참조하세요.
 
 ---
 

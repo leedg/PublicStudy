@@ -30,7 +30,7 @@ NetworkModuleTest/
     TestServer/              # 클라이언트 수용 서버
     DBServer/                # 서버 간 패킷 처리 서버
   Client/TestClient/         # 테스트 클라이언트
-  Doc/
+  Docs/
 ```
 
 ## 4. ServerEngine 계층

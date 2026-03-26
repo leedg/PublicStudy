@@ -37,7 +37,7 @@ DB 연동은 프로토타입(로그/플레이스홀더 중심) 단계입니다.
 - `scripts/run_integration.sh`, `scripts/entrypoint_client.sh` (TCP 탐침 → TestClient 실행)
 - `run_docker_test.ps1` — Windows 런처 (`-Backend epoll|iouring|both`, `-NoBuild`, `-Single`)
 - 테스트 결과: epoll **PASS** (Session 5) / io_uring **PASS** (Session 20), RTT 0~1ms (kernel 6.6.87.2-WSL2)
-- 상세 로그: `Doc/Performance/Logs/20260302_191739_linux/`
+- 상세 로그: `Docs/Performance/Logs/20260302_191739_linux/`
 
 ### AsyncScope 풀 재사용 버그 수정 (2026-03-02)
 - **증상**: io_uring 클라이언트만 `SessionConnectRes` 수신 실패 (EAGAIN, error 11)

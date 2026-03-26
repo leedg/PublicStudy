@@ -182,7 +182,7 @@ cd ModuleTest/DBModuleTest
 .\scripts\run-db-tests.ps1 -Backend sqlite  # SQLite 즉시 실행
 ```
 
-자세한 내용은 `ModuleTest/DBModuleTest/Doc/README.md` 참조.
+자세한 내용은 `ModuleTest/DBModuleTest/Docs/README.md` 참조.
 
 ---
 

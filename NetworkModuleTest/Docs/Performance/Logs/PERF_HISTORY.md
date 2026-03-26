@@ -126,7 +126,7 @@
 
 ### 상세 로그 위치
 
-`Doc/Performance/Logs/20260228_124350/`
+`Docs/Performance/Logs/20260228_124350/`
 
 ---
 
@@ -550,7 +550,7 @@
 
 ### 상세 로그 위치
 
-`Doc/Performance/Logs/20260302_191739_linux/`
+`Docs/Performance/Logs/20260302_191739_linux/`
 
 ---
 

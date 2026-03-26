@@ -236,7 +236,7 @@ function Parse-RTT([string]$LogFile) {
 ### 파일 구조
 
 ```
-Doc/Performance/
+Docs/Performance/
 ├── PerformanceTestGuideline.md   ← 이 문서
 ├── Logs/
 │   ├── PERF_HISTORY.md           ← 누적 결과 (자동 갱신)

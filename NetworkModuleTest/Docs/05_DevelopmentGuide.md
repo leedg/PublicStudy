@@ -290,4 +290,4 @@ $env:DB_OLEDB = "Provider=MSOLEDBSQL;Server=localhost,1433;Database=db_func_test
 .\scripts\run-db-tests.ps1 -Backend all -Build
 ```
 
-자세한 내용은 `ModuleTest/DBModuleTest/Doc/README.md` 참조.
+자세한 내용은 `ModuleTest/DBModuleTest/Docs/README.md` 참조.

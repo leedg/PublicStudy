@@ -6,4 +6,4 @@
 - 테스트 결과: SQLite 23/23 PASS · ODBC/OLE DB 22/22 PASS
 - 빌드·실행: `.\scripts\run-db-tests.ps1 -Backend sqlite -Build`
 - 솔루션: `NetworkModuleTest.sln` (권장) 또는 `DocDBModule.sln` (독립)
-- 상세: `Doc/README.md`
+- 상세: `Docs/README.md`
