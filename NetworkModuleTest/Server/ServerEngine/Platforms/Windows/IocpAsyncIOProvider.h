@@ -109,11 +109,13 @@ class IocpAsyncIOProvider : public AsyncIOProvider
 	// 대기 중인 I/O 작업 추적 구조체
 	struct PendingOperation
 	{
-		OVERLAPPED                 mOverlapped; // IOCP 오버랩 구조체 — 포인터 캐스트를 위해 반드시 첫 번째 멤버
-		WSABUF                     mWsaBuffer;  // WSASend/WSARecv에 전달하는 scatter-gather 버퍼 디스크립터
-		std::unique_ptr<uint8_t[]> mBuffer;     // WSASend/WSARecv 기간 동안 커널이 pin하는 동적 버퍼
-		RequestContext             mContext;    // ConnectionId — 완료 시 SessionManager 조회에 사용
-		AsyncIOType                mType;       // I/O 방향 (Recv 또는 Send)
+		OVERLAPPED                 mOverlapped;  // IOCP 오버랩 구조체 — 포인터 캐스트를 위해 반드시 첫 번째 멤버
+		WSABUF                     mWsaBuffer;   // WSASend/WSARecv에 전달하는 scatter-gather 버퍼 디스크립터
+		std::unique_ptr<uint8_t[]> mBuffer;      // Send: 커널이 pin하는 송신 버퍼; Recv: WSARecv 수신 대상 내부 버퍼
+		void*                      mCallerBuffer{nullptr}; // Recv 전용 — ProcessCompletions에서 복사 대상이 되는 호출자 버퍼
+		size_t                     mCallerSize{0};         // Recv 전용 — 호출자 버퍼 크기 (복사량 상한)
+		RequestContext             mContext;     // ConnectionId — 완료 시 SessionManager 조회에 사용
+		AsyncIOType                mType;        // I/O 방향 (Recv 또는 Send)
 		SocketHandle               mSocket = INVALID_SOCKET; // 소유 소켓 — OVERLAPPED*에서 O(1) 맵 탐색에 사용
 	};
 

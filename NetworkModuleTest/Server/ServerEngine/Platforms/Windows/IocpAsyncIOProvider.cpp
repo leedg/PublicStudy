@@ -253,14 +253,13 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 	auto op = std::make_unique<PendingOperation>();
 	std::memset(&op->mOverlapped, 0, sizeof(OVERLAPPED));
-	// English: Use the caller-provided buffer directly as the WSARecv target.
-	//          The caller must keep the buffer alive until the completion fires.
-	//          No internal copy needed — received bytes land in caller's buffer.
-	// 한글: 호출자가 제공한 버퍼를 WSARecv 수신 대상으로 직접 사용합니다.
-	//       완료가 발생할 때까지 호출자가 버퍼를 유지해야 합니다.
-	//       내부 복사 불필요 — 수신 데이터가 호출자 버퍼에 직접 기록됩니다.
-	op->mBuffer = nullptr; // English: No internal buffer needed; caller owns the receive target.
-	op->mWsaBuffer.buf = reinterpret_cast<char *>(buffer);
+	// 내부 버퍼에 수신 — 완료 시 ProcessCompletions에서 호출자 버퍼로 복사한다.
+	// 이렇게 하면 호출자 버퍼의 수명이 비동기 I/O 기간 동안 유지될 필요 없이
+	// ProcessCompletions 호출 시점에만 유효하면 된다.
+	op->mBuffer = std::make_unique<uint8_t[]>(size);
+	op->mCallerBuffer = buffer;
+	op->mCallerSize   = size;
+	op->mWsaBuffer.buf = reinterpret_cast<char *>(op->mBuffer.get());
 	op->mWsaBuffer.len = static_cast<ULONG>(size);
 	op->mContext = context;
 	op->mType = AsyncIOType::Recv;
@@ -402,6 +401,16 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		{
 			entries[completionCount].mContext = op->mContext;
 			entries[completionCount].mType = op->mType;
+
+			// Recv 완료: 내부 버퍼에서 호출자 버퍼로 수신 데이터 복사.
+			// 호출자 버퍼는 ProcessCompletions 호출 시점에만 유효하면 된다.
+			if (result && op->mType == AsyncIOType::Recv &&
+				op->mBuffer && op->mCallerBuffer && bytesTransferred > 0)
+			{
+				const size_t toCopy =
+					(std::min)(static_cast<size_t>(bytesTransferred), op->mCallerSize);
+				std::memcpy(op->mCallerBuffer, op->mBuffer.get(), toCopy);
+			}
 		}
 		else if (pOverlapped)
 		{
