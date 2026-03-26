@@ -262,5 +262,5 @@ Platforms/macOS/KqueueAsyncIOProvider.cpp   ✅
 ### 영향 없음
 - `NetworkEngineFactory.cpp` (WindowsNetworkEngine만 사용)
 - `TestServer.cpp` (Factory 사용)
-- `DBServer.cpp` (Factory 사용)
+
 - `Session.h` (friend class 선언 제거)

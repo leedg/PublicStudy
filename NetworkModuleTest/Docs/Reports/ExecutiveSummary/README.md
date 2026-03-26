@@ -106,5 +106,5 @@
 
 1. `TestDBServer`에도 설정 기반 DB 주입(`SetDatabase`) 경로를 main 옵션으로 연결
 2. TestServer의 DB 서버 연결 경로를 플랫폼 공통 소켓/AsyncIO 경로로 통합
-3. 운영 문서에 "기본 실행 경로(TestDBServer) vs 실험 경로(DBServer.cpp)"를 명시
+3. ~~운영 문서에 "기본 실행 경로(TestDBServer) vs 실험 경로(DBServer.cpp)"를 명시~~ (DBServer.cpp 제거 완료)
 4. 포트 기본값(8001/8002) 정책을 코드/스크립트/문서에서 단일화

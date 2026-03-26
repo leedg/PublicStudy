@@ -4,7 +4,7 @@
 
 - Client <-> TestServer: `Server/ServerEngine/Network/Core/PacketDefine.h`
 - TestServer <-> TestDBServer: `Server/ServerEngine/Network/Core/ServerPacketDefine.h`
-- 레거시 실험 포맷: `Server/DBServer/src/DBServer.cpp`의 MessageHandler
+- 레거시 실험 포맷: `[type(uint32)][connection_id(uint64)][timestamp(uint64)][payload]` (DBServer 제거됨)
 
 ## 2. Client <-> TestServer (`PacketDefine.h`)
 
@@ -62,17 +62,9 @@ struct ServerPacketHeader {
 - 현재 실사용 경로는 `ServerPingReq`, `DBSavePingTimeReq` 중심입니다.
 - `DBQueryReq/Res`는 타입 정의는 있으나 핸들러 적용 범위가 제한적입니다.
 
-## 4. 레거시 MessageHandler 포맷 (`DBServer.cpp`)
+## 4. 레거시 MessageHandler 포맷 (제거됨)
 
-```text
-[type(uint32)][connection_id(uint64)][timestamp(uint64)][payload]
-```
-
-- `Ping = 1`
-- `Pong = 2`
-- `CustomStart = 1000`
-
-이 경로는 실험/레거시 호환용으로 유지되며, 기본 런타임 기준 프로토콜은 `PacketDefine/ServerPacketDefine`입니다.
+`DBServer.cpp`는 삭제되었습니다. 기본 런타임 프로토콜은 `PacketDefine/ServerPacketDefine`입니다.
 
 ## 5. 테스트 전용 프로토콜 (PingPong.*)
 
