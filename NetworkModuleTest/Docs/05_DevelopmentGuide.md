@@ -77,7 +77,7 @@ cd NetworkModuleTest
 
 # AsyncIO 백엔드 단위 테스트 (GTest 불필요)
 .\build_all.ps1 -Configuration Debug
-.\Server\Tests\IOCPTest\x64\Debug\IOCPTest.exe
+.\Server\Tests\IocpTest\x64\Debug\IocpTest.exe
 .\Server\Tests\RIOTest\x64\Debug\RIOTest.exe
 # 성공 기준: "Result: N passed, 0 failed"
 ```

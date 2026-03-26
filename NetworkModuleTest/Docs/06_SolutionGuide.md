@@ -10,7 +10,6 @@
 | TestServer | `Server/TestServer/TestServer.vcxproj` | Application | 에코/패킷 처리 서버 |
 | TestClient | `Client/TestClient/TestClient.vcxproj` | Application | 부하/연결 테스트 클라이언트 |
 | DBModuleTest | `ModuleTest/DBModuleTest/DBModuleTest.vcxproj` | **Application** | Network::Database 수동 테스트 도구 |
-| MultiPlatformNetwork | `ModuleTest/MultiPlatformNetwork/MultiPlatformNetwork.vcxproj` | Application | 플랫폼별 네트워크 비교 |
 
 솔루션 폴더: `1.Thirdparty`, `2.Lib`, `3.Server`, `8.Client`, `9.Test`, `ModuleTest`, `Documentation`
 
@@ -23,7 +22,7 @@
 2. TestDBServer
 3. TestServer
 4. TestClient
-5. DBModuleTest, MultiPlatformNetwork (선택)
+5. DBModuleTest (선택)
 
 ## DBModuleTest 특이사항
 
@@ -44,6 +43,5 @@ cd ModuleTest/DBModuleTest
 자세한 내용은 `ModuleTest/DBModuleTest/Docs/README.md` 참조.
 
 ## CMake 현황
-- 루트 CMake는 MultiPlatformNetwork만 빌드
 - Linux Docker 통합 테스트: `test_linux/CMakeLists.txt` (ServerEngine + TestServer + TestClient)
 - 다른 CMake는 참고용

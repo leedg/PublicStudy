@@ -153,8 +153,7 @@ NetworkModuleTest/
 ├── Client/TestClient/             # 부하 · 연결 테스트 클라이언트
 │
 ├── ModuleTest/
-│   ├── DBModuleTest/              # DB 모듈 독립 테스트 (5 백엔드)
-│   └── MultiPlatformNetwork/      # 플랫폼별 AsyncIO Provider 단독 테스트
+│   └── DBModuleTest/              # DB 모듈 독립 테스트 (5 백엔드)
 │
 ├── test_linux/                    # Linux Docker 통합 테스트
 │   ├── Dockerfile

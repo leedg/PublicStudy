@@ -10,7 +10,6 @@ DB 연동은 프로토타입(로그/플레이스홀더 중심) 단계입니다.
 - TestServer: NetworkEngine 기반 테스트 서버, 패킷 수신/처리, DBTaskQueue(비동기 작업)
 - TestDBServer: NetworkEngine 기반 DB 서버 프로토타입, Ping/Pong 및 PingTime 기록 (DB 저장은 플레이스홀더)
 - TestClient: SessionConnect + Ping/Pong + RTT 통계
-- MultiPlatformNetwork: 보관 | 참고 구현
 
 ## 상태 (2026-03-02)
 | 모듈 | 상태 | 비고 |
@@ -19,7 +18,6 @@ DB 연동은 프로토타입(로그/플레이스홀더 중심) 단계입니다.
 | TestServer | 프로토타입 | 세션/핑 처리, DB 옵션(`ENABLE_DATABASE_SUPPORT`) |
 | TestDBServer | 프로토타입 | Ping/Pong 및 PingTime 기록, DB 저장은 플레이스홀더 |
 | TestClient | 프로토타입 | RTT 통계, 자동화 테스트 모드(maxPings) 포함 |
-| MultiPlatformNetwork | 보관 | 참고 구현 |
 
 ## 최근 업데이트 (2026-03-02) — 비동기 로직 고도화 + Linux Docker 통합 테스트
 
