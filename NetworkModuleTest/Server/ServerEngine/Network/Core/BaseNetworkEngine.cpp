@@ -5,7 +5,7 @@
 #include "SessionPool.h"
 #include "../../Utils/Logger.h"
 #include "../../Utils/Timer.h"
-#ifndef _WIN32
+#if !defined(_WIN32)
 // ECONNRESET / EPIPE / ECONNABORTED for expected-teardown detection.
 // 한글: 정상 teardown 판별용 ECONNRESET / EPIPE / ECONNABORTED.
 #include <cerrno>

@@ -372,6 +372,9 @@
     <ClInclude Include="Utils\SafeQueue.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\StringUtil.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
     <ClInclude Include="Utils\StringUtils.h">
       <Filter>Utils</Filter>
     </ClInclude>

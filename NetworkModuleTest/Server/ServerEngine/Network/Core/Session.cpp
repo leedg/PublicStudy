@@ -7,7 +7,7 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
-#ifndef _WIN32
+#if !defined(_WIN32)
 #include <errno.h>
 #include <sys/socket.h>
 #include <unistd.h>
