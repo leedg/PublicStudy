@@ -27,9 +27,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # =============================================================================
 # Subdirectories
 
-# AsyncIO Library
-add_subdirectory(ModuleTest/MultiPlatformNetwork)
-
 # TestClient - Cross-platform TCP test client
 add_subdirectory(Client/TestClient)
 
