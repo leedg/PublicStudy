@@ -10,7 +10,6 @@ DB 연동은 프로토타입(로그/플레이스홀더 중심) 단계입니다.
 - TestServer: NetworkEngine 기반 테스트 서버, 패킷 수신/처리, DBTaskQueue(비동기 작업)
 - TestDBServer: NetworkEngine 기반 DB 서버 프로토타입, Ping/Pong 및 PingTime 기록 (DB 저장은 플레이스홀더)
 - TestClient: SessionConnect + Ping/Pong + RTT 통계
-- DBServer (DBServer.cpp): AsyncIOProvider 기반 실험/레거시 구현 (기본 실행 경로 아님)
 - MultiPlatformNetwork: 보관 | 참고 구현
 
 ## 상태 (2026-03-02)

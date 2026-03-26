@@ -35,7 +35,7 @@ Windows(IOCP/RIO) · Linux(epoll/io_uring) · macOS(kqueue) 백엔드를
 .\build_all.ps1
 
 # 서버 시작 (DBServer:8002, Server:9000)
-.\run_allServer.ps1
+.\run_all_servers.ps1
 
 # 클라이언트 실행
 .\run_client.ps1
@@ -99,7 +99,7 @@ sudo apt-get install -y cmake build-essential pkg-config liburing-dev libsqlite3
 |------|------|
 | [01 프로젝트 개요](Docs/01_ProjectOverview.md) | 프로젝트 범위 · 현재 상태 · 변경 이력 |
 | [02 아키텍처](Docs/02_Architecture.md) | 런타임 구조 · 모듈 관계 · 플랫폼별 엔진 |
-| [03 프로토콜](Docs/03_Protocol.md) | PacketDefine · ServerPacketDefine 바이너리 포맷 |
+| [08 프로토콜](Docs/08_Protocol.md) | PacketDefine · ServerPacketDefine 바이너리 포맷 |
 | [04 API](Docs/04_API.md) | CLI 옵션 · 주요 C++ API 레퍼런스 |
 | [05 개발 가이드](Docs/05_DevelopmentGuide.md) | 플랫폼별 빌드 · 실행 · 테스트 상세 |
 | [06 솔루션 가이드](Docs/06_SolutionGuide.md) | 솔루션/프로젝트 구성 · 빌드 순서 |
@@ -132,8 +132,8 @@ sudo apt-get install -y cmake build-essential pkg-config liburing-dev libsqlite3
 
 | 문서 | 내용 |
 |------|------|
-| [DBModuleTest 가이드](ModuleTest/DBModuleTest/Doc/README.md) | DB 백엔드 테스트 전체 가이드 |
-| [빠른 참조](ModuleTest/DBModuleTest/Doc/README_SHORT.md) | 한 페이지 요약 |
+| [DBModuleTest 가이드](ModuleTest/DBModuleTest/Docs/README.md) | DB 백엔드 테스트 전체 가이드 |
+| [빠른 참조](ModuleTest/DBModuleTest/Docs/README_SHORT.md) | 한 페이지 요약 |
 
 ---
 
@@ -161,22 +161,24 @@ NetworkModuleTest/
 │   ├── docker-compose.yml
 │   └── scripts/
 │
-├── scripts/                       # 플랫폼별 빌드 스크립트
-│   ├── build_windows.ps1
-│   ├── build_unix.sh
-│   └── db_tests/
+├── scripts/                       # 플랫폼별 빌드 스크립트 (크로스플랫폼 통합)
+│   ├── build_windows.ps1          # Windows 전체 빌드 (옵션 풍부)
+│   ├── build_unix.sh              # Linux / macOS 빌드
+│   ├── validation/                # 구조 검증 스크립트
+│   └── db_tests/                  # DB 백엔드별 테스트
+│
+├── build_all.ps1                  # Windows 빠른 빌드 (thin wrapper)
 │
 ├── Docs/                          # 설계 문서 및 개발 가이드
 │   ├── Wiki/                      # GitHub Wiki 소스 (main push 시 자동 동기화)
-│   │   ├── scripts/publish-wiki.ps1
-│   │   └── scripts/pre-push.hook
-│   ├── Reports/                   # 보고서 패키지
+│   │   └── scripts/               # publish-wiki.ps1, pre-push.hook
+│   ├── Architecture/              # 아키텍처 레퍼런스 문서
+│   ├── Reports/                   # 보고서 패키지 (ExecutiveSummary, TeamShare 등)
 │   └── Performance/               # 성능 분석 로그
 │
-└── dev-planning/                  # 작업 설계 문서 (플랜·스펙)
+└── dev-planning/                  # 작업 설계 문서 (플랜·스펙·AI 협업 기록)
+    ├── plans/
     └── superpowers/
-        ├── plans/
-        └── specs/
 ```
 
 ---

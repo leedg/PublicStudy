@@ -6,11 +6,12 @@
 
 1. `01_ProjectOverview.md` - 프로젝트 범위, 현재 상태, 최근 변경 요약
 2. `02_Architecture.md` - 런타임 아키텍처와 모듈 관계
-3. `03_Protocol.md` - PacketDefine/ServerPacketDefine 프로토콜
+3. `03_ConcurrencyRuntime.md` - 동시성 런타임 (ExecutionQueue, KeyedDispatcher)
 4. `04_API.md` - CLI 옵션 및 주요 C++ API 요약
 5. `05_DevelopmentGuide.md` - 빌드/실행/테스트 가이드
 6. `06_SolutionGuide.md` - 솔루션/프로젝트 구성
 7. `07_VisualMap.md` - 코드 디렉터리와 문서 매핑
+8. `08_Protocol.md` - PacketDefine/ServerPacketDefine 프로토콜
 
 ## 2. 참고 문서 (설계 이력/분석)
 
@@ -24,8 +25,8 @@
 
 ## 3. 현재 기준 핵심 사실
 
-- TestServer 기본 포트: Windows `19010`, Linux/macOS `9000`
-- TestDBServer 기본 포트: Windows `18002`, Linux/macOS `8001`
+- TestServer 기본 포트: `9000`
+- TestDBServer 기본 포트: `8002`
 - PowerShell 실행 스크립트는 포트 충돌 시 자동으로 다음 빈 포트로 이동
 - TestClient 기본 연결: Windows `127.0.0.1:19010`, Linux/macOS `127.0.0.1:9000`
 - 클라이언트 Ping/Pong 와이어 포맷은 고정 필드(`clientTime`, `sequence`, `serverTime`) 기반
