@@ -1,4 +1,5 @@
-// 데이터베이스 서버 구현
+// English: Database Server implementation
+// 한글: 데이터베이스 서버 구현
 
 #include <chrono>
 #include <cstring>
@@ -8,7 +9,11 @@
 #include "../../ServerEngine/Interfaces/IDatabase.h"
 #include "../../ServerEngine/Database/DatabaseFactory.h"
 #include "../../ServerEngine/Database/SqlScriptRunner.h"
-// AsyncIOProvider 정의는 ServerEngine 경로의 헤더로 통일한다.
+// English: SessionManager and Session needed to retrieve recv buffer in WorkerThread
+// 한글: WorkerThread에서 recv 버퍼 조회를 위한 SessionManager / Session 포함
+#include "../../ServerEngine/Network/Core/SessionManager.h"
+#include "../../ServerEngine/Network/Core/Session.h"
+// 한글: AsyncIOProvider 정의는 ServerEngine 경로의 헤더로 통일한다.
 
 using namespace Network::AsyncIO;
 using namespace Network::Protocols;
@@ -96,7 +101,7 @@ DBServer::DBServer()
 
 DBServer::~DBServer()
 {
-    if (mIsRunning)
+    if (mIsRunning.load(std::memory_order_acquire))
     {
         Stop();
     }
@@ -108,7 +113,7 @@ DBServer::~DBServer()
 
 bool DBServer::Initialize(uint16_t port, size_t maxConnections)
 {
-    if (mIsInitialized)
+    if (mIsInitialized.load(std::memory_order_acquire))
     {
         std::cerr << "DBServer already initialized" << std::endl;
         return false;
@@ -148,20 +153,20 @@ bool DBServer::Initialize(uint16_t port, size_t maxConnections)
     mMessageHandler->RegisterHandler(
         MessageType::Pong, [this](const Message &msg) { OnPongMessage(msg); });
 
-    mIsInitialized = true;
+    mIsInitialized.store(true, std::memory_order_release);
     std::cout << "DBServer initialized on port " << port << std::endl;
     return true;
 }
 
 bool DBServer::Start()
 {
-    if (!mIsInitialized)
+    if (!mIsInitialized.load(std::memory_order_acquire))
     {
         std::cerr << "DBServer not initialized" << std::endl;
         return false;
     }
 
-    if (mIsRunning)
+    if (mIsRunning.load(std::memory_order_acquire))
     {
         std::cerr << "DBServer already running" << std::endl;
         return false;
@@ -174,7 +179,7 @@ bool DBServer::Start()
         return false;
     }
 
-    mIsRunning = true;
+    mIsRunning.store(true, std::memory_order_release);
 
     // Start worker thread
     mWorkerThread = std::thread(&DBServer::WorkerThread, this);
@@ -185,10 +190,10 @@ bool DBServer::Start()
 
 void DBServer::Stop()
 {
-    if (!mIsRunning)
+    if (!mIsRunning.load(std::memory_order_acquire))
         return;
 
-    mIsRunning = false;
+    mIsRunning.store(false, std::memory_order_release);
 
     // Wait for worker thread to finish
     if (mWorkerThread.joinable())
@@ -208,7 +213,7 @@ void DBServer::Stop()
     std::cout << "DBServer stopped" << std::endl;
 }
 
-bool DBServer::IsRunning() const { return mIsRunning; }
+bool DBServer::IsRunning() const { return mIsRunning.load(std::memory_order_acquire); }
 
 void DBServer::SetDatabaseConfig(const std::string &host, uint16_t port,
                                  const std::string &database,
@@ -412,7 +417,7 @@ void DBServer::WorkerThread()
 {
     std::cout << "DBServer worker thread started" << std::endl;
 
-    while (mIsRunning)
+    while (mIsRunning.load(std::memory_order_acquire))
     {
         // Process completion events
         const int MAX_EVENTS = 64;
@@ -436,12 +441,30 @@ void DBServer::WorkerThread()
                     break;
 
                 case AsyncIO::AsyncIOType::Recv:
-                    // Handle received data
-                    // For now, just log
-                    std::cout << "Received " << entry.mResult
-                              << " bytes on connection " << entry.mContext
-                              << std::endl;
+                {
+                    // English: Retrieve the session's recv buffer and deliver to the
+                    //          message handler pipeline. CompletionEntry carries only the
+                    //          byte count (mResult); the actual bytes live in the session.
+                    // 한글: 세션의 recv 버퍼를 조회하여 메시지 핸들러 파이프라인으로 전달.
+                    //       CompletionEntry는 바이트 수(mResult)만 보유; 실제 데이터는 세션에 있음.
+                    if (entry.mResult > 0)
+                    {
+                        auto session = Core::SessionManager::Instance().GetSession(
+                            static_cast<Utils::ConnectionId>(entry.mContext));
+                        if (session)
+                        {
+                            const char *buf = session->GetRecvBuffer();
+                            OnDataReceived(entry.mContext,
+                                           reinterpret_cast<const uint8_t *>(buf),
+                                           static_cast<size_t>(entry.mResult));
+                            if (!session->PostRecv())
+                            {
+                                OnConnectionClosed(entry.mContext);
+                            }
+                        }
+                    }
                     break;
+                }
 
                 case AsyncIO::AsyncIOType::Send:
                     // Send completed

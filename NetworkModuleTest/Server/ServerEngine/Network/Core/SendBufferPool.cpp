@@ -23,7 +23,7 @@ bool SendBufferPool::Initialize(size_t poolSize, size_t slotSize)
         return false;
 
     mSlotSize = slotSize;
-    mPoolSize = poolSize;
+    mPoolSize.store(poolSize, std::memory_order_relaxed);
 
     // 모든 슬롯을 위한 단일 64바이트 정렬 연속 할당.
     // 64바이트 정렬: 각 슬롯이 캐시 라인 경계에서 시작하도록 하여
@@ -51,7 +51,7 @@ void SendBufferPool::Shutdown()
     }
     mFreeSlots.clear();
     mSlotSize = 0;
-    mPoolSize = 0;
+    mPoolSize.store(0, std::memory_order_relaxed);
 }
 
 ::Network::Core::Memory::BufferSlot SendBufferPool::Acquire()
@@ -73,13 +73,19 @@ void SendBufferPool::Shutdown()
 
 void SendBufferPool::Release(size_t slotIdx)
 {
+    if (slotIdx >= mPoolSize.load(std::memory_order_acquire))
+    {
+        assert(false && "SendBufferPool::Release: slotIdx out of range");
+        return;
+    }
+
     std::lock_guard<std::mutex> lock(mMutex);
     mFreeSlots.push_back(slotIdx);
 }
 
 size_t SendBufferPool::SlotSize() const { return mSlotSize; }
 
-size_t SendBufferPool::PoolSize() const { return mPoolSize; }
+size_t SendBufferPool::PoolSize() const { return mPoolSize.load(std::memory_order_acquire); }
 
 size_t SendBufferPool::FreeCount() const
 {

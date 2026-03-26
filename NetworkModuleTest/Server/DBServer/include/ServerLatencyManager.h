@@ -120,6 +120,8 @@ namespace Network::DBServer
         std::atomic<bool> mInitialized;  // Initialize 후 true, Shutdown 시 false; acquire/release 사용
 
         // 주입된 데이터베이스 (non-owning); nullptr이면 로그만 출력
+        // mDatabase의 모든 읽기/쓰기는 mDatabaseMutex로 보호.
+        mutable std::mutex mDatabaseMutex;
         Network::Database::IDatabase* mDatabase = nullptr;  // SetDatabase로 주입; DBServer가 소유 및 수명 관리
 
         // 서버별 레이턴시 맵 (mutex로 보호)

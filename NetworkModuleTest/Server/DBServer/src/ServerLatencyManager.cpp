@@ -111,7 +111,10 @@ namespace Network::DBServer
 
     void ServerLatencyManager::SetDatabase(Network::Database::IDatabase* db)
     {
-        mDatabase = db;
+        {
+            std::lock_guard<std::mutex> lock(mDatabaseMutex);
+            mDatabase = db;
+        }
 
         if (mInitialized.load(std::memory_order_acquire))
         {
@@ -129,6 +132,8 @@ namespace Network::DBServer
 
     void ServerLatencyManager::EnsureTables()
     {
+        std::lock_guard<std::mutex> lock(mDatabaseMutex);
+
         if (mDatabase == nullptr || !mDatabase->IsConnected())
         {
             return;
@@ -201,15 +206,22 @@ namespace Network::DBServer
                      ", Max: " + std::to_string(updatedInfo.maxRttMs) + "ms" +
                      ", Count: " + std::to_string(updatedInfo.pingCount));
 
-        if (mDatabase == nullptr || !mDatabase->IsConnected())
         {
-            return;
+            std::lock_guard<std::mutex> dbLock(mDatabaseMutex);
+            if (mDatabase == nullptr || !mDatabase->IsConnected())
+            {
+                return;
+            }
         }
 
         const std::string measuredTime = FormatTimestamp(timestamp);
 
         try
         {
+            std::lock_guard<std::mutex> dbLock(mDatabaseMutex);
+            if (mDatabase == nullptr || !mDatabase->IsConnected())
+                return;
+
             ExecuteModuleScriptUpdate(
                 *mDatabase,
                 "SP/SP_InsertServerLatencyLog.sql",
@@ -272,13 +284,12 @@ namespace Network::DBServer
                       ", ServerName: " + serverName +
                       ", GMT: " + pingTime);
 
-        if (mDatabase == nullptr || !mDatabase->IsConnected())
-        {
-            return true;
-        }
-
         try
         {
+            std::lock_guard<std::mutex> dbLock(mDatabaseMutex);
+            if (mDatabase == nullptr || !mDatabase->IsConnected())
+                return true;
+
             ExecuteModuleScriptUpdate(
                 *mDatabase,
                 "SP/SP_InsertPingTimeLog.sql",

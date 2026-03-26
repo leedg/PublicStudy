@@ -122,7 +122,21 @@ int main(int argc, char *argv[])
 		}
 		else if (arg == "-p" && i + 1 < argc)
 		{
-			port = static_cast<uint16_t>(std::stoi(argv[++i]));
+			try
+			{
+				int val = std::stoi(argv[++i]);
+				if (val < 1 || val > 65535)
+				{
+					std::cerr << "Error: port must be in range 1-65535" << std::endl;
+					return 1;
+				}
+				port = static_cast<uint16_t>(val);
+			}
+			catch (const std::exception &)
+			{
+				std::cerr << "Error: invalid port value: " << argv[i] << std::endl;
+				return 1;
+			}
 		}
 		else if (arg == "-d" && i + 1 < argc)
 		{
@@ -143,7 +157,21 @@ int main(int argc, char *argv[])
 		}
 		else if (arg == "--db-port" && i + 1 < argc)
 		{
-			dbPort = static_cast<uint16_t>(std::stoi(argv[++i]));
+			try
+			{
+				int val = std::stoi(argv[++i]);
+				if (val < 1 || val > 65535)
+				{
+					std::cerr << "Error: --db-port must be in range 1-65535" << std::endl;
+					return 1;
+				}
+				dbPort = static_cast<uint16_t>(val);
+			}
+			catch (const std::exception &)
+			{
+				std::cerr << "Error: invalid --db-port value: " << argv[i] << std::endl;
+				return 1;
+			}
 			dbConnectRequested = true;
 		}
 		else if (arg == "--engine" && i + 1 < argc)
@@ -152,7 +180,21 @@ int main(int argc, char *argv[])
 		}
 		else if (arg == "-w" && i + 1 < argc)
 		{
-			dbWorkerCount = static_cast<size_t>(std::stoi(argv[++i]));
+			try
+			{
+				int val = std::stoi(argv[++i]);
+				if (val < 1 || val > 64)
+				{
+					std::cerr << "Error: worker count must be in range 1-64" << std::endl;
+					return 1;
+				}
+				dbWorkerCount = static_cast<size_t>(val);
+			}
+			catch (const std::exception &)
+			{
+				std::cerr << "Error: invalid worker count value: " << argv[i] << std::endl;
+				return 1;
+			}
 		}
 		else if (arg == "--self-test")
 		{
