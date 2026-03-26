@@ -253,8 +253,14 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 	auto op = std::make_unique<PendingOperation>();
 	std::memset(&op->mOverlapped, 0, sizeof(OVERLAPPED));
-	op->mBuffer = std::make_unique<uint8_t[]>(size);
-	op->mWsaBuffer.buf = reinterpret_cast<char *>(op->mBuffer.get());
+	// English: Use the caller-provided buffer directly as the WSARecv target.
+	//          The caller must keep the buffer alive until the completion fires.
+	//          No internal copy needed — received bytes land in caller's buffer.
+	// 한글: 호출자가 제공한 버퍼를 WSARecv 수신 대상으로 직접 사용합니다.
+	//       완료가 발생할 때까지 호출자가 버퍼를 유지해야 합니다.
+	//       내부 복사 불필요 — 수신 데이터가 호출자 버퍼에 직접 기록됩니다.
+	op->mBuffer = nullptr; // English: No internal buffer needed; caller owns the receive target.
+	op->mWsaBuffer.buf = reinterpret_cast<char *>(buffer);
 	op->mWsaBuffer.len = static_cast<ULONG>(size);
 	op->mContext = context;
 	op->mType = AsyncIOType::Recv;
