@@ -206,14 +206,10 @@ namespace Network::DBServer
                      ", Max: " + std::to_string(updatedInfo.maxRttMs) + "ms" +
                      ", Count: " + std::to_string(updatedInfo.pingCount));
 
-        {
-            std::lock_guard<std::mutex> dbLock(mDatabaseMutex);
-            if (mDatabase == nullptr || !mDatabase->IsConnected())
-            {
-                return;
-            }
-        }
-
+        // English: FormatTimestamp is pure computation — done outside the lock.
+        //          One lock acquisition covers the null-check and the DB call together.
+        // 한글: FormatTimestamp는 순수 연산 — 락 밖에서 수행.
+        //       null 체크와 DB 호출을 하나의 락으로 묶어 이중 락 제거.
         const std::string measuredTime = FormatTimestamp(timestamp);
 
         try

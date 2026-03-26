@@ -462,6 +462,19 @@ void DBServer::WorkerThread()
                                 OnConnectionClosed(entry.mContext);
                             }
                         }
+                        else
+                        {
+                            // English: Session not found in SessionManager — base DBServer does not
+                            //          register sessions via SessionManager. Use TestDBServer (engine-
+                            //          based) for full recv dispatch. This log surfaces the issue.
+                            // 한글: SessionManager에 세션 없음 — base DBServer는 SessionManager로
+                            //       세션을 등록하지 않음. 완전한 recv 처리는 TestDBServer 사용.
+                            std::cerr << "[WARN] DBServer::WorkerThread: recv "
+                                      << entry.mResult << " bytes on conn "
+                                      << entry.mContext
+                                      << " dropped — session not in SessionManager"
+                                      << std::endl;
+                        }
                     }
                     break;
                 }

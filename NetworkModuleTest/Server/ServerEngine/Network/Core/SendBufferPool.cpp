@@ -73,6 +73,10 @@ void SendBufferPool::Shutdown()
 
 void SendBufferPool::Release(size_t slotIdx)
 {
+    // English: Bounds check before the lock — mPoolSize is std::atomic so no data race.
+    //          mPoolSize is immutable after Initialize(); only Shutdown() resets it to 0.
+    // 한글: 락 밖에서 bounds check — mPoolSize는 atomic이므로 data race 없음.
+    //       Initialize() 이후 불변; Shutdown()만 0으로 리셋.
     if (slotIdx >= mPoolSize.load(std::memory_order_acquire))
     {
         assert(false && "SendBufferPool::Release: slotIdx out of range");
@@ -80,6 +84,12 @@ void SendBufferPool::Release(size_t slotIdx)
     }
 
     std::lock_guard<std::mutex> lock(mMutex);
+    // English: Guard against Shutdown() racing between the bounds check and here.
+    //          If mStorage is null, the pool was destroyed — skip the push_back.
+    // 한글: bounds check 이후 Shutdown()이 끼어드는 레이스 방어.
+    //       mStorage가 null이면 풀이 해제됨 — push_back 생략.
+    if (!mStorage)
+        return;
     mFreeSlots.push_back(slotIdx);
 }
 
