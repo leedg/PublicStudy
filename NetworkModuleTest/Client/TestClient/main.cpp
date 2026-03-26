@@ -318,7 +318,7 @@ int main(int argc, char *argv[])
 	if (hShutdownEvent) CloseHandle(hShutdownEvent);
 #endif
 
-#ifndef _WIN32
+#if !defined(_WIN32)
 	// English: Restore terminal mode before exit
 	// 한글: 종료 전 터미널 모드 복원
 	RestoreTerminal();

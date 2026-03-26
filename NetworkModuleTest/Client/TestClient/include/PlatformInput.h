@@ -30,7 +30,7 @@
 // English: POSIX keyboard input helpers (Linux/macOS)
 // 한글: POSIX 키보드 입력 헬퍼 (Linux/macOS)
 // =============================================================================
-#ifndef _WIN32
+#if !defined(_WIN32)
 namespace
 {
 
