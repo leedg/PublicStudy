@@ -1,0 +1,72 @@
+# =============================================================================
+# docker-compose.yml — NetworkModuleTest multi-service setup
+# =============================================================================
+# Services:
+#   dbserver   — Database server (port 18002)
+#   testserver — Game server     (port 19010, connects to dbserver)
+#   testclient — Test client     (connects to testserver)
+#
+# Usage:
+#   docker-compose up              # Start all services
+#   docker-compose up dbserver     # Start DB server only
+#   docker-compose up testserver   # Start game server only
+#   docker-compose run testclient  # Run test client once
+#   docker-compose down            # Stop all services
+# =============================================================================
+
+services:
+  dbserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: networkmodule-test:latest
+    container_name: netmod-dbserver
+    command: /app/bin/TestDBServer -p 18002 -l Info
+    ports:
+      - "18002:18002"
+    environment:
+      - NETMODTEST_GRACEFUL_TIMEOUT=8
+    networks:
+      - netmod-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/18002 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  testserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: networkmodule-test:latest
+    container_name: netmod-testserver
+    command: /app/bin/TestServer -p 19010 --db-host dbserver --db-port 18002 -l Info
+    ports:
+      - "19010:19010"
+    environment:
+      - NETMODTEST_GRACEFUL_TIMEOUT=8
+    networks:
+      - netmod-net
+    depends_on:
+      dbserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  testclient:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: networkmodule-test:latest
+    container_name: netmod-testclient
+    command: /app/bin/TestClient --host testserver --port 19010 --pings 5
+    networks:
+      - netmod-net
+    depends_on:
+      - testserver
+    profiles:
+      - test
+
+networks:
+  netmod-net:
+    driver: bridge

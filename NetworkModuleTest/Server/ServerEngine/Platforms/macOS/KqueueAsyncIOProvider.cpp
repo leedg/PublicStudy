@@ -4,7 +4,7 @@
 #ifdef __APPLE__
 
 #include "KqueueAsyncIOProvider.h"
-#include "PlatformDetect.h"
+#include "Network/Core/PlatformDetect.h"
 #include <cstring>
 #include <unistd.h>
 #include <sys/socket.h>

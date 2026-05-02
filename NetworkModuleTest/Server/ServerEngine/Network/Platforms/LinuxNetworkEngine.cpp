@@ -6,7 +6,9 @@
 #include "LinuxNetworkEngine.h"
 #include "../../Utils/Logger.h"
 #include "../../Platforms/Linux/EpollAsyncIOProvider.h"
+#if defined(NETWORK_ENABLE_IO_URING)
 #include "../../Platforms/Linux/IOUringAsyncIOProvider.h"
+#endif
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -44,8 +46,14 @@ bool LinuxNetworkEngine::InitializePlatform()
 	}
 	else // IOUring
 	{
+#if defined(NETWORK_ENABLE_IO_URING)
 		mProvider = std::make_shared<AsyncIO::Linux::IOUringAsyncIOProvider>();
 		Utils::Logger::Info("Using io_uring backend");
+#else
+		Utils::Logger::Warn("io_uring not available, falling back to epoll");
+		mMode = Mode::Epoll;
+		mProvider = std::make_shared<AsyncIO::Linux::EpollAsyncIOProvider>();
+#endif
 	}
 
 	// English: Initialize provider
@@ -59,6 +67,7 @@ bool LinuxNetworkEngine::InitializePlatform()
 	{
 		if (mMode == Mode::IOUring)
 		{
+#if defined(NETWORK_ENABLE_IO_URING)
 			Utils::Logger::Warn("io_uring init failed (" +
 								std::string(mProvider->GetLastError()) +
 								"), falling back to epoll");
@@ -67,6 +76,7 @@ bool LinuxNetworkEngine::InitializePlatform()
 			error     = mProvider->Initialize(
 				1024,
 				mMaxConnections > 0 ? static_cast<size_t>(mMaxConnections) : 128);
+#endif
 		}
 		if (error != AsyncIO::AsyncIOError::Success)
 		{

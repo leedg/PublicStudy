@@ -10,6 +10,12 @@ file(
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 
+# English: Exclude database manager when DB support is disabled
+# 한글: DB 지원 비활성화 시 데이터베이스 관리자 제외
+if(NOT ENABLE_DATABASE_SUPPORT)
+    list(FILTER TESTSERVER_SOURCES EXCLUDE REGEX "TestDatabaseManager.cpp$")
+endif()
+
 add_executable(TestServer
     main.cpp
     ${TESTSERVER_SOURCES}
