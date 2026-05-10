@@ -1,6 +1,7 @@
 #include "StandardBufferPool.h"
 #include "Network/Core/PlatformDetect.h"
 
+#include <limits>
 #include <numeric>
 
 #if defined(IS_WINDOWS)
@@ -53,6 +54,12 @@ StandardBufferPool::~StandardBufferPool()
 bool StandardBufferPool::Initialize(size_t poolSize, size_t slotSize)
 {
     if (poolSize == 0 || slotSize == 0)
+        return false;
+
+    // 할당 전 size_t 곱셈 오버플로우를 방어한다.
+    // 오버플로우 시 poolSize * slotSize 가 묵시적으로 wrap되어 AllocAligned 가
+    // 필요보다 훨씬 작은 메모리를 할당하며, 이후 슬롯 오프셋 산술이 힙 경계를 벗어난다.
+    if (slotSize > std::numeric_limits<size_t>::max() / poolSize)
         return false;
 
     std::lock_guard<std::mutex> lock(mMutex);

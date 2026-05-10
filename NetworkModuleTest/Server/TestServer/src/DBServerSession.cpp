@@ -1,5 +1,4 @@
-// English: DBServerSession implementation
-// 한글: DBServerSession 구현
+// DBServerSession 구현
 
 #include "../include/DBServerSession.h"
 #include "Utils/NetworkUtils.h"

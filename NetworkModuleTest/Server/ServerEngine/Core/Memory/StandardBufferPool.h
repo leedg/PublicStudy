@@ -34,11 +34,11 @@ public:
     size_t FreeCount() const override;
 
 private:
-    void*               mStorage    = nullptr;
-    size_t              mSlotSize   = 0;
-    size_t              mPoolSize   = 0;
-    std::vector<size_t> mFreeIndices;
-    mutable std::mutex  mMutex;
+    void*               mStorage    = nullptr; // 정렬 할당된 슬랩 메모리 시작 주소 (4096 바이트 정렬)
+    size_t              mSlotSize   = 0;        // 슬롯 하나의 크기 (바이트) — Initialize 이후 불변
+    size_t              mPoolSize   = 0;        // 전체 슬롯 수 — Initialize 이후 불변
+    std::vector<size_t> mFreeIndices;           // 반환된 슬롯 인덱스 스택 (후입선출); mMutex로 보호
+    mutable std::mutex  mMutex;                 // mStorage, mFreeIndices, mSlotSize, mPoolSize 보호용
 };
 
 } // namespace Memory

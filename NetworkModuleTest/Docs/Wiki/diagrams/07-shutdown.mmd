@@ -1,0 +1,22 @@
+%%{init: {'theme':'base', 'themeVariables': {'fontFamily':'Segoe UI, Noto Sans KR, sans-serif','primaryColor':'#EAF4FF','primaryTextColor':'#0F172A','primaryBorderColor':'#3B82F6','lineColor':'#64748B'}}}%%
+flowchart TD
+    A["Stop() 호출"] --> B["mIsRunning.store(false)"]
+    B --> C["mDBShutdownCV.notify_all()\n재연결 루프 즉시 깨움"]
+    C --> D["mDBReconnectThread.join()"]
+    D --> E["활성 세션 disconnect 기록 큐잉\nRecordDisconnectTime()"]
+    E --> F["DB 핑 타이머 종료\nmTimerQueue.Shutdown()"]
+    F --> G["DBTaskQueue 드레인\nDBTaskQueue->Shutdown()"]
+    G --> H["로컬 DB 연결 해제\nmLocalDatabase->Disconnect()"]
+    H --> I["DB 서버 소켓 해제\nDisconnectFromDBServer()"]
+    I --> J["DBServerTaskQueue 종료\nmDBServerTaskQueue->Shutdown()"]
+    J --> K["클라이언트 엔진 종료\nmClientEngine->Stop()"]
+    K --> L["종료 완료\nTestServer stopped"]
+
+    classDef phase fill:#FFF7ED,stroke:#C2410C,color:#7C2D12,stroke-width:1.2px;
+    classDef data  fill:#ECFDF5,stroke:#059669,color:#064E3B,stroke-width:1.2px;
+    classDef net   fill:#E0F2FE,stroke:#0284C7,color:#0C4A6E,stroke-width:1.2px;
+    classDef done  fill:#EEF2FF,stroke:#4F46E5,color:#1E1B4B,stroke-width:1.2px;
+    class A,B,C,D phase;
+    class E,F,G,H data;
+    class I,J,K net;
+    class L done;

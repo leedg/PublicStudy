@@ -60,7 +60,7 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-$dockerInfo = docker info 2>&1
+$null = & docker version --format '{{.Server.Os}} {{.Server.Version}}' 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "[ERROR] Docker 데몬이 실행 중이지 않습니다." -ForegroundColor Red

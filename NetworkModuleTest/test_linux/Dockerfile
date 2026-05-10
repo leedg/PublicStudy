@@ -1,8 +1,8 @@
 # =============================================================================
 # NetworkModuleTest - Linux Build + Runtime Image
 # =============================================================================
-# English: Ubuntu 22.04 image with gcc-12, cmake, ninja, liburing, sqlite3
-# 한글: gcc-12, cmake, ninja, liburing, sqlite3 포함 Ubuntu 22.04 이미지
+# English: Ubuntu 22.04 image with gcc-12, cmake, ninja, liburing, sqlite3, libpq
+# 한글: gcc-12, cmake, ninja, liburing, sqlite3, libpq 포함 Ubuntu 22.04 이미지
 
 FROM ubuntu:22.04
 
@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     liburing-dev \
     libsqlite3-dev \
+    libpq-dev \
     dos2unix \
     && rm -rf /var/lib/apt/lists/*
 

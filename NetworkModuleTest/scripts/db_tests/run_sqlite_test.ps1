@@ -105,8 +105,30 @@ Write-Ok "Built: $exePath"
 
 Write-Step "Running DB functional test (SQLite in-memory)"
 
-& $exePath
-$exitCode = $LASTEXITCODE
+$stdoutPath = Join-Path $env:TEMP "db_test_sqlite_stdout_$PID.txt"
+$stderrPath = Join-Path $env:TEMP "db_test_sqlite_stderr_$PID.txt"
+
+try {
+    Remove-Item $stdoutPath, $stderrPath -ErrorAction SilentlyContinue
+
+    $proc = Start-Process -FilePath $exePath `
+        -WorkingDirectory $buildDir `
+        -PassThru -Wait `
+        -RedirectStandardOutput $stdoutPath `
+        -RedirectStandardError $stderrPath
+
+    if (Test-Path $stdoutPath) {
+        Get-Content $stdoutPath
+    }
+    if ((Test-Path $stderrPath) -and ((Get-Item $stderrPath).Length -gt 0)) {
+        Get-Content $stderrPath
+    }
+
+    $exitCode = $proc.ExitCode
+}
+finally {
+    Remove-Item $stdoutPath, $stderrPath -ErrorAction SilentlyContinue
+}
 
 # ── Step 5: Cleanup ────────────────────────────────────────────────────────────
 

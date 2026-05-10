@@ -46,6 +46,8 @@ Debug/
 *.temp
 *.log
 ~$*
+*.bkp
+.$*.bkp
 
 # Build output logs
 *_out.txt
@@ -64,3 +66,9 @@ crash_logs/
 
 # Claude
 .claude/
+
+# Git worktrees
+.worktrees/
+
+# Temp / delete staging
+Doc/Reports/delete/

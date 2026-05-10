@@ -15,6 +15,7 @@
 #include "../../Core/Memory/IOUringBufferPool.h"
 #include "../../Core/Memory/StandardBufferPool.h"
 #include <liburing.h>
+#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -151,7 +152,7 @@ class IOUringAsyncIOProvider : public AsyncIOProvider
 		mMaxConcurrentOps; // English: Max concurrent ops / 한글: 최대 동시 작업
 	int64_t mNextBufferId; // English: Next buffer ID / 한글: 다음 버퍼 ID
 	uint64_t mNextOpKey;   // English: Next operation key / 한글: 다음 작업 키
-	bool mInitialized;     // English: Initialization flag / 한글: 초기화 플래그
+	std::atomic<bool> mInitialized; // English: Initialization flag (atomic for cross-thread visibility) / 한글: 초기화 플래그 (크로스-스레드 가시성을 위한 atomic)
 	bool mSupportsFixedBuffers; // English: Fixed buffer support / 한글: 고정
 								// 버퍼 지원
 	bool mSupportsDirectDescriptors; // English: Direct descriptor support /

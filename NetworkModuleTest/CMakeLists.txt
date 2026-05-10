@@ -27,9 +27,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # =============================================================================
 # Subdirectories
 
-# AsyncIO Library
-add_subdirectory(ModuleTest/MultiPlatformNetwork)
-
 # TestClient - Cross-platform TCP test client
 add_subdirectory(Client/TestClient)
 
@@ -40,6 +37,7 @@ add_subdirectory(Client/TestClient)
 option(BUILD_SERVER_ENGINE "Build ServerEngine library" ON)
 option(BUILD_TEST_SERVER "Build TestServer" ON)
 option(BUILD_DB_SERVER "Build DBServer" ON)
+option(BUILD_TESTS "Build AsyncIO unit test executables (EpollTest, IOUringTest)" OFF)
 option(ENABLE_DATABASE_SUPPORT "Enable database support" OFF)
 
 if (BUILD_TEST_SERVER AND NOT BUILD_SERVER_ENGINE)
@@ -60,6 +58,13 @@ endif()
 
 if (BUILD_DB_SERVER)
     add_subdirectory(Server/DBServer)
+endif()
+
+if (BUILD_TESTS)
+    if (NOT BUILD_SERVER_ENGINE)
+        message(FATAL_ERROR "BUILD_TESTS requires BUILD_SERVER_ENGINE=ON")
+    endif()
+    add_subdirectory(Server/Tests)
 endif()
 
 # =============================================================================

@@ -84,10 +84,20 @@ function Ensure-BuildDir {
 }
 
 function Remove-BuildDir {
-    if (Test-Path $script:BuildDir) {
-        Remove-Item -Recurse -Force $script:BuildDir
-        Write-Info "Build directory removed."
+    if (-not (Test-Path $script:BuildDir)) { return }
+
+    # Windows AV/Search may briefly hold a handle on newly created executables.
+    # Retry up to 5 times (5 s total) before giving up.
+    for ($i = 0; $i -lt 5; $i++) {
+        try {
+            Remove-Item -Recurse -Force -ErrorAction Stop $script:BuildDir
+            Write-Info "Build directory removed."
+            return
+        } catch {
+            if ($i -lt 4) { Start-Sleep -Milliseconds 1000 }
+        }
     }
+    Write-Warn "Build directory could not be removed (still in use): $script:BuildDir"
 }
 
 # ── Compiler include paths ─────────────────────────────────────────────────────

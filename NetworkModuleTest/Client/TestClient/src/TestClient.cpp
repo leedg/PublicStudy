@@ -190,7 +190,7 @@ bool TestClient::Connect(const std::string &host, uint16_t port)
 		}
 
 		const int errorCode = PlatformGetLastError();
-#ifndef _WIN32
+#if !defined(_WIN32)
 		if (errorCode == EINTR)
 		{
 			continue;

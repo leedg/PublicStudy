@@ -2,6 +2,7 @@
 #include "IOUringBufferPool.h"
 
 #include <cstdlib>  // posix_memalign, free
+#include <limits>
 #include <numeric>
 
 namespace Network
@@ -24,6 +25,10 @@ bool IOUringBufferPool::Initialize(size_t poolSize, size_t slotSize)
 bool IOUringBufferPool::InitializeFixed(io_uring* ring, size_t poolSize, size_t slotSize)
 {
     if (poolSize == 0 || slotSize == 0)
+        return false;
+
+    // size_t 곱셈 오버플로우 방어 (StandardBufferPool::Initialize의 동일 패턴 참고).
+    if (slotSize > std::numeric_limits<size_t>::max() / poolSize)
         return false;
 
     std::lock_guard<std::mutex> lock(mMutex);

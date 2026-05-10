@@ -442,6 +442,13 @@ static std::string TrimStr(const std::string &s)
     return s.substr(a, b - a + 1);
 }
 
+static std::string ToLowerAscii(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return s;
+}
+
 // ── 메인 메뉴 ─────────────────────────────────────────────────────────────
 
 struct MenuItem
@@ -460,9 +467,107 @@ static const MenuItem kMenuItems[] = {
 };
 static constexpr int kMenuCount = static_cast<int>(sizeof(kMenuItems) / sizeof(kMenuItems[0]));
 
-int main()
+static const MenuItem *FindMenuItem(Backend backend)
+{
+    for (int i = 0; i < kMenuCount; ++i)
+    {
+        if (kMenuItems[i].backend == backend)
+            return &kMenuItems[i];
+    }
+    return nullptr;
+}
+
+static bool TryParseBackendName(const std::string &name, Backend &out)
+{
+    const std::string key = ToLowerAscii(name);
+    if (key == "sqlite") { out = Backend::SQLite; return true; }
+    if (key == "mssql")  { out = Backend::MSSQL_ODBC; return true; }
+    if (key == "pgsql" || key == "postgres" || key == "postgresql")
+    {
+        out = Backend::PgSQL_ODBC;
+        return true;
+    }
+    if (key == "mysql")  { out = Backend::MySQL_ODBC; return true; }
+    if (key == "oledb")  { out = Backend::OleDB; return true; }
+    return false;
+}
+
+static void PrintCliUsage(const char *programName)
+{
+    std::cout << "Usage: " << programName
+              << " [--backend sqlite|mssql|pgsql|mysql|oledb] [--connstr <string>]\n";
+}
+
+int main(int argc, char *argv[])
 {
     EnableAnsi();
+
+    bool        cliMode = false;
+    Backend     cliBackend = Backend::SQLite;
+    std::string cliConnStr;
+
+    for (int i = 1; i < argc; ++i)
+    {
+        const std::string arg = argv[i];
+        if (arg == "-h" || arg == "--help")
+        {
+            PrintCliUsage(argv[0]);
+            return 0;
+        }
+        if (arg == "--backend" && i + 1 < argc)
+        {
+            if (!TryParseBackendName(argv[++i], cliBackend))
+            {
+                std::cerr << "Unknown backend: " << argv[i] << "\n";
+                PrintCliUsage(argv[0]);
+                return 2;
+            }
+            cliMode = true;
+        }
+        else if (arg == "--connstr" && i + 1 < argc)
+        {
+            cliConnStr = argv[++i];
+        }
+        else
+        {
+            std::cerr << "Unknown option: " << arg << "\n";
+            PrintCliUsage(argv[0]);
+            return 2;
+        }
+    }
+
+    if (cliMode)
+    {
+        const MenuItem *item = FindMenuItem(cliBackend);
+        if (!item)
+        {
+            std::cerr << "Internal error: backend metadata missing\n";
+            return 2;
+        }
+
+        const std::string connStr = cliConnStr.empty() ? DefaultConnStr(cliBackend) : cliConnStr;
+
+        std::cout << "\n" CLR_MAG "=== " << item->label << " 테스트 시작 ===" CLR_RESET "\n";
+        std::cout << "연결: " << connStr << "\n";
+
+        ResetCounters();
+        const bool ok = RunAllTests(cliBackend, connStr);
+
+        std::cout << "\n" CLR_MAG "=== 결과 ===" CLR_RESET "\n";
+        if (ok)
+        {
+            std::cout << CLR_GREEN
+                << gPass << " passed, " << gFail << " failed  ?? ALL OK"
+                << CLR_RESET "\n";
+        }
+        else
+        {
+            std::cout << CLR_RED
+                << gPass << " passed, " << gFail << " FAILED"
+                << CLR_RESET "\n";
+        }
+        return ok ? 0 : 1;
+    }
 
     std::cout << CLR_MAG
         "╔══════════════════════════════════════════════════════╗\n"

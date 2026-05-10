@@ -78,6 +78,7 @@ else()
 endif()
 
 set(SERVER_ENGINE_PRIVATE_DEFS)
+set(SERVER_ENGINE_PUBLIC_DEFS)
 set(SERVER_ENGINE_PRIVATE_LIBS)
 
 # English: Docker container define for Layer 2 runtime env detection
@@ -106,6 +107,12 @@ if (UNIX AND NOT APPLE)
                 "${CMAKE_CURRENT_SOURCE_DIR}/Core/Memory/IOUringBufferPool.cpp"
             )
             list(APPEND SERVER_ENGINE_PRIVATE_DEFS NETWORK_ENABLE_IO_URING=1)
+            # English: Expose HAVE_LIBURING / HAVE_IO_URING as PUBLIC so test
+            #          executables (IOUringTest, EpollTest) that link ServerEngine
+            #          can enable their Linux + liburing code paths.
+            # 한글: ServerEngine에 링크하는 테스트 실행 파일(IOUringTest 등)이
+            #       Linux + liburing 코드 경로를 활성화할 수 있도록 PUBLIC으로 노출.
+            list(APPEND SERVER_ENGINE_PUBLIC_DEFS HAVE_LIBURING HAVE_IO_URING)
             list(APPEND SERVER_ENGINE_PRIVATE_LIBS ${LIBURING_LIBRARIES})
         else()
             message(WARNING "liburing not found; building epoll-only ServerEngine")
@@ -113,13 +120,18 @@ if (UNIX AND NOT APPLE)
     endif()
 endif()
 
+# ConnectionPool is cross-platform; always include it on all platforms.
+list(APPEND SERVER_ENGINE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/Database/ConnectionPool.cpp"
+)
+list(APPEND SERVER_ENGINE_PRIVATE_DEFS ENABLE_DATABASE_SUPPORT=1)
+
+# ODBC/OLE DB backends are Windows-only.
 if (WIN32 AND ENABLE_DATABASE_SUPPORT)
     list(APPEND SERVER_ENGINE_SOURCES
-        "${CMAKE_CURRENT_SOURCE_DIR}/Database/ConnectionPool.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/Database/ODBCDatabase.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/Database/OLEDBDatabase.cpp"
     )
-    list(APPEND SERVER_ENGINE_PRIVATE_DEFS ENABLE_DATABASE_SUPPORT=1)
 endif()
 
 add_library(ServerEngine STATIC
@@ -134,6 +146,10 @@ target_include_directories(ServerEngine
 
 if (SERVER_ENGINE_PRIVATE_DEFS)
     target_compile_definitions(ServerEngine PRIVATE ${SERVER_ENGINE_PRIVATE_DEFS})
+endif()
+
+if (SERVER_ENGINE_PUBLIC_DEFS)
+    target_compile_definitions(ServerEngine PUBLIC ${SERVER_ENGINE_PUBLIC_DEFS})
 endif()
 
 find_package(Threads REQUIRED)

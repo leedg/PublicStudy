@@ -1,12 +1,14 @@
 #pragma once
 
-// English: Database configuration structure
-// 한글: 데이터베이스 설정 구조체
+// 데이터베이스 설정 구조체 및 SQL dialect 열거형.
 
 #include "DatabaseType_enum.h"
 #include <cstdint>
 #include <string>
 #include <sstream>
+#if !defined(_WIN32)
+#include <cstdint>
+#endif
 
 namespace Network
 {
@@ -14,51 +16,46 @@ namespace Database
 {
 
 // =============================================================================
-// English: DatabaseConfig structure
-// 한글: DatabaseConfig 구조체
+// SQL dialect 열거형 — 스크립트 방언 선택 키
 // =============================================================================
 
-/**
- * English: Database configuration structure
- * 한글: 데이터베이스 설정 구조체
- */
+enum class SqlDialect
+{
+	Auto,       // DatabaseConfig에서 자동 감지
+	Generic,    // 방언 무관 범용 SQL
+	SQLite,     // SQLite 방언
+	MySQL,      // MySQL / MariaDB 방언
+	PostgreSQL, // PostgreSQL 방언
+	SQLServer   // SQL Server (ODBC/OLEDB) 방언
+};
+
+// =============================================================================
+// DatabaseConfig — 백엔드 연결 설정 구조체
+// =============================================================================
+
 struct DatabaseConfig
 {
-	// English: Connection string
-	// 한글: 연결 문자열
-	std::string mConnectionString;
+	std::string mConnectionString;        // 드라이버/공급자 연결 문자열; 비어 있으면 mHost 등 필드로 조합
 
-	// English: Database type
-	// 한글: 데이터베이스 타입
-	DatabaseType mType = DatabaseType::ODBC;
+	DatabaseType mType = DatabaseType::ODBC;  // 사용할 DB 백엔드 타입
 
-	// English: Connection timeout in seconds
-	// 한글: 연결 타임아웃 (초)
-	int mConnectionTimeout = 30;
+	// ODBC/OLEDB DSN 경유처럼 백엔드 타입만으로 방언을 특정할 수 없을 때의 힌트.
+	// Auto이면 mType 및 mConnectionString에서 자동 감지한다.
+	SqlDialect mSqlDialectHint = SqlDialect::Auto;
 
-	// English: Command timeout in seconds
-	// 한글: 명령 타임아웃 (초)
-	int mCommandTimeout = 30;
+	int  mConnectionTimeout = 30;   // GetConnection() / 드라이버 연결 최대 대기 시간 (초)
+	int  mCommandTimeout    = 30;   // 쿼리 실행 제한 시간 (초); 0이면 타임아웃 없음
+	bool mAutoCommit        = true; // true이면 각 쿼리를 자동 커밋
 
-	// English: Auto-commit mode
-	// 한글: 자동 커밋 모드
-	bool mAutoCommit = true;
+	int mMaxPoolSize = 10;  // ConnectionPool 동시 active 연결 상한
+	int mMinPoolSize = 2;   // ConnectionPool 초기 미리 생성 연결 수 (워밍업)
 
-	// English: Maximum pool size
-	// 한글: 최대 풀 크기
-	int mMaxPoolSize = 10;
-
-	// English: Minimum pool size
-	// 한글: 최소 풀 크기
-	int mMinPoolSize = 2;
-
-	// English: Server host / port for connection string helpers (below).
-	// 한글: 연결 문자열 헬퍼용 서버 호스트 / 포트.
-	std::string mHost     = "localhost";
-	uint16_t    mPort     = 1433;   // SQL Server default
-	std::string mDatabase;
-	std::string mUser;
-	std::string mPassword;
+	// 연결 문자열 헬퍼용 개별 필드 — BuildODBCConnectionString() 등에서 조합
+	std::string mHost     = "localhost";  // DB 서버 호스트명 또는 IP
+	uint16_t    mPort     = 1433;         // 포트 번호 (기본값: SQL Server 1433)
+	std::string mDatabase;                // 데이터베이스(스키마) 이름
+	std::string mUser;                    // 접속 사용자 이름
+	std::string mPassword;                // 접속 비밀번호 (평문 — 프로덕션 환경에서는 별도 관리)
 
 	// ─── Connection string helpers ───────────────────────────────────────────
 	// Example ODBC (SQL Server):
@@ -67,13 +64,57 @@ struct DatabaseConfig
 	// Example ODBC (PostgreSQL):
 	//   Driver={PostgreSQL Unicode};Server=localhost;Port=5432;
 	//   Database=mydb;UID=postgres;PWD=secret;
+	SqlDialect ResolveSqlDialect() const
+	{
+		if (mSqlDialectHint != SqlDialect::Auto)
+		{
+			return mSqlDialectHint;
+		}
+
+		switch (mType)
+		{
+		case DatabaseType::SQLite:
+			return SqlDialect::SQLite;
+
+		case DatabaseType::MySQL:
+			return SqlDialect::MySQL;
+
+		case DatabaseType::PostgreSQL:
+			return SqlDialect::PostgreSQL;
+
+		case DatabaseType::OLEDB:
+			return SqlDialect::SQLServer;
+
+		default:
+			return SqlDialect::Generic;
+		}
+	}
+
 	std::string BuildODBCConnectionString() const
 	{
 		std::ostringstream ss;
-		ss << "Server=" << mHost << "," << mPort << ";"
-		   << "Database=" << mDatabase << ";"
-		   << "UID=" << mUser << ";"
-		   << "PWD=" << mPassword << ";";
+		switch (ResolveSqlDialect())
+		{
+		case SqlDialect::MySQL:
+		case SqlDialect::PostgreSQL:
+			ss << "Server=" << mHost << ";"
+			   << "Port=" << mPort << ";"
+			   << "Database=" << mDatabase << ";"
+			   << "UID=" << mUser << ";"
+			   << "PWD=" << mPassword << ";";
+			break;
+
+		case SqlDialect::SQLite:
+			ss << "Database=" << mDatabase << ";";
+			break;
+
+		default:
+			ss << "Server=" << mHost << "," << mPort << ";"
+			   << "Database=" << mDatabase << ";"
+			   << "UID=" << mUser << ";"
+			   << "PWD=" << mPassword << ";";
+			break;
+		}
 		return ss.str();
 	}
 

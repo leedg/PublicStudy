@@ -1,8 +1,8 @@
-// English: SessionManager implementation
-// 한글: SessionManager 구현
+// SessionManager 구현
 
 #include "SessionManager.h"
 #include "SessionPool.h"
+#include "Utils/KeyGenerator.h"
 #include "Utils/LockProfiling.h"
 #include <sstream>
 
@@ -22,6 +22,25 @@ void SessionManager::SetSessionConfigurator(std::function<void(Session *)> confi
 
 SessionRef SessionManager::CreateSession(SocketHandle socket)
 {
+	// Check session limit BEFORE acquiring a pool slot.
+	//          If we return nullptr here, the socket has NOT been given to any session
+	//          object — the caller is responsible for closing it.
+	//          Checking after Initialize() would cause the pool deleter to call Close()
+	//          (closing the socket) while the caller also calls close(fd) — double-close.
+	// 한글: 풀 슬롯 획득 전에 세션 한도를 확인.
+	//       여기서 nullptr을 반환하면 소켓이 세션 객체에 아직 전달되지 않은 상태이므로
+	//       호출자가 소켓 닫기 책임을 진다.
+	//       Initialize() 이후에 확인하면 풀 deleter가 Close()로 소켓을 닫은 뒤
+	//       호출자도 close(fd)를 호출하여 이중 닫기가 발생한다.
+	{
+		NET_LOCK_GUARD(mMutex);
+		if (mSessions.size() >= Utils::MAX_CONNECTIONS)
+		{
+			Utils::Logger::Warn("Max session count reached");
+			return nullptr;
+		}
+	}
+
 	SessionRef session = SessionPool::Instance().Acquire();
 	if (!session)
 	{
@@ -32,7 +51,7 @@ SessionRef SessionManager::CreateSession(SocketHandle socket)
 	Utils::ConnectionId id = GenerateSessionId();
 	session->Initialize(id, socket);
 
-	// English: Apply application-level configuration before PostRecv() is issued.
+	// Apply application-level configuration before PostRecv() is issued.
 	//          Called here (before the session enters mSessions) so recv completions
 	//          cannot fire before the callback is set.
 	// 한글: PostRecv() 이전에 애플리케이션 수준 설정 적용.
@@ -42,13 +61,6 @@ SessionRef SessionManager::CreateSession(SocketHandle socket)
 
 	{
 		NET_LOCK_GUARD(mMutex);
-
-		if (mSessions.size() >= Utils::MAX_CONNECTIONS)
-		{
-			Utils::Logger::Warn("Max session count reached");
-			return nullptr;
-		}
-
 		mSessions[id] = session;
 	}
 
@@ -78,19 +90,17 @@ void SessionManager::RemoveSession(SessionRef session)
 		return;
 	}
 
-	// English: Store ID first to avoid race condition
-	// 한글: Race condition 방지를 위해 ID를 먼저 저장
+	// race condition 방지를 위해 ID를 먼저 저장
+	// (Close()가 mId를 0으로 바꾸기 전에 캡처)
 	Utils::ConnectionId id = session->GetId();
 
-	// English: Close session before removing to cleanup resources
-	// 한글: 리소스 정리를 위해 제거 전 세션 닫기
+	// 리소스 정리를 위해 제거 전 세션 닫기
 	if (session->IsConnected())
 	{
 		session->Close();
 	}
 
-	// English: Remove from manager using pre-stored ID
-	// 한글: 미리 저장한 ID를 사용하여 매니저에서 제거
+	// 미리 저장한 ID로 매니저에서 제거
 	RemoveSession(id);
 }
 
@@ -109,8 +119,7 @@ SessionRef SessionManager::GetSession(Utils::ConnectionId id)
 
 void SessionManager::ForEachSession(const std::function<void(SessionRef)>& func)
 {
-	// English: Copy session list to avoid long lock duration
-	// 한글: 긴 잠금 시간을 피하기 위해 세션 리스트 복사
+	// 긴 잠금 시간을 피하기 위해 세션 리스트를 복사한 후 락 해제
 	std::vector<SessionRef> sessionsCopy;
 	{
 		NET_LOCK_GUARD(mMutex);
@@ -121,8 +130,7 @@ void SessionManager::ForEachSession(const std::function<void(SessionRef)>& func)
 		}
 	}
 
-	// English: Process sessions without holding lock
-	// 한글: 잠금 없이 세션 처리
+	// 잠금 없이 세션 처리
 	for (auto &session : sessionsCopy)
 	{
 		func(session);
@@ -131,8 +139,7 @@ void SessionManager::ForEachSession(const std::function<void(SessionRef)>& func)
 
 std::vector<SessionRef> SessionManager::GetAllSessions()
 {
-	// English: Return snapshot of all sessions (caller owns the shared_ptr references)
-	// 한글: 모든 세션의 스냅샷 반환 (호출자가 shared_ptr 참조 소유)
+	// 모든 세션의 스냅샷 반환 (호출자가 shared_ptr 참조 소유)
 	std::vector<SessionRef> sessionsCopy;
 	NET_LOCK_GUARD(mMutex);
 	sessionsCopy.reserve(mSessions.size());
@@ -151,18 +158,11 @@ size_t SessionManager::GetSessionCount() const
 
 void SessionManager::CloseAllSessions()
 {
-	// English: Copy session list to avoid deadlock (pattern same as ForEachSession)
-	// 한글: 교착 상태 방지를 위해 세션 리스트 복사 (ForEachSession과 동일 패턴)
-	// Deadlock scenario prevention:
-	//   Thread A: CloseAllSessions() holds mMutex -> calls session->Close() -> waits for Session::mSendMutex
-	//   Thread B: Session::Send() holds mSendMutex -> calls RemoveSession() -> waits for mMutex
-	//   Result: DEADLOCK!
-	// Solution: Release mMutex before calling session->Close()
-	// 교착 상태 시나리오 방지:
-	//   스레드 A: CloseAllSessions()가 mMutex 보유 -> session->Close() 호출 -> Session::mSendMutex 대기
-	//   스레드 B: Session::Send()가 mSendMutex 보유 -> RemoveSession() 호출 -> mMutex 대기
-	//   결과: 교착 상태!
-	// 해결책: session->Close() 호출 전 mMutex 해제
+	// 교착 상태 방지를 위해 세션 리스트를 복사한 후 mMutex 해제.
+	// 교착 상태 시나리오:
+	//   스레드 A: CloseAllSessions()가 mMutex 보유 → session->Close() 호출 → Session::mSendMutex 대기
+	//   스레드 B: Session::Send()가 mSendMutex 보유 → RemoveSession() 호출 → mMutex 대기
+	// 해결: session->Close() 호출 전 mMutex를 해제하여 락 역전을 방지.
 
 	std::vector<SessionRef> sessionsCopy;
 	{
@@ -174,8 +174,7 @@ void SessionManager::CloseAllSessions()
 		}
 	}
 
-	// English: Close sessions without holding mMutex
-	// 한글: mMutex를 보유하지 않은 채로 세션 닫기
+	// mMutex를 보유하지 않은 채로 세션 닫기
 	for (auto &session : sessionsCopy)
 	{
 		if (session)
@@ -184,8 +183,7 @@ void SessionManager::CloseAllSessions()
 		}
 	}
 
-	// English: Clear session map after all sessions are closed
-	// 한글: 모든 세션이 닫힌 후 세션 맵 정리
+	// 모든 세션이 닫힌 후 세션 맵 정리
 	{
 		NET_LOCK_GUARD(mMutex);
 		mSessions.clear();
@@ -195,8 +193,9 @@ void SessionManager::CloseAllSessions()
 
 Utils::ConnectionId SessionManager::GenerateSessionId()
 {
-	return mNextSessionId.fetch_add(1);
+	// KeyGenerator::NextGlobalId() — monotonic uint64_t, lock-free, starts at 1.
+	// 한글: KeyGenerator 전역 ID — 단조 증가 uint64_t, 락-프리, 1부터 시작.
+	return Utils::KeyGenerator::NextGlobalId();
 }
 
 } // namespace Network::Core
-

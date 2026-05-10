@@ -1,5 +1,4 @@
-// English: Windows IOCP AsyncIOProvider implementation
-// 한글: Windows IOCP AsyncIOProvider 구현
+// Windows IOCP AsyncIOProvider 구현
 
 #include "Network/Core/PlatformDetect.h"
 
@@ -17,8 +16,7 @@ namespace Windows
 {
 
 // =============================================================================
-// English: Constructor & Destructor
-// 한글: 생성자 및 소멸자
+// 생성자 / 소멸자
 // =============================================================================
 
 IocpAsyncIOProvider::IocpAsyncIOProvider()
@@ -42,8 +40,7 @@ IocpAsyncIOProvider::~IocpAsyncIOProvider()
 }
 
 // =============================================================================
-// English: Lifecycle Management
-// 한글: 생명주기 관리
+// 생명주기 관리
 // =============================================================================
 
 AsyncIOError IocpAsyncIOProvider::Initialize(size_t queueDepth,
@@ -57,8 +54,7 @@ AsyncIOError IocpAsyncIOProvider::Initialize(size_t queueDepth,
 
 	mShuttingDown.store(false, std::memory_order_release);
 
-	// English: Create IOCP
-	// 한글: IOCP 생성
+	// IOCP 완료 포트 생성 (concurrentThreads=0 이면 OS가 자동 결정)
 	DWORD concurrentThreads = maxConcurrent > 0 ? static_cast<DWORD>(maxConcurrent) : 0;
 	mCompletionPort = CreateIoCompletionPort(
 		INVALID_HANDLE_VALUE, nullptr, 0, concurrentThreads);
@@ -97,7 +93,6 @@ void IocpAsyncIOProvider::Shutdown()
 	std::lock_guard<std::mutex> lock(mMutex);
 	mPendingRecvOps.clear();
 	mPendingSendOps.clear();
-
 }
 
 bool IocpAsyncIOProvider::IsInitialized() const
@@ -106,8 +101,7 @@ bool IocpAsyncIOProvider::IsInitialized() const
 }
 
 // =============================================================================
-// English: Socket Association
-// 한글: 소켓 연결
+// 소켓 연결
 // =============================================================================
 
 AsyncIOError IocpAsyncIOProvider::AssociateSocket(SocketHandle socket,
@@ -120,12 +114,8 @@ AsyncIOError IocpAsyncIOProvider::AssociateSocket(SocketHandle socket,
 		return AsyncIOError::NotInitialized;
 	}
 
-	// English: Associate the socket with the IOCP completion port
-	// 한글: 소켓을 IOCP 완료 포트에 연결
-	// The completionKey (context) is typically the ConnectionId,
-	// which will be returned in GetQueuedCompletionStatus completionKey parameter.
-	// 완료 키(context)는 일반적으로 ConnectionId이며,
-	// GetQueuedCompletionStatus의 completionKey 매개변수로 반환됩니다.
+	// 소켓을 IOCP 완료 포트에 연결한다.
+	// completionKey(= context)는 ConnectionId이며, GQCS의 completionKey 매개변수로 반환된다.
 	HANDLE result = CreateIoCompletionPort(
 		reinterpret_cast<HANDLE>(socket),
 		mCompletionPort,
@@ -144,27 +134,23 @@ AsyncIOError IocpAsyncIOProvider::AssociateSocket(SocketHandle socket,
 }
 
 // =============================================================================
-// English: Buffer Management
-// 한글: 버퍼 관리
+// 버퍼 관리
 // =============================================================================
 
 int64_t IocpAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 {
-	// English: IOCP doesn't need buffer registration
-	// 한글: IOCP는 버퍼 등록 불필요
+	// IOCP는 버퍼 사전 등록이 필요 없다 (per-op 동적 할당 방식).
 	return 0;
 }
 
 AsyncIOError IocpAsyncIOProvider::UnregisterBuffer(int64_t bufferId)
 {
-	// English: IOCP doesn't support buffer registration
-	// 한글: IOCP는 버퍼 등록 미지원
+	// UnregisterBuffer: IOCP는 버퍼 등록을 사용하지 않으므로 성공 반환.
 	return AsyncIOError::Success;
 }
 
 // =============================================================================
-// English: Async I/O Requests
-// 한글: 비동기 I/O 요청
+// 비동기 I/O 요청
 // =============================================================================
 
 AsyncIOError IocpAsyncIOProvider::SendAsync(SocketHandle socket,
@@ -197,34 +183,45 @@ AsyncIOError IocpAsyncIOProvider::SendAsync(SocketHandle socket,
 	op->mSocket = socket;
 	OVERLAPPED *opKey = &op->mOverlapped;
 
-	std::lock_guard<std::mutex> lock(mMutex);
-	if (!mInitialized.load(std::memory_order_acquire) ||
-		mShuttingDown.load(std::memory_order_acquire))
+	// WSASend 호출 전에 pending 맵에 먼저 삽입하고 락을 해제한다.
+	// 리즈니: WSASend가 즉시 완료를 IOCP에 포스팅하면 워커가 mMutex를 획득하려 데드락이 발생한다.
+	// 버퍼 수명: IOCP는 I/O 완료까지 커널이 mBuffer를 pin하므로 GQCS 반환 전까지 wsaBuf.buf는 유효하다.
+	WSABUF wsaBuf;
 	{
-		mLastError = "Provider is shutting down";
-		return AsyncIOError::NotInitialized;
-	}
+		std::lock_guard<std::mutex> lock(mMutex);
+		if (!mInitialized.load(std::memory_order_acquire) ||
+			mShuttingDown.load(std::memory_order_acquire))
+		{
+			mLastError = "Provider is shutting down";
+			return AsyncIOError::NotInitialized;
+		}
 
-	auto [it, inserted] = mPendingSendOps.emplace(opKey, std::move(op));
-	if (!inserted)
-	{
-		mLastError = "Duplicate pending send OVERLAPPED key";
-		mStats.mErrorCount++;
-		return AsyncIOError::OperationFailed;
-	}
+		auto [it, inserted] = mPendingSendOps.emplace(opKey, std::move(op));
+		if (!inserted)
+		{
+			mLastError = "Duplicate pending send OVERLAPPED key";
+			mStats.mErrorCount++;
+			return AsyncIOError::OperationFailed;
+		}
 
-	mStats.mTotalRequests++;
-	mStats.mPendingRequests++;
+		wsaBuf = it->second->mWsaBuffer;
+		mStats.mTotalRequests++;
+		mStats.mPendingRequests++;
+	}
 
 	DWORD bytesSent = 0;
-	int result = WSASend(socket, &it->second->mWsaBuffer, 1, &bytesSent, 0,
-								opKey, nullptr);
+	int result = WSASend(socket, &wsaBuf, 1, &bytesSent, 0, opKey, nullptr);
 	if (result == SOCKET_ERROR)
 	{
 		const int errorCode = WSAGetLastError();
 		if (errorCode != WSA_IO_PENDING)
 		{
-			mPendingSendOps.erase(it);
+			std::lock_guard<std::mutex> lock(mMutex);
+			auto eraseIt = mPendingSendOps.find(opKey);
+			if (eraseIt != mPendingSendOps.end())
+			{
+				mPendingSendOps.erase(eraseIt);
+			}
 			if (mStats.mPendingRequests > 0)
 			{
 				mStats.mPendingRequests--;
@@ -258,7 +255,12 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 	auto op = std::make_unique<PendingOperation>();
 	std::memset(&op->mOverlapped, 0, sizeof(OVERLAPPED));
+	// 내부 버퍼에 수신 — 완료 시 ProcessCompletions에서 호출자 버퍼로 복사한다.
+	// 이렇게 하면 호출자 버퍼의 수명이 비동기 I/O 기간 동안 유지될 필요 없이
+	// ProcessCompletions 호출 시점에만 유효하면 된다.
 	op->mBuffer = std::make_unique<uint8_t[]>(size);
+	op->mCallerBuffer = buffer;
+	op->mCallerSize   = size;
 	op->mWsaBuffer.buf = reinterpret_cast<char *>(op->mBuffer.get());
 	op->mWsaBuffer.len = static_cast<ULONG>(size);
 	op->mContext = context;
@@ -266,35 +268,44 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	op->mSocket = socket;
 	OVERLAPPED *opKey = &op->mOverlapped;
 
-	std::lock_guard<std::mutex> lock(mMutex);
-	if (!mInitialized.load(std::memory_order_acquire) ||
-		mShuttingDown.load(std::memory_order_acquire))
+	// SendAsync와 동일한 락 해제 패턴: 먼저 맵에 삽입 후 mMutex 해제, 이후 WSARecv 호출.
+	WSABUF wsaBuf;
 	{
-		mLastError = "Provider is shutting down";
-		return AsyncIOError::NotInitialized;
-	}
+		std::lock_guard<std::mutex> lock(mMutex);
+		if (!mInitialized.load(std::memory_order_acquire) ||
+			mShuttingDown.load(std::memory_order_acquire))
+		{
+			mLastError = "Provider is shutting down";
+			return AsyncIOError::NotInitialized;
+		}
 
-	auto [it, inserted] = mPendingRecvOps.emplace(opKey, std::move(op));
-	if (!inserted)
-	{
-		mLastError = "Duplicate pending recv OVERLAPPED key";
-		mStats.mErrorCount++;
-		return AsyncIOError::OperationFailed;
-	}
+		auto [it, inserted] = mPendingRecvOps.emplace(opKey, std::move(op));
+		if (!inserted)
+		{
+			mLastError = "Duplicate pending recv OVERLAPPED key";
+			mStats.mErrorCount++;
+			return AsyncIOError::OperationFailed;
+		}
 
-	mStats.mTotalRequests++;
-	mStats.mPendingRequests++;
+		wsaBuf = it->second->mWsaBuffer;
+		mStats.mTotalRequests++;
+		mStats.mPendingRequests++;
+	}
 
 	DWORD bytesRecv = 0;
 	DWORD dwFlags = 0;
-	int result = WSARecv(socket, &it->second->mWsaBuffer, 1, &bytesRecv, &dwFlags,
-								opKey, nullptr);
+	int result = WSARecv(socket, &wsaBuf, 1, &bytesRecv, &dwFlags, opKey, nullptr);
 	if (result == SOCKET_ERROR)
 	{
 		const int errorCode = WSAGetLastError();
 		if (errorCode != WSA_IO_PENDING)
 		{
-			mPendingRecvOps.erase(it);
+			std::lock_guard<std::mutex> lock(mMutex);
+			auto eraseIt = mPendingRecvOps.find(opKey);
+			if (eraseIt != mPendingRecvOps.end())
+			{
+				mPendingRecvOps.erase(eraseIt);
+			}
 			if (mStats.mPendingRequests > 0)
 			{
 				mStats.mPendingRequests--;
@@ -310,21 +321,23 @@ AsyncIOError IocpAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 
 AsyncIOError IocpAsyncIOProvider::FlushRequests()
 {
-	// English: IOCP executes immediately, no batching
-	// 한글: IOCP는 즉시 실행, 배치 없음
+	// IOCP는 배치 발송 개념이 없다. FlushRequests는 노옵으로 성공을 반환한다.
 	return AsyncIOError::Success;
 }
 
 // =============================================================================
-// English: Completion Processing
-// 한글: 완료 처리
+// 완료 처리
 // =============================================================================
 
 int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 											size_t maxEntries, int timeoutMs)
 {
-	if (!mInitialized.load(std::memory_order_acquire))
+	if (!mInitialized.load(std::memory_order_acquire) ||
+		mShuttingDown.load(std::memory_order_acquire))
 	{
+		// 종료 중/후에는 즉시 반환 — mCompletionPort가 닫혀 있거나
+		// mPendingRecvOps/mPendingSendOps가 이미 clear()된 후
+		// pOverlapped에 접근하면 UB가 발생한다.
 		mLastError = "Not initialized";
 		return static_cast<int>(AsyncIOError::NotInitialized);
 	}
@@ -347,6 +360,10 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 
 		BOOL result = GetQueuedCompletionStatus(mCompletionPort, &bytesTransferred,
 											&completionKey, &pOverlapped, timeout);
+
+		// GetLastError()를 즉시 캡처한다 — 이후 syscall(mutex 획득, 맵 연산)이
+		// TLS 에러 값을 덮어쓸 수 있다.
+		const DWORD capturedLastError = result ? 0 : ::GetLastError();
 
 		if (!result && !pOverlapped)
 		{
@@ -386,6 +403,16 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		{
 			entries[completionCount].mContext = op->mContext;
 			entries[completionCount].mType = op->mType;
+
+			// Recv 완료: 내부 버퍼에서 호출자 버퍼로 수신 데이터 복사.
+			// 호출자 버퍼는 ProcessCompletions 호출 시점에만 유효하면 된다.
+			if (result && op->mType == AsyncIOType::Recv &&
+				op->mBuffer && op->mCallerBuffer && bytesTransferred > 0)
+			{
+				const size_t toCopy =
+					(std::min)(static_cast<size_t>(bytesTransferred), op->mCallerSize);
+				std::memcpy(op->mCallerBuffer, op->mBuffer.get(), toCopy);
+			}
 		}
 		else if (pOverlapped)
 		{
@@ -410,7 +437,7 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		entries[completionCount].mResult =
 			result ? static_cast<int32_t>(bytesTransferred) : -1;
 		entries[completionCount].mOsError =
-			static_cast<OSError>(result ? 0 : ::GetLastError());
+			static_cast<OSError>(capturedLastError);
 
 		auto endTime = std::chrono::high_resolution_clock::now();
 		auto duration =
@@ -429,8 +456,7 @@ int IocpAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 }
 
 // =============================================================================
-// English: Information & Statistics
-// 한글: 정보 및 통계
+// 정보 및 통계
 // =============================================================================
 
 const ProviderInfo &IocpAsyncIOProvider::GetInfo() const
@@ -450,8 +476,7 @@ const char *IocpAsyncIOProvider::GetLastError() const
 }
 
 // =============================================================================
-// English: Factory function
-// 한글: 팩토리 함수
+// 팩토리 함수
 // =============================================================================
 
 std::unique_ptr<AsyncIOProvider> CreateIocpProvider()

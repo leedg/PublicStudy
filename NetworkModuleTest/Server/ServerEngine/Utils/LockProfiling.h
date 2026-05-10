@@ -1,14 +1,28 @@
 #pragma once
 
+// 락 경합 프로파일링 유틸리티.
+//
+// 활성화: 빌드에 NET_LOCK_PROFILING 매크로를 정의한다.
+// 비활성화 시: 모든 매크로가 표준 std::lock_guard / std::unique_lock으로
+//   컴파일되며 런타임 오버헤드는 0이다.
+//
+// 측정 방식:
+//   - steady_clock으로 lock() 호출 직전(waitStart)과 직후(acquired)를 기록한다.
+//   - 스코프 소멸 시 acquired~소멸 시점을 holdNs로 산출한다.
+//   - 측정값은 EmitLockRecord()를 통해 Windows TraceLogging 이벤트로 내보낸다.
+//   - TraceLogging 수신기(WPR, PerfView 등)로 분석하거나 CSV로 내보낼 수 있다.
+//
+// 오버헤드 트레이드오프:
+//   - steady_clock 호출 2회(wait 시작, 획득 완료) + 1회(해제) 추가 = ~수십 ns/락
+//   - TraceLogging 버퍼가 가득 차면 레코드가 무음 드롭될 수 있다.
+//     (호출자를 블록하지 않는 설계이므로 고빈도 락에서 데이터 손실 가능)
+//   - 프로파일링 빌드에서만 활성화하고 릴리즈 빌드에는 적용하지 말 것.
+
 #include <chrono>
 #include <cstdint>
 #include <mutex>
 #include <type_traits>
 #include "../Network/Core/PlatformDetect.h"
-
-// Lock contention profiling
-// Enable by defining NET_LOCK_PROFILING in your build.
-// When disabled, all macros compile to standard lock types with zero runtime cost.
 
 #define NET_LOCK_PROFILE_CONCAT_INNER(a, b) a##b
 #define NET_LOCK_PROFILE_CONCAT(a, b) NET_LOCK_PROFILE_CONCAT_INNER(a, b)
@@ -28,14 +42,16 @@ namespace Network::Utils::LockProfiling
 {
 using Clock = std::chrono::steady_clock;
 
+// 단일 락 획득/해제 이벤트 데이터.
+// EmitLockRecord()가 이 구조체를 TraceLogging 이벤트로 직렬화한다.
 struct LockRecord
 {
-	const char *name;
-	const char *file;
-	int line;
-	uint64_t waitNs;
-	uint64_t holdNs;
-	uint32_t threadId;
+	const char *name;      // 락 변수 이름 (문자열 리터럴 — 생존 기간 보장 필요)
+	const char *file;      // 소스 파일 경로 (__FILE__ 리터럴)
+	int         line;      // 소스 라인 번호 (__LINE__)
+	uint64_t    waitNs;    // lock() 호출~획득까지 대기 시간 (나노초)
+	uint64_t    holdNs;    // 락 획득~해제까지 보유 시간 (나노초)
+	uint32_t    threadId;  // 락을 획득한 스레드 ID
 };
 
 void EmitLockRecord(const LockRecord &record) noexcept;
@@ -58,11 +74,11 @@ inline uint32_t GetThreadId() noexcept
 
 struct LockTiming
 {
-	const char *name;
-	const char *file;
-	int line;
-	Clock::time_point waitStart;
-	Clock::time_point acquired;
+	const char       *name;      // 락 변수 이름 (LockRecord와 동일한 문자열 리터럴)
+	const char       *file;      // 소스 파일 경로
+	int               line;      // 소스 라인 번호
+	Clock::time_point waitStart; // lock() 호출 직전 시각 — 대기 시간 산출 기준
+	Clock::time_point acquired;  // lock() 반환 직후 시각 — 보유 시간 산출 기준
 };
 
 inline LockTiming StartLockWait(const char *name, const char *file,
@@ -76,6 +92,7 @@ inline void MarkLockAcquired(LockTiming &timing) noexcept
 	timing.acquired = Clock::now();
 }
 
+// RAII 스코프 종료 시 holdNs를 산출하고 EmitLockRecord()를 호출한다.
 class LockHoldScope
 {
   public:
@@ -97,7 +114,7 @@ class LockHoldScope
 	LockHoldScope &operator=(const LockHoldScope &) = delete;
 
   private:
-	LockTiming &mTiming;
+	LockTiming &mTiming;  // 소멸자에서 holdNs 계산에 사용할 타이밍 참조
 };
 
 template <typename Mutex>
@@ -128,8 +145,8 @@ class LockGuard
 	LockGuard &operator=(const LockGuard &) = delete;
 
   private:
-	Mutex &mMutex;
-	LockTiming mTiming;
+	Mutex     &mMutex;   // 보호 대상 뮤텍스 참조 — 소멸자에서 unlock() 호출
+	LockTiming mTiming;  // 대기/보유 시간 측정용 타이밍 스냅샷
 };
 
 } // namespace Network::Utils::LockProfiling
@@ -157,6 +174,7 @@ class LockGuard
 
 #else
 
+// 프로파일링 비활성화 시 — 표준 락으로 무비용 교체
 #define NET_LOCK_GUARD_NAMED(mutex, name) \
 	std::lock_guard<std::remove_reference_t<decltype(mutex)>> name((mutex))
 

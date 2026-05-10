@@ -1,13 +1,14 @@
 #pragma once
 
-// English: Structured async scope (task tracking + cooperative cancel).
-// 한글: 구조화된 비동기 스코프(태스크 추적 + 협력 취소).
+// 구조화된 비동기 스코프: 태스크 인플라이트 추적 + 협력 취소.
 
 #include "KeyedDispatcher.h"
 #include <atomic>
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
+#include <cstdlib>
 #include <functional>
 #include <mutex>
 #include <utility>
@@ -37,20 +38,29 @@ class AsyncScope
 		mCancelled.store(true, std::memory_order_release);
 	}
 
-	// English: Reset for pool reuse. Safe only when mInFlight == 0, which is
-	//          guaranteed by the time SessionPool::ReleaseInternal calls Session::Reset()
-	//          because all in-flight lambdas hold a sessionCopy ref and have already run.
-	// 한글: 풀 재사용을 위한 초기화. mInFlight == 0일 때만 안전하며,
-	//       모든 in-flight 람다가 sessionCopy ref를 보유하고 이미 실행됐을 때
-	//       SessionPool::ReleaseInternal → Session::Reset() 호출 시 보장됨.
+	// 풀 재사용을 위한 초기화. mInFlight == 0 일 때만 안전하다.
+	//
+	// 호출 순서 계약 (SessionPool::ReleaseInternal이 강제):
+	//   Close() → WaitForPendingTasks() [= WaitForDrain(-1)] → Reset()
+	//
+	// Reset()을 WaitForDrain() 없이 호출하면 인플라이트 카운터가 오염되어,
+	// 이후 WaitForDrain()이 영구 대기하거나 태스크가 해제된 메모리에 접근한다.
+	// 디버그 빌드: assert가 즉시 발동하여 디버거에서 빠른 진단이 가능하다.
+	// 릴리즈 빌드: abort로 즉시 종료한다. 오염된 상태로 계속 실행하면
+	//              재현하기 어려운 메모리 안전성 버그로 이어지기 때문이다.
 	void Reset()
 	{
-		// English: Precondition: mInFlight MUST be 0. Call WaitForDrain(-1) before Reset().
-		//          Violating this corrupts the in-flight counter of the reused scope.
-		// 한글: 선행 조건: mInFlight가 반드시 0이어야 함. Reset() 전 WaitForDrain(-1) 필수.
-		//       위반 시 재사용 스코프의 in-flight 카운터 오염.
-		assert(mInFlight.load(std::memory_order_acquire) == 0 &&
+		const size_t inFlight = mInFlight.load(std::memory_order_acquire);
+		assert(inFlight == 0 &&
 		       "AsyncScope::Reset() called while tasks are in-flight");
+		if (inFlight != 0)
+		{
+			std::fprintf(stderr,
+			    "[AsyncScope::Reset] FATAL: in-flight count is %zu (expected 0). "
+			    "Ensure WaitForDrain(-1) is called before Reset().\n",
+			    inFlight);
+			std::abort();
+		}
 		mCancelled.store(false, std::memory_order_release);
 	}
 
@@ -64,12 +74,9 @@ class AsyncScope
 	{
 		BeginTask();
 
-		// English: Fast-path: if already cancelled, avoid dispatching a no-op task.
-		//          A concurrent Cancel() between here and Dispatch() is still safe —
-		//          the wrapped lambda checks IsCancelled() at execution time.
-		// 한글: 패스트패스: 이미 취소된 경우 no-op 태스크 디스패치를 피함.
-		//       BeginTask와 Dispatch 사이의 동시 Cancel()은 안전 —
-		//       래퍼 람다가 실행 시점에 IsCancelled()를 재확인함.
+		// 패스트패스: 이미 취소된 경우 no-op 태스크 디스패치를 피한다.
+		// BeginTask()와 Dispatch() 사이의 동시 Cancel()은 안전하다.
+		// 래퍼 람다가 실행 시점에 IsCancelled()를 재확인하기 때문이다.
 		if (IsCancelled())
 		{
 			EndTask();
@@ -98,6 +105,9 @@ class AsyncScope
 		std::unique_lock<std::mutex> lock(mDrainMutex);
 		if (timeoutMs < 0)
 		{
+			// 람다 조건식이 spurious wakeup을 방어한다.
+			// OS는 notify 없이도 wait를 깨울 수 있으므로,
+			// 람다가 false를 반환하면 wait가 자동으로 재대기한다.
 			mDrainCV.wait(lock, [this] {
 				return mInFlight.load(std::memory_order_acquire) == 0;
 			});
@@ -127,18 +137,28 @@ class AsyncScope
 		const size_t prev = mInFlight.fetch_sub(1, std::memory_order_acq_rel);
 		if (prev == 1)
 		{
-			// English: notify_all does not require the mutex to be held.
-			//          Acquiring it here would add unnecessary contention with WaitForDrain.
-			// 한글: notify_all은 mutex를 보유할 필요가 없음.
-			//       lock을 잡으면 WaitForDrain과 불필요한 contention 발생.
+			// notify_all은 mutex를 보유하지 않아도 된다.
+			// mDrainMutex를 잡으면 WaitForDrain()과 불필요한 contention이 발생하고,
+			// EndTask는 태스크 완료마다 호출되는 핫 패스이므로 contention을 최소화해야 한다.
 			mDrainCV.notify_all();
 		}
 	}
 
-	std::atomic<bool> mCancelled;
-	std::atomic<size_t> mInFlight;
-	mutable std::mutex mDrainMutex;
-	std::condition_variable mDrainCV;
+	// ─────────────────────────────────────────────
+	// 취소 & 인플라이트 추적
+	// ─────────────────────────────────────────────
+	std::atomic<bool>   mCancelled;  // true → 새 Submit() 차단 + 래퍼 람다에서 태스크 실행 스킵; release/acquire 쌍
+	std::atomic<size_t> mInFlight;   // 현재 디스패치 완료 대기 중인 태스크 수; WaitForDrain() 조건 판단에 사용
+
+	// ─────────────────────────────────────────────
+	// 드레인 동기화
+	// ─────────────────────────────────────────────
+	// mDrainMutex는 순전히 std::condition_variable 계약을 충족하기 위해 존재한다.
+	// condition_variable::wait는 보호할 공유 가변 상태가 없더라도 unique_lock을 요구한다.
+	// (mInFlight는 atomic이므로 락 없이 안전하게 읽을 수 있다.)
+	// EndTask는 이 mutex를 보유하지 않고 notify_all을 호출하며, 이는 의도적이고 정확하다.
+	mutable std::mutex mDrainMutex;       // CV 계약용 (보호 대상 없음; mInFlight는 atomic)
+	std::condition_variable mDrainCV;     // mInFlight == 0 시 notify_all → WaitForDrain() 대기자 깨움
 };
 
 } // namespace Network::Concurrency

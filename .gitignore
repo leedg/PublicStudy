@@ -4,3 +4,4 @@
 NetworkModuleTest/*.wal
 NetworkModuleTest/*.txt
 
+.worktrees/

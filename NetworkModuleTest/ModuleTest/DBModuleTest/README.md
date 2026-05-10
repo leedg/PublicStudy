@@ -19,7 +19,7 @@ ModuleTest/DBModuleTest/
     check-db-prereqs.ps1
     run-db-tests.ps1
   DBModuleTest.vcxproj
-  Doc/
+  Docs/
 ```
 
 ## 빌드

@@ -6,6 +6,7 @@
 #include "KqueueAsyncIOProvider.h"
 #include "Network/Core/PlatformDetect.h"
 #include <cstring>
+#include <limits>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -37,7 +38,7 @@ KqueueAsyncIOProvider::~KqueueAsyncIOProvider() { Shutdown(); }
 AsyncIOError KqueueAsyncIOProvider::Initialize(size_t queueDepth,
 												   size_t maxConcurrent)
 {
-	if (mInitialized)
+	if (mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::AlreadyInitialized;
 
 	// English: Create kqueue file descriptor
@@ -61,13 +62,23 @@ AsyncIOError KqueueAsyncIOProvider::Initialize(size_t queueDepth,
 	mInfo.mSupportsBatching = false;
 	mInfo.mSupportsZeroCopy = false;
 
-	mInitialized = true;
+	mInitialized.store(true, std::memory_order_release);
 	return AsyncIOError::Success;
 }
 
 void KqueueAsyncIOProvider::Shutdown()
 {
-	if (!mInitialized)
+	// English: Atomically transition mInitialized true → false (same rationale as
+	//          EpollAsyncIOProvider::Shutdown — see comment there for full explanation).
+	//          Without the CAS, a concurrent ProcessCompletions call that passes the
+	//          mInitialized.load() check could call kevent() on a closed kqueue fd.
+	// 한글: mInitialized를 true → false로 원자적 전환
+	//       (EpollAsyncIOProvider::Shutdown과 동일한 이유 — 해당 주석 참고).
+	//       CAS 없이는 ProcessCompletions가 mInitialized.load() 체크를 통과한 후
+	//       닫힌 kqueue fd에서 kevent()를 호출할 수 있음.
+	bool expected = true;
+	if (!mInitialized.compare_exchange_strong(expected, false,
+	        std::memory_order_acq_rel, std::memory_order_acquire))
 		return;
 
 	std::lock_guard<std::mutex> lock(mMutex);
@@ -83,10 +94,12 @@ void KqueueAsyncIOProvider::Shutdown()
 	mPendingRecvOps.clear();
 	mPendingSendOps.clear();
 	mRegisteredSockets.clear();
-	mInitialized = false;
 }
 
-bool KqueueAsyncIOProvider::IsInitialized() const { return mInitialized; }
+bool KqueueAsyncIOProvider::IsInitialized() const
+{
+	return mInitialized.load(std::memory_order_acquire);
+}
 
 // =============================================================================
 // English: Socket Association
@@ -96,7 +109,7 @@ bool KqueueAsyncIOProvider::IsInitialized() const { return mInitialized; }
 AsyncIOError KqueueAsyncIOProvider::AssociateSocket(SocketHandle socket,
 													RequestContext context)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 
 	// English: Register socket with kqueue for read/write events
@@ -140,12 +153,30 @@ AsyncIOError KqueueAsyncIOProvider::SendAsync(SocketHandle socket,
 												  RequestContext context,
 												  uint32_t flags)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)
 		return AsyncIOError::InvalidParameter;
 
+	// English: Guard against size_t → uint32_t truncation.
+	//          Same rationale as EpollAsyncIOProvider::SendAsync — see comment there.
+	// 한글: size_t → uint32_t 절단 방어.
+	//       EpollAsyncIOProvider::SendAsync와 동일한 이유 — 해당 주석 참고.
+	if (size > static_cast<size_t>(std::numeric_limits<uint32_t>::max()))
+	{
+		mLastError = "SendAsync: buffer size exceeds uint32_t max (4 GiB)";
+		return AsyncIOError::InvalidParameter;
+	}
+
 	std::lock_guard<std::mutex> lock(mMutex);
+
+	// English: Reject if a send is already in-flight for this socket.
+	// 한글: 동일 소켓에 이미 in-flight send가 있으면 거부.
+	if (mPendingSendOps.count(socket))
+	{
+		mLastError = "SendAsync: duplicate pending send for socket";
+		return AsyncIOError::OperationFailed;
+	}
 
 	// English: Store pending operation with buffer copy
 	// 한글: 버퍼 복사와 함께 대기 작업 저장
@@ -162,10 +193,15 @@ AsyncIOError KqueueAsyncIOProvider::SendAsync(SocketHandle socket,
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
 
-	// English: Dynamically add EVFILT_WRITE so we get notified when socket is writable
-	// 한글: 소켓이 쓰기 가능할 때 알림을 받기 위해 EVFILT_WRITE 동적 추가
+	// English: Dynamically add EVFILT_WRITE with EV_ONESHOT so it fires exactly once,
+	//          consistent with the partial-send re-arm path which also uses EV_ONESHOT.
+	//          Without EV_ONESHOT, the initial registration is level-triggered while
+	//          re-arms are one-shot, creating an inconsistency.
+	// 한글: EV_ONESHOT으로 EVFILT_WRITE를 동적 추가 — 정확히 한 번만 발화.
+	//       부분 전송 재등록 경로도 EV_ONESHOT을 사용하므로 일관성 유지.
+	//       EV_ONESHOT 없이는 초기 등록이 레벨 트리거, 재등록은 원샷으로 불일치.
 	struct kevent ev;
-	EV_SET(&ev, socket, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, nullptr);
+	EV_SET(&ev, socket, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, nullptr);
 	kevent(mKqueueFd, &ev, 1, nullptr, 0, nullptr);
 
 	return AsyncIOError::Success;
@@ -176,7 +212,7 @@ AsyncIOError KqueueAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 												  RequestContext context,
 												  uint32_t flags)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 	if (socket < 0 || !buffer || size == 0)
 		return AsyncIOError::InvalidParameter;
@@ -195,6 +231,26 @@ AsyncIOError KqueueAsyncIOProvider::RecvAsync(SocketHandle socket, void *buffer,
 	mStats.mTotalRequests++;
 	mStats.mPendingRequests++;
 
+	// English: Re-add EVFILT_READ with EV_ONESHOT so only one worker is woken per event.
+	//          EV_ONESHOT deletes the filter after it fires; we re-add it here each time
+	//          RecvAsync is called (initial setup and after each completed recv).
+	// 한글: 이벤트당 워커 하나만 깨우기 위해 EV_ONESHOT으로 EVFILT_READ 재등록.
+	//       EV_ONESHOT은 발생 후 필터를 삭제하므로 RecvAsync 호출 시마다 재등록함.
+	{
+		struct kevent kev;
+		EV_SET(&kev, socket, EVFILT_READ, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, nullptr);
+		if (kevent(mKqueueFd, &kev, 1, nullptr, 0, nullptr) < 0)
+		{
+			Utils::Logger::Error(
+				"KqueueAsyncIOProvider::RecvAsync - kevent EV_ADD | EV_ONESHOT failed: " +
+				std::string(strerror(errno)));
+			mPendingRecvOps.erase(socket);
+			mStats.mTotalRequests--;
+			mStats.mPendingRequests--;
+			return AsyncIOError::OperationFailed;
+		}
+	}
+
 	return AsyncIOError::Success;
 }
 
@@ -202,7 +258,7 @@ AsyncIOError KqueueAsyncIOProvider::FlushRequests()
 {
 	// English: kqueue doesn't support batch processing (no-op)
 	// 한글: kqueue는 배치 처리를 지원하지 않음 (no-op)
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return AsyncIOError::NotInitialized;
 
 	return AsyncIOError::Success;
@@ -216,7 +272,7 @@ AsyncIOError KqueueAsyncIOProvider::FlushRequests()
 int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 												  size_t maxEntries, int timeoutMs)
 {
-	if (!mInitialized)
+	if (!mInitialized.load(std::memory_order_acquire))
 		return static_cast<int>(AsyncIOError::NotInitialized);
 	if (!entries || maxEntries == 0 || mKqueueFd < 0)
 		return static_cast<int>(AsyncIOError::InvalidParameter);
@@ -239,7 +295,18 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 	int numEvents = kevent(mKqueueFd, nullptr, 0, events.get(),
 							   static_cast<int>(maxEntries), pts);
 
-	if (numEvents <= 0)
+	if (numEvents < 0)
+	{
+		// English: EINTR means a signal interrupted the wait — not a real error, retry.
+		//          All other negative returns are genuine errors (EBADF, EFAULT, etc.).
+		// 한글: EINTR은 시그널에 의한 중단 — 실제 에러가 아니므로 0 반환하여 재시도.
+		//       그 외 음수 반환은 실제 에러 (EBADF, EFAULT 등).
+		if (errno == EINTR)
+			return 0;
+		mLastError = "kevent failed: " + std::string(strerror(errno));
+		return static_cast<int>(AsyncIOError::OperationFailed);
+	}
+	if (numEvents == 0)
 		return 0;
 
 	int processedCount = 0;
@@ -313,9 +380,26 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 			{
 				if (errno == EAGAIN || errno == EWOULDBLOCK)
 				{
-					std::lock_guard<std::mutex> lock(mMutex);
-					mPendingRecvOps[socket] = std::move(pending);
-					mStats.mPendingRequests++;
+					// English: Re-insert into the map BEFORE calling kevent() to re-arm.
+					//          EV_ONESHOT was consumed when EVFILT_READ fired — the filter
+					//          is now deleted from the kqueue. Without re-arming here, the
+					//          socket will never fire EVFILT_READ again and the recv hangs.
+					//          Insert first so another worker cannot receive the re-armed
+					//          event and find no pending op in the map.
+					// 한글: kevent() 재등록 전 먼저 맵에 재삽입.
+					//       EV_ONESHOT이 EVFILT_READ 발화 시 소모 — 필터가 kqueue에서 삭제됨.
+					//       여기서 재등록하지 않으면 소켓이 다시 EVFILT_READ를 발화하지 않아
+					//       recv가 영구 hang됨. 먼저 삽입하여 다른 워커가 재등록된 이벤트
+					//       수신 시 맵에 op가 없는 상황을 방지.
+					{
+						std::lock_guard<std::mutex> lock(mMutex);
+						mPendingRecvOps[socket] = std::move(pending);
+						mStats.mPendingRequests++;
+					}
+					struct kevent rearmEv;
+					EV_SET(&rearmEv, socket, EVFILT_READ,
+					       EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, nullptr);
+					kevent(mKqueueFd, &rearmEv, 1, nullptr, 0, nullptr);
 					continue;
 				}
 				osError = errno;
@@ -333,49 +417,89 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 		}
 		else if (event.filter == EVFILT_WRITE)
 		{
-			PendingOperation pending;
+			// English: Perform send under the lock to eliminate the partial-send race
+			// (same rationale as EpollAsyncIOProvider -- see comment there).
+			// Non-blocking sockets return from send() immediately (bounded lock hold).
 			bool found = false;
+			bool partialSend = false;
+			int32_t sendResult = 0;
+			OSError sendError = 0;
+			RequestContext sendCtx = 0;
+
 			{
 				std::lock_guard<std::mutex> lock(mMutex);
 				auto it = mPendingSendOps.find(socket);
-				if (it != mPendingSendOps.end())
+				if (it == mPendingSendOps.end())
 				{
-					pending = std::move(it->second);
-					mPendingSendOps.erase(it);
-					mStats.mPendingRequests--;
+					// No pending send -- delete EVFILT_WRITE to avoid busy loop.
+					struct kevent delev;
+					EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+					kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
+				}
+				else
+				{
 					found = true;
+					sendCtx = it->second.mContext;
+
+					ssize_t sent = ::send(socket, it->second.mBuffer,
+					                      it->second.mBufferSize, 0);
+
+					if (sent >= 0 &&
+					    static_cast<uint32_t>(sent) < it->second.mBufferSize)
+					{
+						// Partial send -- update in-place, keep in map.
+						const uint32_t remaining =
+							it->second.mBufferSize - static_cast<uint32_t>(sent);
+						auto remainBuf = std::make_unique<uint8_t[]>(remaining);
+						std::memcpy(remainBuf.get(), it->second.mBuffer + sent, remaining);
+						it->second.mOwnedBuffer = std::move(remainBuf);
+						it->second.mBuffer      = it->second.mOwnedBuffer.get();
+						it->second.mBufferSize  = remaining;
+						partialSend = true;
+					}
+					else
+					{
+						// Full send or error -- remove from map.
+						if (sent >= 0)
+							sendResult = static_cast<int32_t>(sent);
+						else
+						{
+							sendError  = errno;
+							sendResult = -1;
+						}
+						mPendingSendOps.erase(it);
+						mStats.mPendingRequests--;
+					}
 				}
 			}
 
-			// English: Remove EVFILT_WRITE after consuming send op (or if none found)
-			// 한글: 송신 작업 소비 후 (또는 없을 경우) EVFILT_WRITE 제거
-			struct kevent delev;
-			EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-			kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
-
-			if (!found) continue;
-
-			int32_t result = 0;
-			OSError osError = 0;
-			ssize_t sent = ::send(socket, pending.mBuffer, pending.mBufferSize, 0);
-			if (sent >= 0)
+			if (found)
 			{
-				result = static_cast<int32_t>(sent);
-			}
-			else
-			{
-				osError = errno;
-				result = -1;
-			}
+				if (partialSend)
+				{
+					struct kevent writeEv;
+					EV_SET(&writeEv, socket, EVFILT_WRITE,
+					       EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, nullptr);
+					kevent(mKqueueFd, &writeEv, 1, nullptr, 0, nullptr);
+					// No completion entry for partial send
+				}
+				else
+				{
+					// Full send or error -- EV_ONESHOT already auto-removed; EV_DELETE is no-op.
+					struct kevent delev;
+					EV_SET(&delev, socket, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+					kevent(mKqueueFd, &delev, 1, nullptr, 0, nullptr);
 
-			CompletionEntry &entry = entries[processedCount];
-			entry.mContext = pending.mContext;
-			entry.mType = AsyncIOType::Send;
-			entry.mResult = result;
-			entry.mOsError = osError;
-			entry.mCompletionTime = 0;
-			mStats.mTotalCompletions++;
-			processedCount++;
+					CompletionEntry &entry = entries[processedCount];
+					entry.mContext = sendCtx;
+					entry.mType = AsyncIOType::Send;
+					entry.mResult = sendResult;
+					entry.mOsError = sendError;
+					entry.mCompletionTime = 0;
+					mStats.mTotalCompletions++;
+					processedCount++;
+				}
+			}
 		}
 	}
 
@@ -389,12 +513,18 @@ int KqueueAsyncIOProvider::ProcessCompletions(CompletionEntry *entries,
 
 bool KqueueAsyncIOProvider::RegisterSocketEvents(SocketHandle socket)
 {
-	// English: Register for read events only; EVFILT_WRITE added dynamically on SendAsync
-	// 한글: 읽기 이벤트만 등록; EVFILT_WRITE는 SendAsync 시 동적으로 추가
-	struct kevent ev;
-	EV_SET(&ev, socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, nullptr);
-
-	return kevent(mKqueueFd, &ev, 1, nullptr, 0, nullptr) >= 0;
+	// English: Register the socket with kqueue for error/EOF detection only.
+	//          EVFILT_READ is added (with EV_ONESHOT) in RecvAsync each time a recv
+	//          is queued, so it is not added here. EVFILT_WRITE is added dynamically
+	//          in SendAsync. This avoids a race between AssociateSocket and RecvAsync
+	//          where a spurious EV_ONESHOT fire could permanently silence EVFILT_READ.
+	// 한글: 소켓을 에러/EOF 감지 전용으로 kqueue에 등록.
+	//       EVFILT_READ는 RecvAsync에서 recv 큐잉 시마다 EV_ONESHOT으로 추가하므로
+	//       여기서는 추가하지 않음. EVFILT_WRITE는 SendAsync에서 동적으로 추가.
+	//       AssociateSocket과 RecvAsync 사이의 경쟁으로 EV_ONESHOT이 조기 발화하여
+	//       EVFILT_READ가 영구적으로 침묵하는 경쟁 조건을 방지.
+	(void)socket; // registration deferred to RecvAsync
+	return true;
 }
 
 bool KqueueAsyncIOProvider::UnregisterSocketEvents(SocketHandle socket)

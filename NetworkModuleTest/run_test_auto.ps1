@@ -19,15 +19,17 @@
 #   -RunSeconds            : 테스트 실행 시간(초), 기본값 5
 #   -SkipStructureSyncCheck: 지정 시 구조 동기화 검증 단계를 건너뜀
 #
-# 빌드 경로 (하드코딩):
-#   C:\MyGithub\PublicStudy\NetworkModuleTest\x64\Debug
+# 빌드 경로:
+#   스크립트 위치 기준 .\x64\Debug (이 스크립트는 NetworkModuleTest\ 루트에 위치)
 # ==============================================================================
 param(
     [int]$RunSeconds = 5,
-    [switch]$SkipStructureSyncCheck
+    [switch]$SkipStructureSyncCheck,
+    [ValidateSet('Debug','Release')]
+    [string]$Config = 'Debug'
 )
 
-$binDir = 'C:\MyGithub\PublicStudy\NetworkModuleTest\x64\Debug'
+$binDir = Join-Path $PSScriptRoot "x64\$Config"
 $dbOut  = "$env:TEMP\dbserver_out.txt"
 $srvOut = "$env:TEMP\server_out.txt"
 $cliOut = "$env:TEMP\client_out.txt"

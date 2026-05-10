@@ -69,6 +69,19 @@ else()
 endif()
 
 # =============================================================================
+# PostgreSQL (libpq) option
+# =============================================================================
+
+find_package(PostgreSQL)
+if(PostgreSQL_FOUND)
+    message(STATUS "libpq ${PostgreSQL_VERSION_STRING} found — PostgreSQLDatabase enabled")
+    set(HAVE_LIBPQ ON)
+else()
+    message(WARNING "libpq not found — PostgreSQLDatabase unavailable (DatabaseFactory will throw on PostgreSQL requests)")
+    set(HAVE_LIBPQ OFF)
+endif()
+
+# =============================================================================
 # ServerEngine static library
 # =============================================================================
 
@@ -135,6 +148,10 @@ target_sources(ServerEngine PRIVATE
     ${ENGINE_ROOT}/Database/ConnectionPool.cpp
 )
 
+if(HAVE_LIBPQ)
+    target_sources(ServerEngine PRIVATE ${ENGINE_ROOT}/Database/PostgreSQLDatabase.cpp)
+endif()
+
 # English: ServerEngine include root — lets sources use "Network/Core/...", "Utils/..." etc.
 # 한글: ServerEngine 인클루드 루트 — "Network/Core/...", "Utils/..." 등 경로 사용
 target_include_directories(ServerEngine PUBLIC
@@ -156,6 +173,13 @@ if(HAVE_SQLITE3)
     target_compile_definitions(ServerEngine PUBLIC HAVE_SQLITE3)
     target_include_directories(ServerEngine PUBLIC ${SQLITE3_INCLUDE_DIRS})
     target_link_libraries(ServerEngine PUBLIC ${SQLITE3_LIBRARIES})
+endif()
+
+# PostgreSQL (libpq) definitions and link
+if(HAVE_LIBPQ)
+    target_compile_definitions(ServerEngine PUBLIC HAVE_LIBPQ)
+    target_include_directories(ServerEngine PUBLIC ${PostgreSQL_INCLUDE_DIRS})
+    target_link_libraries(ServerEngine PUBLIC ${PostgreSQL_LIBRARIES})
 endif()
 
 # POSIX threads
@@ -183,6 +207,7 @@ add_executable(TestServer
     ${TESTSERVER_ROOT}/src/ClientSession.cpp
     ${TESTSERVER_ROOT}/src/DBServerPacketHandler.cpp
     ${TESTSERVER_ROOT}/src/DBServerSession.cpp
+    ${TESTSERVER_ROOT}/src/DBServerTaskQueue.cpp
     ${TESTSERVER_ROOT}/src/DBTaskQueue.cpp
     ${TESTSERVER_ROOT}/src/ServerSession.cpp
     ${TESTSERVER_ROOT}/src/TestDatabaseManager.cpp
@@ -241,6 +266,33 @@ add_subdirectory(
 )
 
 # =============================================================================
+# AsyncIO Unit Test Executables
+# =============================================================================
+
+set(TESTS_INCLUDE
+    ${ENGINE_ROOT}
+    ${ENGINE_ROOT}/Network/Core
+)
+
+# EpollTest — always built on Linux (epoll is standard, no extra library)
+add_executable(EpollTest
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server/Tests/EpollTest/EpollTest.cpp
+)
+target_include_directories(EpollTest PRIVATE ${TESTS_INCLUDE})
+target_link_libraries(EpollTest PRIVATE ServerEngine)
+target_compile_options(EpollTest PRIVATE -Wall -Wextra -Wno-unused-parameter)
+
+# IOUringTest — enabled only when liburing was found
+# English: HAVE_LIBURING is exported PUBLIC by ServerEngine when HAVE_IO_URING is set.
+# 한글: HAVE_LIBURING은 HAVE_IO_URING 설정 시 ServerEngine PUBLIC으로 전파됨.
+add_executable(IOUringTest
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server/Tests/IOUringTest/IOUringTest.cpp
+)
+target_include_directories(IOUringTest PRIVATE ${TESTS_INCLUDE})
+target_link_libraries(IOUringTest PRIVATE ServerEngine)
+target_compile_options(IOUringTest PRIVATE -Wall -Wextra -Wno-unused-parameter)
+
+# =============================================================================
 # Summary
 # =============================================================================
 
@@ -252,5 +304,7 @@ message(STATUS "C++ Standard    : ${CMAKE_CXX_STANDARD}")
 message(STATUS "Build Type      : ${CMAKE_BUILD_TYPE}")
 message(STATUS "io_uring        : ${HAVE_IO_URING}")
 message(STATUS "SQLite3         : ${HAVE_SQLITE3}")
+message(STATUS "EpollTest       : ON")
+message(STATUS "IOUringTest     : ${HAVE_IO_URING}")
 message(STATUS "============================================")
 message(STATUS "")

@@ -1,4 +1,4 @@
-// English: Windows RIO AsyncIOProvider implementation
+// Windows RIO AsyncIOProvider 구현
 
 #include "Network/Core/PlatformDetect.h"
 
@@ -217,7 +217,6 @@ void RIOAsyncIOProvider::Shutdown()
 		CloseHandle(mCompletionEvent);
 		mCompletionEvent = nullptr;
 	}
-
 }
 
 bool RIOAsyncIOProvider::IsInitialized() const
@@ -249,9 +248,8 @@ AsyncIOError RIOAsyncIOProvider::GetOrCreateRequestQueue(
 		return AsyncIOError::Success;
 	}
 
-	// English: Per-socket queue limits must fit the shared CQ capacity.
-	// Keep these small because this engine posts at most one recv and one send
-	// per socket at a time.
+	// 소켓별 큐 한도는 공유 CQ 용량에 맞아야 한다.
+	// 이 엔진은 소켓당 최대 1개 recv + 1개 send만 동시 발행하므로 각각 1로 충분하다.
 	const ULONG maxOutstandingReceive = 1;
 	const ULONG maxOutstandingSend = 1;
 	RIO_RQ requestQueue = mPfnRIOCreateRequestQueue(
@@ -312,6 +310,15 @@ int64_t RIOAsyncIOProvider::RegisterBuffer(const void *ptr, size_t size)
 	if (!mInitialized.load(std::memory_order_acquire) ||
 		mShuttingDown.load(std::memory_order_acquire) || !ptr || size == 0)
 	{
+		return -1;
+	}
+
+	// RIORegisterBuffer는 DWORD(uint32_t 범위) 길이를 받고, 저장되는 mBufferSize도 uint32_t다.
+	// size_t → DWORD 묵시적 절단 시 의도보다 작은 영역이 등록되어 범위 초과 RIO 작업이 발생한다.
+	// 32비트 한계를 초과하는 버퍼는 명시적으로 거부한다.
+	if (size > static_cast<size_t>(MAXDWORD))
+	{
+		mLastError = "RegisterBuffer: size exceeds DWORD max (4 GiB)";
 		return -1;
 	}
 

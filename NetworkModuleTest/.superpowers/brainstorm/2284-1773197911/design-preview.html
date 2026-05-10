@@ -1,0 +1,99 @@
+<h2>B+C 조합 — 개선 설계안</h2>
+<p class="subtitle">각 다이어그램에 적용될 공통 패턴 + 다이어그램별 변경 내용</p>
+
+<div class="section">
+  <h3>공통 디자인 시스템</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;">
+    <div style="background:#EBF8FF;border-radius:8px;padding:14px;border-left:4px solid #2E6DA4;">
+      <div class="label">추가 ①</div>
+      <b>왼쪽 단계 번호 라벨</b><br>
+      <span style="font-size:12px;color:#4A5568;">①②③ 번호로 흐름 순서를 명시. 독자가 "지금 어느 단계인지" 바로 파악.</span>
+    </div>
+    <div style="background:#F0FFF4;border-radius:8px;padding:14px;border-left:4px solid #276749;">
+      <div class="label">추가 ②</div>
+      <b>박스 내 Korean subtitle</b><br>
+      <span style="font-size:12px;color:#4A5568;">기술 용어 아래 작은 글씨로 "이게 하는 일" 한 줄 설명. 예: <code>WAL</code> → <i>충돌 시 복구용 임시 기록</i></span>
+    </div>
+    <div style="background:#FFFAF0;border-radius:8px;padding:14px;border-left:4px solid #ED8936;">
+      <div class="label">추가 ③</div>
+      <b>비유 말풍선 (노란 박스)</b><br>
+      <span style="font-size:12px;color:#4A5568;">복잡한 개념에 실생활 비유 삽입. 예: DBTaskQueue → <i>"주방 주문 대기열"</i></span>
+    </div>
+    <div style="background:#FAF5FF;border-radius:8px;padding:14px;border-left:4px solid #553C9A;">
+      <div class="label">추가 ④</div>
+      <b>하단 "핵심 포인트" 요약</b><br>
+      <span style="font-size:12px;color:#4A5568;">각 다이어그램 맨 아래에 "이 그림에서 기억할 것 1가지" 초록 박스 추가.</span>
+    </div>
+    <div style="background:#FFF5F5;border-radius:8px;padding:14px;border-left:4px solid #FC8181;">
+      <div class="label">변경 ⑤</div>
+      <b>화살표 라벨 폰트 9px → 12px</b><br>
+      <span style="font-size:12px;color:#4A5568;">diag_seq의 모든 화살표 라벨 확대. 영어 라벨에 한국어 병기.</span>
+    </div>
+    <div style="background:#F7FAFC;border-radius:8px;padding:14px;border-left:4px solid #718096;">
+      <div class="label">유지</div>
+      <b>기존 컬러 시스템 · 레이아웃</b><br>
+      <span style="font-size:12px;color:#4A5568;">네이비/그린/오렌지 색상 코딩, 전체 구조는 최대한 유지. draw.io에서 계속 편집 가능.</span>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>다이어그램별 주요 변경사항</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead>
+      <tr style="background:#1E3A5C;color:white;">
+        <th style="padding:10px;text-align:left;">파일</th>
+        <th style="padding:10px;text-align:left;">현재 문제</th>
+        <th style="padding:10px;text-align:left;">변경 내용</th>
+        <th style="padding:10px;text-align:left;">추가될 비유</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background:#F7FAFC;">
+        <td style="padding:10px;font-weight:bold;">diag_arch</td>
+        <td style="padding:10px;color:#718096;">계층 설명 없음, 영어 위주</td>
+        <td style="padding:10px;">각 레이어에 "역할 설명" 텍스트 추가<br>Platform 박스에 Korean subtitle</td>
+        <td style="padding:10px;color:#276749;font-style:italic;">"건물 층 구조처럼, 위층은 아래층에게 일을 시킨다"</td>
+      </tr>
+      <tr>
+        <td style="padding:10px;font-weight:bold;">diag_seq</td>
+        <td style="padding:10px;color:#718096;">라벨 9px, 모두 영어, 참여자 5개로 복잡</td>
+        <td style="padding:10px;">①②③ 번호 라벨, 화살표 한국어 병기<br>각 단계에 "무슨 일이 일어나는가" 노트</td>
+        <td style="padding:10px;color:#276749;font-style:italic;">"전화 연결처럼: 수락→등록→대기→통화→끊기"</td>
+      </tr>
+      <tr style="background:#F7FAFC;">
+        <td style="padding:10px;font-weight:bold;">diag_async_1</td>
+        <td style="padding:10px;color:#718096;">"completion event", "key-affinity" 영어</td>
+        <td style="padding:10px;">영어 용어 옆에 소괄호로 한국어 추가<br>DB Layer 박스 타이머 설명 보강</td>
+        <td style="padding:10px;color:#276749;font-style:italic;">"콜센터: I/O Worker=수신, Logic Worker=처리 담당자"</td>
+      </tr>
+      <tr>
+        <td style="padding:10px;font-weight:bold;">diag_async_2</td>
+        <td style="padding:10px;color:#718096;">TOCTOU 등 고급 용어, key%N 개념 설명 없음</td>
+        <td style="padding:10px;">"key % N = 나머지 연산" 시각적 예시 강화<br>기술 설명 박스 단순화</td>
+        <td style="padding:10px;color:#276749;font-style:italic;">"같은 손님(Session)은 항상 같은 직원(Worker)이 담당"</td>
+      </tr>
+      <tr style="background:#F7FAFC;">
+        <td style="padding:10px;font-weight:bold;">diag_async_3</td>
+        <td style="padding:10px;color:#718096;">CAS, false sharing 설명 없음</td>
+        <td style="padding:10px;">CAS 한 줄 설명 추가, Lock-Free 개념 박스</td>
+        <td style="padding:10px;color:#276749;font-style:italic;">"Mutex=화장실 열쇠, Lock-Free=번호표 뽑기"</td>
+      </tr>
+      <tr>
+        <td style="padding:10px;font-weight:bold;">diag_db</td>
+        <td style="padding:10px;color:#718096;">WAL 개념 설명 부족, Factory 패턴 불명확</td>
+        <td style="padding:10px;">WAL 비유 추가, Factory 역할 설명 박스</td>
+        <td style="padding:10px;color:#276749;font-style:italic;">"WAL=영수증 먼저 발행, 실제 처리는 나중에"</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section" style="margin-top:24px;padding:16px;background:#F0FFF4;border-radius:8px;border-left:4px solid #276749;">
+  <b>작업 방식:</b> draw.io XML을 직접 편집 → 6개 파일 각각 개선판 저장 → 완료 후 draw.io 앱에서 열어 확인/추가 편집 가능.<br>
+  <b>docx 텍스트:</b> 각 섹션 앞에 "이 그림을 읽기 전에" 한 문단 안내문 추가 (복잡한 개념 사전 설명).
+</div>
+
+<div class="section" style="margin-top:20px;text-align:center;">
+  <p class="subtitle">이 방향으로 진행할까요? 아니면 특정 다이어그램만 먼저 보고 싶으신가요?</p>
+</div>

@@ -1,4 +1,4 @@
-// English: Windows NetworkEngine implementation
+// Windows NetworkEngine 구현
 
 #include "../Core/PlatformDetect.h"
 
@@ -59,10 +59,9 @@ bool WindowsNetworkEngine::InitializePlatform()
 		return false;
 	}
 
-	// English: Initialize IOCP send buffer pool (4 concurrent sends per connection).
-	//          RIO path uses its own slab pool; only initialize for IOCP mode.
-	// 한글: IOCP 전송 버퍼 풀 초기화 (연결당 동시 전송 4개 기준).
-	//       RIO 경로는 자체 slab 풀 사용; IOCP 모드에서만 초기화.
+	// IOCP 전송 버퍼 풀 초기화 (연결당 동시 전송 최대 4개 기준).
+	// RIO 경로는 RIOAsyncIOProvider 내 자체 슬랩 풀(mSendPool)을 사용하므로
+	// SendBufferPool은 IOCP 모드에서만 초기화한다.
 	if (mMode == Mode::IOCP)
 	{
 		Core::SendBufferPool::Instance().Initialize(
@@ -169,8 +168,7 @@ void WindowsNetworkEngine::AcceptLoop()
 			continue;
 		}
 
-		// English: Reset backoff on success
-		// 한글: 성공 시 백오프 리셋
+		// 연결 수락 성공 — 백오프 초기화
 		mAcceptBackoffMs = 10;
 
 		Core::SessionRef session =
@@ -232,6 +230,17 @@ void WindowsNetworkEngine::AcceptLoop()
 			Utils::Logger::Error("Failed to queue recv - Session " +
 				std::to_string(session->GetId()) + ": " +
 				std::string(mProvider->GetLastError()));
+
+			// 이미 로직 디스패처 큐에 있는 Connected 이벤트에 대응하는 Disconnected 디스패치.
+			// 동일 키(sessionId)를 사용하므로 KeyedDispatcher의 FIFO 보장에 의해
+			// Connected가 먼저 실행된다. 세션 shared_ptr이 람다 완료까지 객체를 유지한다.
+			auto disconnSession = session;
+			mLogicDispatcher.Dispatch(disconnSession->GetId(),
+				[this, disconnSession]()
+				{
+					FireEvent(Core::NetworkEvent::Disconnected, disconnSession->GetId());
+				});
+
 			Core::SessionManager::Instance().RemoveSession(session);
 			continue;
 		}
@@ -276,16 +285,11 @@ void WindowsNetworkEngine::ProcessCompletions()
 
 		if (entry.mOsError != 0 || entry.mResult <= 0)
 		{
-			auto sessionCopy = session;
-			mLogicDispatcher.Dispatch(sessionCopy->GetId(),
-				[this, sessionCopy]()
-				{
-					sessionCopy->OnDisconnected();
-					FireEvent(Core::NetworkEvent::Disconnected,
-							  sessionCopy->GetId());
-				});
-
-			Core::SessionManager::Instance().RemoveSession(session);
+			// ProcessErrorCompletion을 통해 처리:
+			//   - Send / Recv 방향별 에러 카운터를 올바르게 증가시킨다.
+			//   - session->mAsyncScope 경유로 disconnect를 라우팅하여,
+			//     다른 경로에서 Close()가 이미 호출된 경우 이중 이벤트를 방지한다.
+			ProcessErrorCompletion(session, entry.mType, entry.mOsError);
 			continue;
 		}
 
@@ -323,15 +327,10 @@ void WindowsNetworkEngine::ProcessCompletions()
 					std::to_string(session->GetId()) + ": " +
 					std::string(mProvider->GetLastError()));
 
-				auto sessionCopy = session;
-				mLogicDispatcher.Dispatch(sessionCopy->GetId(),
-					[this, sessionCopy]()
-					{
-						sessionCopy->OnDisconnected();
-						FireEvent(Core::NetworkEvent::Disconnected,
-								  sessionCopy->GetId());
-					});
-				Core::SessionManager::Instance().RemoveSession(session);
+				// 다음 recv 큐 등록 실패 = recv 경로 에러.
+				// 일관된 통계 집계 및 AsyncScope 보호 disconnect를 위해
+				// ProcessErrorCompletion(Recv)으로 라우팅한다.
+				ProcessErrorCompletion(session, AsyncIO::AsyncIOType::Recv, 0);
 			}
 			break;
 		}
