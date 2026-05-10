@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <mutex>
 #include <type_traits>
+#include "../Network/Core/PlatformDetect.h"
 
 // Lock contention profiling
 // Enable by defining NET_LOCK_PROFILING in your build.
@@ -16,7 +17,7 @@
 #if defined(NET_LOCK_PROFILING)
 
 #include <thread>
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -47,7 +48,7 @@ inline uint64_t ToNs(Clock::duration duration) noexcept
 
 inline uint32_t GetThreadId() noexcept
 {
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 	return static_cast<uint32_t>(::GetCurrentThreadId());
 #else
 	return static_cast<uint32_t>(

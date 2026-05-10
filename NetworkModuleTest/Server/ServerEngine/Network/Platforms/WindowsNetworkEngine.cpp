@@ -1,6 +1,8 @@
 // English: Windows NetworkEngine implementation
 
-#ifdef _WIN32
+#include "../Core/PlatformDetect.h"
+
+#if defined(IS_WINDOWS)
 
 #include "WindowsNetworkEngine.h"
 #include "../../Platforms/Windows/IocpAsyncIOProvider.h"
@@ -434,4 +436,4 @@ bool WindowsNetworkEngine::CreateListenSocket()
 
 } // namespace Network::Platforms
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

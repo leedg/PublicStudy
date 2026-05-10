@@ -4,10 +4,33 @@ cmake_minimum_required(VERSION 3.15)
 # ServerEngine CMake
 # =============================================================================
 # Cross-platform static library for the current ServerEngine source layout.
+#
+# Build Profiles (set via -DPROFILE=<profile>):
+#   windows-native   — Windows IOCP (default timeouts)
+#   windows-docker   — Windows IOCP (short Docker timeouts)
+#   linux-native     — Linux epoll/io_uring (default timeouts)
+#   linux-docker     — Linux epoll/io_uring (short Docker timeouts)
+#   macos-native     — macOS kqueue (default timeouts)
+#   macos-docker     — macOS kqueue (short Docker timeouts)
+#
+# Example:
+#   cmake -B build -DPROFILE=linux-docker
+# =============================================================================
+
+# ── Build Profile ──────────────────────────────────────────────────────────────
+set(PROFILE "auto" CACHE STRING "Build profile: windows-native, linux-docker, etc.")
 
 option(ENABLE_IO_URING "Enable io_uring backend when liburing is available" OFF)
 option(ENABLE_DATABASE_SUPPORT "Enable Windows ODBC/OLEDB database backends" OFF)
 option(ENABLE_ASYNCIO_TESTS "Build the AsyncIO smoke test executable" OFF)
+
+# English: Detect Docker container flag from profile or explicit option
+# 한글: 프로파일 또는 명시적 옵션에서 Docker 컨테이너 플래그 감지
+if(PROFILE MATCHES "docker")
+    set(IS_DOCKER_BUILD ON)
+else()
+    set(IS_DOCKER_BUILD OFF)
+endif()
 
 file(
     GLOB_RECURSE SERVER_ENGINE_SOURCES
@@ -56,6 +79,19 @@ endif()
 
 set(SERVER_ENGINE_PRIVATE_DEFS)
 set(SERVER_ENGINE_PRIVATE_LIBS)
+
+# English: Docker container define for Layer 2 runtime env detection
+# 한글: Layer 2 런타임 환경 감지를 위한 Docker 컨테이너 define
+if(IS_DOCKER_BUILD)
+    list(APPEND SERVER_ENGINE_PRIVATE_DEFS DOCKER_CONTAINER=1)
+    message(STATUS "ServerEngine: Docker build profile active (DOCKER_CONTAINER=1)")
+endif()
+
+# English: Auto-detect io_uring for linux profiles if not explicitly disabled
+# 한글: linux 프로파일에서 명시적 비활성화되지 않은 경우 io_uring 자동 감지
+if(PROFILE MATCHES "linux")
+    set(ENABLE_IO_URING ON)
+endif()
 
 if (UNIX AND NOT APPLE)
     if (ENABLE_IO_URING)

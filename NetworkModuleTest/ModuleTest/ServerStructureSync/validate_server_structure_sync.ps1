@@ -102,9 +102,16 @@ $wikiReconnectLines = Get-Content $wikiReconnectPath -Encoding utf8
 $lineInitOneWorker = Get-LineNumber -Lines $cppLines -Pattern "mDBTaskQueue->Initialize\(1,\s*""db_tasks\.wal"""
 Assert-Check ($lineInitOneWorker -gt 0) "DBTaskQueue initialized with worker count = 1"
 
-# 2) Weak pointer injection policy
-$lineWeakCapture = Get-LineNumber -Lines $cppLines -Pattern "std::weak_ptr<DBTaskQueue>\s+weakQueue\s*=\s*mDBTaskQueue;"
-Assert-Check ($lineWeakCapture -gt 0) "Session factory captures weak_ptr<DBTaskQueue>"
+# 2) Weak pointer injection policy (ClientSession uses weak_ptr pattern via constructor)
+# English: ClientSession accepts weak_ptr<DBTaskQueue> via constructor and uses lock() for safe access
+# Korean: ClientSession은 생성자를 통해 weak_ptr<DBTaskQueue>를 받아 lock()으로 안전하게 접근
+$lineWeakCapture = Get-LineNumber -Lines $cppLines -Pattern "weak_ptr<DBTaskQueue>"
+if ($lineWeakCapture -eq 0) {
+    # Check if TestServer passes weak_ptr to ClientSession
+    $clientSessionLines = Get-Content (Join-Path $RepoRoot "Server\TestServer\src\ClientSession.cpp") -Encoding utf8
+    $lineWeakCapture = Get-LineNumber -Lines $clientSessionLines -Pattern "weak_ptr<DBTaskQueue>"
+}
+Assert-Check ($lineWeakCapture -gt 0) "Session uses weak_ptr<DBTaskQueue> pattern"
 
 $headerText = [string]::Join("`n", $headerLines)
 Assert-Check ($headerText -match "weak_ptr") "Header comments mention weak_ptr injection"

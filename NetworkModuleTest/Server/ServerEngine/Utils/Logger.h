@@ -12,14 +12,9 @@
 #include <ctime>
 #include <cstring>
 #include <memory>
+#include "../Network/Core/PlatformDetect.h"
 
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
+#if defined(IS_WINDOWS)
 #include <windows.h>
 #endif
 
@@ -126,7 +121,7 @@ private:
 			return; // English: Already initialized / 한글: 이미 초기화됨
 		}
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 		// English: Set console code page to UTF-8 for Korean output
 		// 한글: 한글 출력을 위해 콘솔 코드 페이지를 UTF-8로 설정
 		SetConsoleCP(65001);
@@ -190,7 +185,7 @@ private:
 
 		char timeStr[32];
 		std::tm localTime;
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 		localtime_s(&localTime, &time);
 #else
 		localtime_r(&time, &localTime);

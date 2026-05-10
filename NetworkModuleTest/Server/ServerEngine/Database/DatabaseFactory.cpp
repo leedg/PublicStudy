@@ -5,7 +5,8 @@
 #include "../Interfaces/DatabaseException.h"
 #include "../Interfaces/DatabaseUtils.h"
 #include "MockDatabase.h"
-#ifdef _WIN32
+#include "../Network/Core/PlatformDetect.h"
+#if defined(IS_WINDOWS)
 #include "ODBCDatabase.h"
 #include "OLEDBDatabase.h"
 #endif
@@ -23,11 +24,11 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateDatabase(DatabaseType type)
 {
 	switch (type)
 	{
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 	case DatabaseType::ODBC:
 		return CreateODBCDatabase();
 #endif
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 	case DatabaseType::OLEDB:
 		return CreateOLEDBDatabase();
 #endif
@@ -42,7 +43,7 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateDatabase(DatabaseType type)
 
 std::unique_ptr<IDatabase> DatabaseFactory::CreateODBCDatabase()
 {
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 	return std::make_unique<ODBCDatabase>();
 #else
 	std::cerr << "[DatabaseFactory] ODBC backend is only available on Windows. "
@@ -53,7 +54,7 @@ std::unique_ptr<IDatabase> DatabaseFactory::CreateODBCDatabase()
 
 std::unique_ptr<IDatabase> DatabaseFactory::CreateOLEDBDatabase()
 {
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 	return std::make_unique<OLEDBDatabase>();
 #else
 	std::cerr << "[DatabaseFactory] OLEDB backend is only available on Windows. "

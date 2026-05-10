@@ -21,7 +21,7 @@ namespace Network::Core
 std::unique_ptr<INetworkEngine>
 CreateNetworkEngine(const std::string &engineType)
 {
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 	// English: Windows platform
 	if (engineType == "auto" || engineType == "default" || engineType.empty())
 	{
@@ -131,7 +131,7 @@ std::vector<std::string> GetAvailableEngineTypes()
 {
 	std::vector<std::string> types;
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 	types.push_back("iocp");
 	types.push_back("rio");
 	types.push_back("auto");

@@ -1,4 +1,6 @@
-#ifdef _WIN32
+#include "Network/Core/PlatformDetect.h"
+
+#if defined(IS_WINDOWS)
 #include "RIOBufferPool.h"
 
 #include <numeric>
@@ -131,4 +133,4 @@ char* RIOBufferPool::SlotPtr(size_t index) const
 } // namespace Core
 } // namespace Network
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

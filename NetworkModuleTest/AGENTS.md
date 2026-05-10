@@ -146,6 +146,7 @@ Core::Session
 7. **DBTaskQueue 워커 1개**: `RecordConnectTime`/`RecordDisconnectTime` 같은 같은 세션 작업의 순서를 보장하기 위해 `Initialize(1)` 유지. 멀티워커 처리량이 필요하면 `OrderedTaskQueue`(해시 기반 친화도)로 전환.
 8. **의존성 주입 우선**: 클래스 `static` 멤버 전역 상태 대신 생성자/팩토리 람다 캡처 방식으로 주입.
 9. **이벤트 일관성**: `OnDisconnected` / `FireEvent`는 항상 `mLogicThreadPool.Submit()`을 통해 실행 (`CloseConnection` 포함).
+10. **설정 중앙화**: `ConfigManager`를 통해 모든 설정값 관리. 환경 변수(`NETMOD_*`)로 런타임 덮어쓰기 가능.
 
 ---
 
@@ -225,11 +226,33 @@ fix/feat/...: <작업 요약>
 
 ## 빌드
 
-- **언어**: C++17
-- **주 개발 환경**: Windows, Visual Studio 2022 (MSVC v143)
+- **언어**: C++17 (stdcpplatest)
+- **주 개발 환경**: Windows, Visual Studio 2026 (MSVC v143)
 - **솔루션**: `NetworkModuleTest.sln` (x64/Debug, x64/Release)
 - **CMake**: `Client/TestClient/` 및 `ModuleTest/MultiPlatformNetwork/`
 - **주요 링크 라이브러리**: `ServerEngine.lib`, `WS2_32.lib`, `odbc32.lib`
+
+### ConfigManager 환경 변수
+
+| 변수 | 설명 | 기본값 |
+|------|------|--------|
+| `NETMOD_LISTEN_PORT` | 서버侦听端口 | 19010 |
+| `NETMOD_DB_HOST` | DB服务器主机 | 127.0.0.1 |
+| `NETMOD_DB_PORT` | DB服务器端口 | 18002 |
+| `NETMOD_ENGINE` | 网络引擎 (auto/rio/iocp/epoll/kqueue) | auto |
+| `NETMOD_WORKER_THREADS` | Worker线程数 (0=auto) | 0 |
+| `NETMOD_LOG_LEVEL` | 日志级别 (DEBUG/INFO/WARN/ERROR) | INFO |
+| `NETMOD_GRACEFUL_TIMEOUT` | 正常关机超时(秒) | 8 |
+
+### Docker 빌드
+
+```bash
+# Docker 빌드 및 실행
+docker compose up -d --build
+
+# Docker 중지
+docker compose down
+```
 
 ---
 

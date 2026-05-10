@@ -5,8 +5,9 @@
 //       .crash(텍스트 콜스택) 파일을 기록하는 Windows SEH/시그널 핸들러.
 //       외부 프로젝트 의존성 없이 독립적으로 동작.
 #pragma once
+#include "../Network/Core/PlatformDetect.h"
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -80,4 +81,4 @@ private:
 
 } // namespace Network::Utils
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

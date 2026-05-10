@@ -4,6 +4,7 @@
 #include "BaseNetworkEngine.h"
 #include "NetworkEventBus.h"
 #include "SessionPool.h"
+#include "../../Utils/ConfigManager.h"
 #include "../../Utils/Logger.h"
 #include "../../Utils/Timer.h"
 
@@ -49,10 +50,11 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 	// English: Initialize logic dispatcher (KeyedDispatcher — session-affinity worker pool).
 	// 한글: 로직 디스패처 초기화 (KeyedDispatcher — 세션 친화도 워커 풀).
 	{
+		const auto& cfg = Utils::ConfigManager::Instance().GetNetwork();
 		Network::Concurrency::KeyedDispatcher::Options opts;
 		opts.mWorkerCount = 4;
 		opts.mQueueOptions.mBackend     = Network::Concurrency::QueueBackend::LockFree;
-		opts.mQueueOptions.mCapacity    = MAX_LOGIC_QUEUE_DEPTH;
+		opts.mQueueOptions.mCapacity    = cfg.MaxLogicQueueDepth;
 		opts.mQueueOptions.mBackpressure = Network::Concurrency::BackpressurePolicy::RejectNewest;
 		opts.mName = "LogicDispatcher";
 		if (!mLogicDispatcher.Initialize(opts))
@@ -70,10 +72,11 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 		return false;
 	}
 
-	// English: Schedule periodic session-timeout check every PING_TIMEOUT_MS/2.
-	// 한글: PING_TIMEOUT_MS/2 주기로 세션 타임아웃 점검 등록.
+	// English: Schedule periodic session-timeout check every pingTimeoutMs/2.
+	// 한글: pingTimeoutMs/2 주기로 세션 타임아웃 점검 등록.
+	const uint32_t pingTimeoutMs = Utils::ConfigManager::Instance().GetTimeout().PingTimeoutMs;
 	mTimerQueue.ScheduleRepeat(
-		[this]() -> bool
+		[this, pingTimeoutMs]() -> bool
 		{
 			// English: Check inactive sessions and close timed-out ones.
 			// 한글: 비활성 세션 점검 및 타임아웃 세션 종료.
@@ -90,7 +93,7 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 					continue;
 				}
 				const auto lastPing = session->GetLastPingTime();
-				if (lastPing != 0 && (now - lastPing) > PING_TIMEOUT_MS)
+				if (lastPing != 0 && (now - lastPing) > pingTimeoutMs)
 				{
 					Utils::Logger::Warn(
 						"Session timeout - ID: " + std::to_string(session->GetId()));
@@ -99,7 +102,7 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 			}
 			return mRunning.load(std::memory_order_acquire);
 		},
-		PING_TIMEOUT_MS / 2);
+		pingTimeoutMs / 2);
 
 	// English: Call platform-specific initialization
 	// 한글: 플랫폼별 초기화 호출

@@ -5,7 +5,7 @@
 
 #include "../../Concurrency/AsyncScope.h"
 #include "../../Utils/NetworkUtils.h"
-#include "AsyncIOProvider.h"
+#include "PlatformDetect.h"
 #include "PacketDefine.h"
 #include <atomic>
 #include <functional>
@@ -47,31 +47,30 @@ enum class IOType : uint8_t
 // =============================================================================
 // English: IOCP overlapped context (Windows only)
 // 한글: IOCP overlapped 컨텍스트 (Windows 전용)
-// =============================================================================
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 
 struct IOContext : public OVERLAPPED
 {
-	IOType type;
-	WSABUF wsaBuf;
-	char buffer[RECV_BUFFER_SIZE];
+    IOType type;
+    WSABUF wsaBuf;
+    char buffer[RECV_BUFFER_SIZE];
 
-	IOContext(IOType ioType) : type(ioType)
-	{
-		memset(static_cast<OVERLAPPED *>(this), 0, sizeof(OVERLAPPED));
-		memset(buffer, 0, sizeof(buffer));
-		wsaBuf.buf = buffer;
-		wsaBuf.len = sizeof(buffer);
-	}
+    IOContext(IOType ioType) : type(ioType)
+    {
+        memset(static_cast<OVERLAPPED *>(this), 0, sizeof(OVERLAPPED));
+        memset(buffer, 0, sizeof(buffer));
+        wsaBuf.buf = buffer;
+        wsaBuf.len = sizeof(buffer);
+    }
 
-	void Reset()
-	{
-		memset(static_cast<OVERLAPPED *>(this), 0, sizeof(OVERLAPPED));
-	}
+    void Reset()
+    {
+        memset(static_cast<OVERLAPPED *>(this), 0, sizeof(OVERLAPPED));
+    }
 };
 
-#endif // _WIN32
+#endif // IS_WINDOWS
 
 // =============================================================================
 // English: Session class
@@ -154,17 +153,17 @@ class Session : public std::enable_shared_from_this<Session>
 	const char *GetRecvBuffer() const;
 	size_t GetRecvBufferSize() const;
 
-	// English: Access recv buffer (for IOCP completion)
-	// 한글: 수신 버퍼 접근 (IOCP 완료 처리용)
-#ifdef _WIN32
-	IOContext &GetRecvContext() { return mRecvContext; }
-	IOContext &GetSendContext() { return mSendContext; }
+    // English: Access recv buffer (for IOCP completion)
+    // 한글: 수신 버퍼 접근 (IOCP 완료 처리용)
+#if defined(IS_WINDOWS)
+    IOContext &GetRecvContext() { return mRecvContext; }
+    IOContext &GetSendContext() { return mSendContext; }
 
-	// English: Resolve IO type by OVERLAPPED pointer without dereferencing it.
-	//          Used by IOCP completion path to avoid touching freed memory.
-	// 한국어: OVERLAPPED 포인터 역참조 없이 IO 타입을 조회.
-	//       IOCP 완료 경로에서 해제된 메모리 접근을 피하기 위해 사용.
-	static bool TryResolveIOType(const OVERLAPPED *overlapped, IOType &outType);
+    // English: Resolve IO type by OVERLAPPED pointer without dereferencing it.
+    //          Used by IOCP completion path to avoid touching freed memory.
+    // 한국어: OVERLAPPED 포인터 역참조 없이 IO 타입을 조회.
+    //       IOCP 완료 경로에서 해제된 메모리 접근을 피하기 위해 사용.
+    static bool TryResolveIOType(const OVERLAPPED *overlapped, IOType &outType);
 #endif
 
 	// English: Virtual event handlers (override in derived classes)
@@ -208,33 +207,33 @@ class Session : public std::enable_shared_from_this<Session>
 	Utils::Timestamp mLastPingTime;
 	std::atomic<uint32_t> mPingSequence;
 
-	// English: IO contexts (Windows IOCP)
-	// 한글: IO 컨텍스트 (Windows IOCP)
-#ifdef _WIN32
-	IOContext mRecvContext;
-	IOContext mSendContext;
+    // English: IO contexts (Windows IOCP)
+    // 한글: IO 컨텍스트 (Windows IOCP)
+#if defined(IS_WINDOWS)
+    IOContext mRecvContext;
+    IOContext mSendContext;
 #else
-	// English: Recv buffer for POSIX platforms
-	// 한글: POSIX 플랫폼용 수신 버퍼
-	std::array<char, RECV_BUFFER_SIZE> mRecvBuffer{};
+    // English: Recv buffer for POSIX platforms
+    // 한글: POSIX 플랫폼용 수신 버퍼
+    std::array<char, RECV_BUFFER_SIZE> mRecvBuffer{};
 #endif
 
-	// English: Send queue with lock contention optimization.
-	//          IOCP path (Windows): uses SendRequest referencing a pool slot (0 alloc).
-	//          Other platforms: uses vector<char> (unchanged).
-	// 한글: Lock 경합 최적화가 적용된 전송 큐.
-	//       IOCP 경로(Windows): 풀 슬롯을 참조하는 SendRequest 사용 (0 alloc).
-	//       다른 플랫폼: vector<char> 사용 (기존과 동일).
-#ifdef _WIN32
-	struct SendRequest
-	{
-		size_t   slotIdx; // English: index into SendBufferPool / 한글: SendBufferPool 슬롯 인덱스
-		uint32_t size;    // English: payload byte count / 한글: 페이로드 바이트 수
-	};
-	std::queue<SendRequest> mSendQueue;
-	size_t mCurrentSendSlotIdx; // English: in-flight slot index (~0 = none) / 한글: 전송 중 슬롯 인덱스 (~0 = 없음)
+    // English: Send queue with lock contention optimization.
+    //          IOCP path (Windows): uses SendRequest referencing a pool slot (0 alloc).
+    //          Other platforms: uses vector<char> (unchanged).
+    // 한글: Lock 경합 최적화가 적용된 전송 큐.
+    //       IOCP 경로(Windows): 풀 슬롯을 참조하는 SendRequest 사용 (0 alloc).
+    //       다른 플랫폼: vector<char> 사용 (기존과 동일).
+#if defined(IS_WINDOWS)
+    struct SendRequest
+    {
+        size_t   slotIdx; // English: index into SendBufferPool / 한글: SendBufferPool 슬롯 인덱스
+        uint32_t size;    // English: payload byte count / 한글: 페이로드 바이트 수
+    };
+    std::queue<SendRequest> mSendQueue;
+    size_t   mCurrentSendSlotIdx; // English: in-flight slot index (~0 = none) / 한글: 전송 중 슬롯 인덱스 (~0 = 없음)
 #else
-	std::queue<std::vector<char>> mSendQueue;
+    std::queue<std::vector<char>> mSendQueue;
 #endif
 	std::mutex mSendMutex;
 	std::atomic<bool> mIsSending;

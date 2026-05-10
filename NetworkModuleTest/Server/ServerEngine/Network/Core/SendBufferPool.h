@@ -10,7 +10,9 @@
 //       연속 슬랩(poolSize × slotSize 바이트)을 사전 할당하고,
 //       O(1) 프리리스트 스택으로 고정 크기 슬롯을 대여·반납한다.
 
-#ifdef _WIN32
+#include "Network/Core/PlatformDetect.h"
+
+#if defined(IS_WINDOWS)
 
 #include "../../Core/Memory/IBufferPool.h"
 #include <cstddef>
@@ -58,4 +60,4 @@ class SendBufferPool : public ::Network::Core::Memory::IBufferPool
 
 } // namespace Network::Core
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

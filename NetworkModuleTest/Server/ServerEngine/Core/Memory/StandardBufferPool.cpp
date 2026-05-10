@@ -1,8 +1,9 @@
 #include "StandardBufferPool.h"
+#include "Network/Core/PlatformDetect.h"
 
 #include <numeric>
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 #include <cstdlib>  // _aligned_malloc, _aligned_free
 #elif defined(__linux__) || defined(__APPLE__)
 #include <cstdlib>  // posix_memalign, free
@@ -16,10 +17,10 @@ namespace Memory
 {
 
 namespace {
-
+    
 void* AllocAligned(size_t size)
 {
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
     return _aligned_malloc(size, 4096);
 #elif defined(__linux__) || defined(__APPLE__)
     void* raw = nullptr;
@@ -33,7 +34,7 @@ void* AllocAligned(size_t size)
 
 void FreeAligned(void* ptr)
 {
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
     _aligned_free(ptr);
 #elif defined(__linux__) || defined(__APPLE__)
     ::free(ptr);

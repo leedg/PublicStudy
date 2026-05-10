@@ -65,7 +65,8 @@
 
 // Database implementations
 #include "MockDatabase.h"
-#ifdef _WIN32
+#include "../Network/Core/PlatformDetect.h"
+#if defined(IS_WINDOWS)
 #include "ODBCDatabase.h"
 #include "OLEDBDatabase.h"
 #endif

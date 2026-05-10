@@ -1,6 +1,8 @@
 // English: Windows RIO AsyncIOProvider implementation
 
-#ifdef _WIN32
+#include "Network/Core/PlatformDetect.h"
+
+#if defined(IS_WINDOWS)
 
 #include "RIOAsyncIOProvider.h"
 #include <chrono>
@@ -745,4 +747,4 @@ std::unique_ptr<AsyncIOProvider> CreateRIOProvider()
 } // namespace AsyncIO
 } // namespace Network
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

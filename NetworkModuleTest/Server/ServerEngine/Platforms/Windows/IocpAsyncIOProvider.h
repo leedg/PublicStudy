@@ -39,8 +39,9 @@
 // =============================================================================
 
 #include "Network/Core/AsyncIOProvider.h"
+#include "Network/Core/PlatformDetect.h"
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 #include <atomic>
 #include <unordered_map>
 #include <memory>
@@ -177,4 +178,4 @@ class IocpAsyncIOProvider : public AsyncIOProvider
 } // namespace AsyncIO
 } // namespace Network
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

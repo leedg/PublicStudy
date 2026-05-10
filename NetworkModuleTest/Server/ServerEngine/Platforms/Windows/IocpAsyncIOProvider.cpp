@@ -1,7 +1,9 @@
 // English: Windows IOCP AsyncIOProvider implementation
 // 한글: Windows IOCP AsyncIOProvider 구현
 
-#ifdef _WIN32
+#include "Network/Core/PlatformDetect.h"
+
+#if defined(IS_WINDOWS)
 
 #include "IocpAsyncIOProvider.h"
 #include "Network/Core/Session.h"
@@ -461,4 +463,4 @@ std::unique_ptr<AsyncIOProvider> CreateIocpProvider()
 } // namespace AsyncIO
 } // namespace Network
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

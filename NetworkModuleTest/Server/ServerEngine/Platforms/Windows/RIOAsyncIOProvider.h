@@ -4,8 +4,9 @@
 // Windows 8+
 
 #include "Network/Core/AsyncIOProvider.h"
+#include "Network/Core/PlatformDetect.h"
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 #include "Core/Memory/RIOBufferPool.h"
 #include <atomic>
 #include <memory>
@@ -144,4 +145,4 @@ class RIOAsyncIOProvider : public AsyncIOProvider
 } // namespace AsyncIO
 } // namespace Network
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

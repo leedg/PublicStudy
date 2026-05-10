@@ -9,12 +9,13 @@
 #include "../Interfaces/IDatabase.h"
 #include "../Interfaces/IResultSet.h"
 #include "../Interfaces/IStatement.h"
+#include "../Network/Core/PlatformDetect.h"
 #include <memory>
 #include <string>
 #include <type_traits>
 #include <vector>
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -296,4 +297,4 @@ private:
 } // namespace Database
 } // namespace Network
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

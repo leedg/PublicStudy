@@ -33,7 +33,7 @@ bool SessionPool::Initialize(size_t capacity)
         mSlots[i].slotIdx = i;
         mFreeList.push_back(i);
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
         // English: Build immutable OVERLAPPED→IOType map from fixed slot addresses.
         //          Sessions never move (stored in array), so these pointers are stable.
         // 한글: 고정 슬롯 주소로 불변 OVERLAPPED→IOType 맵 구축.
@@ -63,7 +63,7 @@ void SessionPool::Shutdown()
     mCapacity = 0;
     mActiveCount.store(0, std::memory_order_relaxed);
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
     mIOContextMap.clear();
 #endif
 
@@ -112,7 +112,7 @@ void SessionPool::ReleaseInternal(size_t slotIdx)
     }
 }
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 bool SessionPool::ResolveIOType(const OVERLAPPED *ov, IOType &outType) const
 {
     if (!ov)

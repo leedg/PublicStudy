@@ -94,4 +94,4 @@ class WindowsNetworkEngine : public Core::BaseNetworkEngine
 
 } // namespace Network::Platforms
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

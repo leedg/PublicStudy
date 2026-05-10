@@ -1,8 +1,9 @@
 // English: TestServer entry point - initializes and runs the game server
 // 한글: TestServer 진입점 - 게임 서버 초기화 및 실행
 
-#include "Utils/NetworkUtils.h"
+#include "Utils/ConfigManager.h"
 #include "Utils/CrashDump.h"
+#include "Utils/NetworkUtils.h"
 #include "include/TestServer.h"
 #include <atomic>
 #include <chrono>
@@ -41,22 +42,22 @@ void SignalHandler(int signum)
 //       DB 소켓의 WSAECONNRESET(10054) 방지
 static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
 {
-	switch (ctrlType)
+	if (ctrlType == CTRL_CLOSE_EVENT ||
+		ctrlType == CTRL_LOGOFF_EVENT ||
+		ctrlType == CTRL_SHUTDOWN_EVENT)
 	{
-	case CTRL_CLOSE_EVENT:
-	case CTRL_LOGOFF_EVENT:
-	case CTRL_SHUTDOWN_EVENT:
 		Network::Utils::Logger::Info("Console shutdown event received (" +
 		                             std::to_string(ctrlType) + "), stopping server...");
 		g_Running = false;
-		// English: Wait up to 8s for main thread to finish server.Stop()
-		// 한글: 메인 스레드가 server.Stop()을 완료할 때까지 최대 8초 대기
-		for (int i = 0; i < 80 && !g_ShutdownComplete.load(); ++i)
+		// English: Wait up to gracefulShutdownTimeoutMs for main thread to finish server.Stop()
+		// 한글: 메인 스레드가 server.Stop()을 완료할 때까지 gracefulShutdownTimeoutMs 대기
+		const uint32_t shutdownTimeoutMs = Network::Utils::ConfigManager::Instance().GetTimeout().GracefulShutdownTimeoutMs;
+		const int waitCount = static_cast<int>(shutdownTimeoutMs / 100);
+		for (int i = 0; i < waitCount && !g_ShutdownComplete.load(); ++i)
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		return TRUE;
-	default:
-		return FALSE;  // CTRL_C_EVENT/CTRL_BREAK_EVENT: let std::signal handle
 	}
+	return FALSE;  // CTRL_C_EVENT/CTRL_BREAK_EVENT: let std::signal handle
 }
 #endif
 
@@ -77,6 +78,15 @@ void PrintUsage(const char *programName)
 				 "(default: INFO)"
 				  << std::endl;
 	std::cout << "  -h              Show this help" << std::endl;
+	std::cout << std::endl;
+	std::cout << "Environment Variables (override defaults):" << std::endl;
+	std::cout << "  NETMOD_LISTEN_PORT        Server listen port" << std::endl;
+	std::cout << "  NETMOD_DB_HOST           DB server host" << std::endl;
+	std::cout << "  NETMOD_DB_PORT           DB server port" << std::endl;
+	std::cout << "  NETMOD_ENGINE            Network engine (auto/rio/iocp/epoll/kqueue)" << std::endl;
+	std::cout << "  NETMOD_WORKER_THREADS    Worker thread count (0=auto)" << std::endl;
+	std::cout << "  NETMOD_LOG_LEVEL         Log level (DEBUG/INFO/WARN/ERROR)" << std::endl;
+	std::cout << "  NETMOD_GRACEFUL_TIMEOUT  Shutdown timeout in seconds" << std::endl;
 }
 
 // English: Parse log level string
@@ -110,18 +120,22 @@ int main(int argc, char *argv[])
 	std::cout << "  TestServer - IOCP Game Server" << std::endl;
 	std::cout << "====================================" << std::endl;
 
-	// English: Default settings
-	// 한글: 기본 설정
-	uint16_t port = Network::Utils::DEFAULT_TEST_SERVER_PORT;
+	// English: Initialize ConfigManager (loads defaults + env overrides)
+	// 한글: ConfigManager 초기화 (기본값 로드 + 환경 변수 덮어쓰기)
+	Network::Utils::ConfigManager::Instance().Initialize();
+
+	// English: Default settings (may be overridden by ConfigManager from env)
+	// 한글: 기본 설정 (ConfigManager/환경 변수로 덮어쓰기 가능)
+	uint16_t port = Network::Utils::ConfigManager::Instance().GetNetwork().ListenPort;
 	std::string dbConnectionString;
 	Network::Utils::LogLevel logLevel = Network::Utils::LogLevel::Info;
 	bool dbConnectRequested = false;
-	std::string dbHost = "127.0.0.1";
-    uint16_t dbPort = Network::Utils::DEFAULT_TEST_DB_PORT;
-    std::string engineType = "auto";
+	std::string dbHost = Network::Utils::ConfigManager::Instance().GetNetwork().DBServerHost;
+	uint16_t dbPort = Network::Utils::ConfigManager::Instance().GetNetwork().DBServerPort;
+	std::string engineType = Network::Utils::ConfigManager::Instance().GetNetwork().EngineType;
 
-	// English: Parse command line arguments
-	// 한글: 커맨드라인 인자 파싱
+	// English: Parse command line arguments (override ConfigManager settings)
+	// 한글: 커맨드라인 인자 파싱 (ConfigManager 설정 덮어쓰기)
 	for (int i = 1; i < argc; ++i)
 	{
 		std::string arg = argv[i];
@@ -173,13 +187,17 @@ int main(int argc, char *argv[])
 	// 한글: 로깅 설정
 	Network::Utils::Logger::SetLevel(logLevel);
 
+	// English: Print current configuration
+	// 한글: 현재 설정 출력
+	Network::Utils::ConfigManager::Instance().PrintConfig();
+
 	// English: Register signal handlers
 	// 한글: 시그널 핸들러 등록
 	std::signal(SIGINT, SignalHandler);
 	std::signal(SIGTERM, SignalHandler);
 #ifdef _WIN32
-// English: SIGBREAK is Windows-specific, defined in <signal.h>
-// 한글: SIGBREAK는 Windows 전용, <signal.h>에 정의
+	// English: SIGBREAK is Windows-specific, defined in <signal.h>
+	// 한글: SIGBREAK는 Windows 전용, <signal.h>에 정의
 #ifdef SIGBREAK
 	std::signal(SIGBREAK, SignalHandler);
 #endif
@@ -219,6 +237,11 @@ int main(int argc, char *argv[])
 	}
 
 	Network::Utils::Logger::Info("Server is running. Press Ctrl+C to stop.");
+
+	// English: Get graceful shutdown timeout from ConfigManager
+	// 한글: ConfigManager에서 정상 종료 타임아웃 가져오기
+	const uint32_t shutdownTimeoutMs = Network::Utils::ConfigManager::Instance().GetTimeout().GracefulShutdownTimeoutMs;
+	const int shutdownTimeoutWaitCount = static_cast<int>(shutdownTimeoutMs / 100);
 
 	// English: Main loop - wait for shutdown signal (signal or named event)
 	// 한글: 메인 루프 - 종료 시그널 또는 Named Event 대기

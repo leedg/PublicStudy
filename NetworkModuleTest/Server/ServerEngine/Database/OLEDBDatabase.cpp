@@ -1,7 +1,9 @@
 // English: OLE DB implementation of database interfaces (Windows only)
 // 한글: 데이터베이스 인터페이스의 OLE DB 구현 (Windows 전용)
 
-#ifdef _WIN32
+#include "Network/Core/PlatformDetect.h"
+
+#if defined(IS_WINDOWS)
 
 #include "OLEDBDatabase.h"
 #include <algorithm>
@@ -860,4 +862,4 @@ size_t OLEDBResultSet::FindColumn(const std::string &columnName) const
 } // namespace Database
 } // namespace Network
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

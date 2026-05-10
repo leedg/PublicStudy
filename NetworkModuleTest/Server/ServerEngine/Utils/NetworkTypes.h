@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include "../Network/Core/PlatformDetect.h"
 
 namespace Network::Utils
 {
@@ -25,7 +26,7 @@ using Timestamp = uint64_t;
 // =============================================================================
 
 constexpr uint32_t DEFAULT_PORT = 8000;
-#if defined(_WIN32)
+#if defined(IS_WINDOWS)
 constexpr uint16_t DEFAULT_TEST_SERVER_PORT = 19010;
 constexpr uint16_t DEFAULT_TEST_DB_PORT = 18002;
 #else

@@ -1,7 +1,9 @@
 // English: SendBufferPool implementation
 // 한글: SendBufferPool 구현
 
-#ifdef _WIN32
+#include "Network/Core/PlatformDetect.h"
+
+#if defined(IS_WINDOWS)
 
 #include "SendBufferPool.h"
 #include <cassert>
@@ -96,4 +98,4 @@ char *SendBufferPool::SlotPtr(size_t idx) const
 
 } // namespace Network::Core
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

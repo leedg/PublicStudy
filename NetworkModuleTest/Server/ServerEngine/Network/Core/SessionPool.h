@@ -16,12 +16,13 @@
 //     (write: Initialize 1회, read: 다중 스레드 → mutex 불필요).
 
 #include "Session.h"
+#include "Network/Core/PlatformDetect.h"
 #include <atomic>
 #include <memory>
 #include <mutex>
 #include <vector>
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 #include <unordered_map>
 #endif
 
@@ -54,7 +55,7 @@ class SessionPool
 
     // English: Read-only OVERLAPPED→IOType lookup (lock-free after Init).
     // 한글: 읽기 전용 OVERLAPPED→IOType 조회 (Init 이후 lock-free).
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
     bool ResolveIOType(const OVERLAPPED *ov, IOType &outType) const;
 #endif
 
@@ -89,7 +90,7 @@ class SessionPool
     std::vector<size_t> mFreeList;
     std::mutex          mFreeListMutex;
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
     // English: Immutable after Initialize(); multi-thread reads need no lock.
     // 한글: Initialize() 이후 불변 — 다중 스레드 읽기에 락 불필요.
     std::unordered_map<const OVERLAPPED *, IOType> mIOContextMap;

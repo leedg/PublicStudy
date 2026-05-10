@@ -5,8 +5,9 @@
 // is index * slotSize.
 
 #include "IBufferPool.h"
+#include "Network/Core/PlatformDetect.h"
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -71,4 +72,4 @@ private:
 } // namespace Core
 } // namespace Network
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

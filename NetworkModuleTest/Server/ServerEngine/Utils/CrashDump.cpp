@@ -1,17 +1,9 @@
 // English: CrashDump implementation
 // 한글: CrashDump 구현
-//
-// Ported from RAON ServerEngine/Exception with RAON-specific dependencies removed:
-//   - NaverWorks messaging            → removed
-//   - GThreadManager / GLockStackManager / GMemoryManager → removed
-//   - TL_* thread-local variables     → removed (replaced with CONTEXT from EXCEPTION_POINTERS)
-//   - ExceptionThreadManager class    → replaced with CreateToolhelp32Snapshot loop
-//   - NOCRASH flags                   → always write dump
-//   - SystemInfo                      → replaced with GetVersionEx / RtlGetVersion
-//   - WorkerThread::InitTLS           → removed
-//   - CRASH_INLINE macro              → signal handlers call RaiseException directly
 
-#ifdef _WIN32
+#include "Network/Core/PlatformDetect.h"
+
+#if defined(IS_WINDOWS)
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -558,4 +550,4 @@ void CrashDump::GetBaseFileName(const char* fullPath, char* outName, size_t outS
 
 } // namespace Network::Utils
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)

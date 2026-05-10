@@ -2,8 +2,9 @@
 // Korean: TestDBServer 진입점 - 데이터베이스 서버 초기화 및 실행
 
 #include "include/TestDBServer.h"
-#include "Utils/NetworkUtils.h"
+#include "Utils/ConfigManager.h"
 #include "Utils/CrashDump.h"
+#include "Utils/NetworkUtils.h"
 #include <iostream>
 #include <string>
 #include <csignal>
@@ -37,22 +38,22 @@ void SignalHandler(int signum)
 // 한글: 콘솔 컨트롤 핸들러 — CTRL_CLOSE_EVENT/창 닫기 시 server.Stop()이 실행되도록 보장.
 static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
 {
-    switch (ctrlType)
-    {
-    case CTRL_CLOSE_EVENT:
-    case CTRL_LOGOFF_EVENT:
-    case CTRL_SHUTDOWN_EVENT:
-        Network::Utils::Logger::Info("Console shutdown event received (" +
-                                     std::to_string(ctrlType) + "), stopping DBServer...");
-        g_Running = false;
-        // English: Wait up to 8s for main thread to finish server.Stop()
-        // 한글: 메인 스레드가 server.Stop()을 완료할 때까지 최대 8초 대기
-        for (int i = 0; i < 80 && !g_ShutdownComplete.load(); ++i)
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        return TRUE;
-    default:
-        return FALSE;  // CTRL_C_EVENT / CTRL_BREAK_EVENT: std::signal이 처리
-    }
+	if (ctrlType == CTRL_CLOSE_EVENT ||
+		ctrlType == CTRL_LOGOFF_EVENT ||
+		ctrlType == CTRL_SHUTDOWN_EVENT)
+	{
+		Network::Utils::Logger::Info("Console shutdown event received (" +
+		                             std::to_string(ctrlType) + "), stopping DBServer...");
+		g_Running = false;
+		// English: Wait up to gracefulShutdownTimeoutMs for main thread to finish server.Stop()
+		// 한글: 메인 스레드가 server.Stop()을 완료할 때까지 gracefulShutdownTimeoutMs 대기
+		const uint32_t shutdownTimeoutMs = Network::Utils::ConfigManager::Instance().GetTimeout().GracefulShutdownTimeoutMs;
+		const int waitCount = static_cast<int>(shutdownTimeoutMs / 100);
+		for (int i = 0; i < waitCount && !g_ShutdownComplete.load(); ++i)
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		return TRUE;
+	}
+	return FALSE;  // CTRL_C_EVENT/CTRL_BREAK_EVENT: let std::signal handle
 }
 #endif
 
@@ -65,6 +66,11 @@ void PrintUsage(const char* programName)
     std::cout << "  -p <port>       Server port (default: " << Network::Utils::DEFAULT_TEST_DB_PORT << ")" << std::endl;
     std::cout << "  -l <level>      Log level: DEBUG, INFO, WARN, ERROR (default: INFO)" << std::endl;
     std::cout << "  -h              Show this help" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Environment Variables (override defaults):" << std::endl;
+    std::cout << "  NETMOD_LISTEN_PORT        Server listen port" << std::endl;
+    std::cout << "  NETMOD_LOG_LEVEL          Log level (DEBUG/INFO/WARN/ERROR)" << std::endl;
+    std::cout << "  NETMOD_GRACEFUL_TIMEOUT   Shutdown timeout in seconds" << std::endl;
 }
 
 // English: Parse log level string
@@ -95,13 +101,17 @@ int main(int argc, char* argv[])
     std::cout << "  TestDBServer - Database Server" << std::endl;
     std::cout << "====================================" << std::endl;
 
-    // English: Default settings
-    // Korean: 기본 설정
-    uint16_t port = Network::Utils::DEFAULT_TEST_DB_PORT;
+    // English: Initialize ConfigManager (loads defaults + env overrides)
+    // Korean: ConfigManager 초기화 (기본값 로드 + 환경 변수 덮어쓰기)
+    Network::Utils::ConfigManager::Instance().Initialize();
+
+    // English: Default settings (may be overridden by ConfigManager from env)
+    // Korean: 기본 설정 (ConfigManager/환경 변수로 덮어쓰기 가능)
+    uint16_t port = Network::Utils::ConfigManager::Instance().GetNetwork().ListenPort;
     Network::Utils::LogLevel logLevel = Network::Utils::LogLevel::Info;
 
-    // English: Parse command line arguments
-    // Korean: 커맨드라인 인자 파싱
+    // English: Parse command line arguments (override ConfigManager settings)
+    // Korean: 커맨드라인 인자 파싱 (ConfigManager 설정 덮어쓰기)
     for (int i = 1; i < argc; ++i)
     {
         std::string arg = argv[i];
@@ -130,6 +140,10 @@ int main(int argc, char* argv[])
     // English: Setup logging
     // Korean: 로깅 설정
     Network::Utils::Logger::SetLevel(logLevel);
+
+    // English: Print current configuration
+    // Korean: 현재 설정 출력
+    Network::Utils::ConfigManager::Instance().PrintConfig();
 
     // English: Register signal handlers
     // Korean: 시그널 핸들러 등록

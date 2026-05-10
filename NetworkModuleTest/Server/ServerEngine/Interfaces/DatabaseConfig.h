@@ -4,6 +4,7 @@
 // 한글: 데이터베이스 설정 구조체
 
 #include "DatabaseType_enum.h"
+#include <cstdint>
 #include <string>
 #include <sstream>
 

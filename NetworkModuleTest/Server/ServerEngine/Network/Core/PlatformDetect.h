@@ -1,84 +1,103 @@
 #pragma once
 
-// English: Platform detection utilities — AsyncIO backend selection + DB backend macros.
-// 한글: 플랫폼 감지 유틸리티 — AsyncIO 백엔드 선택 + DB 백엔드 매크로.
+// English: Platform detection utilities — 6-Layer define hierarchy
+// 한글: 플랫폼 감지 유틸리티 — 6계층 Define 계층 구조
+//
+// Layer 1: Native OS      — NATIVE_OS_WINDOWS, NATIVE_OS_LINUX, NATIVE_OS_MACOS
+// Layer 2: Runtime Env    — DOCKER_CONTAINER (set by CMake)
+// Layer 3: Platform Alias — IS_WINDOWS, IS_LINUX, IS_MACOS
+// Layer 4: Net Capability — HAS_IOCP, HAS_RIO, HAS_EPOLL, HAS_IO_URING, HAS_KQUEUE
+// Layer 5: DB Backend     — HAS_ODBC, HAS_OLEDB
+// Layer 6: Utility        — ENDIAN_LITTLE, SOCKET_HANDLE, OS_ERROR
 
 // =============================================================================
-// English: Compile-time platform macros
-//
-//   Network I/O backend (auto-selected; can be overridden by predefining the macro):
-//     PLATFORM_WINDOWS   — defined on _WIN32
-//     PLATFORM_LINUX     — defined on __linux__
-//     PLATFORM_MACOS     — defined on __APPLE__
-//
-//   Database backend (select at build time by defining one of these before including):
-//     DB_BACKEND_ODBC    — use ODBC driver (default on all platforms)
-//     DB_BACKEND_OLEDB   — use OLE DB driver (Windows only; define USE_OLEDB to activate)
-//
-//   Usage examples:
-//     // Force OLEDB on Windows (define in project settings or before #include):
-//     #define USE_OLEDB
-//     #include "PlatformDetect.h"
-//
-//     // Select backend at compile time:
-//     #if defined(DB_BACKEND_OLEDB)
-//         // OLE DB code path
-//     #elif defined(DB_BACKEND_ODBC)
-//         // ODBC code path
-//     #endif
-//
-// 한글: 컴파일 타임 플랫폼 매크로
-//
-//   네트워크 I/O 백엔드 (자동 선택; 매크로 사전 정의로 오버라이드 가능):
-//     PLATFORM_WINDOWS   — _WIN32에서 정의됨
-//     PLATFORM_LINUX     — __linux__에서 정의됨
-//     PLATFORM_MACOS     — __APPLE__에서 정의됨
-//
-//   데이터베이스 백엔드 (빌드 시 둘 중 하나를 정의하여 선택):
-//     DB_BACKEND_ODBC    — ODBC 드라이버 사용 (모든 플랫폼 기본값)
-//     DB_BACKEND_OLEDB   — OLE DB 드라이버 사용 (Windows 전용; USE_OLEDB 정의 시 활성화)
-//
-//   사용 예시:
-//     // Windows에서 OLEDB 강제 사용 (프로젝트 설정 또는 include 전에 정의):
-//     #define USE_OLEDB
-//     #include "PlatformDetect.h"
-//
-//     // 컴파일 타임 백엔드 분기:
-//     #if defined(DB_BACKEND_OLEDB)
-//         // OLE DB 코드 경로
-//     #elif defined(DB_BACKEND_ODBC)
-//         // ODBC 코드 경로
-//     #endif
+// AsyncIOProvider header (must come first — provides PlatformType, PlatformInfo)
 // =============================================================================
 
-// ── Network I/O platform macros ──────────────────────────────────────────────
-#if defined(_WIN32)
-    #define PLATFORM_WINDOWS
-#elif defined(__linux__)
-    #define PLATFORM_LINUX
-#elif defined(__APPLE__)
-    #define PLATFORM_MACOS
+// English: Prevent windows.h from defining max/min macros that conflict with std::max/min
+// 한글: windows.h의 max/min 매크로가 std::max/min과 충돌하지 않도록 방지
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
 
-// ── Database backend macros ──────────────────────────────────────────────────
-//
-// English: OLE DB is Windows-only. If USE_OLEDB is defined on a non-Windows
-//          platform, we silently fall back to ODBC with a compile-time warning.
-// 한글: OLE DB는 Windows 전용. 비-Windows에서 USE_OLEDB 정의 시 ODBC로 폴백하고
-//       컴파일 타임 경고 발생.
+#include "AsyncIOProvider.h"
+
+// =============================================================================
+// Layer 1: Native OS Detection (compile-time, from compiler predefs)
+// =============================================================================
+#if defined(_WIN32)
+    #define NATIVE_OS_WINDOWS
+#elif defined(__linux__)
+    #define NATIVE_OS_LINUX
+#elif defined(__APPLE__)
+    #define NATIVE_OS_MACOS
+#endif
+
+
+
+// =============================================================================
+// Layer 2: Runtime Environment
+// =============================================================================
+
+// =============================================================================
+// Layer 3: Platform Alias (readable names for #ifdef)
+// =============================================================================
+#if defined(NATIVE_OS_WINDOWS)
+    #define IS_WINDOWS
+#elif defined(NATIVE_OS_LINUX)
+    #define IS_LINUX
+#elif defined(NATIVE_OS_MACOS)
+    #define IS_MACOS
+#endif
+
+// =============================================================================
+// Layer 4: Network I/O Capability
+// =============================================================================
+#if defined(IS_WINDOWS)
+    #define HAS_IOCP
+    #define HAS_RIO
+#endif
+
+#if defined(IS_LINUX)
+    #define HAS_EPOLL
+    #if defined(HAVE_IO_URING) || defined(HAVE_LIBURING)
+        #define HAS_IO_URING
+    #endif
+#endif
+
+#if defined(IS_MACOS)
+    #define HAS_KQUEUE
+#endif
+
+// =============================================================================
+// Layer 5: Database Backend
+// =============================================================================
 #if defined(USE_OLEDB)
-    #if defined(PLATFORM_WINDOWS)
-        #define DB_BACKEND_OLEDB
+    #if defined(IS_WINDOWS)
+        #define HAS_OLEDB
     #else
         #pragma message("WARNING: USE_OLEDB is only supported on Windows — falling back to ODBC")
-        #define DB_BACKEND_ODBC
+        #define HAS_ODBC
     #endif
 #else
-    #define DB_BACKEND_ODBC  // English: default on all platforms / 한글: 모든 플랫폼 기본값
+    #define HAS_ODBC
 #endif
 
-// ── AsyncIOProvider header (must come after macro definitions) ────────────────
-#include "AsyncIOProvider.h"
+// =============================================================================
+// Legacy compatibility aliases (deprecated — migrate to new names)
+// =============================================================================
+#if defined(NATIVE_OS_WINDOWS)
+    #define PLATFORM_WINDOWS
+#endif
+#if defined(NATIVE_OS_LINUX)
+    #define PLATFORM_LINUX
+#endif
+#if defined(NATIVE_OS_MACOS)
+    #define PLATFORM_MACOS
+#endif
 
 namespace Network
 {
@@ -104,6 +123,20 @@ PlatformType DetectPlatform();
  * @return PlatformInfo structure with version and capability information
  */
 PlatformInfo GetDetailedPlatformInfo();
+
+/**
+ * English: Check if current build is running inside a Docker container
+ * 한글: 현재 빌드가 Docker 컨테이너 내부에서 실행 중인지 확인
+ * @return true if DOCKER_CONTAINER is defined
+ */
+inline bool IsDockerContainer()
+{
+#ifdef DOCKER_CONTAINER
+    return true;
+#else
+    return false;
+#endif
+}
 
 /**
  * English: Check if RIO (Registered I/O) is supported on Windows
@@ -149,7 +182,7 @@ uint32_t GetWindowsMajorVersion();
  * @return true if version detected successfully
  */
 bool GetLinuxKernelVersion(uint32_t &outMajor, uint32_t &outMinor,
-							   uint32_t &outPatch);
+                               uint32_t &outPatch);
 
 /**
  * English: Get macOS version
@@ -160,7 +193,7 @@ bool GetLinuxKernelVersion(uint32_t &outMajor, uint32_t &outMinor,
  * @return true if version detected successfully
  */
 bool GetMacOSVersion(uint32_t &outMajor, uint32_t &outMinor,
-					 uint32_t &outPatch);
+                     uint32_t &outPatch);
 
 } // namespace Platform
 } // namespace AsyncIO

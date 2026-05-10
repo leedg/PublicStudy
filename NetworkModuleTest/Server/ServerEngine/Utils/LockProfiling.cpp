@@ -1,11 +1,12 @@
 #include "LockProfiling.h"
+#include "../Network/Core/PlatformDetect.h"
 
 #if defined(NET_LOCK_PROFILING)
 
 #include <cstdlib>
 #include <mutex>
 
-#ifdef _WIN32
+#if defined(IS_WINDOWS)
 #include <TraceLoggingProvider.h>
 #pragma comment(lib, "advapi32.lib")
 
@@ -62,6 +63,6 @@ namespace Network::Utils::LockProfiling
 void EmitLockRecord(const LockRecord &record) noexcept { (void)record; }
 } // namespace Network::Utils::LockProfiling
 
-#endif // _WIN32
+#endif // defined(IS_WINDOWS)
 
 #endif // NET_LOCK_PROFILING
