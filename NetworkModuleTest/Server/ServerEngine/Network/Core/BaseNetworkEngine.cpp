@@ -53,7 +53,6 @@ bool BaseNetworkEngine::Initialize(size_t maxConnections, uint16_t port)
 		const auto& cfg = Utils::ConfigManager::Instance().GetNetwork();
 		Network::Concurrency::KeyedDispatcher::Options opts;
 		opts.mWorkerCount = 4;
-		opts.mQueueOptions.mBackend     = Network::Concurrency::QueueBackend::LockFree;
 		opts.mQueueOptions.mCapacity    = cfg.MaxLogicQueueDepth;
 		opts.mQueueOptions.mBackpressure = Network::Concurrency::BackpressurePolicy::RejectNewest;
 		opts.mName = "LogicDispatcher";
@@ -438,6 +437,53 @@ void BaseNetworkEngine::ProcessSendCompletion(SessionRef session,
 		Utils::Logger::Debug("Send queue empty for session " +
 							 std::to_string(session->GetId()));
 	}
+}
+
+void BaseNetworkEngine::ProcessErrorCompletion(SessionRef session,
+                                               AsyncIO::AsyncIOType ioType,
+                                               OSError osError)
+{
+	if (!session)
+	{
+		return;
+	}
+
+	const auto connId = session->GetId();
+
+	if (ioType == AsyncIO::AsyncIOType::Send)
+	{
+		mTotalSendErrors.fetch_add(1, std::memory_order_relaxed);
+	}
+	else
+	{
+		mTotalRecvErrors.fetch_add(1, std::memory_order_relaxed);
+	}
+
+#if defined(IS_WINDOWS)
+	const bool isExpectedClose = (osError == WSAECONNRESET   ||
+	                              osError == WSAECONNABORTED  ||
+	                              osError == WSAESHUTDOWN     ||
+	                              osError == 0);
+#else
+	const bool isExpectedClose = (osError == ECONNRESET  ||
+	                              osError == EPIPE        ||
+	                              osError == ECONNABORTED ||
+	                              osError == 0);
+#endif
+
+	const std::string direction = (ioType == AsyncIO::AsyncIOType::Send) ? "Send" : "Recv";
+	const std::string msg = direction + " error on Session " + std::to_string(connId) +
+	                        " - OS error: " + std::to_string(static_cast<uint32_t>(osError));
+	if (isExpectedClose)
+	{
+		Utils::Logger::Warn(msg);
+	}
+	else
+	{
+		Utils::Logger::Error(msg);
+	}
+
+	ProcessRecvCompletion(session, 0, nullptr);
 }
 
 } // namespace Network::Core

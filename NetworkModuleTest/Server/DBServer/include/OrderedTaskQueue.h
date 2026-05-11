@@ -29,7 +29,7 @@ namespace Network::DBServer
 
         // 지정한 수의 워커 스레드로 초기화.
         //   DEFAULT_DB_WORKER_COUNT(4)는 DB I/O 병렬성과 serverId 해시 분산의 균형점이다.
-        bool Initialize(size_t workerCount = Utils::DEFAULT_DB_WORKER_COUNT);
+        bool Initialize(size_t workerCount = 4);
 
         // 모든 워커 정상 종료 (남은 작업 drain 후 중지)
         void Shutdown();
