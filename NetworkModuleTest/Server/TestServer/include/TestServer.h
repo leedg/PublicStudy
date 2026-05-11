@@ -38,7 +38,7 @@ namespace Network::TestServer
         bool Initialize(uint16_t port                  = Utils::DEFAULT_TEST_SERVER_PORT,
                         const std::string& dbConnectionString = "",
                         const std::string& engineType         = "auto",
-                        size_t             dbWorkerCount      = 3);
+                        size_t             dbWorkerCount      = Utils::DEFAULT_TASK_QUEUE_WORKER_COUNT);
         bool Start();
         void Stop();
         bool IsRunning() const;
